@@ -33,7 +33,7 @@
                 </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>
-            <name>Monto Autorizadoaa</name>
+            <name>Monto Autorizadoa</name>
             <operator>and</operator>
             <rule_id>219d184f14861521</rule_id>
             <rule_type>show</rule_type>

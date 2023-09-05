@@ -2847,10 +2847,10 @@
                     <number_type>None</number_type>
                     <options>
                         <item>
-                            <label>Pendiente por autorizar</label>
+                            <label>Pendiente</label>
                             <points>None</points>
                             <selected>False</selected>
-                            <value>pendiente_por_autorizar</value>
+                            <value>pendiente</value>
                         </item>
                         <item>
                             <label>Autorizado en Operaciones</label>
@@ -3147,5 +3147,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1693677364.0</updated_at>
+    <updated_at>1693869489.0</updated_at>
 </lkf>

@@ -45,7 +45,14 @@
             <page_description>None</page_description>
             <page_fields>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>17da1369210f10ea</rule_id>
+                            <rule_index>0</rule_index>
+                            <rule_type>required</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -124,6 +131,7 @@
                             <childs>
                                 <item>64e3f40cda4d6cc6941e7834</item>
                                 <item>64e6da9a75eab52e0956b0d7</item>
+                                <item>64f37721e7c7d8878f715ea1</item>
                             </childs>
                         </related_catalog>
                         <view_fields>
@@ -359,7 +367,7 @@
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>
-                            <catalog_id>107520</catalog_id>
+                            <catalog_id>107562</catalog_id>
                             <related_fields>
                                 <item>6092c0ebd8b748522446af26</item>
                             </related_fields>
@@ -1602,6 +1610,12 @@
                             <selected>False</selected>
                             <value>realizado</value>
                         </item>
+                        <item>
+                            <label>Autorizado</label>
+                            <points>None</points>
+                            <selected>False</selected>
+                            <value>autorizado</value>
+                        </item>
                     </options>
                     <properties>
                         <body_payload>[]</body_payload>
@@ -1645,7 +1659,10 @@
                         <watermark_enable>False</watermark_enable>
                     </properties>
                     <required>False</required>
-                    <rules>[]</rules>
+                    <rules>
+                        <item>17da1369210f10ea</item>
+                        <item>17da1369210f10ea</item>
+                    </rules>
                     <show_for_rule>True</show_for_rule>
                     <validations>{}</validations>
                     <visible>True</visible>
@@ -1687,5 +1704,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1693677348.0</updated_at>
+    <updated_at>1693872279.0</updated_at>
 </lkf>
