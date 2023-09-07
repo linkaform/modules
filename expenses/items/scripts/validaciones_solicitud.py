@@ -7,7 +7,6 @@ from lkf_addons.addons.expenses.expense_utils import Expenses
 
 from account_settings import *
 
-class Expenses(Expenses):
 
 
 if __name__ == '__main__':

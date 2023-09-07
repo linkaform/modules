@@ -367,7 +367,7 @@
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>
-                            <catalog_id>107562</catalog_id>
+                            <catalog_id>{{ catalog.catalogo_de_empleados.id }}</catalog_id>
                             <related_fields>
                                 <item>6092c0ebd8b748522446af26</item>
                             </related_fields>
