@@ -1678,7 +1678,7 @@
         <max_points>0</max_points>
     </grading>
     <has_voucher>False</has_voucher>
-    <name>Entrega de Efectivo 4</name>
+    <name>Entrega de Efectivo</name>
     <notification>
         <active>False</active>
     </notification>
