@@ -7,7 +7,7 @@
         <redirect_url>default</redirect_url>
     </confirmation>
     <description />
-    <_rev>20-aceaad7cfe0ca0fc802f4a94742df657</_rev>
+    <_rev>21-7d5142b31eabbbc8eba66d8dec8aadd5</_rev>
     <updated_at>2023-04-21T17:45:19.714196+00:00Z</updated_at>
     <sync>
         <element_request>{}</element_request>
@@ -25,6 +25,10 @@
             <config>False</config>
         </folio>
     </advanced_options>
+    <catalog_id>98230</catalog_id>
+    <sync_last_update>None</sync_last_update>
+    <_id>6442cbafb1b1234eb68ec178</_id>
+    <public>False</public>
     <catalog_pages>
         <item>
             <page_fields>
@@ -153,7 +157,7 @@
                     <field_type>catalog</field_type>
                     <catalog_fields>[]</catalog_fields>
                     <required>False</required>
-                    <field_id>{{ catalog.green_house.obj_id }}</field_id>
+                    <field_id>{{ catalog.warehouse.obj_id }}</field_id>
                     <label>House</label>
                     <catalog>
                         <catalog_fields>[]</catalog_fields>
@@ -161,11 +165,11 @@
                             <item>6442e4831198daf81456f274</item>
                         </view_fields>
                         <view_index>0</view_index>
-                        <couch_id>{{ catalog.green_house.obj_id }}</couch_id>
+                        <couch_id>{{ catalog.warehouse.obj_id }}</couch_id>
                         <catalog_field_id>None</catalog_field_id>
-                        <catalog_id>{{ catalog.green_house.id }}</catalog_id>
+                        <catalog_id>{{ catalog.warehouse.id }}</catalog_id>
                         <filters />
-                        <name>{{ catalog.green_house.name }}</name>
+                        <name>{{ catalog.warehouse.name }}</name>
                     </catalog>
                     <properties>{}</properties>
                 </item>
@@ -182,8 +186,8 @@
                         <view_fields>[]</view_fields>
                         <field_type>text</field_type>
                         <view_index>1</view_index>
-                        <catalog_field_id>{{ catalog.green_house.obj_id }}</catalog_field_id>
-                        <catalog_id>{{ catalog.green_house.id }}</catalog_id>
+                        <catalog_field_id>{{ catalog.warehouse.obj_id }}</catalog_field_id>
+                        <catalog_id>{{ catalog.warehouse.id }}</catalog_id>
                         <filters />
                     </catalog>
                     <options>[]</options>
@@ -247,8 +251,4 @@
             <page_description>None</page_description>
         </item>
     </catalog_pages>
-    <sync_last_update>None</sync_last_update>
-    <_id>6442cbafb1b1234eb68ec178</_id>
-    <public>False</public>
-    <catalog_id>98230</catalog_id>
 </lkf>

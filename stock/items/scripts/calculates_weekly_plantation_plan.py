@@ -3,12 +3,13 @@ import sys, simplejson, math
 from datetime import datetime, timedelta
 
 from linkaform_api import settings, utils
-from account_utils import unlist
-from magnolia_settings import *
-from account_utils import get_plant_recipe, select_S4_recipe
+#from account_utils import unlist
+from account_settings import *
+#from account_utils import get_plant_recipe, select_S4_recipe
 
+from lkf_addons.addons.stock.stock_utils import Stock
 
-from account_utils import Plant, PlantRecipe
+#from account_utils import Plant, PlantRecipe
 
 
 def calculations(current_record):
@@ -40,13 +41,13 @@ def calculations(current_record):
             # plant = Plant(plant_code, stage='4')
             # ss = plant.get_week_recipe('Ln72',start_size='S4', plant_date=plant_date )
             # print('recipes', ss)
-            recipes = get_plant_recipe([plant_code,], stage=[4, 'Ln72',])
+            recipes = stock_obj.get_plant_recipe([plant_code,], stage=[4, 'Ln72',])
             if not recipes.get(plant_code):
                 error_msg = {
                         "61ef32bcdf0ec2ba73dec33d": {"msg": [ "No recipe with Start Size S4 found for : {}".format(plant_code)], "label": "Plant code", "error": []}
                     }
                 raise Exception(simplejson.dumps(error_msg))
-            recipe = select_S4_recipe(recipes[plant_code], week)
+            recipe = stock_obj.select_S4_recipe(recipes[plant_code], week)
             # print('=== recipe',simplejson.dumps(recipe, indent=4))
 
             #per container
@@ -149,12 +150,6 @@ def calculations(current_record):
 
 if __name__ == '__main__':
     print(sys.argv)
-    current_record = simplejson.loads( sys.argv[1] )
-    jwt_complete = simplejson.loads( sys.argv[2] )
-    config['USER_JWT_KEY'] = jwt_complete['jwt'].split(' ')[1]
-    config['JWT_KEY'] = jwt_complete['jwt'].split(' ')[1]
-    settings.config.update(config)
-    lkf_api = utils.Cache(settings)
-    if not current_record.get('answers'):
-        current_record = lkf_api.read_current_record_from_txt( current_record['answers_url'] )
+    stock_obj = Stock(settings, sys_argv=sys.argv)
+    current_record = stock_obj.current_record
     calculations(current_record)

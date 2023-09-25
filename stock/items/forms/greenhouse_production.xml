@@ -6,9 +6,11 @@
             <_id>form_94880</_id>
             <config>True</config>
             <inc_by>1</inc_by>
-            <next>110</next>
+            <manual>False</manual>
+            <next>473</next>
             <padding_zeros>3</padding_zeros>
             <prefix>%y%W-</prefix>
+            <required>False</required>
             <suffix />
         </folio>
     </advanced_options>
@@ -1412,7 +1414,7 @@
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
                         <catalog_field_id>None</catalog_field_id>
-                        <catalog_id>{{ catalog.green_house.id }}</catalog_id>
+                        <catalog_id>{{ catalog.warehouse.id }}</catalog_id>
                         <field_type>None</field_type>
                         <filters />
                         <geofence>None</geofence>
@@ -1431,7 +1433,7 @@
                     <default_value />
                     <descriptor>None</descriptor>
                     <fav>False</fav>
-                    <field_id>{{ catalog.green_house.obj_id }}</field_id>
+                    <field_id>{{ catalog.warehouse.obj_id }}</field_id>
                     <field_type>catalog</field_type>
                     <grading_criteria>{}</grading_criteria>
                     <group>None</group>
@@ -1498,8 +1500,8 @@
                     </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
-                        <catalog_field_id>{{ catalog.green_house.obj_id }}</catalog_field_id>
-                        <catalog_id>{{ catalog.green_house.id }}</catalog_id>
+                        <catalog_field_id>{{ catalog.warehouse.obj_id }}</catalog_field_id>
+                        <catalog_id>{{ catalog.warehouse.id }}</catalog_id>
                         <field_type>text</field_type>
                         <filters />
                         <geofence>None</geofence>
@@ -2847,6 +2849,17 @@
             <properties>{}</properties>
             <resource_uri>/api/infosync/templates/304/</resource_uri>
         </item>
+        <item>
+            <_type>multiple-records</_type>
+            <description>Template de etiqueta para magnolia</description>
+            <id>375</id>
+            <name>Magnolia - Etiqueta</name>
+            <owner>/api/infosync/user/9908/</owner>
+            <paginate>False</paginate>
+            <pdfName>{% raw %} Etiqueta - {{record.form.name}} {% endraw %} </pdfName>
+            <properties>{}</properties>
+            <resource_uri>/api/infosync/templates/375/</resource_uri>
+        </item>
     </templates>
     <timer_config>
         <active>False</active>
@@ -2856,5 +2869,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1693949642.0</updated_at>
+    <updated_at>1695064441.0</updated_at>
 </lkf>
