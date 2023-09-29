@@ -60,6 +60,12 @@
             <empty>False</empty>
             <fields_ruled>
                 <item>
+                    <field_id>63f6de096468162a9a3c2ef5</field_id>
+                    <id>63f6de096468162a9a3c2ef5</id>
+                    <label>Estimated Hours</label>
+                    <type>integer</type>
+                </item>
+                <item>
                     <field_id>63f8f4cad090912501be306a</field_id>
                     <id>63f8f4cad090912501be306a</id>
                     <label>Ready YearWeek</label>
@@ -78,9 +84,15 @@
                     <type>decimal</type>
                 </item>
                 <item>
-                    <field_id>63f6de096468162a9a3c2ef5</field_id>
-                    <id>63f6de096468162a9a3c2ef5</id>
-                    <label>Estimated Hours</label>
+                    <field_id>63f6de096468162a9a3c2ef4</field_id>
+                    <id>63f6de096468162a9a3c2ef4</id>
+                    <label>Total Flats</label>
+                    <type>integer</type>
+                </item>
+                <item>
+                    <field_id>63f6e1733b076aaf80ff4adb</field_id>
+                    <id>63f6e1733b076aaf80ff4adb</id>
+                    <label>Total Eaches</label>
                     <type>integer</type>
                 </item>
             </fields_ruled>

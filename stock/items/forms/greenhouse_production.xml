@@ -1414,7 +1414,7 @@
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
                         <catalog_field_id>None</catalog_field_id>
-                        <catalog_id>{{ catalog.warehouse.id }}</catalog_id>
+                        <catalog_id>{{ catalog.green_house.id }}</catalog_id>
                         <field_type>None</field_type>
                         <filters />
                         <geofence>None</geofence>
@@ -1433,7 +1433,7 @@
                     <default_value />
                     <descriptor>None</descriptor>
                     <fav>False</fav>
-                    <field_id>{{ catalog.warehouse.obj_id }}</field_id>
+                    <field_id>{{ catalog.green_house.obj_id }}</field_id>
                     <field_type>catalog</field_type>
                     <grading_criteria>{}</grading_criteria>
                     <group>None</group>
@@ -1500,8 +1500,8 @@
                     </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
-                        <catalog_field_id>{{ catalog.warehouse.obj_id }}</catalog_field_id>
-                        <catalog_id>{{ catalog.warehouse.id }}</catalog_id>
+                        <catalog_field_id>{{ catalog.green_house.obj_id }}</catalog_field_id>
+                        <catalog_id>{{ catalog.green_house.id }}</catalog_id>
                         <field_type>text</field_type>
                         <filters />
                         <geofence>None</geofence>
@@ -2488,7 +2488,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>25fe13be108a248c</rule_id>
+                            <rule_index>0</rule_index>
+                            <rule_type>invisible</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -2869,5 +2876,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1695064441.0</updated_at>
+    <updated_at>1695738384.0</updated_at>
 </lkf>

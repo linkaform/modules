@@ -47,6 +47,12 @@
                     <label>Status</label>
                     <type>select</type>
                 </item>
+                <item>
+                    <field_id>64ed5839a405d8f6378edf5f</field_id>
+                    <id>64ed5839a405d8f6378edf5f</id>
+                    <label>Total Producced</label>
+                    <type>integer</type>
+                </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>
             <name>Hidde status</name>

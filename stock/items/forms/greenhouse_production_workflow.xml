@@ -242,8 +242,8 @@
                             <prefix>answer</prefix>
                             <trigger_field>
                                 <catalog>
-                                    <catalog_field_id>{{ catalog.warehouse.obj_id }}</catalog_field_id>
-                                    <catalog_id>{{ catalog.warehouse.id }}</catalog_id>
+                                    <catalog_field_id>{{ catalog.green_house.obj_id }}</catalog_field_id>
+                                    <catalog_id>{{ catalog.green_house.id }}</catalog_id>
                                     <field_type>text</field_type>
                                     <filters />
                                     <geofence>None</geofence>
