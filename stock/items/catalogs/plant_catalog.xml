@@ -7,7 +7,7 @@
         <redirect_url>default</redirect_url>
     </confirmation>
     <description />
-    <_rev>12-3eea68caddf9d6fabf38155ac39254c3</_rev>
+    <_rev>13-d354bd328df301d8a7cefff3d13b9ddb</_rev>
     <updated_at>2022-01-24T23:14:04.742784+00:00Z</updated_at>
     <sync>
         <element_request>{}</element_request>
@@ -25,6 +25,10 @@
             <config>False</config>
         </folio>
     </advanced_options>
+    <catalog_id>81410</catalog_id>
+    <sync_last_update>None</sync_last_update>
+    <_id>6205f7690e752ce25bb30102</_id>
+    <public>False</public>
     <catalog_pages>
         <item>
             <page_fields>
@@ -449,8 +453,4 @@
             <page_name>Plant Info</page_name>
         </item>
     </catalog_pages>
-    <sync_last_update>None</sync_last_update>
-    <_id>6205f7690e752ce25bb30102</_id>
-    <public>False</public>
-    <catalog_id>81410</catalog_id>
 </lkf>

@@ -115,7 +115,7 @@
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
                         <catalog_field_id>None</catalog_field_id>
-                        <catalog_id>{{ catalog.warehouse.id }}</catalog_id>
+                        <catalog_id>{{ catalog.green_house.id }}</catalog_id>
                         <field_type>None</field_type>
                         <filters />
                         <geofence>None</geofence>
@@ -134,7 +134,7 @@
                     <default_value />
                     <descriptor>None</descriptor>
                     <fav>False</fav>
-                    <field_id>{{ catalog.warehouse.obj_id }}</field_id>
+                    <field_id>{{ catalog.green_house.obj_id }}</field_id>
                     <field_type>catalog</field_type>
                     <grading_criteria>{}</grading_criteria>
                     <group>None</group>
@@ -194,8 +194,8 @@
                     <affecting_rules>[]</affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
-                        <catalog_field_id>{{ catalog.warehouse.obj_id }}</catalog_field_id>
-                        <catalog_id>{{ catalog.warehouse.id }}</catalog_id>
+                        <catalog_field_id>{{ catalog.green_house.obj_id }}</catalog_field_id>
+                        <catalog_id>{{ catalog.green_house.id }}</catalog_id>
                         <field_type>text</field_type>
                         <filters />
                         <geofence>None</geofence>
@@ -674,7 +674,7 @@
                     </group>
                     <groups_fields>[]</groups_fields>
                     <help_text>None</help_text>
-                    <label>Planted Week</label>
+                    <label>Planted YearWeek</label>
                     <number_type>None</number_type>
                     <options>[]</options>
                     <properties>
@@ -692,12 +692,12 @@
                         <icon>{}</icon>
                         <image_origin>None</image_origin>
                         <input_parameter>[]</input_parameter>
-                        <max>None</max>
+                        <max>205052</max>
                         <max_images_count>5</max_images_count>
                         <metadata>[]</metadata>
                         <method />
                         <mime_types>[]</mime_types>
-                        <min>None</min>
+                        <min>202301</min>
                         <min_images_count>0</min_images_count>
                         <multi_selection>False</multi_selection>
                         <notification>{}</notification>
@@ -743,7 +743,7 @@
                     </group>
                     <groups_fields>[]</groups_fields>
                     <help_text>None</help_text>
-                    <label>Ready Week</label>
+                    <label>Ready YearWeek</label>
                     <number_type>None</number_type>
                     <options>[]</options>
                     <properties>
@@ -761,12 +761,12 @@
                         <icon>{}</icon>
                         <image_origin>None</image_origin>
                         <input_parameter>[]</input_parameter>
-                        <max>None</max>
+                        <max>205052</max>
                         <max_images_count>5</max_images_count>
                         <metadata>[]</metadata>
                         <method />
                         <mime_types>[]</mime_types>
-                        <min>None</min>
+                        <min>202301</min>
                         <min_images_count>0</min_images_count>
                         <multi_selection>False</multi_selection>
                         <notification>{}</notification>
@@ -1200,5 +1200,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1693931387.0</updated_at>
+    <updated_at>1695313389.0</updated_at>
 </lkf>

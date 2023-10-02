@@ -3,7 +3,7 @@
     <templates>[]</templates>
     <confirmation>{}</confirmation>
     <description />
-    <_rev>3-c69081edea467219ccd2b1a21e72fa46</_rev>
+    <_rev>5-dc050cf515e917b6b9f3df4da44d0b8c</_rev>
     <updated_at>2023-04-21T19:31:15.209901+00:00Z</updated_at>
     <sync>
         <element_request>{}</element_request>
@@ -41,6 +41,39 @@
                     <view_fields>[]</view_fields>
                     <options>[]</options>
                     <related_catalog>None</related_catalog>
+                </item>
+                <item>
+                    <field_type>radio</field_type>
+                    <properties>
+                        <selected>None</selected>
+                        <openChoice>False</openChoice>
+                        <orientation>vertical</orientation>
+                        <custom>None</custom>
+                    </properties>
+                    <field_id>6514f51b6cfe23860299abfa</field_id>
+                    <required>False</required>
+                    <fav>True</fav>
+                    <label>Warehouse Type</label>
+                    <options>
+                        <item>
+                            <selected>False</selected>
+                            <label>Client</label>
+                            <value>client</value>
+                            <points>None</points>
+                        </item>
+                        <item>
+                            <selected>False</selected>
+                            <label>Supplier</label>
+                            <value>supplier</value>
+                            <points>None</points>
+                        </item>
+                        <item>
+                            <selected>False</selected>
+                            <label>Stock</label>
+                            <value>stock</value>
+                            <points>None</points>
+                        </item>
+                    </options>
                 </item>
             </page_fields>
             <page_name>Page 1</page_name>

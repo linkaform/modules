@@ -55,36 +55,7 @@
                 </record>
                 <wf_fields>
                     <operator>all</operator>
-                    <triggers>
-                        <item>
-                            <condition>is__empty=</condition>
-                            <form_id>None</form_id>
-                            <other_value>None</other_value>
-                            <prefix>answer</prefix>
-                            <trigger_field>
-                                <catalog>{}</catalog>
-                                <field_id>64ef4db91cd5ea39b91a91ab</field_id>
-                                <group>{}</group>
-                                <label>Verfiy</label>
-                                <type>radio</type>
-                            </trigger_field>
-                            <value> </value>
-                        </item>
-                        <item>
-                            <condition>nin=</condition>
-                            <form_id>None</form_id>
-                            <other_value>None</other_value>
-                            <prefix>answer</prefix>
-                            <trigger_field>
-                                <catalog>{}</catalog>
-                                <field_id>6442e4537775ce64ef72dd6a</field_id>
-                                <group>{}</group>
-                                <label>Status</label>
-                                <type>select</type>
-                            </trigger_field>
-                            <value>done</value>
-                        </item>
-                    </triggers>
+                    <triggers>[]</triggers>
                 </wf_fields>
             </rules>
         </item>
