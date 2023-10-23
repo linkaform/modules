@@ -20,7 +20,7 @@
     <edit_registers>True</edit_registers>
     <element_ids>[]</element_ids>
     <email_configuration>
-        <body />
+        <body>None</body>
         <email_fields>[]</email_fields>
         <emails>[]</emails>
         <embed_company_picture>False</embed_company_picture>
@@ -31,7 +31,7 @@
         <send_attachments>False</send_attachments>
         <send_pdf>False</send_pdf>
         <sender>None</sender>
-        <subject />
+        <subject>None</subject>
         <template_html>None</template_html>
         <templates>[]</templates>
         <timer_config>None</timer_config>
@@ -117,7 +117,7 @@
                         <catalog_field_id>None</catalog_field_id>
                         <catalog_id>{{ catalog.green_house_inventory.id }}</catalog_id>
                         <field_type>None</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -204,7 +204,7 @@
                         <catalog_field_id>{{ catalog.green_house_inventory.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.green_house_inventory.id }}</catalog_id>
                         <field_type>text</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -216,7 +216,7 @@
                     <default>False</default>
                     <default_value />
                     <descriptor>None</descriptor>
-                    <fav>True</fav>
+                    <fav>False</fav>
                     <field_id>6442e4831198daf81456f274</field_id>
                     <field_type>catalog-select</field_type>
                     <grading_criteria>{}</grading_criteria>
@@ -280,7 +280,7 @@
                         <catalog_field_id>{{ catalog.green_house_inventory.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.green_house_inventory.id }}</catalog_id>
                         <field_type>text</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -292,7 +292,7 @@
                     <default>False</default>
                     <default_value />
                     <descriptor>None</descriptor>
-                    <fav>True</fav>
+                    <fav>False</fav>
                     <field_id>61ef32bcdf0ec2ba73dec33d</field_id>
                     <field_type>catalog-select</field_type>
                     <grading_criteria>{}</grading_criteria>
@@ -356,7 +356,7 @@
                         <catalog_field_id>{{ catalog.green_house_inventory.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.green_house_inventory.id }}</catalog_id>
                         <field_type>integer</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -368,7 +368,7 @@
                     <default>False</default>
                     <default_value />
                     <descriptor>None</descriptor>
-                    <fav>True</fav>
+                    <fav>False</fav>
                     <field_id>620a9ee0a449b98114f61d77</field_id>
                     <field_type>catalog-select</field_type>
                     <grading_criteria>{}</grading_criteria>
@@ -432,7 +432,7 @@
                         <catalog_field_id>{{ catalog.green_house_inventory.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.green_house_inventory.id }}</catalog_id>
                         <field_type>text</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>True</last>
                         <related_catalog>{}</related_catalog>
@@ -508,7 +508,7 @@
                         <catalog_field_id>{{ catalog.green_house_inventory.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.green_house_inventory.id }}</catalog_id>
                         <field_type>integer</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -586,7 +586,7 @@
                     <default>True</default>
                     <default_value>[]</default_value>
                     <descriptor>None</descriptor>
-                    <fav>True</fav>
+                    <fav>False</fav>
                     <field_id>64d52fd23c48fc6e08d47507</field_id>
                     <field_type>checkbox</field_type>
                     <grading_criteria>{}</grading_criteria>
@@ -989,7 +989,7 @@
         <max_points>0</max_points>
     </grading>
     <has_voucher>False</has_voucher>
-    <name>Green House Scrapping</name>
+    <name>Greenhouse Scrapping</name>
     <notification>
         <active>False</active>
     </notification>
@@ -1015,5 +1015,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1695912726.0</updated_at>
+    <updated_at>1695919123.0</updated_at>
 </lkf>

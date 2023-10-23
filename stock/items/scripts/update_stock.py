@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson
 
-from lkf_addons.addons.stock.stock_utils import Stock
+from lkf_addons.addons.stock_greenhouse.stock_utils import Stock
 from account_settings import *
 
 

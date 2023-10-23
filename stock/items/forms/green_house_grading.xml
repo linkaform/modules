@@ -2180,7 +2180,7 @@
         <max_points>0</max_points>
     </grading>
     <has_voucher>False</has_voucher>
-    <name>Green House Grading</name>
+    <name>Greenhouse Grading</name>
     <notification>
         <active>False</active>
     </notification>
@@ -2219,5 +2219,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1693511469.0</updated_at>
+    <updated_at>1695914547.0</updated_at>
 </lkf>

@@ -88,6 +88,54 @@
         <item>
             <conditions>
                 <item>
+                    <condition>in=</condition>
+                    <field>
+                        <field_id>64d5550ec4909ab3c20c5806</field_id>
+                        <id>64d5550ec4909ab3c20c5806</id>
+                        <label>Tipo de Movimiento</label>
+                        <type>radio</type>
+                    </field>
+                    <value>scrap</value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <field_id>{{ catalog.scrap_reasons.obj_id}}</field_id>
+                    <id>64ef91d300ccfc8da7751c47</id>
+                    <label>Motivo de Scap</label>
+                    <type>catalog</type>
+                </item>
+                <item>
+                    <field_id>64ef91d300ccfc8da7751c49</field_id>
+                    <id>64ef91d300ccfc8da7751c49</id>
+                    <label>Reason</label>
+                    <type>catalog-select</type>
+                </item>
+                <item>
+                    <field_id>64ef91d300ccfc8da7751c48</field_id>
+                    <id>64ef91d300ccfc8da7751c48</id>
+                    <label>Codigo</label>
+                    <type>catalog-select</type>
+                </item>
+                <item>
+                    <field_id>64ef91d300ccfc8da7751c4a</field_id>
+                    <id>64ef91d300ccfc8da7751c4a</id>
+                    <label>Definition</label>
+                    <type>catalog-select</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Scrap Reasons</name>
+            <operator>and</operator>
+            <rule_id>20161f39226b1115</rule_id>
+            <rule_type>show</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+        <item>
+            <conditions>
+                <item>
                     <condition>iexact=</condition>
                     <field>
                         <field_id>64d5550ec4909ab3c20c5806</field_id>

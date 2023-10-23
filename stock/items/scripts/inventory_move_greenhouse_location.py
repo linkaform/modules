@@ -11,8 +11,10 @@ from account_settings import *
 
 
 if __name__ == '__main__':
-    print('enra invmove=', sys.argv)
+    # print('enra invmove=', sys.argv)
+    # print(f"python { sys.argv[0].split('/')[-1]} '{ sys.argv[1]}' '{ sys.argv[2]}'")
     stock_obj = Stock(settings, sys_argv=sys.argv)
+    stock_obj.console_run()
     current_record = stock_obj.current_record
     folio =current_record.get('folio')
     # print('current_record',current_record)
