@@ -14,7 +14,7 @@
         <message>¡Su información fue capturada!</message>
         <redirect_url>default</redirect_url>
     </confirmation>
-    <created_at>1693677362.0</created_at>
+    <created_at>1694126462.0</created_at>
     <description />
     <edit_public_records>False</edit_public_records>
     <edit_registers>True</edit_registers>
@@ -1695,7 +1695,7 @@
                         <item>aaaa1fa92c20405af671d122</item>
                         <item>62aa1fa92c20405af671d122</item>
                         <item>627bf0d5c651931d3c7eedd3</item>
-                        <item>64f37721e7c7d8878f715e9d</item>
+                        <item>64fa5169ea22518fba4e31f7</item>
                         <item>649b2a84dac4914e02aadb24</item>
                         <item>5893798cb43fdd4b53ab6e1e</item>
                         <item>583d8e10b43fdd6a4887f55c</item>
@@ -3127,7 +3127,7 @@
     </notification>
     <process_ids>[]</process_ids>
     <public>False</public>
-    <resource_uri>/api/infosync/form/107568/</resource_uri>
+    <resource_uri>/api/infosync/form/108427/</resource_uri>
     <start_event_id>None</start_event_id>
     <template_conf>
         <account_id>None</account_id>
@@ -3147,5 +3147,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1693869489.0</updated_at>
+    <updated_at>1694132724.0</updated_at>
 </lkf>

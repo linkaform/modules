@@ -21,7 +21,7 @@
             <fields_ruled>
                 <item>
                     <field_id>{{ catalog.moneda.obj_id}}</field_id>
-                    <id>64f37721e7c7d8878f715e9f</id>
+                    <id>64fa516ac8b495bb779da16c</id>
                     <label>Moneda de La Solicitud</label>
                     <type>catalog</type>
                 </item>

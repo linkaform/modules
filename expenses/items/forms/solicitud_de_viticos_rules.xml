@@ -33,7 +33,7 @@
                 </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>
-            <name>Monto Autorizadoa</name>
+            <name>Monto Autorizado</name>
             <operator>and</operator>
             <rule_id>219d184f14861521</rule_id>
             <rule_type>show</rule_type>
@@ -103,13 +103,13 @@
             <fields_ruled>
                 <item>
                     <field_id>{{ catalog.moneda.obj_id}}</field_id>
-                    <id>64f37721e7c7d8878f715e9f</id>
+                    <id>64fa516ac8b495bb779da16c</id>
                     <label>Moneda</label>
                     <type>catalog</type>
                 </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>
-            <name>mondeaaaaaaaaaaaa</name>
+            <name>Mostrar Moneda</name>
             <operator>or</operator>
             <rule_id>1743ade1111f8b</rule_id>
             <rule_type>show</rule_type>
@@ -122,7 +122,7 @@
                     <field>
                         <field_id>61041b50d9ee55ab14965000</field_id>
                         <id>61041b50d9ee55ab14965000</id>
-                        <label>Seleccion de Destino</label>
+                        <label>Destino</label>
                         <type>radio</type>
                     </field>
                     <value>otro</value>
@@ -158,7 +158,7 @@
                     <field>
                         <field_id>61041b50d9ee55ab14965000</field_id>
                         <id>61041b50d9ee55ab14965000</id>
-                        <label>Seleccion de Destino</label>
+                        <label>Destino</label>
                         <type>radio</type>
                     </field>
                     <value>otro</value>
@@ -170,12 +170,12 @@
                 <item>
                     <field_id>61041b50d9ee55ab14965ba0</field_id>
                     <id>61041b50d9ee55ab14965ba0</id>
-                    <label>Destino</label>
+                    <label>Especifique otro destino</label>
                     <type>text</type>
                 </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>
-            <name>Requeir Destino</name>
+            <name>Requerir Destino</name>
             <operator>and</operator>
             <rule_id>1c612364a47125a</rule_id>
             <rule_type>required</rule_type>
@@ -215,7 +215,7 @@
                 </item>
                 <item>
                     <field_id>{{ catalog.solicitudes_de_gastos.obj_id}}</field_id>
-                    <id>64f37721e7c7d8878f715ea1</id>
+                    <id>64fa516c95f2011d20462578</id>
                     <label>Solicitud de viaje relacionado</label>
                     <type>catalog</type>
                 </item>
@@ -225,9 +225,111 @@
                     <label>Folio</label>
                     <type>catalog-select</type>
                 </item>
+                <item>
+                    <field_id>610419b5d28657c73e36fcd4</field_id>
+                    <id>610419b5d28657c73e36fcd4</id>
+                    <label>Destino</label>
+                    <type>catalog-detail</type>
+                </item>
+                <item>
+                    <field_id>649d02057880ff495300bcc0</field_id>
+                    <id>649d02057880ff495300bcc0</id>
+                    <label>Anticipo Efectivo</label>
+                    <type>decimal</type>
+                </item>
+                <item>
+                    <field_id>629fb33a8758b5808890b22e</field_id>
+                    <id>629fb33a8758b5808890b22e</id>
+                    <label>Gasto ejecutado</label>
+                    <type>decimal</type>
+                </item>
+                <item>
+                    <field_id>649d02057880ff495311bcc0</field_id>
+                    <id>649d02057880ff495311bcc0</id>
+                    <label>Gasto en Efectivo Ejectado</label>
+                    <type>decimal</type>
+                </item>
+                <item>
+                    <field_id>649d02057880ff495300bcc1</field_id>
+                    <id>649d02057880ff495300bcc1</id>
+                    <label>Monto Anticipo Restante</label>
+                    <type>decimal</type>
+                </item>
+                <item>
+                    <field_id>629fb33a8758b5808890b22f</field_id>
+                    <id>629fb33a8758b5808890b22f</id>
+                    <label>Monto restante</label>
+                    <type>decimal</type>
+                </item>
+                <item>
+                    <field_id>62aa1ed283d55ab39a49bd2d</field_id>
+                    <id>62aa1ed283d55ab39a49bd2d</id>
+                    <label>Gastos de viaje</label>
+                    <type>group</type>
+                </item>
+                <item>
+                    <field_id>583d8e10b43fdd6a4887f55b</field_id>
+                    <id>583d8e10b43fdd6a4887f55b</id>
+                    <label>Fecha del Gasto</label>
+                    <type>date</type>
+                </item>
+                <item>
+                    <field_id>62aa1fa92c20405af671d120</field_id>
+                    <id>62aa1fa92c20405af671d120</id>
+                    <label>Folio</label>
+                    <type>text</type>
+                </item>
+                <item>
+                    <field_id>aaaa1fa92c20405af671d123</field_id>
+                    <id>aaaa1fa92c20405af671d123</id>
+                    <label>Moneda</label>
+                    <type>text</type>
+                </item>
+                <item>
+                    <field_id>aaaa1fa92c20405af671d122</field_id>
+                    <id>aaaa1fa92c20405af671d122</id>
+                    <label>Monteo en Ex</label>
+                    <type>decimal</type>
+                </item>
+                <item>
+                    <field_id>62aa1fa92c20405af671d122</field_id>
+                    <id>62aa1fa92c20405af671d122</id>
+                    <label>Monto</label>
+                    <type>decimal</type>
+                </item>
+                <item>
+                    <field_id>627bf0d5c651931d3c7eedd3</field_id>
+                    <id>627bf0d5c651931d3c7eedd3</id>
+                    <label>Monto Autorizado</label>
+                    <type>decimal</type>
+                </item>
+                <item>
+                    <field_id>5893798cb43fdd4b53ab6e1e</field_id>
+                    <id>5893798cb43fdd4b53ab6e1e</id>
+                    <label>Metodo de Pago</label>
+                    <type>select</type>
+                </item>
+                <item>
+                    <field_id>{{ catalog.conceptos_de_gastos.obj_id}}</field_id>
+                    <id>64fa5169ea22518fba4e31f7</id>
+                    <label>Tipo de Gasto</label>
+                    <type>catalog</type>
+                </item>
+                <item>
+                    <field_id>649b2a84dac4914e02aadb24</field_id>
+                    <id>649b2a84dac4914e02aadb24</id>
+                    <label>Concepto</label>
+                    <type>catalog-select</type>
+                </item>
+                <item>
+                    <field_id>62aa1fa92c20405af671d124</field_id>
+                    <id>62aa1fa92c20405af671d124</id>
+                    <label>Estatus</label>
+                    <type>select</type>
+                </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>
-            <name>Escoder Datos</name>
+            <name>Ocultar campos rellenados Automaticamente</name>
             <operator>or</operator>
             <rule_id>253248214873ed</rule_id>
             <rule_type>invisible</rule_type>
@@ -236,43 +338,41 @@
         <item>
             <conditions>
                 <item>
-                    <condition>in=</condition>
+                    <condition>is__empty=</condition>
                     <field>
-                        <field_id>61041b50d9ee55ab14965ba4</field_id>
-                        <id>61041b50d9ee55ab14965ba4</id>
-                        <label>Medio de Transporte</label>
-                        <type>select</type>
+                        <field_id>61041b50d9ee55ab14965ba2</field_id>
+                        <id>61041b50d9ee55ab14965ba2</id>
+                        <label>Fecha de Salida</label>
+                        <type>date</type>
                     </field>
-                    <value>auto_empresa</value>
+                    <value> </value>
+                </item>
+                <item>
+                    <condition>not__empty=</condition>
+                    <field>
+                        <field_id>61041b50d9ee55ab14965ba2</field_id>
+                        <id>61041b50d9ee55ab14965ba2</id>
+                        <label>Fecha de Salida</label>
+                        <type>date</type>
+                    </field>
+                    <value> </value>
                 </item>
             </conditions>
             <element_ids>[]</element_ids>
             <empty>False</empty>
             <fields_ruled>
                 <item>
-                    <field_id>64bf5da3422c5f52cd744c2e</field_id>
-                    <id>64bf5da3422c5f52cd744c2e</id>
-                    <label>Dirección de recogida</label>
-                    <type>textarea</type>
-                </item>
-                <item>
-                    <field_id>64bf5da3422c5f52cd744c2f</field_id>
-                    <id>64bf5da3422c5f52cd744c2f</id>
-                    <label>Ubicación de recogida</label>
-                    <type>geolocation</type>
-                </item>
-                <item>
-                    <field_id>64bf5da3422c5f52cd744c30</field_id>
-                    <id>64bf5da3422c5f52cd744c30</id>
-                    <label>Fecha y Hora programada</label>
-                    <type>datetime</type>
+                    <field_id>61041d15d9ee55ab14965bb6</field_id>
+                    <id>61041d15d9ee55ab14965bb6</id>
+                    <label>Status</label>
+                    <type>select</type>
                 </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>
-            <name>Mostrar datos de reservación de transporte</name>
-            <operator>and</operator>
-            <rule_id>5ec143b5d9721</rule_id>
-            <rule_type>show</rule_type>
+            <name>Campos Solo lectura</name>
+            <operator>or</operator>
+            <rule_id>1a03159e12961bef</rule_id>
+            <rule_type>disabled</rule_type>
             <user_conditions>{}</user_conditions>
         </item>
     </rules>
