@@ -10,15 +10,14 @@ from account_settings import *
 
 
 if __name__ == '__main__':
-    print(sys.argv)
     stock_obj = Stock(settings, sys_argv=sys.argv)
     stock_obj.console_run()
     current_record = stock_obj.current_record
 
     answers = stock_obj.gradings_validations()
 
-
     current_record['answers'].update(answers)
+    stock_obj.update_log_grading()
 
     sys.stdout.write(simplejson.dumps({
         'status': 101,
@@ -26,4 +25,4 @@ if __name__ == '__main__':
     }))
 
 
-    stock_obj.update_log_grading()
+
