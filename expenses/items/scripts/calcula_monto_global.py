@@ -6,7 +6,6 @@ import sys, wget, bson, simplejson
 from account_settings import *
 
 
-
 def read_current_record_from_txt(file_url):
     name_downloded = download_pdf( file_url, is_txt=True )
     f = open( "/tmp/{}".format( name_downloded ) )

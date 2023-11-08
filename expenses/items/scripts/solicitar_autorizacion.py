@@ -8,7 +8,6 @@ from lkf_addons.addons.expenses.expense_utils import Expenses
 from account_settings import *
 
 
-
 if __name__ == '__main__':
     print(sys.argv )
     current_record = simplejson.loads(sys.argv[1])

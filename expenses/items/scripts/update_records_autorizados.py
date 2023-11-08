@@ -2,11 +2,8 @@
 import sys, simplejson
 
 from lkf_addons.addons.expenses.expense_utils import Expenses
-#from expense_utils import Expenses
 
 from account_settings import *
-
-
 
 class LocalExpenses(Expenses):
 
@@ -19,24 +16,12 @@ class LocalExpenses(Expenses):
 
 
 if __name__ == '__main__':
-    print(sys.argv)
-    print('\n\n\n')
-    current_record = simplejson.loads(sys.argv[1])
-    jwt_complete = simplejson.loads( sys.argv[2] )
-    config['JWT_KEY'] = jwt_complete['jwt'].split(' ')[1]
-    settings.config.update(config)
-    # jwt_complete = simplejson.loads(sys.argv[2])
-    # config['JWT_KEY'] = jwt_complete["jwt"].split(' ')[1]
-    # settings.config.update(config)
-    # net = network.Network(settings)
-    # cr = net.get_collections()
-    # lkf_api = utils.Cache(settings)
-    answers = current_record['answers']
     # expense_obj = Expenses(settings)
-    local_exp  = LocalExpenses(settings)
-    current_record['answers'] = local_exp.update_autorization_records(answers)
-    print('answers to update=', current_record['answers'])
+    local_exp  = LocalExpenses(settings, sys_argv=sys.argv)
+    local_exp.console_run()
+    answers = local_exp.current_record['answers']
+    local_exp.current_record['answers'] = local_exp.update_autorization_records(answers)
     sys.stdout.write(simplejson.dumps({
         'status': 101,
-        'replace_ans': current_record['answers']
+        'replace_ans': local_exp.current_record['answers']
     }))
