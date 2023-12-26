@@ -9,9 +9,9 @@
             <manual>False</manual>
             <next>5</next>
             <padding_zeros>0</padding_zeros>
-            <prefix />
+            <prefix>None</prefix>
             <required>False</required>
-            <suffix />
+            <suffix>None</suffix>
         </folio>
     </advanced_options>
     <allow_page_navigation>True</allow_page_navigation>
@@ -51,14 +51,7 @@
             <page_description>None</page_description>
             <page_fields>
                 <item>
-                    <affecting_rules>
-                        <item>
-                            <applied>False</applied>
-                            <rule_id>17da1369210f10ea</rule_id>
-                            <rule_index>0</rule_index>
-                            <rule_type>required</rule_type>
-                        </item>
-                    </affecting_rules>
+                    <affecting_rules>[]</affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -147,6 +140,7 @@
                     </catalog>
                     <catalog_fields>
                         <item>6092c0ebd8b748522446af28</item>
+                        <item>6092c0ebd8b748522446af26</item>
                     </catalog_fields>
                     <catalog_relation>None</catalog_relation>
                     <default>False</default>
@@ -387,6 +381,8 @@
                         <item>610419b5d28657c73e36fcd5</item>
                         <item>610419b5d28657c73e36fcd6</item>
                         <item>610419e33a05c520d90814d3</item>
+                        <item>610419b5d28657c73e36fcd4</item>
+                        <item>610419b5d28657c73e36fcd3</item>
                     </catalog_fields>
                     <catalog_relation>None</catalog_relation>
                     <default>False</default>
@@ -532,7 +528,7 @@
                         <catalog_field_id>{{ catalog.solicitudes_de_gastos.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.solicitudes_de_gastos.id }}</catalog_id>
                         <field_type>text</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>True</last>
                         <related_catalog>{}</related_catalog>
@@ -845,7 +841,9 @@
                         </view_fields>
                         <view_index>0</view_index>
                     </catalog>
-                    <catalog_fields>[]</catalog_fields>
+                    <catalog_fields>
+                        <item>62aa1fa92c20405af671d123</item>
+                    </catalog_fields>
                     <catalog_relation>None</catalog_relation>
                     <default>False</default>
                     <default_value />
@@ -999,7 +997,9 @@
                         </view_fields>
                         <view_index>0</view_index>
                     </catalog>
-                    <catalog_fields>[]</catalog_fields>
+                    <catalog_fields>
+                        <item>649b2a84dac4914e02aadb24</item>
+                    </catalog_fields>
                     <catalog_relation>None</catalog_relation>
                     <default>False</default>
                     <default_value />
@@ -1567,14 +1567,7 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>
-                        <item>
-                            <applied>False</applied>
-                            <rule_id>16ab8a31060214f</rule_id>
-                            <rule_index>1</rule_index>
-                            <rule_type>disabled</rule_type>
-                        </item>
-                    </affecting_rules>
+                    <affecting_rules>[]</affecting_rules>
                     <buttons_ids>
                         <item>6509dee1145b0afdcd9873fe</item>
                     </buttons_ids>
@@ -1624,6 +1617,12 @@
                             <selected>False</selected>
                             <value>autorizado</value>
                         </item>
+                        <item>
+                            <label>Cerrada</label>
+                            <points>None</points>
+                            <selected>False</selected>
+                            <value>cerrada</value>
+                        </item>
                     </options>
                     <properties>
                         <body_payload>[]</body_payload>
@@ -1667,12 +1666,7 @@
                         <watermark_enable>False</watermark_enable>
                     </properties>
                     <required>False</required>
-                    <rules>
-                        <item>17da1369210f10ea</item>
-                        <item>17da1369210f10ea</item>
-                        <item>16ab8a31060214f</item>
-                        <item>16ab8a31060214f</item>
-                    </rules>
+                    <rules>[]</rules>
                     <show_for_rule>True</show_for_rule>
                     <validations>{}</validations>
                     <visible>True</visible>
@@ -1806,5 +1800,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1695162486.0</updated_at>
+    <updated_at>1703092719.0</updated_at>
 </lkf>

@@ -9,7 +9,7 @@
             <next>1</next>
             <padding_zeros>4</padding_zeros>
             <prefix>%y%m-</prefix>
-            <suffix />
+            <suffix>None</suffix>
         </folio>
     </advanced_options>
     <allow_page_navigation>True</allow_page_navigation>
@@ -2155,6 +2155,12 @@
                             <selected>False</selected>
                             <value>revisión_de_gastos</value>
                         </item>
+                        <item>
+                            <label>Cerrada</label>
+                            <points>None</points>
+                            <selected>False</selected>
+                            <value>cerrada</value>
+                        </item>
                     </options>
                     <properties>
                         <body_payload>[]</body_payload>
@@ -2466,5 +2472,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1695147677.0</updated_at>
+    <updated_at>1703093515.0</updated_at>
 </lkf>
