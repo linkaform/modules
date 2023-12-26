@@ -989,7 +989,7 @@
         <max_points>0</max_points>
     </grading>
     <has_voucher>False</has_voucher>
-    <name>Greenhouse Scrapping</name>
+    <name>Warehouse Scrapping</name>
     <notification>
         <active>False</active>
     </notification>
