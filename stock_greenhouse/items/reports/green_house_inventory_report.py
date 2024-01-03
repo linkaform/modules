@@ -6,30 +6,22 @@ from linkaform_api import settings, network, utils
 from bson import ObjectId
 import time, pytz, math
 from datetime import datetime, timedelta
+from stock_reports import Reports
 
 from account_settings import *
-from account_utils import get_plant_recipe, get_plant_names, select_S4_recipe, get_date_query
-
-
-class ReportModel():
-    def __init__(self):
-        self.json = {
-            "firstElement":{
-                "data": [],
-            },
-            "secondElement":{
-                "data": [],
-            },
-            "catalog":[],
-            "catalogtwo":[]
-        }
-    def print(self):
-        res = {'json':{}}
-        for x in self.json:
-            res['json'][x] = self.json[x]
-        return res
 
 def get_format_first(data_query):
+    sort_keys = list(data_query.keys())
+    sort_keys.sort()
+    res = []
+    for key in sort_keys:
+        for x in data_query[key]:
+            x['_id'] = str(x.get('_id', ""))
+            res.append(x)
+            x['qty'] = x.get('qty_in',0) if x.get('qty_in',0) != 0 else x.get('qty_out',0)
+    return res
+
+def get_format_first_old(data_query):
     global report_model
     data_query = [x for x in data_query]
     for x in data_query:
@@ -91,7 +83,6 @@ def get_format_second(data_query):
             "qtyTotal":qty,
         }) 
 
-
 # --- QUERY
 def query_report_first(date_from, date_to, plant, option_in, option_out, check):
     global report_model
@@ -103,9 +94,9 @@ def query_report_first(date_from, date_to, plant, option_in, option_out, check):
 
     #---option
     if check == 'on' and date_from or date_to:
-        match_query.update(get_date_query(date_from, date_to, date_field_id='000000000000000000000111'))
+        match_query.update(report_obj.get_date_query(date_from, date_to, date_field_id='000000000000000000000111'))
     elif check == 'off' and date_from or date_to:
-        match_query.update(get_date_query(date_from, date_to, field_type=None ))
+        match_query.update(report_obj.get_date_query(date_from, date_to, field_type=None ))
 
     if plant and '--' not in plant:
         match_query.update({"answers.6442cbafb1b1234eb68ec178.61ef32bcdf0ec2ba73dec33d":  plant})
@@ -173,9 +164,9 @@ def query_report_second(date_from, date_to, plant, option_in, option_out, check)
 
     #---option
     if check == 'on' and date_from or date_to:
-        match_query.update(get_date_query(date_from, date_to, date_field_id='000000000000000000000111'))
+        match_query.update(report_obj.get_date_query(date_from, date_to, date_field_id='000000000000000000000111'))
     elif check == 'off' and date_from or date_to:
-        match_query.update(get_date_query(date_from, date_to, field_type=None ))
+        match_query.update(report_obj.get_date_query(date_from, date_to, field_type=None ))
 
     if plant and '--' not in plant:
         match_query.update({"answers.6442cbafb1b1234eb68ec178.61ef32bcdf0ec2ba73dec33d":  plant})
@@ -229,64 +220,43 @@ def query_report_second(date_from, date_to, plant, option_in, option_out, check)
     result = cr.aggregate(query)
     get_format_second(result)
 
-def get_catalog(catalogo_id):
-    match_query = { 
-        'deleted_at':{"$exists":False},
-    }
-    mango_query = {"selector":
-        {"answers":
-            {"$and":[match_query]}
-        },
-        "limit":10000,
-        "skip":0
-    }
-    res = lkf_api.search_catalog( catalogo_id, mango_query,  jwt_settings_key='USER_JWT_KEY')
-    report_model.json['catalog'] = res
-
-def get_catalog_warehouse(catalogo_id):
-    match_query = {
-        'deleted_at': {"$exists":False},
-    }
-    mango_query = {"selector":
-        {"answers":
-            {"$and":[match_query]}
-        },
-        "limit":10000,
-        "skip":0
-    }
-    res = lkf_api.search_catalog( catalogo_id, mango_query,  jwt_settings_key='USER_JWT_KEY')
-    report_model.json['catalogtwo'] = res
 
 if __name__ == "__main__":
     # print(sys.argv)
-    stock_obj = Stock(settings, sys_argv=sys.argv)
-    stock_obj.console_run()
+    report_obj = Reports(settings, sys_argv=sys.argv, use_api=True)
+    report_obj.console_run()
     # report_model = ReportModel(settings, sys_argv=sys.argv)
-    print('report', dir(stock_obj))
-    print('data', )
-    all_data = stock_obj.data
+    all_data = report_obj.data
 
     #---FILTROS
     data = all_data.get("data", {})
+    print('data', data)
     date_to = data.get("date_to",'')
     date_from = data.get("date_from",'')
-    plant = data.get("plant",'')
-    option_in = data.get("option_in",'')
-    option_out = data.get("option_out",'')
+    product_code = data.get("plant",'')
+    warehouse_to = data.get("option_in",'')
+    warehouse_from = data.get("option_out",'')
     check = data.get("check",'')
     option = data.get("option",0)
-    report_model = ReportModel()
-    cr = stock_obj.cr
+    print('option', option)
+    cr = report_obj.cr
     if option == 2:
-        get_catalog_warehouse(98234)
-        sys.stdout.write(simplejson.dumps(report_model.print()))
+        report_obj.json['catalogtwo'] = report_obj.get_warehouse()
+        sys.stdout.write(simplejson.dumps(report_obj.report_print()))
     elif option == 1:
-        get_catalog(98230)
-        sys.stdout.write(simplejson.dumps(report_model.print()))
+        res = report_obj.lkf_api.search_catalog( report_obj.CATALOG_INVENTORY_ID)
+        print('res=', res)
+        report_obj.json['catalog'] = res
+        sys.stdout.write(simplejson.dumps(report_obj.report_print()))
     elif option == 0:
-        query_report_first(date_from, date_to, plant, option_in, option_out, check)
-        #sys.stdout.write(simplejson.dumps(report_model.print()))
-        query_report_second(date_from, date_to, plant, option_in, option_out, check)
-        sys.stdout.write(simplejson.dumps(report_model.print()))
+        moves = report_obj.get_inventory_moves()
+        #todo merge dict
+        moves.update(moves)
+        data = get_format_first(moves)
+        report_obj.json['firstElement'] = {'data': data}
+        #query_report_first(date_from, date_to, plant, option_in, option_out, check)
+        #sys.stdout.write(simplejson.dumps(report_obj.report_print()))
+        #query_report_second(date_from, date_to, plant, option_in, option_out, check)
+        sys.stdout.write(simplejson.dumps(report_obj.report_print()))
     else:
         sys.stdout.write(simplejson.dumps({"json": {}}))

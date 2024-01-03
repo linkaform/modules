@@ -2432,7 +2432,7 @@
         <max_points>0</max_points>
     </grading>
     <has_voucher>False</has_voucher>
-    <name>Greenhouse Inventroy</name>
+    <name>Warehouse Inventroy</name>
     <notification>
         <active>False</active>
     </notification>
