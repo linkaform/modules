@@ -7,7 +7,7 @@
         <button_message>Mandar respuestas</button_message>
     </confirmation>
     <description />
-    <_rev>7-e0880babda448b94a69c5495a3c0850f</_rev>
+    <_rev>6-8eea00d3f0e14ad3d85cb13a2ed9fca3</_rev>
     <updated_at>2023-09-07T22:40:44.848528+00:00Z</updated_at>
     <sync>
         <element_request>{}</element_request>
@@ -19,6 +19,11 @@
                 <item>
                     <num_610419b5d28657c73e36fcd7>
                         <amp_eq>Autorizado</amp_eq>
+                    </num_610419b5d28657c73e36fcd7>
+                </item>
+                <item>
+                    <num_610419b5d28657c73e36fcd7>
+                        <amp_eq>En Aprobacion</amp_eq>
                     </num_610419b5d28657c73e36fcd7>
                 </item>
             </amp_and>
@@ -35,10 +40,6 @@
             <manual>False</manual>
         </folio>
     </advanced_options>
-    <catalog_id>108425</catalog_id>
-    <sync_last_update>None</sync_last_update>
-    <_id>64fa516c95f2011d20462578</_id>
-    <public>False</public>
     <catalog_pages>
         <item>
             <page_fields>
@@ -464,6 +465,12 @@
                         <item>
                             <points>None</points>
                             <selected>False</selected>
+                            <value>implementacion</value>
+                            <label>Implementacion</label>
+                        </item>
+                        <item>
+                            <points>None</points>
+                            <selected>False</selected>
                             <value>instalacion</value>
                             <label>Instalacion</label>
                         </item>
@@ -472,6 +479,18 @@
                             <selected>False</selected>
                             <value>ventas</value>
                             <label>Ventas</label>
+                        </item>
+                        <item>
+                            <points>None</points>
+                            <selected>False</selected>
+                            <value>visita_proveedor</value>
+                            <label>Visita Proveedor</label>
+                        </item>
+                        <item>
+                            <points>None</points>
+                            <selected>False</selected>
+                            <value>inspeccion</value>
+                            <label>Inspeccion</label>
                         </item>
                         <item>
                             <points>None</points>
@@ -550,10 +569,10 @@
                             <label>Cerrada</label>
                         </item>
                         <item>
-                            <selected>False</selected>
-                            <label>En Aprobacion</label>
-                            <value>en_aprobacion</value>
                             <points>None</points>
+                            <selected>False</selected>
+                            <value>en_aprobacion</value>
+                            <label>En Aprobacion</label>
                         </item>
                         <item>
                             <points>None</points>
@@ -583,8 +602,12 @@
                     <related_catalog>None</related_catalog>
                 </item>
             </page_fields>
-            <page_name>Solicitud</page_name>
             <page_description>None</page_description>
+            <page_name>Solicitud</page_name>
         </item>
     </catalog_pages>
+    <sync_last_update>None</sync_last_update>
+    <_id>64fa516c95f2011d20462578</_id>
+    <public>False</public>
+    <catalog_id>108425</catalog_id>
 </lkf>
