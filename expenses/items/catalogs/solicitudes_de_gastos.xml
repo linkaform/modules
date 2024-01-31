@@ -7,7 +7,7 @@
         <button_message>Mandar respuestas</button_message>
     </confirmation>
     <description />
-    <_rev>6-8eea00d3f0e14ad3d85cb13a2ed9fca3</_rev>
+    <_rev>12-91626ee7c687f2b0b52841da48fb30d3</_rev>
     <updated_at>2023-09-07T22:40:44.848528+00:00Z</updated_at>
     <sync>
         <element_request>{}</element_request>
@@ -19,11 +19,6 @@
                 <item>
                     <num_610419b5d28657c73e36fcd7>
                         <amp_eq>Autorizado</amp_eq>
-                    </num_610419b5d28657c73e36fcd7>
-                </item>
-                <item>
-                    <num_610419b5d28657c73e36fcd7>
-                        <amp_eq>En Aprobacion</amp_eq>
                     </num_610419b5d28657c73e36fcd7>
                 </item>
             </amp_and>
@@ -471,12 +466,6 @@
                         <item>
                             <points>None</points>
                             <selected>False</selected>
-                            <value>instalacion</value>
-                            <label>Instalacion</label>
-                        </item>
-                        <item>
-                            <points>None</points>
-                            <selected>False</selected>
                             <value>ventas</value>
                             <label>Ventas</label>
                         </item>
@@ -487,16 +476,16 @@
                             <label>Visita Proveedor</label>
                         </item>
                         <item>
-                            <points>None</points>
                             <selected>False</selected>
-                            <value>inspeccion</value>
                             <label>Inspeccion</label>
+                            <value>inspeccion</value>
+                            <points>None</points>
                         </item>
                         <item>
-                            <points>None</points>
                             <selected>False</selected>
-                            <value>otros</value>
                             <label>Otros</label>
+                            <value>otros</value>
+                            <points>None</points>
                         </item>
                     </options>
                     <related_catalog>None</related_catalog>
@@ -569,10 +558,10 @@
                             <label>Cerrada</label>
                         </item>
                         <item>
-                            <points>None</points>
                             <selected>False</selected>
-                            <value>en_aprobacion</value>
                             <label>En Aprobacion</label>
+                            <value>en_aprobacion</value>
+                            <points>None</points>
                         </item>
                         <item>
                             <points>None</points>
@@ -602,8 +591,8 @@
                     <related_catalog>None</related_catalog>
                 </item>
             </page_fields>
-            <page_description>None</page_description>
             <page_name>Solicitud</page_name>
+            <page_description>None</page_description>
         </item>
     </catalog_pages>
     <sync_last_update>None</sync_last_update>

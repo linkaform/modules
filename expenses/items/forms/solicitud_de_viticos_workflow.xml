@@ -211,13 +211,13 @@
                                     <conditions>[]</conditions>
                                 </etl>
                                 <input>
-                                    <field_type>None</field_type>
-                                    <id>None</id>
-                                    <type>None</type>
+                                    <field_type>select</field_type>
+                                    <id>61041b50d9ee55ab14965ba1</id>
+                                    <type>field_to_field</type>
                                     <value>None</value>
                                 </input>
                                 <output>
-                                    <id>None</id>
+                                    <id>628cf516d69420342af2c7c8</id>
                                 </output>
                             </item>
                         </mapping>
