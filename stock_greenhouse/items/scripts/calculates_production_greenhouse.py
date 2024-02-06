@@ -13,6 +13,7 @@ from lkf_addons.addons.stock_greenhouse.stock_utils import Stock
 
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)
+    stock_obj.console_run()
     current_record = stock_obj.current_record
     # ------------------------------------------------------------------------------
     lkf_api = stock_obj.lkf_api

@@ -1,0 +1,89 @@
+<?xml version='1.0' encoding='utf-8'?>
+<lkf>
+    <templates>[]</templates>
+    <confirmation>{}</confirmation>
+    <description />
+    <_rev>5-777394a98342c2232098c852fd802812</_rev>
+    <updated_at>2024-01-21T01:13:16.770208+00:00Z</updated_at>
+    <sync>
+        <element_request>{}</element_request>
+        <input_parameters>[]</input_parameters>
+    </sync>
+    <filters>{}</filters>
+    <name>Warehouse Locations</name>
+    <edit_public_records>False</edit_public_records>
+    <created_at>2024-01-21T01:13:16.770208+00:00Z</created_at>
+    <advanced_options>{}</advanced_options>
+    <catalog_id>113223</catalog_id>
+    <sync_last_update>None</sync_last_update>
+    <_id>65ac6fac070b93e656bd7fbd</_id>
+    <public>False</public>
+    <catalog_pages>
+        <item>
+            <page_fields>
+                <item>
+                    <field_type>catalog</field_type>
+                    <properties>{}</properties>
+                    <key>False</key>
+                    <catalog_fields>[]</catalog_fields>
+                    <field_id>{{ catalog.warehouse.obj_id }}</field_id>
+                    <required>False</required>
+                    <fav>None</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
+                    <label>Warehouse</label>
+                    <catalog>
+                        <catalog_fields>[]</catalog_fields>
+                        <view_fields>
+                            <item>6442e4831198daf81456f274</item>
+                        </view_fields>
+                        <view_index>0</view_index>
+                        <couch_id>{{ catalog.warehouse.obj_id }}</couch_id>
+                        <catalog_field_id>None</catalog_field_id>
+                        <catalog_id>{{ catalog.warehouse.id }}</catalog_id>
+                        <filters />
+                        <name>{{ catalog.warehouse.name }}</name>
+                    </catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
+                    <options>[]</options>
+                    <related_catalog>None</related_catalog>
+                </item>
+                <item>
+                    <field_type>catalog-select</field_type>
+                    <properties>{}</properties>
+                    <field_id>6442e4831198daf81456f274</field_id>
+                    <required>True</required>
+                    <fav>True</fav>
+                    <label>Greenhouse Name</label>
+                    <catalog>
+                        <catalog_fields>[]</catalog_fields>
+                        <last>False</last>
+                        <view_fields>[]</view_fields>
+                        <field_type>text</field_type>
+                        <view_index>1</view_index>
+                        <catalog_field_id>{{ catalog.warehouse.obj_id }}</catalog_field_id>
+                        <catalog_id>{{ catalog.warehouse.id }}</catalog_id>
+                        <filters />
+                    </catalog>
+                    <options>[]</options>
+                </item>
+                <item>
+                    <field_type>text</field_type>
+                    <field_id>65ac6fbc070b93e656bd7fbe</field_id>
+                    <required>True</required>
+                    <fav>True</fav>
+                    <label>Location</label>
+                    <key>True</key>
+                    <properties>
+                        <send_email>False</send_email>
+                        <size>complete</size>
+                        <custom>None</custom>
+                    </properties>
+                </item>
+            </page_fields>
+            <page_description>None</page_description>
+            <page_name>Page 1</page_name>
+        </item>
+    </catalog_pages>
+</lkf>

@@ -20,7 +20,7 @@ if __name__ == '__main__':
     # if folio:
     #     #si ya existe el registro, no cambio el numero de lote
     #     kwargs['force_lote'] = True
-    answers = stock_obj.get_product_info(current_record['answers'],current_record.get('folio'))
+    answers = stock_obj.get_product_info()
     query = None
     _id = current_record.get('connection_record_id',{}).get('$oid')
     if _id:

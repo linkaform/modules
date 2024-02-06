@@ -13,19 +13,13 @@ if __name__ == '__main__':
     stock_obj.console_run()
     current_record = stock_obj.current_record
     status_code = stock_obj.do_scrap(current_record)
+    record_id =  str(current_record['_id'])
+    current_record.pop('_id')
+    current_record = stock_obj.lkf_api.drop_fields_for_patch(current_record)
     current_record['answers'][stock_obj.f['inv_scrap_status']] = 'done'
-    try:
-        update_ok = status_code.raw_result['updatedExisting']
-    except:
-        stock_obj.LKFException( simplejson.dumps( "Error updating scrap" ) )
-
-    if update_ok:
-        sys.stdout.write(simplejson.dumps({
-            'status': 101,
-            'replace_ans': current_record['answers']
-        }))
-
-    else:
+    response = stock_obj.lkf_api.patch_record(current_record, record_id)
+    status_code = response.get('status_code')
+    if status_code != 202:
         msg = "One or more of the moves were not executed correctly"
         msg_error_app = {
                 "63f8e128694361f17f7b59d5": {
@@ -35,5 +29,5 @@ if __name__ == '__main__':
 
                 }
             }
-        stock_obj.LKFException( simplejson.dumps( msg_error_app ) )
- 
+        raise Exception( simplejson.dumps( msg_error_app ) )
+
