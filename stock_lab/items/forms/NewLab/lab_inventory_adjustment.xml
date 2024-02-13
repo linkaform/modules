@@ -14,7 +14,7 @@
         <message>Your info was successfully captured!</message>
         <redirect_url>default</redirect_url>
     </confirmation>
-    <created_at>1684361170.0</created_at>
+    <created_at>1706300538.0</created_at>
     <description />
     <edit_public_records>False</edit_public_records>
     <edit_registers>True</edit_registers>
@@ -126,7 +126,9 @@
                         </view_fields>
                         <view_index>0</view_index>
                     </catalog>
-                    <catalog_fields>[]</catalog_fields>
+                    <catalog_fields>
+                        <item>6442e4831198daf81456f274</item>
+                    </catalog_fields>
                     <catalog_relation>None</catalog_relation>
                     <default>False</default>
                     <default_value />
@@ -344,7 +346,7 @@
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
                         <catalog_field_id>None</catalog_field_id>
-                        <catalog_id>{{ catalog.product_catalog.id }}</catalog_id>
+                        <catalog_id>{{ catalog.plant_catalog.id }}</catalog_id>
                         <field_type>None</field_type>
                         <filters>None</filters>
                         <geofence>None</geofence>
@@ -363,7 +365,7 @@
                     <default_value />
                     <descriptor>None</descriptor>
                     <fav>False</fav>
-                    <field_id>{{ catalog.product_catalog.obj_id }}</field_id>
+                    <field_id>{{ catalog.plant_catalog.obj_id }}</field_id>
                     <field_type>catalog</field_type>
                     <grading_criteria>{}</grading_criteria>
                     <group>
@@ -426,8 +428,8 @@
                     <affecting_rules>[]</affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
-                        <catalog_field_id>{{ catalog.product_catalog.obj_id }}</catalog_field_id>
-                        <catalog_id>{{ catalog.product_catalog.id }}</catalog_id>
+                        <catalog_field_id>{{ catalog.plant_catalog.obj_id }}</catalog_field_id>
+                        <catalog_id>{{ catalog.plant_catalog.id }}</catalog_id>
                         <field_type>text</field_type>
                         <filters>None</filters>
                         <geofence>None</geofence>
@@ -1108,7 +1110,7 @@
     </notification>
     <process_ids>[]</process_ids>
     <public>False</public>
-    <resource_uri>/api/infosync/form/101628/</resource_uri>
+    <resource_uri>/api/infosync/form/113821/</resource_uri>
     <start_event_id>None</start_event_id>
     <template_conf>
         <account_id>None</account_id>
@@ -1128,5 +1130,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1696609346.0</updated_at>
+    <updated_at>1707178395.0</updated_at>
 </lkf>

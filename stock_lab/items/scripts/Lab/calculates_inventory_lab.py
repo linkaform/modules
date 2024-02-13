@@ -14,10 +14,12 @@ class Stock(Stock):
         return True
 
     def get_product_info(self, **kwargs):
+
         try:
-            warehouse = self.answers[self.WAREHOUSE_LOCATION_OBJ_ID][self.f['warehouse']]
-            warehouse_location = self.answers[self.WAREHOUSE_LOCATION_OBJ_ID][self.f['warehouse_location']]
-            plant_code = self.answers.get(self.f['product_recipe'], {}).get(self.f['product_code'], '')
+            product_code, lot_number, warehouse, location = self.get_product_lot_location()
+            # warehouse = self.answers[self.WAREHOUSE_LOCATION_OBJ_ID][self.f['warehouse']]
+            # location = self.answers[self.WAREHOUSE_LOCATION_OBJ_ID][self.f['warehouse_location']]
+            # product_code = self.answers.get(self.f['product_recipe'], {}).get(self.f['product_code'], '')
         except Exception as e:
             print('**********************************************')
             self.LKFException('Warehosue and product code are requierd')
@@ -27,11 +29,11 @@ class Stock(Stock):
         stage = self.answers.get(self.PRODUCT_RECIPE_OBJ_ID,{}).get(self.f['reicpe_stage'])
         reicpe_start_size = self.answers.get(self.PRODUCT_RECIPE_OBJ_ID,{}).get(self.f['reicpe_start_size'])
         recipe_type = self.unlist(self.answers.get(self.PRODUCT_RECIPE_OBJ_ID,{}).get(self.f['recipe_type']))
-        recipes = self.get_plant_recipe( [plant_code,], stage=stage, recipe_type=recipe_type )
+        recipes = self.get_plant_recipe( [product_code,], stage=stage, recipe_type=recipe_type )
         if stage == 'S4':
-            recipe = self.select_S4_recipe(recipes[plant_code], week)
+            recipe = self.select_S4_recipe(recipes[product_code], week)
         else:
-            recipe = recipes[plant_code]
+            recipe = recipes[product_code]
         grow_weeks = recipe.get(f'{stage}_growth_weeks')
         ready_date = self.answers.get(self.f['product_lot'])
         # if kwargs.get('kwargs',{}).get("force_lote") and answers.get(self.f['product_lot']):
@@ -44,7 +46,8 @@ class Stock(Stock):
         #         ready_date = int(ready_date.strftime('%Y%W'))
         #     else:
         #         ready_date = answers[self.f['product_lot']]
-        product_stock = self.get_product_stock(plant_code, warehouse=warehouse, location=warehouse_location, lot_number=ready_date, kwargs=kwargs.get('kwargs',{}) )
+        print('........................................................')
+        product_stock = self.get_product_stock(product_code, warehouse=warehouse, location=location, lot_number=ready_date, kwargs=kwargs.get('kwargs',{}) )
         scrapped = product_stock['scrapped']
         overage = recipe.get(f'{stage}_overage', recipe.get(f'{stage}_overage_rage', 0 ))
         actual_flats_on_hand = product_stock['actuals']
@@ -86,6 +89,7 @@ class Stock(Stock):
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)
     stock_obj.console_run()
+    stock_obj.merge_stock_records()
     current_record = stock_obj.current_record
     folio = stock_obj.folio
     # print('current_record',current_record)
@@ -96,9 +100,9 @@ if __name__ == '__main__':
     # print('answers = ', stock_obj.answers)
     answers = stock_obj.get_product_info()
     query = None
-    _id = current_record.get('connection_record_id',{}).get('$oid')
-    if _id:
-        query = {'_id':ObjectId(_id)}
+    print('_id', stock_obj.record_id)
+    if stock_obj.record_id:
+        query = {'_id':ObjectId(stock_obj.record_id)}
     if not query and folio:
         query = {'folio':folio, 'form_id':current_record['form_id'] }
     if query:

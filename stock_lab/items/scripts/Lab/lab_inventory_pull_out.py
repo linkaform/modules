@@ -1,123 +1,112 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson
-from linkaform_api import settings, network, utils
-from magnolia_settings import *
-from account_utils import unlist, get_inventory_flow
+
+from lab_stock_utils import Stock
+
+from account_settings import *
 
 def get_answer_catalog_field( answer_field ):
     if type(answer_field) == list and answer_field:
         return answer_field[0]
     return answer_field
 
+class Stock(Stock):
 
-def move_location(current_record):
-    current_answers = current_record['answers']
-    form_id =  current_record.get('form_id')
-    if form_id == 96071:
-        move_type = 'pull'
-        move_lines = current_answers['63f8e128694361f17f7b59d5']
-    else:
-        move_lines = current_answers['6310c609bbb3788e5f7ffa46']
-        move_type = current_answers['62e9cecfa7d81a71e4b4e6da']
+    def move_location(self):
+        move_lines = self.answers[self.f['move_group']]
 
-    # Información original del Inventory Flow
-    status_code = 0
-    for moves in move_lines:
-        print('move........')
-        info_plant = moves.get('61ef419c91bb38dcfedec3cb', {})
-        plant_code = get_answer_catalog_field( info_plant.get('61ef32bcdf0ec2ba73dec33d', 0) )
-        per_container = get_answer_catalog_field( info_plant.get('620ad6247a217dbcb888d170', 0) )
-        folio_plant = get_answer_catalog_field( info_plant.get('62c44f96dae331e750428732') )
-        if not folio_plant:
-            continue
-        # Información que modifica el usuario
-        containers_out = moves.get('62e9cc6b36cb6821c274eb9c', 0)
-        print('containers_out=', containers_out)
-        record_inventory_flow = get_inventory_flow(folio_plant)
-        # Consulto el Inventory Flow del registro
-        # print('folio_plant',folio_plant)
-        # print('folio_plant',record_inventory_flow)
-        answers = record_inventory_flow.get('answers')
-        qty_produced = abs(answers.get('6271dc35e84e2577579eafeb', 0))
-        relocated_containers = abs(answers.get('620ad6247a217dbcb888d17e', 0))
-        discard_containers = abs(answers.get('620ad6247a217dbcb888d16d', 0))
-        shipped_containers = abs(answers.get('620ad6247a217dbcb888d16e', 0))
-        actual_containers_on_hand = int(  answers.get('620ad6247a217dbcb888d171', 0))
-        new_actual_containers_on_hand = actual_containers_on_hand - containers_out
-        # print('plant_code', plant_code)
-        # print('per_container', per_container)
-        # print('folio_plant', folio_plant)
-        # print('containers_out', containers_out)
-        # print('discard_containers', discard_containers)
-        # print('shipped_containers', shipped_containers)
-        # print('actual_containers_on_hand', actual_containers_on_hand)
-        # print('new_actual_containers_on_hand', new_actual_containers_on_hand)
-
-        if move_type =='scrap':
-            discard_containers = discard_containers + containers_out
-        elif move_type == 'pull':
-            shipped_containers = shipped_containers + containers_out
-        elif move_type == 'sell':
-            shipped_containers = shipped_containers + containers_out
-
-        if not per_container:
-            per_container = answers.get('620ad6247a217dbcb888d170', 0)
-
-        record_inventory_flow['answers'].update({
-            '620ad6247a217dbcb888d17e' : relocated_containers,
-            '620ad6247a217dbcb888d16d' : discard_containers,
-            '620ad6247a217dbcb888d16e' : shipped_containers,
-            '620ad6247a217dbcb888d171': new_actual_containers_on_hand, # Actual Containers on hand
-            '620ad6247a217dbcb888d172': int(per_container) * int(new_actual_containers_on_hand) # Actual Eaches on Hand
-        })
-
-        if new_actual_containers_on_hand <= 0:
-            record_inventory_flow['answers'].update({
-                '620ad6247a217dbcb888d175': 'done'
-            })
-
-        record_inventory_flow.update({
-            'properties': {
-                "device_properties":{
-                    "system": "SCRIPT",
-                    "process":"Inventory Move - Out",
-                    "accion":'Update record Inventory Flow',
-                    "archive":"inventory_move_scrap.py"
+        # Información original del Inventory Flow
+        status_code = 0
+        move_locations = []
+        folios = []
+        for moves in move_lines:
+            print('move........', moves)
+            info_plant = moves.get(self.CATALOG_INVENTORY_OBJ_ID, {})
+            product_code, lot_number, warehouse, location = self.get_product_lot_location()
+            print('product_code........',product_code)
+            stock  = self.get_stock_info_from_catalog_inventory(moves)
+            set_location = f"{stock['warehouse']}__{stock['warehouse_location']}"
+            if set_location in move_locations:
+                msg = "You are trying to move on more than one set, producto from the same location."
+                msg += f"warehouse: {stock['warehouse']} / Location: {stock['warehouse_location']}"
+                msg_error_app = {
+                    f"{self.f['warehouse_location']}": {
+                        "msg": [msg],
+                        "label": "Please check your selected location",
+                        "error":[]
+      
+                    }
                 }
-            }
-        })
-        print('record_inventory_flow',record_inventory_flow['answers'])
-        # Se actualiza el Inventory Flow que está seleccionado en el campo del current record
-        res_update_inventory = lkf_api.patch_record( record_inventory_flow, jwt_settings_key='USER_JWT_KEY' )
-        print('res_update_inventory =',res_update_inventory)
-        if res_update_inventory.get('status_code',0) > status_code:
-            status_code = res_update_inventory['status_code']
-    return status_code
+                self.LKFException()
+            move_locations.append(set_location)
+
+            print('stock_info........',stock)
+            if not stock.get('folio'):
+                continue
+            # Información que modifica el usuario
+            move_qty = moves.get(self.f['inv_move_qty'], 0)
+            print('move_qty=', move_qty)
+            #record_inventory_flow = self.get_inventory_record_by_folio(folio=stock.get('folio'),form_id=self.FORM_INVENTORY_ID)
+            self.validate_move_qty(product_code, stock['lot_number'],  stock['warehouse'], stock['warehouse_location'], move_qty)
+            if stock.get('folio'):
+                folios.append(stock['folio'])
+        print('se va por cache o por no cache.......', self.record_id)
+        print('se va por cache o por no folio.......', self.folio)
+        if self.record_id:
+            update_query = {'_id':self.record_id}
+        elif self.folio:
+            update_query = {'folio':self.folio}
+        else:
+            update_query = None
+        if update_query: 
+            print('self answers', self.answers)
+            print('self update_query', update_query)
+            mongores = self.cr.update_one(update_query,{'$set':{'answers':self.answers}})
+            print('mongores', dir(mongores))
+            print('mongores', mongores)
+            print('mongores', mongores.raw_result)
+        else:
+            self.cache_set({
+                        '_id': f"{product_code}_{stock['lot_number']}_{stock['warehouse']}_{stock['warehouse_location']}",
+                        'move_out':move_qty,
+                        'product_code':product_code,
+                        'product_lot':stock['lot_number'],
+                        'warehouse': stock['warehouse'],
+                        'warehouse_location': stock['warehouse_location']
+                        })
+        self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=folios)
+
+
+            # if new_actual_containers_on_hand <= 0:
+            #     record_inventory_flow['answers'].update({
+            #         '620ad6247a217dbcb888d175': 'done'
+            #     })
+
+            # record_inventory_flow.update({
+            #     'properties': {
+            #         "device_properties":{
+            #             "system": "SCRIPT",
+            #             "process":"Inventory Move - Out",
+            #             "accion":'Update record Inventory Flow',
+            #             "archive":"inventory_move_scrap.py"
+            #         }
+            #     }
+            # })
+            # print('record_inventory_flow',record_inventory_flow['answers'])
+            # # Se actualiza el Inventory Flow que está seleccionado en el campo del current record
+            # res_update_inventory = lkf_api.patch_record( record_inventory_flow, jwt_settings_key='USER_JWT_KEY' )
+            # print('res_update_inventory =',res_update_inventory)
+            # if res_update_inventory.get('status_code',0) > status_code:
+            #     status_code = res_update_inventory['status_code']
+        return status_code
 
 if __name__ == '__main__':
-    print(sys.argv)
-    current_record = simplejson.loads( sys.argv[1] )
-    jwt_complete = simplejson.loads( sys.argv[2] )
-    config['USER_JWT_KEY'] = jwt_complete['jwt'].split(' ')[1]
-    settings.config.update(config)
-    lkf_api = utils.Cache(settings)
-    net = network.Network(settings)
-    cr = net.get_collections()
-    status_code = move_location(current_record)
-    current_record['answers']['62e9d296cf8d5b373b24e028'] =  'done'
-    if status_code == 202:
-        sys.stdout.write(simplejson.dumps({
-            'status': 101,
-            'replace_ans': current_record['answers'],
-            }))
-    else:
-        msg = "One or more of the moves were not executed correctly"
-        msg_error_app = {
-                "63f8e128694361f17f7b59d5": {
-                    "msg": [msg],
-                    "label": "Please check stock moves",
-                    "error":[]
-
-                }
-            }
-        raise Exception( simplejson.dumps( msg_error_app ) )
+    stock_obj = Stock(settings, sys_argv=sys.argv)
+    stock_obj.console_run()
+    stock_obj.move_location()
+    stock_obj.answers[stock_obj.f['move_status']] =  'done'
+    stock_obj.answers[stock_obj.f['inv_adjust_status']] =  'done'
+    sys.stdout.write(simplejson.dumps({
+        'status': 101,
+        'replace_ans': stock_obj.answers,
+        }))

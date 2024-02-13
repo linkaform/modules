@@ -1,11 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson
-from copy import deepcopy
-from math import floor
 
-#from account_utils import unlist, get_inventory_flow, get_record_greenhouse_inventory
-
-from lkf_addons.addons.stock_greenhouse.stock_utils import Stock
+from lab_stock_utils import Stock
 
 from account_settings import *
 
@@ -16,13 +12,17 @@ if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)
     stock_obj.console_run()
     current_record = stock_obj.current_record
-    folio =current_record.get('folio')
+    folio = stock_obj.folio
     # print('current_record',current_record)
     #kwargs = current_record.get('kwargs', current_record.get('properties',{}).get('kwargs', {}))
 
-    dest_folio = stock_obj.move_location(current_record)
-    current_record['answers'][stock_obj.f['inv_adjust_status']] =  'done'
-    current_record['answers'][stock_obj.f['move_dest_folio']] =  dest_folio
+    dest_folio = stock_obj.move_location()
+    stock_obj.answers[stock_obj.f['inv_adjust_status']] =  'done'
+    print('grupo', stock_obj.answers[stock_obj.f['move_group']])
+    for idx, gset in enumerate(stock_obj.answers[stock_obj.f['move_group']]):
+        print('idx', idx)
+        print('gset', gset)
+        gset[stock_obj.f['move_dest_folio']] =  dest_folio[idx]
     # sys.stdout.write(simplejson.dumps({
     #     'status': 206,
     #     'metadata':{'editable':False},
@@ -36,5 +36,5 @@ if __name__ == '__main__':
     #     }))
     sys.stdout.write(simplejson.dumps({
         'status': 101,
-        'replace_ans': current_record['answers']
+        'replace_ans':  stock_obj.answers
     }))

@@ -11,7 +11,7 @@
             <padding_zeros>3</padding_zeros>
             <prefix>%y%W-</prefix>
             <required>False</required>
-            <suffix />
+            <suffix>None</suffix>
         </folio>
     </advanced_options>
     <allow_page_navigation>True</allow_page_navigation>
@@ -3402,5 +3402,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1706590346.0</updated_at>
+    <updated_at>1707261365.0</updated_at>
 </lkf>
