@@ -46,7 +46,6 @@ class Stock(Stock):
         #         ready_date = int(ready_date.strftime('%Y%W'))
         #     else:
         #         ready_date = answers[self.f['product_lot']]
-        print('........................................................')
         product_stock = self.get_product_stock(product_code, warehouse=warehouse, location=location, lot_number=ready_date, kwargs=kwargs.get('kwargs',{}) )
         scrapped = product_stock['scrapped']
         overage = recipe.get(f'{stage}_overage', recipe.get(f'{stage}_overage_rage', 0 ))

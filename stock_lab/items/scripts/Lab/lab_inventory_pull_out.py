@@ -5,10 +5,6 @@ from lab_stock_utils import Stock
 
 from account_settings import *
 
-def get_answer_catalog_field( answer_field ):
-    if type(answer_field) == list and answer_field:
-        return answer_field[0]
-    return answer_field
 
 class Stock(Stock):
 

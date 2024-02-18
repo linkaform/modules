@@ -13,4 +13,4 @@ if __name__ == '__main__':
     folio_inventory = product_info.get(stock_obj.f['cat_stock_folio'])
     print('folio_inventory', folio_inventory)
     stock_obj.update_stock(answers={}, form_id=stock_obj.FORM_INVENTORY_ID, folios=folio_inventory)
-
+    print('folio_inventory', d)

@@ -11,9 +11,9 @@ from lkf_addons.addons.stock_greenhouse.stock_utils import Stock
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)
     stock_obj.console_run()
-    current_record = stock_obj.current_record
-    status_code = stock_obj.do_scrap(current_record)
-    current_record['answers'][stock_obj.f['inv_scrap_status']] = 'done'
+    status_code = stock_obj.do_scrap()
+    stock_obj.answers[stock_obj.f['inv_scrap_status']] = 'done'
+    update_ok = False
     try:
         update_ok = status_code.raw_result['updatedExisting']
     except:
@@ -22,7 +22,7 @@ if __name__ == '__main__':
     if update_ok:
         sys.stdout.write(simplejson.dumps({
             'status': 101,
-            'replace_ans': current_record['answers']
+            'replace_ans': stock_obj.answers
         }))
 
     else:

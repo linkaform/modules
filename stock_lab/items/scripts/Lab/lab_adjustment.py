@@ -1,13 +1,10 @@
 # -*- coding: utf-8 -*-
-import sys, simplejson, math
-from datetime import timedelta, datetime
+import sys, simplejson
 
-from linkaform_api import settings, network, utils
+from lab_stock_utils import Stock
 
 from account_settings import *
-#from account_utils import get_plant_recipe, select_S4_recipe, set_lot_ready_week
-#from stock_utils import *
-from lkf_addons.addons.stock_greenhouse.stock_utils import Stock
+
 
 print('usando greeeeeenhouse....')
 
@@ -16,5 +13,8 @@ print('usando greeeeeenhouse....')
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)
     stock_obj.console_run()
-    folio = stock_obj.current_record.get('folio')
-    stock_obj.inventory_adjustment(folio, stock_obj.current_record)
+    stock_obj.inventory_adjustment()
+    sys.stdout.write(simplejson.dumps({
+        'status': 101,
+        'replace_ans':  stock_obj.answers
+    }))
