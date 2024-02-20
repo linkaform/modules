@@ -1,33 +1,28 @@
 <?xml version='1.0' encoding='utf-8'?>
 <lkf>
-    <form_id>{{ form.lab_scrapping.id }}</form_id>
-    <id>6515ac4837358abf1c49af50</id>
+    <form_id>{{ form.media_production.id }}</form_id>
+    <id>65b5441df000afb7e2363b60</id>
     <workflows>
         <item>
             <actions>
                 <item>
-                    <_id>65cbb19e45c2e0021f8594bc</_id>
-                    <action_id>7</action_id>
+                    <_id>65b5441df000afb7e2363b59</_id>
+                    <action_id>12</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
-                        <script>
-                            <created_at>2024-01-26T20:21:00.190382</created_at>
-                            <deleted_at>None</deleted_at>
-                            <end_date>None</end_date>
-                            <id>{{ script.lab_inventory_move_scrap.id }}</id>
-                            <is_fileShared>False</is_fileShared>
-                            <itype>script</itype>
-                            <name>{{ script.lab_inventory_move_scrap.name }}</name>
-                            <start_date>2024-01-26T20:21:00.188686</start_date>
-                            <updated_at>2024-01-26T20:21:00.563132</updated_at>
-                        </script>
-                        <user>SCRIPT_OWNER</user>
+                        <synched_catalogs>
+                            <item>
+                                <couch_id>65b53f562b4d969ff10d634d</couch_id>
+                                <id>113873</id>
+                                <name>Media Lot</name>
+                            </item>
+                        </synched_catalogs>
                     </configuration>
-                    <name>None</name>
+                    <name>Media Lot Sync</name>
                 </item>
             </actions>
-            <id>6515ac4837358abf1c49af4a</id>
-            <name>None</name>
+            <id>65b5441df000afb7e2363b5a</id>
+            <name>Media Lot Sync</name>
             <rules>
                 <metadata>
                     <connection>[]</connection>
@@ -38,9 +33,9 @@
                             <year>2014</year>
                         </period>
                         <range>
-                            <end>2023-09-29T05:00:00.000Z</end>
+                            <end>2024-01-28T06:00:00.000Z</end>
                             <selected>False</selected>
-                            <start>2023-09-28T16:39:09.266Z</start>
+                            <start>2024-01-27T17:57:22.352Z</start>
                         </range>
                     </date>
                     <grading>{}</grading>
@@ -51,7 +46,7 @@
                     <deleted>True</deleted>
                     <edited>True</edited>
                     <run_multiple_times>True</run_multiple_times>
-                    <runtime>before</runtime>
+                    <runtime>after</runtime>
                 </record>
                 <wf_fields>
                     <operator>all</operator>

@@ -8,7 +8,9 @@
                 <item>
                     <condition>gt__number=</condition>
                     <field>
+                        <catalog_id>None</catalog_id>
                         <field_id>644bf9a04b1761305b080098</field_id>
+                        <group_id>None</group_id>
                         <id>644bf9a04b1761305b080098</id>
                         <label>Cuarentin Flats</label>
                         <type>integer</type>
@@ -20,7 +22,9 @@
             <empty>False</empty>
             <fields_ruled>
                 <item>
+                    <catalog_id>None</catalog_id>
                     <field_id>6464fdf6580382fa6879875f</field_id>
+                    <group_id>None</group_id>
                     <id>6464fdf6580382fa6879875f</id>
                     <label>Cuarentin Reason</label>
                     <type>textarea</type>
@@ -38,7 +42,9 @@
                 <item>
                     <condition>gt__number=</condition>
                     <field>
+                        <catalog_id>None</catalog_id>
                         <field_id>644bf9a04b1761305b080098</field_id>
+                        <group_id>None</group_id>
                         <id>644bf9a04b1761305b080098</id>
                         <label>Cuarentin Flats</label>
                         <type>integer</type>
@@ -50,7 +56,9 @@
             <empty>False</empty>
             <fields_ruled>
                 <item>
+                    <catalog_id>None</catalog_id>
                     <field_id>6464fdf6580382fa6879875f</field_id>
+                    <group_id>None</group_id>
                     <id>6464fdf6580382fa6879875f</id>
                     <label>Cuarentin Reason</label>
                     <type>textarea</type>
@@ -68,7 +76,9 @@
                 <item>
                     <condition>in=</condition>
                     <field>
+                        <catalog_id>None</catalog_id>
                         <field_id>64d52fd23c48fc6e08d47507</field_id>
+                        <group_id>None</group_id>
                         <id>64d52fd23c48fc6e08d47507</id>
                         <label>Tipo de movimiento</label>
                         <type>radio</type>
@@ -80,7 +90,9 @@
             <empty>False</empty>
             <fields_ruled>
                 <item>
+                    <catalog_id>None</catalog_id>
                     <field_id>644bf9a04b1761305b080098</field_id>
+                    <group_id>None</group_id>
                     <id>644bf9a04b1761305b080098</id>
                     <label>Cuarentin Flats</label>
                     <type>integer</type>
@@ -98,7 +110,9 @@
                 <item>
                     <condition>in=</condition>
                     <field>
+                        <catalog_id>None</catalog_id>
                         <field_id>64d52fd23c48fc6e08d47507</field_id>
+                        <group_id>None</group_id>
                         <id>64d52fd23c48fc6e08d47507</id>
                         <label>Tipo de movimiento</label>
                         <type>radio</type>
@@ -110,7 +124,9 @@
             <empty>False</empty>
             <fields_ruled>
                 <item>
+                    <catalog_id>None</catalog_id>
                     <field_id>644bf9a04b1761305b080099</field_id>
+                    <group_id>None</group_id>
                     <id>644bf9a04b1761305b080099</id>
                     <label>Scrap Flats</label>
                     <type>integer</type>
