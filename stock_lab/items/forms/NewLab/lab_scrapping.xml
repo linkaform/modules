@@ -136,7 +136,6 @@
                         <item>65ac6fbc070b93e656bd7fbe</item>
                         <item>61ef32bcdf0ec2ba73dec33d</item>
                         <item>620a9ee0a449b98114f61d77</item>
-                        <item>62c44f96dae331e750428732</item>
                     </catalog_fields>
                     <catalog_relation>None</catalog_relation>
                     <default>False</default>
@@ -282,7 +281,7 @@
                         <catalog_field_id>{{ catalog.lab_inventory.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.lab_inventory.id }}</catalog_id>
                         <field_type>text</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -1093,5 +1092,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1707848059.0</updated_at>
+    <updated_at>1708484968.0</updated_at>
 </lkf>

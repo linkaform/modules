@@ -37,10 +37,9 @@ from account_settings import *
 
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)
-    current_record = stock_obj.current_record
-    form_id = current_record.get('form_id')
     #current record
-    record_catalog = stock_obj.get_record_catalog_del( form_id, folio=current_record['folio'] )
+    stock_obj.console_run()
+    record_catalog = stock_obj.get_record_catalog_del()
     stock_obj.del_catalog_record(record_catalog, form_id)
     #doing cleanup
     #for done records that for some reason are not deleted

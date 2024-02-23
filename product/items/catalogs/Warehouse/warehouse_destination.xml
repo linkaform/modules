@@ -79,6 +79,12 @@
                             <value>production</value>
                             <label>Production</label>
                         </item>
+                        <item>
+                            <points>None</points>
+                            <selected>False</selected>
+                            <value>production_asset</value>
+                            <label>Production Asset</label>
+                        </item>
                     </options>
                 </item>
             </page_fields>

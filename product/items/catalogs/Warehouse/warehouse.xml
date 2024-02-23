@@ -35,7 +35,7 @@
                     <fav>True</fav>
                     <related_catalog_key>[]</related_catalog_key>
                     <relation_type>None</relation_type>
-                    <label>Greenhouse Name</label>
+                    <label>Warehouse Name</label>
                     <catalog>{}</catalog>
                     <catalog_id>None</catalog_id>
                     <view_fields>[]</view_fields>
@@ -56,22 +56,34 @@
                     <label>Warehouse Type</label>
                     <options>
                         <item>
+                            <points>None</points>
                             <selected>False</selected>
-                            <label>Client</label>
                             <value>client</value>
-                            <points>None</points>
+                            <label>Client</label>
                         </item>
                         <item>
-                            <selected>False</selected>
-                            <label>Supplier</label>
-                            <value>supplier</value>
                             <points>None</points>
-                        </item>
-                        <item>
                             <selected>False</selected>
-                            <label>Stock</label>
                             <value>stock</value>
+                            <label>Stock</label>
+                        </item>
+                        <item>
                             <points>None</points>
+                            <selected>False</selected>
+                            <value>supplier</value>
+                            <label>Supplier</label>
+                        </item>
+                        <item>
+                            <points>None</points>
+                            <selected>False</selected>
+                            <value>production</value>
+                            <label>Production</label>
+                        </item>
+                        <item>
+                            <points>None</points>
+                            <selected>False</selected>
+                            <value>production_asset</value>
+                            <label>Production Asset</label>
                         </item>
                     </options>
                 </item>

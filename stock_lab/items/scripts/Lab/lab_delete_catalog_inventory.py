@@ -9,7 +9,7 @@ if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)
     stock_obj.console_run()
     #current record
-    record_catalog = stock_obj.get_record_catalog_del( stock_obj.form_id, folio=stock_obj.folio )
+    record_catalog = stock_obj.get_record_catalog_del()
     print('catalog record to delete', record_catalog)
     stock_obj.del_catalog_record(record_catalog, stock_obj.form_id)
     #doing cleanup

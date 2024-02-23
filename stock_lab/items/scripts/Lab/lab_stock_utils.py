@@ -32,19 +32,13 @@ class Stock(Stock, Employee, Product):
         self.MEDIA_LOT_ID = self.MEDIA_LOT.get('id')
         self.MEDIA_LOT_OBJ_ID = self.MEDIA_LOT.get('obj_id')
 
-        self.WAREHOUSE_LOCATION = self.lkm.catalog_id('warehouse_locations')
-        self.WAREHOUSE_LOCATION_ID = self.WAREHOUSE_LOCATION.get('id')
-        self.WAREHOUSE_LOCATION_OBJ_ID = self.WAREHOUSE_LOCATION.get('obj_id')
-
-        self.WAREHOUSE_LOCATION_DEST = self.lkm.catalog_id('warehouse_location_destination')
-        self.WAREHOUSE_LOCATION_DEST_ID = self.WAREHOUSE_LOCATION_DEST.get('id')
-        self.WAREHOUSE_LOCATION_DEST_OBJ_ID = self.WAREHOUSE_LOCATION_DEST.get('obj_id')
 
         self.FORM_INVENTORY_ID = self.lkm.form_id('lab_inventory','id')
         self.MOVE_NEW_PRODUCTION_ID = self.lkm.form_id('lab_move_new_production','id')
         self.PRODUCTION_FORM_ID = self.lkm.form_id('lab_production','id')
         self.STOCK_MOVE_FORM_ID = self.lkm.form_id('lab_inventory_move','id')
-        self.STOCK_MOVE_PULL_OUT_ID = self.lkm.form_id('lab_inventory_out_pull','id')
+        self.STOCK_MANY_LOCATION_OUT = self.lkm.form_id('lab_inventory_out_pull','id')
+        self.STOCK_MANY_LOCATION_2_ONE = self.lkm.form_id('lab_workorders_seleccion_de_planta','id')
         self.SCRAP_FORM_ID = self.lkm.form_id('lab_scrapping','id')
         self.ADJUIST_FORM_ID = self.lkm.form_id('lab_inventory_adjustment','id')
 
@@ -114,8 +108,6 @@ class Stock(Stock, Employee, Product):
 
     def add_racks_and_containers(self, container_type, racks, containers):
         container_on_racks = racks * self.container_per_rack[container_type]
-        print('container_on_racks', container_on_racks)
-        print('containers', containers)
         qty = containers + container_on_racks
         return qty
 
@@ -482,7 +474,6 @@ class Stock(Stock, Employee, Product):
         #     raise Exception( simplejson.dumps( msg_error_app ) )  
         res = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=stock['folio'] )
         return res.get(stock['folio'],{}) 
-        # return self.update_calc_fields(product_code, warehouse, product_lot, folio=folio_inventory)
 
     #### Temino heredacion para hace lote tipo string
 
@@ -613,11 +604,8 @@ class Stock(Stock, Employee, Product):
             #          }
             #     raise Exception( simplejson.dumps( msg_error_app ) )
 
-        print('total', total_container_out_progress)
         if total_container_out_progress > 0:
             new_prod_line = self.get_production_move(total_container_out_progress, weighted_mult_rate, d_time_out)
-            print('new_prod_line=', simplejson.dumps(new_prod_line, indent=4))
-            print('frowth weekds', new_prod_line[self.PRODUCT_RECIPE_OBJ_ID ][self.f['reicpe_growth_weeks']])
             response_create = self.create_production_move(new_prod_line)
             status_code = response_create.get('status_code')
             if status_code >= 400:
@@ -651,8 +639,8 @@ class Stock(Stock, Employee, Product):
         product_code, lot_number, warehouse, location = self.get_product_lot_location(answers)
         product_exist = self.product_stock_exists(product_code, location=location, warehouse=warehouse,  lot_number=lot_number)
         if product_exist:
-            print('update production and acutals')
-            res = self.update_calc_fields(product_code, lot_number, warehouse, location=location)
+            # res = self.update_calc_fields(product_code, lot_number, warehouse, location=location)
+            res = self.update_stock(answers=product_exist.get('answers'), form_id=product_exist.get('form_id'), folios=product_exist.get('folio') )
             return res
         else:
             metadata = self.lkf_api.get_metadata(self.FORM_INVENTORY_ID)
@@ -784,20 +772,69 @@ class Stock(Stock, Employee, Product):
         location = answers.get(self.WAREHOUSE_LOCATION_OBJ_ID,{}).get(self.f['warehouse_location'])
         return product_code, lot_number, warehouse, location
 
-    def get_stock_info_from_catalog_inventory(self, answers=None, data={}):
+    def get_stock_info_from_catalog_inventory(self, answers=None, data={}, **kwargs):
         if not answers:
             answers = self.answers
         product_info = answers.get(self.CATALOG_INVENTORY_OBJ_ID, {})
-        data['product_code'] = self.unlist(product_info.get(self.f['product_code']))
-        data['warehouse'] = self.unlist(product_info.get(self.f['warehouse']))
-        data['warehouse_location'] = self.unlist(product_info.get(self.f['warehouse_location']))
-        data['lot_number'] = self.unlist(product_info.get(self.f['product_lot']))
-        data['actuals'] = self.unlist(product_info.get(self.f['product_lot_actuals']))
-        data['container'] = self.unlist(product_info.get(self.f['plant_conteiner_type']))
-        data['per_container'] = self.unlist(product_info.get(self.f['plant_per_container']))
-        data['cut_day'] = self.unlist(product_info.get(self.f['production_cut_day']))
-        data['folio'] = self.unlist(product_info.get(self.f['cat_stock_folio']))
+        data['product_code'] = data.get('product_code',self.unlist(product_info.get(self.f['product_code'])))
+        data['warehouse'] = data.get('warehouse',
+            self.unlist(product_info.get(self.f['warehouse']))
+            )
+        data['warehouse_location'] = data.get('warehouse_location',
+            self.unlist(product_info.get(self.f['warehouse_location']))
+            )
+        data['lot_number'] = data.get('lot_number',
+            self.unlist(product_info.get(self.f['product_lot']))
+            )
+        data['actuals'] = data.get('actuals',
+            self.unlist(product_info.get(self.f['product_lot_actuals']))
+            )
+        data['container'] = data.get('container',
+            self.unlist(product_info.get(self.f['plant_conteiner_type']))
+            )
+        data['per_container'] = data.get('per_container',
+            self.unlist(product_info.get(self.f['plant_per_container']))
+            )
+        data['cut_day'] = data.get('cut_day',
+            self.unlist(product_info.get(self.f['production_cut_day']))
+            )
+        folio = self.unlist(product_info.get(self.f['cat_stock_folio']))
+        if not folio:
+            kwargs['require'] = kwargs.get('require',[])
+            kwargs['require'].append('folio')
+        if kwargs.get('require'):
+            record = self.get_invtory_record_by_product(
+                self.FORM_INVENTORY_ID,
+                data['product_code'],  
+                data['lot_number'] ,
+                data['warehouse'],
+                data['warehouse_location'])
+            for key in kwargs['require']:
+                if record.get(key):
+                    data[key] = record.get(key)
+                else:
+                    data[key] = self.search_4_key(record, key)
         return data
+ 
+    def get_record_catalog_del(self):
+        mango_query = {
+            "selector":{"answers": {}},
+            "limit":1000,
+            "skip":0
+            }
+        product_code, lot_number, warehouse, location = self.get_product_lot_location()
+        query = {
+            self.f['product_code']:product_code,
+            self.f['product_lot']:lot_number,
+            self.f['warehouse']:warehouse,
+            self.f['warehouse_location']:location,
+        }
+        mango_query['selector']['answers'].update(query)
+        if False:
+            #TODO gargabe collector
+            mango_query['selector']['answers'].update({self.f['inventory_status']: "Done"})
+        res = self.lkf_api.search_catalog( self.FORM_CATALOG_DIR[self.form_id], mango_query, jwt_settings_key='APIKEY_JWT_KEY')
+        return res
 
     def inventory_adjustment(self):
         products = self.answers.get(self.f['grading_group'])
@@ -833,45 +870,40 @@ class Stock(Stock, Employee, Product):
         # growth_weeks = 0
         latest_versions = versions = self.get_record_last_version(self.current_record)
         answers_version = latest_versions.get('answers',{})
-        print('answers_version', answers_version)
         last_verions_products = {}
         if answers_version:
             version_products = answers_version.get(self.f['grading_group'])
             for ver_product in version_products:
                 ver_product_code = ver_product[self.CATALOG_PRODUCT_RECIPE_OBJ_ID][self.f['product_code']]
-                print('ver_product',ver_product)
-                print('product_lot',self.f['product_lot'])
-                ver_lot_number = ver_product[self.f['product_lot']]
-                last_verions_products[f'{ver_product_code}_{ver_lot_number}_{warehouse}_{location_id}'] = {
-                    'product_code':ver_product_code,
-                    'lot_number':ver_lot_number,
-                    'warehouse':warehouse,
-                    'location':location_id
-                }
+                ver_lot_number = ver_product.get(self.f['product_lot'])
+                if ver_lot_number:
+                    last_verions_products[f'{ver_product_code}_{ver_lot_number}_{warehouse}_{location_id}'] = {
+                        'product_code':ver_product_code,
+                        'lot_number':ver_lot_number,
+                        'warehouse':warehouse,
+                        'location':location_id
+                    }
 
         search_codes = {}
         for product in products:
-            print('product', product)
-            print('self', self.CATALOG_PRODUCT_RECIPE_OBJ_ID)
             product_code =  product[self.CATALOG_PRODUCT_RECIPE_OBJ_ID][self.f['product_code']]
-            print('product_code', product_code)
             stage =  product[self.CATALOG_PRODUCT_RECIPE_OBJ_ID][self.f['reicpe_stage']]
             stage = stage.upper()
             search_codes[stage] = search_codes.get(stage,[])
             search_codes[stage].append(product_code) if product_code not in search_codes[stage] else False
         recipes = {}
         for stage, product_codes in search_codes.items():
-            recipes.update(self.get_plant_recipe( product_codes, stage=stage ))
+            recipes.update(self.get_product_recipe( product_codes, stage=stage ))
         growth_weeks = 0
-        print('recipes', recipes)
         not_found = []
         for idx, product in enumerate(products):
-            print('product', product)
             status = product[self.f['inv_adjust_grp_status']]
             cycle = product[self.f['plant_cycle']]
             group = product[self.f['plant_group']]
             year = product[self.f['plant_cut_year']]
             day = product[self.f['plant_cut_day']]
+
+            contamin_code = product.get(self.f['plant_contamin_code'])
             prduction_date = datetime.strptime(f'{year}{day:03}','%Y%j')
             lot_number = self.create_proudction_lot_number(prduction_date, group, cycle)
             product[self.f['product_lot']] = lot_number
@@ -899,7 +931,7 @@ class Stock(Stock, Employee, Product):
                 product[self.f['inv_adjust_grp_status']] = 'error'
                 product[self.f['inv_adjust_grp_comments']] = msg
                 continue
-            print('last_verions_products',last_verions_products)
+
             if last_verions_products.get(f'{product_code}_{lot_number}_{warehouse}_{location_id}'):
                 last_verions_products.pop(f'{product_code}_{lot_number}_{warehouse}_{location_id}')
             exist = self.product_stock_exists(product_code=product_code, lot_number=lot_number, warehouse=warehouse, location=location_id)
@@ -907,7 +939,6 @@ class Stock(Stock, Employee, Product):
 
             if exist:
                 product_stock = self.get_product_stock(product_code, lot_number=lot_number, warehouse=warehouse, date_to=adjust_date, **{'nin_folio':self.folio})
-                print('yes it product_stock', product_stock)
                 actuals = product_stock.get('actuals',0)
 
             if adjust_qty or adjust_qty == 0:
@@ -928,7 +959,11 @@ class Stock(Stock, Employee, Product):
                 adjust_in = None
                 adjust_qty = None
 
+            product[self.f['inv_adjust_grp_qty']] = adjust_qty
+            product[self.f['inv_adjust_grp_in']] = adjust_in
+            product[self.f['inv_adjust_grp_out']] = abs(adjust_out)
             if exist:
+                answers = {self.f['plant_contamin_code']:product.get(self.f['plant_contamin_code']) }
                 self.cache_set({
                         '_id': f'{product_code}_{lot_number}_{warehouse}_{location_id}',
                         'adjustments': cache_adjustment,
@@ -936,12 +971,8 @@ class Stock(Stock, Employee, Product):
                         'product_code':product_code,
                         'warehouse': warehouse
                         })
-                product[self.f['inv_adjust_grp_qty']] = adjust_qty
-                product[self.f['inv_adjust_grp_in']] = adjust_in
-                product[self.f['inv_adjust_grp_out']] = abs(adjust_out)
-                # response = self.update_calc_fields(product_code, warehouse, lot_number, folio=exist['folio'], **{'nin_folio':self.folio} )
-                response = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=exist['folio'])
-                print('response', response)
+
+                response = self.update_stock(answers=answers, form_id=self.FORM_INVENTORY_ID, folios=exist['folio'])
                 if not response:
                     comments += f'Error updating product {product_code} lot {lot_number}. '
                     product[self.f['inv_adjust_grp_status']] = 'error'
@@ -951,35 +982,15 @@ class Stock(Stock, Employee, Product):
 
             else:
                 if recipes.get(product_code) and len(recipes[product_code]):
-                    print('product_code', product_code)
-                    print('recipes', recipes[product_code])
-                    print('stage', stage)
-                    growth_weeks = recipes[product_code][f'{stage}_growth_weeks']
-                    start_size = recipes[product_code].get('start_size','S2')
                     yearWeek = product.get(self.f['product_lot_created_week'])
-                    yearWeek = product.get(self.f['product_lot_created_week'])
-                    print('yearweeek', yearWeek)
-
-                    # if not yearWeek:
-                    #     ready_date = lot_number
-                    #     year = str(ready_date)[:4]
-                    #     week = str(ready_date)[4:]
-                    #     plant_ready_date = datetime.strptime('%04d-%02d-1'%(int(year), int(week)), '%Y-%W-%w')
-                    #     yearWeek = plant_ready_date - timedelta(weeks=growth_weeks)
-                    #     yearWeek = int(yearWeek.strftime('%Y%W'))
-                    # else:
-                    #     print(stop)
-                    #     not_found.append(product_code)
-                    #     product[self.f['inv_adjust_grp_status']] = 'not_found'
-                    #     continue
-                    product['product_name'] = recipes[product_code].get('plant_name')
-                    product[self.f['reicpe_start_size']] = start_size
-                    answers = self.stock_inventory_model(product, cache_adjustment, cycle, group, year, day, growth_weeks, prduction_date)
+                    answers = self.stock_inventory_model(product, recipes[product_code], cache_adjustment, cycle, group, year, day, prduction_date)
+                    product[self.f['product_lot']] = lot_number
                     answers.update({
                         self.WAREHOUSE_LOCATION_OBJ_ID:{
                             self.f['warehouse']:warehouse,
                             self.f['warehouse_location']:location_id}
-                            })
+                            ,
+                        self.f['plant_contamin_code']:contamin_code})
                     metadata['answers'] = answers
                     self.cache_set({
                             '_id': f'{product_code}_{lot_number}_{warehouse}_{location_id}',
@@ -990,7 +1001,6 @@ class Stock(Stock, Employee, Product):
                             'warehouse_location': location_id
                             })
                     response_sistema = self.lkf_api.post_forms_answers(metadata)
-                    # self.update_calc_fields(product_code, warehouse, lot_number)
                     try:
                         new_inv = self.get_record_by_id(response_sistema.get('id'))
                     except:
@@ -1022,29 +1032,23 @@ class Stock(Stock, Employee, Product):
         self.answers[self.f['inv_adjust_comments']] = comments
         return True
 
-    def stock_inventory_model(self, product, new_containers, cycle, group, year, day, growth_weeks, production_date):
+    def stock_inventory_model(self, product, recipe, new_containers, cycle, group, year, day, production_date):
         res = {}
-        print("TODO...", product)
-        print("TODO...", self.PRODUCT_RECIPE_OBJ_ID)
-        print("TODO...", self.answers)
-        
+        stage = recipe.get('start_size','S2')
+        growth_weeks = recipe.get(f'{stage}_growth_weeks',0)
         res[self.PRODUCT_RECIPE_OBJ_ID ] = deepcopy(product.get(self.PRODUCT_RECIPE_OBJ_ID, {}))
-        res[self.PRODUCT_RECIPE_OBJ_ID ][self.f['product_name']] = [product['product_name'],]
+        res[self.PRODUCT_RECIPE_OBJ_ID ][self.f['product_name']] = [recipe['product_name'],]
+        res[self.PRODUCT_RECIPE_OBJ_ID ][self.f['reicpe_growth_weeks']] = growth_weeks
+        res[self.PRODUCT_RECIPE_OBJ_ID ][self.f['reicpe_start_size']] = recipe['start_size']
+        res[self.PRODUCT_RECIPE_OBJ_ID ][self.f['recipe_type']] = recipe['recipe_type']
         res[self.f['set_production_date']] = str(production_date.strftime('%Y-%m-%d'))
-        # prod_date = self.date_from_str(production_date)
-        print('year', production_date.strftime('%Y'))
         res[self.f['plant_cut_year']] = int(production_date.strftime('%Y'))
         res[self.f['production_cut_week']] = int(production_date.strftime('%W'))
         res[self.f['production_cut_day']] = int(production_date.strftime('%j'))
         res[self.f['plant_group']] = group
         res[self.f['plant_cycle']] = cycle
-        # res[self.f['plant_conteiner_type']] = res[self.PRODUCT_RECIPE_OBJ_ID ].get(self.f['reicpe_container','']).replace(' ','_').lower()
-        res[self.f['plant_per_container']] = res[self.PRODUCT_RECIPE_OBJ_ID ].get(self.f['prod_qty_per_container'])
-        res[self.f['product_growth_week']] = growth_weeks
         res[self.f['product_lot']] = self.create_proudction_lot_number(production_date, group, cycle)
-        print("res...", res)
         return res
-
 
     def merge_stock_records(self):
         form_id = self.FORM_INVENTORY_ID
@@ -1064,27 +1068,42 @@ class Stock(Stock, Employee, Product):
 
     def move_location(self):
         product_info = self.answers.get(self.CATALOG_INVENTORY_OBJ_ID,{})
-        folio_inventory = product_info.get(self.f['cat_stock_folio'])
+        # folio_inventory = product_info.get(self.f['cat_stock_folio'])
+        # print('folio_inventory', folio_inventory)
         lot_number = product_info.get(self.f['product_lot'])
         product_code = product_info.get(self.f['product_code'])
-        warehouse = product_info.get(self.f['warehouse'])
-        location = product_info.get(self.f['warehouse_location'])
-        print('folio_inventory', folio_inventory)
-        record_inventory_flow = self.get_inventory_record_by_folio(folio_inventory, form_id=self.FORM_INVENTORY_ID )
+        from_warehouse = product_info.get(self.f['warehouse'])
+        from_location = product_info.get(self.f['warehouse_location'])
+        # record_inventory_flow = self.get_inventory_record_by_folio(folio_inventory, form_id=self.FORM_INVENTORY_ID )
+        record_inventory_flow = self.get_invtory_record_by_product(
+            self.FORM_INVENTORY_ID,
+            product_code,  
+            lot_number,
+            from_warehouse,
+            from_location)
+        print('record_inventory_flow', record_inventory_flow)
+
         if not record_inventory_flow:
             self.LKFException(f"folio: {record_inventory_flow} is not a valid inventory record any more, please check your stock")
+        from_folio = record_inventory_flow['folio']
         inv_record = record_inventory_flow.get('answers')
         #gets the invetory as it was on that date...
         date_to = self.answers[self.f['grading_date']]
         # This are the actuals as they were on that date not including this move.
         inv_move_qty = self.answers.get(self.f['inv_move_qty'])
-
-        from_warehouse = product_info.get(self.f['warehouse'])
-        from_location = product_info.get(self.f['warehouse_location'])
+        print('containers to move.....',inv_move_qty)
+        cache_from_location ={
+            '_id': f'{product_code}_{lot_number}_{from_warehouse}_{from_location}',
+            'move_out':inv_move_qty,
+            'lot_number':lot_number,
+            'product_code':product_code,
+            'warehouse': from_warehouse,
+            'warehouse_location': from_location
+        }
         from_wl = f'{from_warehouse}__{from_location}'
         dest_group = self.answers.get(self.f['move_group'],[])
         self.validate_stock_move(from_wl, inv_move_qty, dest_group)
-        self.validate_move_qty(product_code, lot_number, warehouse, location, inv_move_qty, date_to=date_to)
+        self.validate_move_qty(product_code, lot_number, from_warehouse, from_location, inv_move_qty, date_to=date_to)
         dest_folio = []
         for dest_set in dest_group:
             to_wh_info = dest_set.get(self.WAREHOUSE_LOCATION_DEST_OBJ_ID,{})
@@ -1147,10 +1166,219 @@ class Stock(Stock, Employee, Product):
                 print('TODO=', dest_warehouse_inventory)
                 dest_folio.append(dest_warehouse_inventory.get('folio'))
                 print('dest_folio', dest_warehouse_inventory.get('folio'))
-                self.update_calc_fields(product_code, lot_number, to_warehouse, to_location, folio=dest_warehouse_inventory.get('folio'))
+
                 # dest_warehouse_inventory['answers'][self.f['product_lot_actuals']] += inv_move_qty
                 # response = lkf_api.patch_record(dest_warehouse_inventory, jwt_settings_key='USER_JWT_KEY')
+        if dest_folio:
+            self.update_stock(folios=dest_folio)
+
+        self.cache_set(cache_from_location)
+        self.update_stock(folios=from_folio)
         return dest_folio
+
+    def move_multi_2_one_location(self):
+        move_lines = self.answers[self.f['move_group']]
+
+        # Información original del Inventory Flow
+        status_code = 0
+        move_locations = []
+        folios = []
+        product_code = self.answers.get(self.PRODUCT_RECIPE_OBJ_ID,{}).get(self.f['product_code'])
+        lots_in = {}
+        for moves in move_lines:
+            info_plant = moves.get(self.CATALOG_INVENTORY_OBJ_ID, {})
+            stock = {'product_code':product_code}
+            stock = self.get_stock_info_from_catalog_inventory(answers=moves, data=stock, **{'require':[self.f['reicpe_container']]})
+            lot_number = stock.get('lot_number')
+            warehouse = stock.get('warehouse')
+            location = stock.get('warehouse_location')
+            moves[self.f['move_dest_folio']] = stock['folio']
+            set_location = f"{stock['warehouse']}__{stock['warehouse_location']}__{lot_number}"
+            if set_location in move_locations:
+                msg = "You are trying to move the same lot_number: {lot_number} twice from the same location. Please check"
+                msg += f"warehouse: {stock['warehouse']} / Location: {stock['warehouse_location']}"
+                msg_error_app = {
+                    f"{self.f['warehouse_location']}": {
+                        "msg": [msg],
+                        "label": "Please check your selected location",
+                        "error":[]
+      
+                    }
+                }
+                self.LKFException(msg_error_app)
+            move_locations.append(set_location)
+            if not stock.get('folio'):
+                continue
+            # Información que modifica el usuario
+            racks = moves.get(self.f['new_location_racks'],0)
+            containers = moves.get(self.f['new_location_containers'],0)
+            container_type = stock.get(self.f['reicpe_container'])
+            move_qty = self.add_racks_and_containers(container_type, racks, containers)
+            moves[self.f['inv_move_qty']] = move_qty
+          
+            self.validate_move_qty(product_code, stock['lot_number'],  stock['warehouse'], stock['warehouse_location'], move_qty)
+            lots_in[lot_number] = lots_in.get(lot_number,{'folio':None, 'move_qty':0})
+            if stock.get('folio'):
+                folios.append(stock['folio'])
+                lots_in[lot_number]['folio'] = stock.get('folio')
+                lots_in[lot_number]['move_qty'] += move_qty
+            else:
+                if lots_in.get(lot_number,{}).get('folio') and lots_in[lot_number]['folio']:
+                    pass
+                else:
+                    lots_in[lot_number] = ""
+
+            self.cache_set({
+                        '_id': f"{product_code}_{lot_number}_{warehouse}_{location}",
+                        'move_out':move_qty,
+                        'product_code':product_code,
+                        'product_lot':lot_number,
+                        'warehouse': warehouse,
+                        'warehouse_location': location
+                        })
+        res = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=folios)
+        res ={}
+        new_records_data = []
+        warehouse_ans = self.swap_location_dest(self.answers[self.WAREHOUSE_LOCATION_DEST_OBJ_ID])
+        print('self answers', self.answers)
+        warehouse_dest = self.answers[self.WAREHOUSE_LOCATION_DEST_OBJ_ID].get(self.f['warehouse_dest'])
+        location_dest = self.answers[self.WAREHOUSE_LOCATION_DEST_OBJ_ID].get(self.f['warehouse_location_dest'])
+        for lot_number, vals in lots_in.items():
+            new_lot = {}
+            new_lot.update(warehouse_ans)
+            new_lot[self.f['product_lot']] = lot_number
+            new_lot.update(self.duplicate_lot_record(lot_number, folio=vals['folio']).get('answers',{}))
+            print('warehouse_dest',warehouse_dest)
+            print(f'----------------{product_code}_{lot_number}_{warehouse_dest}_{location_dest}--------------------')
+            cache_data = {
+                        '_id': f"{product_code}_{lot_number}_{warehouse_dest}_{location_dest}",
+                        'move_in':vals['move_qty'],
+                        'product_code':product_code,
+                        'product_lot':lot_number,
+                        'warehouse': warehouse_dest,
+                        'warehouse_location': location_dest,
+                        }
+            if self.folio:
+                cache_data.update({'kwargs': {'nin_folio':self.folio }})
+            self.cache_set(cache_data)
+
+            new_records_data.append(self.create_inventory_flow(answers=new_lot))
+
+        folios_2_update = []
+        for record in new_records_data:
+            if record.get('new_record'):
+                res_create = self.lkf_api.post_forms_answers_list(record['new_record'])
+            else:
+                print('ya existe.....', record)
+                folios_2_update.append(record.get('folio'))
+        return res
+
+    def duplicate_lot_record(self, lot_number, folio=None):
+        if folio:
+            match_query = {
+                "deleted_at":{"$exists":False},
+                "form_id": self.FORM_INVENTORY_ID,
+                "folio": folio
+                }
+        else:
+            match_query = {
+                "deleted_at":{"$exists":False},
+                "form_id": self.FORM_INVENTORY_ID,
+                f"answers.{self.f['prouct_lot']}": lot_number
+                }
+        res = self.cr.find_one(match_query, {
+            f"answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}":1, 
+            f"answers.{self.MEDIA_LOT_OBJ_ID}":1, 
+            f"answers.{self.f['product_lot_created_week']}":1, 
+            f"answers.{self.f['production_cut_day']}":1, 
+            f"answers.{self.f['production_cut_week']}":1, 
+            f"answers.{self.f['plant_cycle']}":1, 
+            f"answers.{self.f['plant_group']}":1, 
+            f"answers.{self.f['plant_contamin_code']}":1, 
+            })
+        return res
+
+    def move_out_multi_location(self):
+        move_lines = self.answers[self.f['move_group']]
+
+        # Información original del Inventory Flow
+        status_code = 0
+        move_locations = []
+        folios = []
+        print('ans', self.answers)
+        product_code = self.answers.get(self.PRODUCT_RECIPE_OBJ_ID,{}).get(self.f['product_code'])
+        print('product_code1', product_code)
+        for moves in move_lines:
+            print('move........', moves)
+            info_plant = moves.get(self.CATALOG_INVENTORY_OBJ_ID, {})
+            stock = {'product_code':product_code}
+            stock = self.get_stock_info_from_catalog_inventory(answers=moves, data=stock)
+            print('product_code........',product_code)
+            lot_number = stock.get('lot_number')
+            warehouse = stock.get('warehouse')
+            location = stock.get('warehouse_location')
+            print('lot_number........',lot_number)
+            print('warehouse........',warehouse)
+            print('location........',location)
+            moves[self.f['move_dest_folio']] = stock['folio']
+            set_location = f"{stock['warehouse']}__{stock['warehouse_location']}__{lot_number}"
+            if set_location in move_locations:
+                msg = "You are trying to move the same lot_number: {lot_number} twice from the same location. Please check"
+                msg += f"warehouse: {stock['warehouse']} / Location: {stock['warehouse_location']}"
+                msg_error_app = {
+                    f"{self.f['warehouse_location']}": {
+                        "msg": [msg],
+                        "label": "Please check your selected location",
+                        "error":[]
+      
+                    }
+                }
+                self.LKFException(msg_error_app)
+            move_locations.append(set_location)
+            print('stock_info........',stock)
+            if not stock.get('folio'):
+                continue
+            # Información que modifica el usuario
+            move_qty = moves.get(self.f['inv_move_qty'], 0)
+            print('move_qty=', move_qty)
+            #record_inventory_flow = self.get_inventory_record_by_folio(folio=stock.get('folio'),form_id=self.FORM_INVENTORY_ID)
+            self.validate_move_qty(product_code, stock['lot_number'],  stock['warehouse'], stock['warehouse_location'], move_qty)
+            if stock.get('folio'):
+                folios.append(stock['folio'])
+        self.cache_set({
+                    '_id': f"{product_code}_{stock['lot_number']}_{stock['warehouse']}_{stock['warehouse_location']}",
+                    'move_out':move_qty,
+                    'product_code':product_code,
+                    'product_lot':stock['lot_number'],
+                    'warehouse': stock['warehouse'],
+                    'warehouse_location': stock['warehouse_location']
+                    })
+        print('fokios', folios)
+        res = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=folios)
+        print('res',res)
+
+            # if new_actual_containers_on_hand <= 0:
+            #     record_inventory_flow['answers'].update({
+            #         '620ad6247a217dbcb888d175': 'done'
+            #     })
+
+            # record_inventory_flow.update({
+            #     'properties': {
+            #         "device_properties":{
+            #             "system": "SCRIPT",
+            #             "process":"Inventory Move - Out",
+            #             "accion":'Update record Inventory Flow',
+            #             "archive":"inventory_move_scrap.py"
+            #         }
+            #     }
+            # })
+            # print('record_inventory_flow',record_inventory_flow['answers'])
+            # # Se actualiza el Inventory Flow que está seleccionado en el campo del current record
+            # res_update_inventory = lkf_api.patch_record( record_inventory_flow, jwt_settings_key='USER_JWT_KEY' )
+            # print('res_update_inventory =',res_update_inventory)
+            # if res_update_inventory.get('status_code',0) > status_code:
+            #     status_code = res_update_inventory['status_code']
+        return res
 
     def get_plant_prodctivity(self, answers):
         group = answers.get(self.f['production_group'], [])
@@ -1195,8 +1423,9 @@ class Stock(Stock, Employee, Product):
         res = {}
 
         res[self.PRODUCT_RECIPE_OBJ_ID ] = deepcopy(self.answers.get(self.PRODUCT_RECIPE_OBJ_ID, {}))
+        res[self.PRODUCT_RECIPE_OBJ_ID ]['6205f73281bb36a6f1573357'] = 8
         soil_type = self.unlist(self.answers.get(self.PRODUCT_RECIPE_OBJ_ID,{}).get(self.f['reicpe_soil_type'],""))
-        res[self.PRODUCT_RECIPE_OBJ_ID ][self.f['reicpe_soil_type']] = soil_type
+        # res[self.PRODUCT_RECIPE_OBJ_ID ][self.f['reicpe_soil_type']] = soil_type
         res[self.TEAM_OBJ_ID] = self.answers.get( self.TEAM_OBJ_ID,{})
         res[self.MEDIA_LOT_OBJ_ID] = self.answers.get(self.MEDIA_LOT_OBJ_ID,{})
 
@@ -1225,6 +1454,107 @@ class Stock(Stock, Employee, Product):
         print('res',res)
         return res
 
+    def get_product_recipe(self, all_codes, stage=[2,3,4], recipe_type='Main'):
+        if type(all_codes) == str and all_codes:
+            all_codes = [all_codes.upper(),]
+        recipe = {}
+        recipe_s2 = []
+        recipe_s3 = []
+        recipe_s4 = []
+        stage = [2,] if stage == 'S2' else stage
+        stage = [3,] if stage == 'S3' else stage
+        stage = [4,] if stage == 'S4' else stage
+        print('get_product_recipe=')
+        print('stage=',stage)
+        print('all_codes=',all_codes)
+        if 2 in stage:
+            mango_query = self.plant_recipe_query(all_codes, "S2", "S2", recipe_type)
+            recipe_s2 = self.lkf_api.search_catalog(self.CATALOG_PRODUCT_RECIPE_ID, mango_query)
+        if 3 in stage:
+            mango_query = self.plant_recipe_query(all_codes, "S2", "S3", recipe_type)
+            print('mango_query', mango_query)
+            recipe_s3 = self.lkf_api.search_catalog(self.CATALOG_PRODUCT_RECIPE_ID, mango_query)
+        if 4 in stage:
+            if 'Ln72' in stage:
+                mango_query = self.plant_recipe_query(all_codes, "Ln72", "S4", recipe_type)
+            else:
+                mango_query = self.plant_recipe_query(all_codes, "S4", "S3", recipe_type)
+            recipe_s4 = self.lkf_api.search_catalog(self.CATALOG_PRODUCT_RECIPE_ID, mango_query, jwt_settings_key='APIKEY_JWT_KEY')
+        if recipe_s2 and not recipe:
+            for this_recipe in recipe_s2:
+                plant_code = this_recipe.get(self.f['product_code'])
+                if not recipe.get(plant_code):
+                    recipe[plant_code] = {}
+                recipe[plant_code].update({
+                    'S2_growth_weeks':this_recipe.get(self.f['reicpe_growth_weeks']),
+                    'cut_productivity':this_recipe.get(self.f['reicpe_productiviy']),
+                    'media_tray':this_recipe.get(self.f['reicpe_container']),
+                    'per_container':this_recipe.get(self.f['reicpe_per_container']),
+                    'S2_mult_rate':this_recipe.get(self.f['reicpe_mult_rate']),
+                    'S2_overage':this_recipe.get(self.f['reicpe_overage']),
+                    'plant_code':this_recipe.get(self.f['product_code'],),
+                    'product_code':this_recipe.get(self.f['product_code'],),
+                    'plant_name':this_recipe.get(self.f['product_name'],['',])[0],
+                    'product_name':this_recipe.get(self.f['product_name'],['',])[0],
+                    'start_week' : this_recipe.get(self.f['reicpe_start_week']),
+                    'end_week' : this_recipe.get(self.f['reicpe_end_week']),
+                    'start_size': this_recipe.get(self.f['reicpe_start_size']),
+                    'stage': this_recipe.get(self.f['reicpe_stage']),
+                    'recipe_type': this_recipe.get(self.f['recipe_type']),
+                    })
+        if recipe_s3  and not recipe:
+            for this_recipe in recipe_s3:
+                plant_code = this_recipe.get(self.f['product_code'])
+                if not recipe.get(plant_code):
+                    recipe[plant_code] = {}
+                recipe[plant_code].update(
+                    {'S3_growth_weeks':this_recipe.get(self.f['reicpe_growth_weeks']),
+                    'cut_productivity':this_recipe.get(self.f['reicpe_productiviy']),
+                    'media_tray':this_recipe.get(self.f['reicpe_container']),
+                    'per_container':this_recipe.get(self.f['reicpe_per_container']),
+                    'plant_code':this_recipe.get(self.f['product_code']),
+                    'S3_mult_rate':this_recipe.get(self.f['reicpe_mult_rate']),
+                    'S3_overage':this_recipe.get(self.f['reicpe_overage']),
+                    'plant_code':this_recipe.get(self.f['product_code'],),
+                    'plant_name':this_recipe.get(self.f['product_name'],['',])[0],
+                    'product_code':this_recipe.get(self.f['product_code'],),
+                    'product_name':this_recipe.get(self.f['product_name'],['',])[0],
+                    'start_week' : this_recipe.get(self.f['reicpe_start_week']),
+                    'end_week' : this_recipe.get(self.f['reicpe_end_week']),
+                    'start_size': this_recipe.get(self.f['reicpe_start_size']),
+                    'stage': this_recipe.get(self.f['reicpe_stage']),
+                    'recipe_type': this_recipe.get(self.f['recipe_type']),
+                    }
+                    )
+        if recipe_s4  and not recipe:
+            for this_recipe in recipe_s4:
+                plant_code = this_recipe.get(self.f['product_code'])
+                if not recipe.get(plant_code):
+                    recipe[plant_code] = []
+                recipe[plant_code].append(
+                    {'S4_growth_weeks':this_recipe.get(self.f['reicpe_growth_weeks']),
+                    'media_tray':this_recipe.get(self.f['reicpe_container']),
+                    'cut_productivity':this_recipe.get(self.f['reicpe_productiviy']),
+                    'per_container':this_recipe.get(self.f['reicpe_per_container']),
+                    'S4_mult_rate':this_recipe.get(self.f['reicpe_mult_rate']),
+                    'S4_overage_rate':this_recipe.get(self.f['reicpe_overage']),
+                    'S4_overage': this_recipe.get(self.f['reicpe_overage']),
+                    'plant_code':this_recipe.get(self.f['product_code'],),
+                    'plant_name':this_recipe.get(self.f['product_name'],['',])[0],
+                    'product_code':this_recipe.get(self.f['product_code'],),
+                    'product_name':this_recipe.get(self.f['product_name'],['',])[0],
+                    'start_week' : this_recipe.get(self.f['reicpe_start_week']),
+                    'end_week' : this_recipe.get(self.f['reicpe_end_week']),
+                    'start_size': this_recipe.get(self.f['reicpe_start_size']),
+                    'stage': this_recipe.get(self.f['reicpe_stage']),
+                    'soil_type': this_recipe.get(self.f['reicpe_soil_type']),
+                    'recipe_type': this_recipe.get(self.f['recipe_type']),
+                    }
+                    )
+        if not recipe:
+            return {}
+        return recipe
+  
     #### Se heredaron funciones para hacer lote tipo string
 
     def get_invtory_record_by_product(self, form_id, product_code, lot_number, warehouse, location, **kwargs):
@@ -1361,7 +1691,6 @@ class Stock(Stock, Employee, Product):
             }
         inc_folio = kwargs.get("inc_folio")
         nin_folio = kwargs.get("nin_folio")
-        print('folio not to include', inc_folio)
         if warehouse:
             match_query.update({f"answers.{self.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse']}":warehouse})   
         if location:
@@ -1410,12 +1739,11 @@ class Stock(Stock, Employee, Product):
             },
             {'$sort': {'product_code': 1}}
             ]
-        print('query=', simplejson.dumps(query, indent=3))
+        # print('query=', simplejson.dumps(query, indent=3))
         res = self.cr.aggregate(query)
         result = 0
         for r in res:
             result = r.get('total', 0)        
-        print('ADJUSTMENT result=', result)
         return result  
   
     def stock_moves(self, move_type, product_code=None, warehouse=None, location=None, lot_number=None, date_from=None, date_to=None, status='done', **kwargs):
@@ -1424,7 +1752,7 @@ class Stock(Stock, Employee, Product):
             raise('Move type only accepts values "in" or "out" ')
         match_query = {
             "deleted_at":{"$exists":False},
-            "form_id": self.STOCK_MOVE_FORM_ID,
+            "form_id": self.STOCK_MOVE_FORM_ID  
             }
         unwind_query = {}
         # print('move type.................', move_type)
@@ -1501,7 +1829,7 @@ class Stock(Stock, Employee, Product):
         if product_code:
             result = result.get(product_code,0)
             if move_type == 'out':
-                result += self.stock_moves_locations_out(
+                result += self.stock_many_locations_out(
                     product_code=product_code,
                     lot_number=lot_number,
                     warehouse=warehouse,
@@ -1511,15 +1839,34 @@ class Stock(Stock, Employee, Product):
                     status=status,
                     **kwargs
                 )
-        print(f'{move_type} TOTAL: result', result)
-        print('============================')
+                result += self.stock_many_locations_2_one(
+                    product_code=product_code,
+                    lot_number=lot_number,
+                    warehouse=warehouse,
+                    location=location,
+                    date_from=date_from,
+                    date_to=date_to,
+                    status=status,
+                    **kwargs
+                )
+            if move_type == 'in':
+                result += self.stock_in_dest_location_form_many(
+                    product_code=product_code,
+                    lot_number=lot_number,
+                    warehouse=warehouse,
+                    location=location,
+                    date_from=date_from,
+                    date_to=date_to,
+                    status=status,
+                    **kwargs
+                )
         return result  
 
-    def stock_moves_locations_out(self, product_code=None, lot_number=None, warehouse=None, location=None, date_from=None, date_to=None, status='done', **kwargs):
+    def stock_many_locations_out(self, product_code=None, lot_number=None, warehouse=None, location=None, date_from=None, date_to=None, status='done', **kwargs):
         unwind =None
         match_query = {
             "deleted_at":{"$exists":False},
-            "form_id": self.STOCK_MOVE_PULL_OUT_ID,
+            "form_id": self.STOCK_MANY_LOCATION_OUT,
             }
         unwind_query = {}
         unwind = {'$unwind': '$answers.{}'.format(self.f['move_group'])}
@@ -1577,6 +1924,133 @@ class Stock(Stock, Employee, Product):
         if product_code:
             result = result.get(product_code,0)
         print('result PULL OUT', result)
+        return result  
+
+    def stock_many_locations_2_one(self, product_code=None, lot_number=None, warehouse=None, location=None, date_from=None, date_to=None, status='done', **kwargs):
+        unwind =None
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id": self.STOCK_MANY_LOCATION_2_ONE,
+            }
+        unwind_query = {}
+        unwind = {'$unwind': '$answers.{}'.format(self.f['move_group'])}
+        inc_folio = kwargs.get("inc_folio")
+        nin_folio = kwargs.get("nin_folio")
+        if inc_folio:
+            match_query.update({"folio":inc_folio})
+        if nin_folio:
+            match_query.update({"folio": {"$ne":nin_folio }})
+        if status:
+            match_query.update({f"answers.{self.f['inv_adjust_status']}":status})
+        if date_from or date_to:
+            match_query.update(self.get_date_query(date_from=date_from, date_to=date_to, date_field_id=self.f['grading_date']))
+        if product_code:
+            match_query.update({f"answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_code']}":product_code})
+        if lot_number:
+            unwind_query.update({f"answers.{self.f['move_group']}.{self.CATALOG_INVENTORY_OBJ_ID}.{self.f['product_lot']}":lot_number})
+        if warehouse:
+            unwind_query.update({f"answers.{self.f['move_group']}.{self.CATALOG_INVENTORY_OBJ_ID}.{self.f['warehouse']}":warehouse})      
+        if location:
+            unwind_query.update({f"answers.{self.f['move_group']}.{self.CATALOG_INVENTORY_OBJ_ID}.{self.f['warehouse_location']}":location})
+        project = {'$project':
+                {'_id': 1,
+                    'product_code': f"$answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_code']}",
+                    'total': f"$answers.{self.f['move_group']}.{self.f['inv_move_qty']}",
+                    }
+            }
+        query= [{'$match': match_query }]
+        query.append(unwind)
+        query.append({'$match': unwind_query })
+        query.append(project)
+        query += [
+            {'$group':
+                {'_id':
+                    { 'product_code': '$product_code',
+                      },
+                  'total': {'$sum': '$total'},
+                  }
+            },
+            {'$project':
+                {'_id': 0,
+                'product_code': '$_id.product_code',
+                'total': '$total',
+                }
+            },
+            {'$sort': {'product_code': 1}}
+            ]
+        #print('query=', simplejson.dumps(query, indent=4))
+        res = self.cr.aggregate(query)
+        result = {}
+        for r in res:
+            pcode = r.get('product_code')
+            result[pcode] = result.get(pcode, 0)        
+            result[pcode] += r.get('total',0)
+        if product_code:
+            result = result.get(product_code,0)
+        return result  
+
+    def stock_in_dest_location_form_many(self, product_code=None, lot_number=None, warehouse=None, location=None, date_from=None, date_to=None, status='done', **kwargs):
+        unwind =None
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id": self.STOCK_MANY_LOCATION_2_ONE,
+            }
+        unwind_query = {}
+        unwind = {'$unwind': '$answers.{}'.format(self.f['move_group'])}
+        inc_folio = kwargs.get("inc_folio")
+        nin_folio = kwargs.get("nin_folio")
+        if inc_folio:
+            match_query.update({"folio":inc_folio})
+        if nin_folio:
+            match_query.update({"folio": {"$ne":nin_folio }})
+        if status:
+            match_query.update({f"answers.{self.f['inv_adjust_status']}":status})
+        if date_from or date_to:
+            match_query.update(self.get_date_query(date_from=date_from, date_to=date_to, date_field_id=self.f['grading_date']))
+        if product_code:
+            match_query.update({f"answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_code']}":product_code})
+        if warehouse:
+            match_query.update({f"answers.{self.WAREHOUSE_LOCATION_DEST_OBJ_ID}.{self.f['warehouse_dest']}":warehouse})      
+        if location:
+            match_query.update({f"answers.{self.WAREHOUSE_LOCATION_DEST_OBJ_ID}.{self.f['warehouse_location_dest']}":location})
+        if lot_number:
+            unwind_query.update({f"answers.{self.f['move_group']}.{self.CATALOG_INVENTORY_OBJ_ID}.{self.f['product_lot']}":lot_number})
+        project = {'$project':
+                {'_id': 1,
+                    'product_code': f"$answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_code']}",
+                    'total': f"$answers.{self.f['move_group']}.{self.f['inv_move_qty']}",
+                    }
+            }
+        query= [{'$match': match_query }]
+        query.append(unwind)
+        query.append({'$match': unwind_query })
+        query.append(project)
+        query += [
+            {'$group':
+                {'_id':
+                    { 'product_code': '$product_code',
+                      },
+                  'total': {'$sum': '$total'},
+                  }
+            },
+            {'$project':
+                {'_id': 0,
+                'product_code': '$_id.product_code',
+                'total': '$total',
+                }
+            },
+            {'$sort': {'product_code': 1}}
+            ]
+        # print('query=', simplejson.dumps(query, indent=4))
+        res = self.cr.aggregate(query)
+        result = {}
+        for r in res:
+            pcode = r.get('product_code')
+            result[pcode] = result.get(pcode, 0)        
+            result[pcode] += r.get('total',0)
+        if product_code:
+            result = result.get(product_code,0)
+        # print('SELECCION DE PLANTA', result)
         return result  
 
     def stock_supplier(self, date_from=None, date_to=None, product_code=None, warehouse=None, location=None, lot_number=None,  status='posted', **kwargs):
@@ -1702,14 +2176,6 @@ class Stock(Stock, Employee, Product):
     #### Temino heredacion para hace lote tipo string
 
     def stock_production(self, date_from=None, date_to=None, product_code=None, warehouse=None, location=None, lot_number=None,  status='done', **kwargs):
-        print('date_from', date_from)
-        print('date_to', date_to)
-        print('product_code', product_code)
-        print('warehouse', warehouse)
-        print('location', location)
-        print('lot_number', lot_number)
-        print('status', status)
-        print('kwargs', kwargs)
         match_query = {
             "deleted_at":{"$exists":False},
             "form_id": self.MOVE_NEW_PRODUCTION_ID,
@@ -1800,9 +2266,19 @@ class Stock(Stock, Employee, Product):
             result[pcode] += r.get('total',0)
         if product_code:
             result = result.get(product_code,0)
-        print('production result', result)
-        print('production product_code', product_code)
         return result
+
+    def swap_location_dest(self, from_location):
+        res = {self.WAREHOUSE_LOCATION_OBJ_ID:{}}
+        res[self.WAREHOUSE_LOCATION_OBJ_ID][self.f['warehouse']] = from_location[self.f['warehouse_dest']]
+        res[self.WAREHOUSE_LOCATION_OBJ_ID][self.f['warehouse_location']] = from_location[self.f['warehouse_location_dest']]
+        return res
+
+    def swap_location(self, from_location):
+        res = {self.WAREHOUSE_LOCATION_DEST_OBJ_ID:{}}
+        res[self.WAREHOUSE_LOCATION_DEST_OBJ_ID][self.f['warehouse_dest']] = from_location[self.f['warehouse']]
+        res[self.WAREHOUSE_LOCATION_DEST_OBJ_ID][self.f['warehouse_location_dest']] = from_location[self.f['warehouse_location']]
+        return res
 
     def update_calc_fields(self, product_code, lot_number, warehouse, location, folio=None, map_type='model_2_field_id', **kwargs):
         '''
@@ -1860,9 +2336,11 @@ class Stock(Stock, Employee, Product):
             return update_res
 
     def update_stock(self, answers={}, form_id=None, folios="" ):
-        print('patch stock folio')
+        print('patch stock folio', folios)
         if not answers:
             answers={"udpate":True}
+        if not form_id:
+            form_id = self.FORM_INVENTORY_ID
         if type(folios) in [str, ]:
             folios = [folios,]
         return self.lkf_api.patch_multi_record( answers=answers, form_id=form_id, folios=folios, threading=True )
@@ -1910,7 +2388,7 @@ class Stock(Stock, Employee, Product):
 
         acctual_containers = inv.get('actuals')
         if acctual_containers == 0:
-            msg = "This lot has no containers left, if this is NOT the case first do a inventory adjustment"
+            msg = f"This lot {lot_number} has 0 containers left, if this is NOT the case first do a inventory adjustment"
             msg_error_app = {
                     f"{self.f['product_lot_actuals']}": {
                         "msg": [msg],
