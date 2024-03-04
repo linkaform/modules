@@ -109,7 +109,7 @@ fdict ={
 #         res_crea_cat = lkf_api.post_catalog_answers(catalogo_metadata, jwt_settings_key='USER_JWT_KEY')
 
 if __name__ == "__main__":
-    print(sys.argv)
+    # print(sys.argv)
     stock_obj = Stock(settings, sys_argv=sys.argv)
     current_record = stock_obj.current_record
     stock_obj = stock_obj.process_record_to_catalog( current_record )

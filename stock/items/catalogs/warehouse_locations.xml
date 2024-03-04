@@ -7,8 +7,8 @@
         <redirect_url>default</redirect_url>
     </confirmation>
     <description />
-    <_rev>6-63a8705b6827c6d91bc0f2718db67e8e</_rev>
-    <updated_at>2024-01-26T20:21:57.154150+00:00Z</updated_at>
+    <_rev>4-f05b2300d289441e17efc4ca2fedbdb5</_rev>
+    <updated_at>2024-02-27T05:50:32.294149+00:00Z</updated_at>
     <sync>
         <element_request>{}</element_request>
         <input_parameters>[]</input_parameters>
@@ -16,7 +16,7 @@
     <filters>{}</filters>
     <name>Warehouse Locations</name>
     <edit_public_records>False</edit_public_records>
-    <created_at>2024-01-26T20:21:57.154150+00:00Z</created_at>
+    <created_at>2024-02-27T05:50:32.294149+00:00Z</created_at>
     <advanced_options>
         <active>True</active>
         <folio>
@@ -102,12 +102,12 @@
                     </properties>
                 </item>
             </page_fields>
-            <page_name>Page 1</page_name>
             <page_description>None</page_description>
+            <page_name>Page 1</page_name>
         </item>
     </catalog_pages>
     <sync_last_update>None</sync_last_update>
-    <_id>65b414650ade76b12c6631b4</_id>
+    <_id>65dd7828a5a5723f76947b7e</_id>
     <public>False</public>
-    <catalog_id>113818</catalog_id>
+    <catalog_id>115911</catalog_id>
 </lkf>

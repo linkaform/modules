@@ -3,37 +3,34 @@ import sys, simplejson, math
 from datetime import timedelta, datetime
 from bson import ObjectId
 
-from lab_stock_utils import Stock
+from stock_utils import Stock
 
 from account_settings import *
 
 
 class Stock(Stock):
 
-
     def get_product_info(self, **kwargs):
         try:
-            product_code, lot_number, warehouse, location = self.get_product_lot_location()
+            product_code, sku, lot_number, warehouse, location = self.get_product_lot_location()
             # warehouse = self.answers[self.WAREHOUSE_LOCATION_OBJ_ID][self.f['warehouse']]
             # location = self.answers[self.WAREHOUSE_LOCATION_OBJ_ID][self.f['warehouse_location']]
             # product_code = self.answers.get(self.f['product_recipe'], {}).get(self.f['product_code'], '')
         except Exception as e:
             print('**********************************************')
-            self.LKFException('Warehosue and product code are requierd')
-        yearWeek = str(self.answers[self.f['product_lot_created_week']])
-        if len(str(yearWeek)) <=5:
-            week = self.answers[self.f['production_cut_week']]
-            yearWeek = f'{yearWeek}{week:02}'
-            self.answers[self.f['product_lot_created_week']] = int(yearWeek)
-        growth_week = int(self.answers[self.CATALOG_PRODUCT_RECIPE_OBJ_ID].get(self.f['reicpe_growth_weeks'],0))
-        if growth_week > 0 :
-            date_yearweek = datetime.strptime(f'{yearWeek}-1', '%Y%W-%w')
-            cutweek = date_yearweek + timedelta(weeks=growth_week)
-            nextcut_week = cutweek.strftime('%Y%W')
-            self.answers[self.f['new_cutweek']] = nextcut_week
-        per_container = self.answers.get(self.PRODUCT_RECIPE_OBJ_ID,{}).get(self.f['reicpe_per_container'],0)
-        product_stock = self.get_product_stock(product_code, lot_number=lot_number, warehouse=warehouse, location=location, kwargs=kwargs.get('kwargs',{}) )
+            self.LKFException('Warehosue and product code are requierd', e)
+        print('getting product tock........', sku)
+        a = f'{product_code}_{sku}_{lot_number}_{warehouse}_{location}'
+        print('reading cache...', a)
+        values = {
+                '_id': a
+                }
+        ccache = self.cache_read(values)
+        print('reading ccache...', ccache)
+        product_stock = self.get_product_stock(product_code, sku=sku, lot_number=lot_number, warehouse=warehouse, location=location, kwargs=kwargs.get('kwargs',{}) )
         print('=== stock de calculate ====', product_stock)
+        print('=== stock de calculate ====', self.answers)
+        per_container = self.answers.get(self.f['per_container'],1)
         self.answers[self.f['product_lot_produced']] = product_stock['production']
         self.answers[self.f['product_lot_move_in']] = product_stock['move_in']
         self.answers[self.f['product_lot_scrapped']] = product_stock['scrapped']
@@ -54,7 +51,10 @@ class Stock(Stock):
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)
     stock_obj.console_run()
-    stock_obj.merge_stock_records()
+    values = {'_id': 'CP0001_XX01BS_L1_Almacen Norte_Tecnico 1'}
+    ccache = stock_obj.cache_read(values)
+    print('44444444444444reading ccache...', ccache)
+    #stock_obj.merge_stock_records()
     # print('current_record',current_record)
 
     # if folio:
@@ -68,8 +68,9 @@ if __name__ == '__main__':
     if not query and stock_obj.folio:
         query = {'folio':stock_obj.folio, 'form_id':stock_obj.form_id }
     if query:
+        print('no sera aqui..?????')
         stock_obj.cr.update_one(query, {'$set': {'answers':stock_obj.answers}})
-
+    print('print va a hacer el update con...', stock_obj.answers)
     sys.stdout.write(simplejson.dumps({
         'status': 101,
         'replace_ans': stock_obj.answers

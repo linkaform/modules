@@ -40,7 +40,7 @@ if __name__ == '__main__':
     #current record
     stock_obj.console_run()
     record_catalog = stock_obj.get_record_catalog_del()
-    stock_obj.del_catalog_record(record_catalog, form_id)
+    stock_obj.del_catalog_record(record_catalog, stock_obj.form_id)
     #doing cleanup
     #for done records that for some reason are not deleted
     # record_catalog = get_record_catalog(form_id)
