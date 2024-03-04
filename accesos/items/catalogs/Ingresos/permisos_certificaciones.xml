@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8'?>
+<lkf>
+    <templates>[]</templates>
+    <confirmation>{}</confirmation>
+    <description />
+    <_rev>3-6a32673f65f1f3e25ab86537f8937e5d</_rev>
+    <updated_at>2024-02-15T16:51:52.615221+00:00Z</updated_at>
+    <sync>
+        <element_request>{}</element_request>
+        <input_parameters>[]</input_parameters>
+    </sync>
+    <filters>{}</filters>
+    <name>Permisos / Certificaciones</name>
+    <edit_public_records>False</edit_public_records>
+    <created_at>2024-02-15T16:51:52.615221+00:00Z</created_at>
+    <advanced_options>{}</advanced_options>
+    <catalog_id>114465</catalog_id>
+    <sync_last_update>None</sync_last_update>
+    <_id>65ce4128e66b6e867cf71930</_id>
+    <public>False</public>
+    <catalog_pages>
+        <item>
+            <page_fields>
+                <item>
+                    <field_type>text</field_type>
+                    <properties>
+                        <send_email>False</send_email>
+                        <size>complete</size>
+                        <custom>None</custom>
+                    </properties>
+                    <key>None</key>
+                    <catalog_fields>[]</catalog_fields>
+                    <field_id>65ce4128e66b6e867cf71931</field_id>
+                    <required>True</required>
+                    <fav>None</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
+                    <label>Nombre del Permiso</label>
+                    <catalog>{}</catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
+                    <options>[]</options>
+                    <related_catalog>None</related_catalog>
+                </item>
+                <item>
+                    <field_type>files</field_type>
+                    <required>False</required>
+                    <field_id>65ce5abaacb749d7101f8cbd</field_id>
+                    <properties>
+                        <date_format />
+                        <multi_selection>True</multi_selection>
+                        <file_name />
+                        <max_images_count>10</max_images_count>
+                        <data_format>[]</data_format>
+                        <location_decimals>None</location_decimals>
+                        <fieldId>[]</fieldId>
+                        <file_name_array>[]</file_name_array>
+                        <watermark_enable>False</watermark_enable>
+                        <metadata>[]</metadata>
+                        <image_origin>
+                            <from_draw>True</from_draw>
+                            <from_camera>True</from_camera>
+                            <from_gallery>True</from_gallery>
+                        </image_origin>
+                        <min_images_count>0</min_images_count>
+                        <mime_types>[]</mime_types>
+                        <watermark_config>
+                            <color>None</color>
+                            <text_data />
+                            <font_size>None</font_size>
+                            <text_data_array>[]</text_data_array>
+                            <position>None</position>
+                        </watermark_config>
+                    </properties>
+                    <label>Documento</label>
+                </item>
+                <item>
+                    <field_type>datetime</field_type>
+                    <required>False</required>
+                    <field_id>65ce5abaacb749d7101f8cbe</field_id>
+                    <properties>
+                        <format>vertical</format>
+                        <custom>None</custom>
+                    </properties>
+                    <label>Vigencia</label>
+                </item>
+            </page_fields>
+            <page_name>Página 1</page_name>
+            <page_description>None</page_description>
+        </item>
+    </catalog_pages>
+</lkf>
