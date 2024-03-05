@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <lkf>
-    <form_id>{{ form.salida_multiple_productos_a_una_ubicacion.id }}</form_id>
+    <form_id>{{ form.stock_move_one_many_one_location.id }}</form_id>
     <id>65e117b189c0e0790f8843fd</id>
     <workflows>
         <item>

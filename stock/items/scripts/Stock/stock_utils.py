@@ -1342,7 +1342,10 @@ class Stock(Stock, Employee, Product):
                 "form_id": self.FORM_INVENTORY_ID,
                 f"answers.{self.f['prouct_lot']}": lot_number
                 }
-        res = self.cr.find_one(match_query, {'answers':1})
+        try:
+            res = self.cr.find_one(match_query, {'answers':1})
+        except:
+            res = None
         return res
 
     def move_out_multi_location(self):
