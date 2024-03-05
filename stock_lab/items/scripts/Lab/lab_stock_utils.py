@@ -1268,7 +1268,7 @@ class Stock(Stock, Employee, Product):
             if record.get('new_record'):
                 res_create = self.lkf_api.post_forms_answers_list(record['new_record'])
             else:
-                print('ya existe.....', record)
+                print('ya existe2.....', record)
                 folios_2_update.append(record.get('folio'))
         return res
 
