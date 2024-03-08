@@ -426,7 +426,7 @@
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
                         <catalog_field_id>None</catalog_field_id>
-                        <catalog_id>{{ catalog.product_recipe.id }}</catalog_id>
+                        <catalog_id>{{catalog.sku_catalog.id }}</catalog_id>
                         <field_type>None</field_type>
                         <filters>None</filters>
                         <geofence>None</geofence>
@@ -458,7 +458,7 @@
                     <default_value />
                     <descriptor>None</descriptor>
                     <fav>False</fav>
-                    <field_id>{{ catalog.product_recipe.obj_id }}</field_id>
+                    <field_id>{{catalog.sku_catalog.obj_id }}</field_id>
                     <field_type>catalog</field_type>
                     <grading_criteria>{}</grading_criteria>
                     <group>None</group>
@@ -518,8 +518,8 @@
                     <affecting_rules>[]</affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
-                        <catalog_field_id>{{ catalog.product_recipe.obj_id }}</catalog_field_id>
-                        <catalog_id>{{ catalog.product_recipe.id }}</catalog_id>
+                        <catalog_field_id>{{catalog.sku_catalog.obj_id }}</catalog_field_id>
+                        <catalog_id>{{catalog.sku_catalog.id }}</catalog_id>
                         <field_type>text</field_type>
                         <filters>None</filters>
                         <geofence>None</geofence>
@@ -594,8 +594,8 @@
                     <affecting_rules>[]</affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
-                        <catalog_field_id>{{ catalog.product_recipe.obj_id }}</catalog_field_id>
-                        <catalog_id>{{ catalog.product_recipe.id }}</catalog_id>
+                        <catalog_field_id>{{catalog.sku_catalog.obj_id }}</catalog_field_id>
+                        <catalog_id>{{catalog.sku_catalog.id }}</catalog_id>
                         <field_type>select</field_type>
                         <filters>None</filters>
                         <geofence>None</geofence>
@@ -670,8 +670,8 @@
                     <affecting_rules>[]</affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
-                        <catalog_field_id>{{ catalog.product_recipe.obj_id }}</catalog_field_id>
-                        <catalog_id>{{ catalog.product_recipe.id }}</catalog_id>
+                        <catalog_field_id>{{catalog.sku_catalog.obj_id }}</catalog_field_id>
+                        <catalog_id>{{catalog.sku_catalog.id }}</catalog_id>
                         <field_type>select</field_type>
                         <filters>None</filters>
                         <geofence>None</geofence>
@@ -746,8 +746,8 @@
                     <affecting_rules>[]</affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
-                        <catalog_field_id>{{ catalog.product_recipe.obj_id }}</catalog_field_id>
-                        <catalog_id>{{ catalog.product_recipe.id }}</catalog_id>
+                        <catalog_field_id>{{catalog.sku_catalog.obj_id }}</catalog_field_id>
+                        <catalog_id>{{catalog.sku_catalog.id }}</catalog_id>
                         <field_type>select</field_type>
                         <filters>None</filters>
                         <geofence>None</geofence>
@@ -822,8 +822,8 @@
                     <affecting_rules>[]</affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
-                        <catalog_field_id>{{ catalog.product_recipe.obj_id }}</catalog_field_id>
-                        <catalog_id>{{ catalog.product_recipe.id }}</catalog_id>
+                        <catalog_field_id>{{catalog.sku_catalog.obj_id }}</catalog_field_id>
+                        <catalog_id>{{catalog.sku_catalog.id }}</catalog_id>
                         <field_type>integer</field_type>
                         <filters>None</filters>
                         <geofence>None</geofence>
@@ -898,8 +898,8 @@
                     <affecting_rules>[]</affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
-                        <catalog_field_id>{{ catalog.product_recipe.obj_id }}</catalog_field_id>
-                        <catalog_id>{{ catalog.product_recipe.id }}</catalog_id>
+                        <catalog_field_id>{{catalog.sku_catalog.obj_id }}</catalog_field_id>
+                        <catalog_id>{{catalog.sku_catalog.id }}</catalog_id>
                         <field_type>select</field_type>
                         <filters>None</filters>
                         <geofence>None</geofence>
@@ -974,8 +974,8 @@
                     <affecting_rules>[]</affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
-                        <catalog_field_id>{{ catalog.product_recipe.obj_id }}</catalog_field_id>
-                        <catalog_id>{{ catalog.product_recipe.id }}</catalog_id>
+                        <catalog_field_id>{{catalog.sku_catalog.obj_id }}</catalog_field_id>
+                        <catalog_id>{{catalog.sku_catalog.id }}</catalog_id>
                         <field_type>integer</field_type>
                         <filters>None</filters>
                         <geofence>None</geofence>
@@ -1050,8 +1050,8 @@
                     <affecting_rules>[]</affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
-                        <catalog_field_id>{{ catalog.product_recipe.obj_id }}</catalog_field_id>
-                        <catalog_id>{{ catalog.product_recipe.id }}</catalog_id>
+                        <catalog_field_id>{{catalog.sku_catalog.obj_id }}</catalog_field_id>
+                        <catalog_id>{{catalog.sku_catalog.id }}</catalog_id>
                         <field_type>text</field_type>
                         <filters>None</filters>
                         <geofence>None</geofence>
