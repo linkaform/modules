@@ -449,94 +449,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>62e9821b2be30bc5afc89615</_id>
-                    <action_id>4</action_id>
-                    <action_settings>{}</action_settings>
-                    <configuration>
-                        <assignTo>
-                            <customUser>
-                                <email>linkaform@magnoliagardens.com</email>
-                                <first_name>Magnolia Gardens</first_name>
-                                <id>9908</id>
-                                <username>linkaform@magnoliagardens.com</username>
-                            </customUser>
-                            <field_id>CUSTOM_USER</field_id>
-                            <label>User</label>
-                        </assignTo>
-                    </configuration>
-                    <name>Eloisa as Follower</name>
-                </item>
-                <item>
-                    <_id>62e9821b2be30bc5afc89616</_id>
-                    <action_id>4</action_id>
-                    <action_settings>{}</action_settings>
-                    <configuration>
-                        <assignTo>
-                            <customUser>
-                                <email>linkaform@magnoliagardens.com</email>
-                                <first_name>Magnolia Gardens</first_name>
-                                <id>9908</id>
-                                <username>linkaform@magnoliagardens.com</username>
-                            </customUser>
-                            <field_id>CUSTOM_USER</field_id>
-                            <label>User</label>
-                        </assignTo>
-                        <push_notification>True</push_notification>
-                    </configuration>
-                    <name>Karen as User</name>
-                </item>
-            </actions>
-            <id>62e9821b2be30bc5afc89626</id>
-            <name>Assigne for storage</name>
-            <rules>
-                <metadata>
-                    <connection>[]</connection>
-                    <date>
-                        <period>
-                            <month>1</month>
-                            <selected>False</selected>
-                            <year>2014</year>
-                        </period>
-                        <range>
-                            <end>2022-08-03T05:00:00.000Z</end>
-                            <selected>False</selected>
-                            <start>2022-08-02T19:23:07.076Z</start>
-                        </range>
-                    </date>
-                    <grading>{}</grading>
-                    <user>[]</user>
-                </metadata>
-                <record>
-                    <created>False</created>
-                    <deleted>False</deleted>
-                    <edited>False</edited>
-                    <run_multiple_times>False</run_multiple_times>
-                    <runtime>after</runtime>
-                </record>
-                <wf_fields>
-                    <operator>all</operator>
-                    <triggers>
-                        <item>
-                            <condition>in=</condition>
-                            <form_id>None</form_id>
-                            <other_value>None</other_value>
-                            <prefix>answer</prefix>
-                            <trigger_field>
-                                <catalog>{}</catalog>
-                                <field_id>61f1fd95ef44501511f7f161</field_id>
-                                <group>{}</group>
-                                <label>Left Overs</label>
-                                <type>radio</type>
-                            </trigger_field>
-                            <value>finished</value>
-                        </item>
-                    </triggers>
-                </wf_fields>
-            </rules>
-        </item>
-        <item>
-            <actions>
-                <item>
                     <_id>644c2e2a76b11e90e24a49b3</_id>
                     <action_id>4</action_id>
                     <action_settings>{}</action_settings>
@@ -740,7 +652,7 @@
                                     <catalog_field_id>{{ catalog.warehouse.obj_id }}</catalog_field_id>
                                     <catalog_id>{{ catalog.warehouse.id }}</catalog_id>
                                     <field_type>text</field_type>
-                                    <filters />
+                                    <filters>None</filters>
                                     <geofence>None</geofence>
                                     <last>False</last>
                                     <related_catalog>{}</related_catalog>
@@ -850,7 +762,7 @@
                                     <catalog_field_id>{{ catalog.warehouse.obj_id }}</catalog_field_id>
                                     <catalog_id>{{ catalog.warehouse.id }}</catalog_id>
                                     <field_type>text</field_type>
-                                    <filters />
+                                    <filters>None</filters>
                                     <geofence>None</geofence>
                                     <last>False</last>
                                     <related_catalog>{}</related_catalog>
@@ -960,7 +872,7 @@
                                     <catalog_field_id>{{ catalog.warehouse.obj_id }}</catalog_field_id>
                                     <catalog_id>{{ catalog.warehouse.id }}</catalog_id>
                                     <field_type>text</field_type>
-                                    <filters />
+                                    <filters>None</filters>
                                     <geofence>None</geofence>
                                     <last>False</last>
                                     <related_catalog>{}</related_catalog>

@@ -20,10 +20,11 @@ class Stock(Stock):
         except Exception as e:
             print('**********************************************')
             self.LKFException('Warehosue and product code are requierd')
+        print(f'*******************{product_code}***************************')
         yearWeek = str(self.answers[self.f['product_lot_created_week']])
         if len(str(yearWeek)) <=5:
             week = self.answers[self.f['production_cut_week']]
-            yearWeek = f'{yearWeek}{week:02}'
+            yearWeek = f'{str(yearWeek)[:4]}{week:02}'
             self.answers[self.f['product_lot_created_week']] = int(yearWeek)
         growth_week = int(self.answers[self.CATALOG_PRODUCT_RECIPE_OBJ_ID].get(self.f['reicpe_growth_weeks'],0))
         if growth_week > 0 :
@@ -69,7 +70,6 @@ if __name__ == '__main__':
         query = {'folio':stock_obj.folio, 'form_id':stock_obj.form_id }
     if query:
         stock_obj.cr.update_one(query, {'$set': {'answers':stock_obj.answers}})
-
     sys.stdout.write(simplejson.dumps({
         'status': 101,
         'replace_ans': stock_obj.answers

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson
 from datetime import datetime, timedelta
+from copy import deepcopy
 
 
 from linkaform_api import settings, network, utils
@@ -53,22 +54,20 @@ if __name__ == '__main__':
     stock_obj.console_run()
     stock_obj.set_product_catalog()
     if stock_obj.folio:
+        answers = deepcopy(stock_obj.answers)
         res = stock_obj.make_inventory_flow()
         status_code = res[0].get('status_code')
         update_ok = res[0].get('updatedExisting')
+        print('tiene un res...', res)
+        answers[stock_obj.f['move_status']] = 'done'
         #TODO, hace este pedazo atomico, ya que si se crea uno y se actualiza otro es distinto
         if status_code == 201 or update_ok:
             #todo poner sttatus en cada linea
             sys.stdout.write(simplejson.dumps({
                 'status': 101,
-                'replace_ans': False,
-                'metadata':{'editable':False},
-                'merge':{
-                    'primary': False,
-                    'replace': False,
-                    'answers': {stock_obj.f['move_status']: 'done'}
-                },
+                'replace_ans':  answers
             }))
+
         else:
             msg_error_app = 'No error found'
             try:
@@ -86,13 +85,7 @@ if __name__ == '__main__':
                 raise Exception( simplejson.dumps( msg_error_app ) )
         
         sys.stdout.write(simplejson.dumps({
-                'status': 101,
-                'replace_ans': False,
-                'metadata':{'editable':False},
-                'merge':{
-                    'primary': False,
-                    'replace': False,
-                    'answers': {stock_obj.f['move_status']: 'done'}
-                },
+            'status': 101,
+            'replace_ans':  answers
         }))
 

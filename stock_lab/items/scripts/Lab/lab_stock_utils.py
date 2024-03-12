@@ -41,6 +41,8 @@ class Stock(Stock, Employee, Product):
         self.STOCK_MANY_LOCATION_2_ONE = self.lkm.form_id('lab_workorders_seleccion_de_planta','id')
         self.SCRAP_FORM_ID = self.lkm.form_id('lab_scrapping','id')
         self.ADJUIST_FORM_ID = self.lkm.form_id('lab_inventory_adjustment','id')
+        #TODO
+        self.PRODUCTION_PLAN = 81420
 
 
         # La relacion entre la forma de inventario y el catalogo utilizado para el inventario
@@ -97,6 +99,8 @@ class Stock(Stock, Employee, Product):
             'reicpe_stage':'6205f73281bb36a6f1573358',
             'reicpe_start_size':'621fca56ee94313e8d8c5e2e',
             'set_production_date_out':'61f1fcf8c66d2990c8fcccc6',
+            'stage_4_plan_require_yearweek':'626c2792f7f680727fdba0f5',
+            'stage_4_plan_requierments':'6206b6186c0b3b00535d60d8',
             'new_cutweek':'65e241959ee4e466eadd2be3',
             'new_location_group':'63193fc51b3cefa880fefcc7',
             'new_location_racks':'c24000000000000000000001',
@@ -105,11 +109,13 @@ class Stock(Stock, Employee, Product):
             'warehouse_location':'65ac6fbc070b93e656bd7fbe',
             'warehouse_location_dest':'65c12749cfed7d3a0e1a341b',
 
+
             })
 
     def add_racks_and_containers(self, container_type, racks, containers):
         container_on_racks = racks * self.container_per_rack[container_type]
         qty = containers + container_on_racks
+        print('asi regres', qty)
         return qty
 
     #### Se heredaron funciones para hacer lote tipo string
@@ -639,11 +645,14 @@ class Stock(Stock, Employee, Product):
         # answers_to_new_record['620ad6247a217dbcb888d176'] = 'todo' # Post Status
         product_code, lot_number, warehouse, location = self.get_product_lot_location(answers)
         product_exist = self.product_stock_exists(product_code, location=location, warehouse=warehouse,  lot_number=lot_number)
+        print('va a probar si existe....',)
         if product_exist:
             # res = self.update_calc_fields(product_code, lot_number, warehouse, location=location)
             res = self.update_stock(answers=product_exist.get('answers'), form_id=product_exist.get('form_id'), folios=product_exist.get('folio') )
+            print('ya acutalizo no hay neceidad de hacer algo mas...')
             return res
         else:
+            print('y no existe...')
             metadata = self.lkf_api.get_metadata(self.FORM_INVENTORY_ID)
             metadata.update({
                 'properties': {
@@ -733,6 +742,7 @@ class Stock(Stock, Employee, Product):
                 location_id = location[self.WAREHOUSE_LOCATION_OBJ_ID][self.f['warehouse_location']]
                 answers.update(self.set_up_containers_math(answers, record_qty, location, production=production ))
                 production_qty  = answers.get(self.f['production'],0)
+                print('aqui vamos....', production_qty)
                 self.cache_set({
                         '_id': f'{product_code}_{product_lot}_{warehouse}_{location_id}',
                         'production':production_qty,
@@ -744,6 +754,7 @@ class Stock(Stock, Employee, Product):
                 if res.get('new_record'):
                     new_records_data.append(res['new_record'])
                 else:
+                    print('no es nwe')
                     result.append(res)
 
         else:
@@ -822,6 +833,10 @@ class Stock(Stock, Employee, Product):
             "skip":0
             }
         product_code, lot_number, warehouse, location = self.get_product_lot_location()
+        print('product_code', product_code)
+        print('lot_number', lot_number)
+        print('warehouse', warehouse)
+        print('location', location)
         query = {
             self.f['product_code']:product_code,
             self.f['product_lot']:lot_number,
@@ -910,6 +925,7 @@ class Stock(Stock, Employee, Product):
             adjust_in = product.get(self.f['inv_adjust_grp_in'], 0)
             adjust_out = product.get(self.f['inv_adjust_grp_out'], 0)
             product_code = product[self.CATALOG_PRODUCT_RECIPE_OBJ_ID][self.f['product_code']]
+            print(f'============================={product_code}================================')
             verify = 0
             if adjust_qty or adjust_qty ==0:
                 verify +=1
@@ -936,11 +952,14 @@ class Stock(Stock, Employee, Product):
             exist = self.product_stock_exists(product_code=product_code, lot_number=lot_number, warehouse=warehouse, location=location_id)
             print('exists', exist)
             actuals = 0
-
+            print('adjust_qty=',adjust_qty)
+            print('adjust_in=',adjust_in)
+            print('adjust_out=',adjust_out)
             if exist:
-                product_stock = self.get_product_stock(product_code, lot_number=lot_number, warehouse=warehouse, date_to=adjust_date, **{'nin_folio':self.folio})
+                print('estadjust_date',adjust_date)
+                product_stock = self.get_product_stock(product_code, lot_number=lot_number, location=location_id, warehouse=warehouse, date_to=adjust_date, **{'nin_folio':self.folio})
                 actuals = product_stock.get('actuals',0)
-
+                print('esta son los actuals un dia antes del ajuste', actuals)
             if adjust_qty or adjust_qty == 0:
                 cache_adjustment = adjust_qty - actuals
                 if actuals < adjust_qty:
@@ -1019,7 +1038,7 @@ class Stock(Stock, Employee, Product):
             for key, value in last_verions_products.items():
                 exist = self.product_stock_exists(
                     product_code=value['product_code'], lot_number=value['lot_number'], warehouse=value['warehouse'], location=value['location'])
-                print('si existe....', exist)
+                print('222si existe....', exist)
                 if exist:
                     print('doble update o que....????')
                     response = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=exist['folio'])
@@ -1267,6 +1286,12 @@ class Stock(Stock, Employee, Product):
         for record in new_records_data:
             if record.get('new_record'):
                 res_create = self.lkf_api.post_forms_answers_list(record['new_record'])
+                # print('res_create', res_create)
+                for new_rec in res_create:
+                    info =  simplejson.loads(new_rec.get('data',{}))
+                    print('info',info)
+                    if info.get('error'):
+                        self.LKFException('Error al crear registro')
             else:
                 print('ya existe2.....', record)
                 folios_2_update.append(record.get('folio'))
@@ -1344,14 +1369,14 @@ class Stock(Stock, Employee, Product):
             self.validate_move_qty(product_code, stock['lot_number'],  stock['warehouse'], stock['warehouse_location'], move_qty)
             if stock.get('folio'):
                 folios.append(stock['folio'])
-        self.cache_set({
-                    '_id': f"{product_code}_{stock['lot_number']}_{stock['warehouse']}_{stock['warehouse_location']}",
-                    'move_out':move_qty,
-                    'product_code':product_code,
-                    'product_lot':stock['lot_number'],
-                    'warehouse': stock['warehouse'],
-                    'warehouse_location': stock['warehouse_location']
-                    })
+            self.cache_set({
+                        '_id': f"{product_code}_{stock['lot_number']}_{stock['warehouse']}_{stock['warehouse_location']}",
+                        'move_out':move_qty,
+                        'product_code':product_code,
+                        'product_lot':stock['lot_number'],
+                        'warehouse': stock['warehouse'],
+                        'warehouse_location': stock['warehouse_location']
+                        })
         print('fokios', folios)
         res = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=folios)
         print('res',res)
@@ -1463,19 +1488,15 @@ class Stock(Stock, Employee, Product):
         stage = [2,] if stage == 'S2' else stage
         stage = [3,] if stage == 'S3' else stage
         stage = [4,] if stage == 'S4' else stage
-        print('get_product_recipe=')
-        print('stage=',stage)
-        print('all_codes=',all_codes)
         if 2 in stage:
             mango_query = self.plant_recipe_query(all_codes, "S2", "S2", recipe_type)
             recipe_s2 = self.lkf_api.search_catalog(self.CATALOG_PRODUCT_RECIPE_ID, mango_query)
         if 3 in stage:
             mango_query = self.plant_recipe_query(all_codes, "S2", "S3", recipe_type)
-            print('mango_query', mango_query)
             recipe_s3 = self.lkf_api.search_catalog(self.CATALOG_PRODUCT_RECIPE_ID, mango_query)
         if 4 in stage:
             if 'Ln72' in stage:
-                mango_query = self.plant_recipe_query(all_codes, "Ln72", "S4", recipe_type)
+                mango_query = self.plant_recipe_query(all_codes,  "S4", "Ln72", recipe_type)
             else:
                 mango_query = self.plant_recipe_query(all_codes, "S4", "S3", recipe_type)
             recipe_s4 = self.lkf_api.search_catalog(self.CATALOG_PRODUCT_RECIPE_ID, mango_query, jwt_settings_key='APIKEY_JWT_KEY')
@@ -1604,9 +1625,14 @@ class Stock(Stock, Employee, Product):
     def set_up_containers_math(self, answers, record_qty , new_location, production=False):
         per_container = int(answers[self.f['plant_per_container']])
         container_type = answers[self.f['plant_conteiner_type']]
+        print('continer per_container', per_container)
+        print('continer type', container_type)
         racks = new_location.get(self.f['new_location_racks'],0)
         containers = new_location.get(self.f['new_location_containers'],0)
+        print('continer racks', racks)
+        print('continer containers', containers)
         move_qty = self.add_racks_and_containers(container_type, racks, containers)
+        print('continer move_qty', move_qty)
         answers.update(new_location)
         answers[self.f['actuals']] = move_qty
         answers[self.f['actual_eaches_on_hand']] = move_qty * per_container
@@ -1688,6 +1714,13 @@ class Stock(Stock, Employee, Product):
         return result  
 
     def stock_adjustments_moves(self, product_code=None, lot_number=None, warehouse=None, location=None, date_from=None, date_to=None, **kwargs):
+        print('*+++++++++++++++++++++++sarchig adjustments....')
+        print('product_code',product_code)
+        print('lot_number',lot_number)
+        print('warehouse',warehouse)
+        print('locationlocation',location)
+        print('date_to',date_to)
+        print('kwargs',kwargs)
         match_query = {
             "deleted_at":{"$exists":False},
             "form_id": self.ADJUIST_FORM_ID,
@@ -2166,7 +2199,7 @@ class Stock(Stock, Employee, Product):
             },
             {'$sort': {'product_code': 1}}
             ]
-        # print('query out=', simplejson.dumps(query, indent=4))
+        print('query prodout=', simplejson.dumps(query, indent=4))
         res = self.cr.aggregate(query)
         result = {}
         for r in res:
@@ -2285,7 +2318,7 @@ class Stock(Stock, Employee, Product):
                         { "$cond": 
                             [ 
                             {"$eq":["$container_type","magenta_box"]}, 
-                            {"$multiply":["$racks", self.container_per_rack['baby_jar']]}, 
+                            {"$multiply":["$racks", self.container_per_rack['magenta_box']]}, 
                             { "$cond": 
                                 [ 
                                 {"$eq":["$container_type","clam_shell"]}, 
@@ -2326,7 +2359,7 @@ class Stock(Stock, Employee, Product):
         # print('query', simplejson.dumps(query, indent=4))
         res = self.cr.aggregate(query)
         result = {}
-        # print('query=',simplejson.dumps(query,indent=4))
+        # print('production query=',simplejson.dumps(query,indent=4))
         for r in res:
             pcode = r.get('product_code')
             result[pcode] = result.get(pcode, 0)        

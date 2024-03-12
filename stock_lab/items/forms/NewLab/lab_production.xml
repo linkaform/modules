@@ -9,7 +9,7 @@
             <next>1519</next>
             <padding_zeros>3</padding_zeros>
             <prefix>%y%W-</prefix>
-            <suffix />
+            <suffix>None</suffix>
         </folio>
     </advanced_options>
     <allow_page_navigation>True</allow_page_navigation>
@@ -1459,7 +1459,7 @@
                         <catalog_field_id>None</catalog_field_id>
                         <catalog_id>{{ catalog.warehouse.id }}</catalog_id>
                         <field_type>None</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -1539,7 +1539,7 @@
                         <catalog_field_id>{{ catalog.warehouse.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.warehouse.id }}</catalog_id>
                         <field_type>text</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -1793,7 +1793,7 @@
                         <catalog_field_id>{{ catalog.lab_inventory.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.lab_inventory.id }}</catalog_id>
                         <field_type>text</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -1872,7 +1872,7 @@
                         <catalog_field_id>{{ catalog.lab_inventory.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.lab_inventory.id }}</catalog_id>
                         <field_type>integer</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -1951,7 +1951,7 @@
                         <catalog_field_id>{{ catalog.lab_inventory.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.lab_inventory.id }}</catalog_id>
                         <field_type>text</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>True</last>
                         <related_catalog>{}</related_catalog>
@@ -2030,7 +2030,7 @@
                         <catalog_field_id>{{ catalog.lab_inventory.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.lab_inventory.id }}</catalog_id>
                         <field_type>integer</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -2109,7 +2109,7 @@
                         <catalog_field_id>None</catalog_field_id>
                         <catalog_id>{{ catalog.warehouse_location_destination.id }}</catalog_id>
                         <field_type>None</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -2192,7 +2192,7 @@
                         <catalog_field_id>{{ catalog.warehouse_location_destination.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.warehouse_location_destination.id }}</catalog_id>
                         <field_type>text</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -2204,7 +2204,7 @@
                     <default>False</default>
                     <default_value />
                     <descriptor>None</descriptor>
-                    <fav>False</fav>
+                    <fav>True</fav>
                     <field_id>65c12749cfed7d3a0e1a341b</field_id>
                     <field_type>catalog-select</field_type>
                     <grading_criteria>{}</grading_criteria>
@@ -2342,7 +2342,7 @@
                     <default>False</default>
                     <default_value />
                     <descriptor>None</descriptor>
-                    <fav>False</fav>
+                    <fav>True</fav>
                     <field_id>6319404d1b3cefa880fefcc8</field_id>
                     <field_type>integer</field_type>
                     <grading_criteria>{}</grading_criteria>
@@ -4497,5 +4497,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1708620207.0</updated_at>
+    <updated_at>1708717095.0</updated_at>
 </lkf>
