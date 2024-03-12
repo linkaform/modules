@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, date
 from linkaform_api import settings
 from account_settings import *
 
-from stock_reports import Reports
+from stock_report import Reports
 
 table_data = []
 plants = {}
@@ -30,8 +30,8 @@ def arrange_info(data, stage, recipes3={}, recipes4={}):
         pcode = x.get('product_code')
         x['plant_name'] = x.get('product_name')
         x['plant_code'] = x.get('product_code')
-        #try:
-        if True:
+        try:
+        #if True:
             if x.get('from') == 'Stage 3':
                 print('x=',x)
                 multi_rate = 1
@@ -73,13 +73,13 @@ def arrange_info(data, stage, recipes3={}, recipes4={}):
                     this_recipe = recipes4[x['product_code']][0]
                     overage = this_recipe.get('S4_overage', this_recipe.get('S4_overage_rate',0))
                 x['total_harvest'] = int(x['total_harvest'] * (1-overage) )
-        # except:
-        #     x['plant_name'] ='Recipe not found'
-        #     x['total_planting'] = 0
-        #     x['havest_week'] = 0
-        #     x['havest_month'] = 0
-        #     x['havest_year'] = 0
-        #     x['total_harvest'] = 0
+        except:
+            x['plant_name'] ='Recipe not found'
+            x['total_planting'] = 0
+            x['havest_week'] = 0
+            x['havest_month'] = 0
+            x['havest_year'] = 0
+            x['total_harvest'] = 0
         res.append(x)
     return res
 

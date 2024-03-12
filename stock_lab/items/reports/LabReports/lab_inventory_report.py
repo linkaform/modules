@@ -6,7 +6,7 @@ from linkaform_api import settings, network, utils
 from bson import ObjectId
 import time, pytz, math
 from datetime import datetime, timedelta
-from stock_reports import Reports
+from stock_report import Reports
 
 from account_settings import *
 
