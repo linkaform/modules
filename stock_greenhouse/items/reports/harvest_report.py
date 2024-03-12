@@ -118,7 +118,6 @@ def query_greenhouse_stock(plant_code=None, all_codes=[]):
         result.append(r)
     return result, all_codes
 
-
 def arrange_info(data, stage, recipes3={}, recipes4={}):
     col = 'forcast'
     global plants, WEEKS
