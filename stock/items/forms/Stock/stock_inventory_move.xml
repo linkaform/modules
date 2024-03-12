@@ -14,7 +14,7 @@
         <message>Your info was successfully captured!</message>
         <redirect_url>default</redirect_url>
     </confirmation>
-    <created_at>1709014135.0</created_at>
+    <created_at>1710217508.0</created_at>
     <description />
     <edit_public_records>False</edit_public_records>
     <edit_registers>True</edit_registers>
@@ -60,7 +60,7 @@
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
                     <help_text>Fecha</help_text>
-                    <label>Date</label>
+                    <label>Fecha</label>
                     <number_type>None</number_type>
                     <options>[]</options>
                     <properties>
@@ -127,10 +127,10 @@
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
                         <view_fields>
+                            <item>61ef32bcdf0ec2ba73dec33d</item>
+                            <item>65dec64a3199f9a040829243</item>
                             <item>6442e4831198daf81456f274</item>
                             <item>65ac6fbc070b93e656bd7fbe</item>
-                            <item>61ef32bcdf0ec2ba73dec33d</item>
-                            <item>620a9ee0a449b98114f61d76</item>
                             <item>620a9ee0a449b98114f61d77</item>
                         </view_fields>
                         <view_index>0</view_index>
@@ -138,10 +138,10 @@
                     <catalog_fields>
                         <item>61ef32bcdf0ec2ba73dec33e</item>
                         <item>6441d33a153b3521f5b2afc9</item>
+                        <item>61ef32bcdf0ec2ba73dec33d</item>
+                        <item>65dec64a3199f9a040829243</item>
                         <item>6442e4831198daf81456f274</item>
                         <item>65ac6fbc070b93e656bd7fbe</item>
-                        <item>61ef32bcdf0ec2ba73dec33d</item>
-                        <item>620a9ee0a449b98114f61d76</item>
                         <item>620a9ee0a449b98114f61d77</item>
                     </catalog_fields>
                     <catalog_relation>None</catalog_relation>
@@ -155,7 +155,7 @@
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
                     <help_text>Seleccione Planta</help_text>
-                    <label>Plant</label>
+                    <label>Producto</label>
                     <number_type>None</number_type>
                     <options>[]</options>
                     <properties>
@@ -225,13 +225,13 @@
                     <default_value />
                     <descriptor>None</descriptor>
                     <fav>True</fav>
-                    <field_id>6442e4831198daf81456f274</field_id>
+                    <field_id>61ef32bcdf0ec2ba73dec33d</field_id>
                     <field_type>catalog-select</field_type>
                     <grading_criteria>{}</grading_criteria>
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
-                    <help_text>None</help_text>
-                    <label>Warehouse Name</label>
+                    <help_text>Codigo de Planta</help_text>
+                    <label>Codigo de Producto</label>
                     <number_type>None</number_type>
                     <options>[]</options>
                     <properties>
@@ -245,7 +245,7 @@
                         <fieldId>[]</fieldId>
                         <file_name />
                         <file_name_array>[]</file_name_array>
-                        <help_text>False</help_text>
+                        <help_text>True</help_text>
                         <icon>{}</icon>
                         <image_origin>None</image_origin>
                         <input_parameter>[]</input_parameter>
@@ -288,7 +288,7 @@
                         <catalog_field_id>{{ catalog.stock_inventory.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.stock_inventory.id }}</catalog_id>
                         <field_type>text</field_type>
-                        <filters>None</filters>
+                        <filters />
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -300,14 +300,14 @@
                     <default>False</default>
                     <default_value />
                     <descriptor>None</descriptor>
-                    <fav>True</fav>
-                    <field_id>65ac6fbc070b93e656bd7fbe</field_id>
+                    <fav>False</fav>
+                    <field_id>65dec64a3199f9a040829243</field_id>
                     <field_type>catalog-select</field_type>
                     <grading_criteria>{}</grading_criteria>
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
                     <help_text>None</help_text>
-                    <label>Location</label>
+                    <label>SKU</label>
                     <number_type>None</number_type>
                     <options>[]</options>
                     <properties>
@@ -377,13 +377,13 @@
                     <default_value />
                     <descriptor>None</descriptor>
                     <fav>True</fav>
-                    <field_id>61ef32bcdf0ec2ba73dec33d</field_id>
+                    <field_id>6442e4831198daf81456f274</field_id>
                     <field_type>catalog-select</field_type>
                     <grading_criteria>{}</grading_criteria>
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
-                    <help_text>Codigo de Planta</help_text>
-                    <label>Plant Code</label>
+                    <help_text>None</help_text>
+                    <label>Almacen</label>
                     <number_type>None</number_type>
                     <options>[]</options>
                     <properties>
@@ -397,7 +397,7 @@
                         <fieldId>[]</fieldId>
                         <file_name />
                         <file_name_array>[]</file_name_array>
-                        <help_text>True</help_text>
+                        <help_text>False</help_text>
                         <icon>{}</icon>
                         <image_origin>None</image_origin>
                         <input_parameter>[]</input_parameter>
@@ -439,7 +439,7 @@
                     <catalog>
                         <catalog_field_id>{{ catalog.stock_inventory.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.stock_inventory.id }}</catalog_id>
-                        <field_type>integer</field_type>
+                        <field_type>text</field_type>
                         <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
@@ -453,13 +453,13 @@
                     <default_value />
                     <descriptor>None</descriptor>
                     <fav>True</fav>
-                    <field_id>620a9ee0a449b98114f61d76</field_id>
+                    <field_id>65ac6fbc070b93e656bd7fbe</field_id>
                     <field_type>catalog-select</field_type>
                     <grading_criteria>{}</grading_criteria>
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
                     <help_text>None</help_text>
-                    <label>Cut Day</label>
+                    <label>Ubicacion</label>
                     <number_type>None</number_type>
                     <options>[]</options>
                     <properties>
@@ -535,7 +535,7 @@
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
                     <help_text>None</help_text>
-                    <label>Lot Number</label>
+                    <label>Numero de Lote</label>
                     <number_type>None</number_type>
                     <options>[]</options>
                     <properties>
@@ -611,7 +611,7 @@
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
                     <help_text>None</help_text>
-                    <label>Botanical Name</label>
+                    <label>Nombre de Producto</label>
                     <number_type>None</number_type>
                     <options>[]</options>
                     <properties>
@@ -686,8 +686,8 @@
                     <grading_criteria>{}</grading_criteria>
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
-                    <help_text>Cantidad de Charolas Actuales</help_text>
-                    <label>Actual Flats on Hand</label>
+                    <help_text />
+                    <label>Cantidad Actual</label>
                     <number_type>None</number_type>
                     <options>[]</options>
                     <properties>
@@ -701,7 +701,7 @@
                         <fieldId>[]</fieldId>
                         <file_name />
                         <file_name_array>[]</file_name_array>
-                        <help_text>True</help_text>
+                        <help_text>False</help_text>
                         <icon>{}</icon>
                         <image_origin>None</image_origin>
                         <input_parameter>[]</input_parameter>
@@ -818,14 +818,14 @@
                     <grading_criteria>{}</grading_criteria>
                     <group>None</group>
                     <groups_fields>
-                        <item>65dd7827a5a5723f76947b7c</item>
+                        <item>65efd8f10577a332fcf2ea91</item>
                         <item>65bdc71b3e183f49761a33b9</item>
                         <item>65c12749cfed7d3a0e1a341b</item>
                         <item>6442e4cc45983bf1778ec17d</item>
                         <item>ffff00000000000000000001</item>
                     </groups_fields>
                     <help_text>Nueva Ubicacion</help_text>
-                    <label>New Location</label>
+                    <label>Nueva Ubicacion</label>
                     <number_type>None</number_type>
                     <options>[]</options>
                     <properties>
@@ -1307,8 +1307,8 @@
                         <group_set_id>0</group_set_id>
                     </group>
                     <groups_fields>[]</groups_fields>
-                    <help_text>Cantidad de Charolas</help_text>
-                    <label>Contenedores</label>
+                    <help_text>Unidades a mover a esta ubicacion</help_text>
+                    <label>Piezas</label>
                     <number_type>None</number_type>
                     <options>[]</options>
                     <properties>
@@ -1445,13 +1445,13 @@
         <max_points>0</max_points>
     </grading>
     <has_voucher>False</has_voucher>
-    <name>Lab Inventory Move</name>
+    <name>Inventory Move</name>
     <notification>
         <active>False</active>
     </notification>
     <process_ids>[]</process_ids>
     <public>False</public>
-    <resource_uri>/api/infosync/form/115920/</resource_uri>
+    <resource_uri>/api/infosync/form/116450/</resource_uri>
     <start_event_id>None</start_event_id>
     <template_conf>
         <account_id>None</account_id>
@@ -1471,5 +1471,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1709014340.0</updated_at>
+    <updated_at>1710219152.0</updated_at>
 </lkf>

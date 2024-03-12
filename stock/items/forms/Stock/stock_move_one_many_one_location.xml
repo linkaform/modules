@@ -676,7 +676,7 @@
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>
-                            <catalog_id>115911</catalog_id>
+                            <catalog_id>{{ catalog.warehouse_locations.id }}</catalog_id>
                             <related_fields>
                                 <item>65ac6fbc070b93e656bd7fbe</item>
                                 <item>6442e4831198daf81456f274</item>

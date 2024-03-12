@@ -50,7 +50,7 @@
                     <created>True</created>
                     <deleted>True</deleted>
                     <edited>True</edited>
-                    <run_multiple_times>False</run_multiple_times>
+                    <run_multiple_times>True</run_multiple_times>
                     <runtime>before</runtime>
                 </record>
                 <wf_fields>
@@ -106,7 +106,7 @@
                     <created>True</created>
                     <deleted>False</deleted>
                     <edited>True</edited>
-                    <run_multiple_times>False</run_multiple_times>
+                    <run_multiple_times>True</run_multiple_times>
                     <runtime>after</runtime>
                 </record>
                 <wf_fields>
@@ -139,17 +139,17 @@
                     <configuration>
                         <synched_catalogs>
                             <item>
-                                <couch_id>651f2f5bba4eb7f44211c214</couch_id>
-                                <id>110190</id>
-                                <name>Inventory</name>
+                                <couch_id>{{ catalog.stock_inventory.obj_id}}</couch_id>
+                                <id>{{ catalog.stock_inventory.id}}</id>
+                                <name>Sock Inventory</name>
                             </item>
                         </synched_catalogs>
                     </configuration>
-                    <name>None</name>
+                    <name>Sync Catalog</name>
                 </item>
             </actions>
             <id>65dfa9163199f9a04082928e</id>
-            <name>None</name>
+            <name>Sync Catalog</name>
             <rules>
                 <metadata>
                     <connection>[]</connection>
@@ -172,7 +172,7 @@
                     <created>True</created>
                     <deleted>True</deleted>
                     <edited>True</edited>
-                    <run_multiple_times>False</run_multiple_times>
+                    <run_multiple_times>True</run_multiple_times>
                     <runtime>after</runtime>
                 </record>
                 <wf_fields>
