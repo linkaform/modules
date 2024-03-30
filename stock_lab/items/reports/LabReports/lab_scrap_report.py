@@ -5,7 +5,7 @@ from datetime import timedelta, datetime
 from linkaform_api import settings
 from account_settings import *
 
-from stock_reports import Reports
+from stock_report import Reports
 
     
 print('whcih', Reports)
