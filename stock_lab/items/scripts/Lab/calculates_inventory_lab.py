@@ -10,7 +10,6 @@ from account_settings import *
 
 class Stock(Stock):
 
-
     def get_product_info(self, **kwargs):
         try:
             product_code, lot_number, warehouse, location = self.get_product_lot_location()
@@ -49,6 +48,10 @@ class Stock(Stock):
             self.answers[self.f['inventory_status']] = 'done'
         else:
             self.answers[self.f['inventory_status']] = 'active'
+        #Checks to see if the warehouse is of type stock if not, is set the status to done
+        wh_type = self.warehouse_type(warehouse)
+        if wh_type.lower() not in  ('stock'):
+            self.answers[self.f['inventory_status']] = 'done'
         # self.answers.update({self.f['inv_group']:self.get_grading()})
         return self.answers
 

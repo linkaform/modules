@@ -61,14 +61,16 @@ if __name__ == '__main__':
         print('tiene un res...', res)
         answers[stock_obj.f['move_status']] = 'done'
         #TODO, hace este pedazo atomico, ya que si se crea uno y se actualiza otro es distinto
-        if status_code == 201 or update_ok:
+        if status_code in (200,201,202) or update_ok:
             #todo poner sttatus en cada linea
+            print('updating status code...')
             sys.stdout.write(simplejson.dumps({
                 'status': 101,
                 'replace_ans':  answers
             }))
 
         else:
+            print('se va por el else.')
             msg_error_app = 'No error found'
             try:
                 for r in res:
