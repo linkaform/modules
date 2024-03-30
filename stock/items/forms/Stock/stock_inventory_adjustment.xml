@@ -1507,7 +1507,7 @@
         <max_points>0</max_points>
     </grading>
     <has_voucher>False</has_voucher>
-    <name>Lab Inventory Adjustment</name>
+    <name>Stock Inventory Adjustment</name>
     <notification>
         <active>False</active>
     </notification>

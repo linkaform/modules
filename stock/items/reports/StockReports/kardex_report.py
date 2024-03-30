@@ -5,18 +5,19 @@ from datetime import timedelta, datetime
 from linkaform_api import settings
 from account_settings import *
 
-from stock_reports import Reports
+print('inicia....')
+from stock_report import Reports
 
     
-print('whcih', Reports)
+print('ESTE....', Reports)
 
 if __name__ == '__main__':
     report_obj = Reports(settings, sys_argv=sys.argv, use_api=True)
     report_obj.console_run()
     #getFilters
+    print('data',report_obj.data.get('data'))
     option = report_obj.data.get('data').get("option",0)
     product_code = report_obj.data.get('data').get("product_code")
-    print('data',report_obj.data.get('data'))
     print('option',option)
     print('product_code',product_code)
     if option == 'getFilters': 

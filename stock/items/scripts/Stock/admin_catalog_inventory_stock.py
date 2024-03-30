@@ -16,7 +16,6 @@ fdict ={
     'product_name':'61ef32bcdf0ec2ba73dec33e',
     'warehouse_catalog':'6442e4831198daf81456f273',
     'stock_actuals':'6441d33a153b3521f5b2afc9',
-
 }
 
 

@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <lkf>
-    <form_id>{{ form.stock_workorders_seleccion_de_producto.id }}</form_id>
+    <form_id>{{ form.stock_move_many_one_one.id }}</form_id>
     <id>65d58874e73ef202842c7a83</id>
     <rules>
         <item>

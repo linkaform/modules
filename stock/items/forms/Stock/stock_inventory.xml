@@ -9,7 +9,7 @@
             <next>15</next>
             <padding_zeros>2</padding_zeros>
             <prefix>%Y%W%j</prefix>
-            <suffix />
+            <suffix>None</suffix>
         </folio>
     </advanced_options>
     <allow_page_navigation>True</allow_page_navigation>
@@ -18,7 +18,7 @@
         <message>Your info was successfully captured!</message>
         <redirect_url>default</redirect_url>
     </confirmation>
-    <created_at>1709013738.0</created_at>
+    <created_at>1710393768.0</created_at>
     <description />
     <edit_public_records>False</edit_public_records>
     <edit_registers>True</edit_registers>
@@ -306,8 +306,8 @@
                         <item>621fca56ee94313e8d8c5e2e</item>
                         <item>6205f73281bb36a6f1573358</item>
                         <item>621fc992a7ebfd603a8c5e2e</item>
-                        <item>61ef32bcdf0ec2ba73dec343</item>
                         <item>61ef32bcdf0ec2ba73dec342</item>
+                        <item>61ef32bcdf0ec2ba73dec343</item>
                         <item>61ef32bcdf0ec2ba73dec33d</item>
                         <item>65dec64a3199f9a040829243</item>
                         <item>6209705080c17c97320e3382</item>
@@ -1002,13 +1002,13 @@
                     <default_value />
                     <descriptor>None</descriptor>
                     <fav>False</fav>
-                    <field_id>61ef32bcdf0ec2ba73dec343</field_id>
+                    <field_id>61ef32bcdf0ec2ba73dec342</field_id>
                     <field_type>catalog-detail</field_type>
                     <grading_criteria>{}</grading_criteria>
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
                     <help_text>None</help_text>
-                    <label>Type</label>
+                    <label>Categoria</label>
                     <number_type>None</number_type>
                     <options>[]</options>
                     <properties>
@@ -1078,13 +1078,13 @@
                     <default_value />
                     <descriptor>None</descriptor>
                     <fav>False</fav>
-                    <field_id>61ef32bcdf0ec2ba73dec342</field_id>
+                    <field_id>61ef32bcdf0ec2ba73dec343</field_id>
                     <field_type>catalog-detail</field_type>
                     <grading_criteria>{}</grading_criteria>
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
                     <help_text>None</help_text>
-                    <label>Categoria</label>
+                    <label>Type</label>
                     <number_type>None</number_type>
                     <options>[]</options>
                     <properties>
@@ -1209,7 +1209,7 @@
                     <default>False</default>
                     <default_value />
                     <descriptor>None</descriptor>
-                    <fav>True</fav>
+                    <fav>False</fav>
                     <field_id>620a9ee0a449b98114f61d75</field_id>
                     <field_type>integer</field_type>
                     <grading_criteria>{}</grading_criteria>
@@ -1275,7 +1275,7 @@
                     <default>False</default>
                     <default_value />
                     <descriptor>None</descriptor>
-                    <fav>True</fav>
+                    <fav>False</fav>
                     <field_id>620a9ee0a449b98114f61d76</field_id>
                     <field_type>integer</field_type>
                     <grading_criteria>{}</grading_criteria>
@@ -1341,7 +1341,7 @@
                     <default>False</default>
                     <default_value />
                     <descriptor>None</descriptor>
-                    <fav>True</fav>
+                    <fav>False</fav>
                     <field_id>622bb9946d0d6fef17fe0842</field_id>
                     <field_type>integer</field_type>
                     <grading_criteria>{}</grading_criteria>
@@ -1407,7 +1407,7 @@
                     <default>False</default>
                     <default_value />
                     <descriptor>None</descriptor>
-                    <fav>True</fav>
+                    <fav>False</fav>
                     <field_id>65dfecbf3199f9a04082955e</field_id>
                     <field_type>date</field_type>
                     <grading_criteria>{}</grading_criteria>
@@ -2067,7 +2067,7 @@
                     <default>False</default>
                     <default_value />
                     <descriptor>None</descriptor>
-                    <fav>True</fav>
+                    <fav>False</fav>
                     <field_id>6441d33a153b3521f5b2afcb</field_id>
                     <field_type>select</field_type>
                     <grading_criteria>{}</grading_criteria>
@@ -2231,7 +2231,7 @@
                     <default>True</default>
                     <default_value>grading_pending</default_value>
                     <descriptor>None</descriptor>
-                    <fav>True</fav>
+                    <fav>False</fav>
                     <field_id>644c36f1d20db114694a495a</field_id>
                     <field_type>select</field_type>
                     <grading_criteria>{}</grading_criteria>
@@ -2318,7 +2318,7 @@
     </notification>
     <process_ids>[]</process_ids>
     <public>False</public>
-    <resource_uri>/api/infosync/form/115918/</resource_uri>
+    <resource_uri>/api/infosync/form/116577/</resource_uri>
     <start_event_id>None</start_event_id>
     <template_conf>
         <account_id>None</account_id>
@@ -2338,5 +2338,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1709174042.0</updated_at>
+    <updated_at>1710431996.0</updated_at>
 </lkf>
