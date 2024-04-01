@@ -14,34 +14,12 @@ if __name__ == '__main__':
     status_code = stock_obj.do_scrap()
     stock_obj.answers[stock_obj.f['inv_scrap_status']] = 'done'
     update_ok = False
-    print()
+    print('status_code33333',status_code)
+    print('status_code33333',status_code.get('status_code'))
     if status_code.get('status_code') == 202:
         stock_obj.answers[stock_obj.f['inv_scrap_status']] = 'done'
+        print('new answers=', stock_obj.answers)
         sys.stdout.write(simplejson.dumps({
             'status': 101,
             'replace_ans':  stock_obj.answers
         }))
-
-    # try:
-    #     update_ok = status_code.raw_result['updatedExisting']
-    # except:
-    #     stock_obj.LKFException( simplejson.dumps( "Error updating scrap" ) )
-
-    # if update_ok:
-    #     sys.stdout.write(simplejson.dumps({
-    #         'status': 101,
-    #         'replace_ans': stock_obj.answers
-    #     }))
-
-    # else:
-    #     msg = "One or more of the moves were not executed correctly"
-    #     msg_error_app = {
-    #             "63f8e128694361f17f7b59d5": {
-    #                 "msg": [msg],
-    #                 "label": "Please check stock moves",
-    #                 "error":[]
-
-    #             }
-    #         }
-    #     stock_obj.LKFException( simplejson.dumps( msg_error_app ) )
- 

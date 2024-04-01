@@ -64,6 +64,12 @@
                         <item>
                             <points>None</points>
                             <selected>False</selected>
+                            <value>scrap</value>
+                            <label>Scrap</label>
+                        </item>
+                        <item>
+                            <points>None</points>
+                            <selected>False</selected>
                             <value>stock</value>
                             <label>Stock</label>
                         </item>
@@ -84,6 +90,12 @@
                             <selected>False</selected>
                             <value>production_asset</value>
                             <label>Production Asset</label>
+                        </item>
+                        <item>
+                            <points>None</points>
+                            <selected>False</selected>
+                            <value>Transit</value>
+                            <label>Transit</label>
                         </item>
                     </options>
                 </item>

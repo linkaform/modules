@@ -1,61 +1,33 @@
 <?xml version='1.0' encoding='utf-8'?>
 <lkf>
     <form_id>{{ form.lab_inventory.id }}</form_id>
-    <id>64469b9e1e3525034c36ca70</id>
+    <id>65e8fec08b019ac4593ef4fc</id>
     <workflows>
         <item>
             <actions>
                 <item>
-                    <_id>64469b9e1e3525034c36ca63</_id>
+                    <_id>65e8ff178b019ac4593ef501</_id>
                     <action_id>7</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
-                        <arguments>{}</arguments>
-                        <integration>None</integration>
                         <script>
-                            <created_at>2023-04-24T15:08:52.166808</created_at>
+                            <created_at>2024-01-26T20:20:32.448111</created_at>
                             <deleted_at>None</deleted_at>
                             <end_date>None</end_date>
                             <id>{{ script.calculates_inventory_lab.id }}</id>
                             <is_fileShared>False</is_fileShared>
                             <itype>script</itype>
                             <name>{{ script.calculates_inventory_lab.name }}</name>
-                            <start_date>2023-04-24T15:08:52.165089</start_date>
-                            <updated_at>2023-04-24T15:08:52.409099</updated_at>
+                            <start_date>2024-01-26T20:20:32.445888</start_date>
+                            <updated_at>2024-03-04T03:09:52.398961</updated_at>
                         </script>
-                        <scriptArguments>
-                            <item>
-                                <label>None</label>
-                                <value>None</value>
-                            </item>
-                        </scriptArguments>
-                        <scriptQuery>None</scriptQuery>
-                        <selectedUser>None</selectedUser>
-                        <user>RECORD_USER</user>
-                        <userOptions>
-                            <item>
-                                <id>SCRIPT_OWNER</id>
-                                <name>Script owner</name>
-                            </item>
-                            <item>
-                                <id>FORM_OWNER</id>
-                                <name>Form owner</name>
-                            </item>
-                            <item>
-                                <id>OWNER_ACCOUNT_EMAIL</id>
-                                <name>Account owner</name>
-                            </item>
-                            <item>
-                                <id>RECORD_USER</id>
-                                <name>User that answers the form</name>
-                            </item>
-                        </userOptions>
+                        <user>SCRIPT_OWNER</user>
                     </configuration>
-                    <name>None</name>
+                    <name>calcs inventroy</name>
                 </item>
             </actions>
-            <id>64469b9e1e3525034c36ca67</id>
-            <name>calculates</name>
+            <id>65e8ff178b019ac4593ef504</id>
+            <name>calcs inventroy</name>
             <rules>
                 <metadata>
                     <connection>[]</connection>
@@ -66,9 +38,9 @@
                             <year>2014</year>
                         </period>
                         <range>
-                            <end>2023-04-25T06:00:00.000Z</end>
+                            <end>2024-03-07T06:00:00.000Z</end>
                             <selected>False</selected>
-                            <start>2023-04-24T15:03:25.092Z</start>
+                            <start>2024-03-06T23:38:57.665Z</start>
                         </range>
                     </date>
                     <grading>{}</grading>
@@ -76,10 +48,10 @@
                 </metadata>
                 <record>
                     <created>True</created>
-                    <deleted>False</deleted>
+                    <deleted>True</deleted>
                     <edited>True</edited>
                     <run_multiple_times>True</run_multiple_times>
-                    <runtime>before</runtime>
+                    <runtime>after</runtime>
                 </record>
                 <wf_fields>
                     <operator>all</operator>
@@ -90,7 +62,7 @@
         <item>
             <actions>
                 <item>
-                    <_id>64ed5fd07327a38df3ec2134</_id>
+                    <_id>65e8ff178b019ac4593ef502</_id>
                     <action_id>7</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -103,15 +75,15 @@
                             <itype>script</itype>
                             <name>{{ script.lab_delete_catalog_inventory.name }}</name>
                             <start_date>2024-01-26T20:20:48.900197</start_date>
-                            <updated_at>2024-02-19T22:47:31.031392</updated_at>
+                            <updated_at>2024-02-21T05:26:54.889992</updated_at>
                         </script>
                         <user>SCRIPT_OWNER</user>
                     </configuration>
-                    <name>Delete catalogo record</name>
+                    <name>Delete catalog record</name>
                 </item>
             </actions>
-            <id>64ed5fd07327a38df3ec213e</id>
-            <name>Status Done</name>
+            <id>65e8ff178b019ac4593ef507</id>
+            <name>Delete catalog record</name>
             <rules>
                 <metadata>
                     <connection>[]</connection>
@@ -122,9 +94,9 @@
                             <year>2014</year>
                         </period>
                         <range>
-                            <end>2023-08-29T05:00:00.000Z</end>
+                            <end>2024-03-07T06:00:00.000Z</end>
                             <selected>False</selected>
-                            <start>2023-08-29T02:58:07.698Z</start>
+                            <start>2024-03-06T23:38:57.665Z</start>
                         </range>
                     </date>
                     <grading>{}</grading>
@@ -134,7 +106,7 @@
                     <created>True</created>
                     <deleted>False</deleted>
                     <edited>True</edited>
-                    <run_multiple_times>True</run_multiple_times>
+                    <run_multiple_times>False</run_multiple_times>
                     <runtime>after</runtime>
                 </record>
                 <wf_fields>
@@ -161,7 +133,7 @@
         <item>
             <actions>
                 <item>
-                    <_id>65d41ed916608986f220b87c</_id>
+                    <_id>65e8ff178b019ac4593ef503</_id>
                     <action_id>12</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -173,10 +145,10 @@
                             </item>
                         </synched_catalogs>
                     </configuration>
-                    <name>None</name>
+                    <name>sync catalog</name>
                 </item>
             </actions>
-            <id>65d41ed916608986f220b883</id>
+            <id>65e8ff178b019ac4593ef50a</id>
             <name>sync catalog</name>
             <rules>
                 <metadata>
@@ -188,9 +160,9 @@
                             <year>2014</year>
                         </period>
                         <range>
-                            <end>2024-02-20T06:00:00.000Z</end>
+                            <end>2024-03-07T06:00:00.000Z</end>
                             <selected>False</selected>
-                            <start>2024-02-20T03:38:36.293Z</start>
+                            <start>2024-03-06T23:38:57.665Z</start>
                         </range>
                     </date>
                     <grading>{}</grading>

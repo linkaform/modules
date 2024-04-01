@@ -17,6 +17,18 @@
                     </field>
                     <value> </value>
                 </item>
+                <item>
+                    <condition>is__empty=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>62e9d296cf8d5b373b24e028</field_id>
+                        <group_id>None</group_id>
+                        <id>62e9d296cf8d5b373b24e028</id>
+                        <label>Move Status</label>
+                        <type>select</type>
+                    </field>
+                    <value> </value>
+                </item>
             </conditions>
             <element_ids>[]</element_ids>
             <empty>False</empty>
@@ -34,7 +46,7 @@
                     <field_id>61ef32bcdf0ec2ba73dec33d</field_id>
                     <group_id>None</group_id>
                     <id>61ef32bcdf0ec2ba73dec33d</id>
-                    <label>Plant Code</label>
+                    <label>Product Code</label>
                     <type>catalog-select</type>
                 </item>
                 <item>
@@ -68,6 +80,14 @@
                     <id>620ad6247a217dbcb888d175</id>
                     <label>Inventory Status</label>
                     <type>select</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>620a9ee0a449b98114f61d77</field_id>
+                    <group_id>None</group_id>
+                    <id>620a9ee0a449b98114f61d77</id>
+                    <label>Lot Number</label>
+                    <type>text</type>
                 </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>

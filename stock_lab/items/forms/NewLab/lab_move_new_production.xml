@@ -6,10 +6,10 @@
             <_id>form_113824</_id>
             <config>True</config>
             <inc_by>1</inc_by>
-            <next>305</next>
+            <next>313</next>
             <padding_zeros>4</padding_zeros>
             <prefix>%W-</prefix>
-            <suffix>None</suffix>
+            <suffix />
         </folio>
     </advanced_options>
     <allow_page_navigation>True</allow_page_navigation>
@@ -515,7 +515,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>726243620b91fd6</rule_id>
+                            <rule_index>0</rule_index>
+                            <rule_type>disabled</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
                         <catalog_field_id>{{ catalog.product_recipe.obj_id }}</catalog_field_id>
@@ -1123,7 +1130,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>726243620b91fd6</rule_id>
+                            <rule_index>0</rule_index>
+                            <rule_type>disabled</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -2947,6 +2961,7 @@
                     <required>True</required>
                     <rules>
                         <item>726243620b91fd6</item>
+                        <item>726243620b91fd6</item>
                     </rules>
                     <show_for_rule>True</show_for_rule>
                     <validations>{}</validations>
@@ -2984,14 +2999,16 @@
         <item>
             <_type>single_record</_type>
             <default>True</default>
-            <description>Template Magnolia Labels</description>
-            <id>317</id>
-            <name>Magnolia - Labels</name>
+            <description>Template for tocker of form Inventory Move - New Lot Production v2.
+</description>
+            <id>417</id>
+            <name>Magnolia - ticket inventory move</name>
             <owner>/api/infosync/user/9908/</owner>
             <paginate>False</paginate>
-            <pdfName>{% raw %} Magnolia  Labels - {{record.folio}} {% endraw %} </pdfName>
+            <pdfName>{% raw %} Labels - {{record.folio}} {% endraw %} </pdfName>
             <properties>{}</properties>
-            <resource_uri>/api/infosync/templates/317/</resource_uri>
+            <resource_uri>/api/infosync/templates/417/</resource_uri>
+            <script>{}</script>
         </item>
     </templates>
     <timer_config>
@@ -3002,5 +3019,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1708484965.0</updated_at>
+    <updated_at>1709132601.0</updated_at>
 </lkf>

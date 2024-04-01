@@ -13,6 +13,8 @@ from account_settings import *
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)
     stock_obj.console_run()
+    stock_obj.merge_stock_records()
+    
     current_record = stock_obj.current_record
     folio =current_record.get('folio')
     # print('current_record',current_record)
@@ -30,6 +32,7 @@ if __name__ == '__main__':
     if query:
         stock_obj.cr.update_one(query, {'$set': {'answers':answers}})
     current_record['answers'].update(answers)
+    stock_obj.answers['este'] = 'aqui.....'
 
     sys.stdout.write(simplejson.dumps({
         'status': 101,

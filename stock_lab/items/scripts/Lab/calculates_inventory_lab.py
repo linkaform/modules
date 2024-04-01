@@ -10,7 +10,6 @@ from account_settings import *
 
 class Stock(Stock):
 
-
     def get_product_info(self, **kwargs):
         try:
             product_code, lot_number, warehouse, location = self.get_product_lot_location()
@@ -20,10 +19,11 @@ class Stock(Stock):
         except Exception as e:
             print('**********************************************')
             self.LKFException('Warehosue and product code are requierd')
+        print(f'*******************{product_code}***************************')
         yearWeek = str(self.answers[self.f['product_lot_created_week']])
         if len(str(yearWeek)) <=5:
             week = self.answers[self.f['production_cut_week']]
-            yearWeek = f'{yearWeek}{week:02}'
+            yearWeek = f'{str(yearWeek)[:4]}{week:02}'
             self.answers[self.f['product_lot_created_week']] = int(yearWeek)
         growth_week = int(self.answers[self.CATALOG_PRODUCT_RECIPE_OBJ_ID].get(self.f['reicpe_growth_weeks'],0))
         if growth_week > 0 :
@@ -48,6 +48,10 @@ class Stock(Stock):
             self.answers[self.f['inventory_status']] = 'done'
         else:
             self.answers[self.f['inventory_status']] = 'active'
+        #Checks to see if the warehouse is of type stock if not, is set the status to done
+        wh_type = self.warehouse_type(warehouse)
+        if wh_type.lower() not in  ('stock'):
+            self.answers[self.f['inventory_status']] = 'done'
         # self.answers.update({self.f['inv_group']:self.get_grading()})
         return self.answers
 
@@ -69,7 +73,6 @@ if __name__ == '__main__':
         query = {'folio':stock_obj.folio, 'form_id':stock_obj.form_id }
     if query:
         stock_obj.cr.update_one(query, {'$set': {'answers':stock_obj.answers}})
-
     sys.stdout.write(simplejson.dumps({
         'status': 101,
         'replace_ans': stock_obj.answers
