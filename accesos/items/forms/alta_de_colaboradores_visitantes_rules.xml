@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<lkf>
+    <form_id>{{ form.alta_de_colaboradores_visitantes.id }}</form_id>
+    <id>65cbdd66b93e7775469f47e0</id>
+    <rules>[]</rules>
+</lkf>
