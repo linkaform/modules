@@ -6,6 +6,7 @@ from linkaform_api import settings, network, utils
 from bson import ObjectId
 import time
 from datetime import datetime, timedelta
+from math import floor
 
 from stock_report import Reports
 
@@ -213,68 +214,68 @@ def set_cut_hours(requierd, recipe, recipeS3):
                 cut_prod = float(cut_prod)
             except:
                 cut_prod = 168
-            hours[yearweek_S2] += qty / cut_prod
+            hours[yearweek_S2] += round(qty / cut_prod,2)
         if stage == 'S3':
             cut_prod = recipeS3.get('cut_productivity',120)
             try:
                 cut_prod = float(cut_prod)
             except:
                 cut_prod = 120
-            hours[yearweek_S3] += qty / cut_prod
+            hours[yearweek_S3] += round(qty / cut_prod,2)
 
-        hours[yearweek] += qty / cut_prod
-    set_chart_req(hours , type='hours')
+        hours[yearweek] += round(qty / cut_prod,2)
+    set_chart_req(hours , row_type='hours')
     return hours
 
 def forcast_actualas(actuals, plant_recipe):
     forcast = {}
     if plant_recipe.get('S2_mult_rate'):
         # forcast_week = get_forcast_week(year_week, plant_recipe.get('S2_growth_weeks'))
-        forcast["forcastS2"] = actuals * plant_recipe.get('S2_mult_rate')
+        forcast["forcastS2"] = floor(actuals * plant_recipe.get('S2_mult_rate'))
     if plant_recipe.get('S3_mult_rate'):
         # forcast_week = get_forcast_week(year_week, plant_recipe.get('S3_growth_weeks'))
-        forcast["forcastS3"] = actuals * plant_recipe.get('S3_mult_rate')
+        forcast["forcastS3"] = floor(actuals * plant_recipe.get('S3_mult_rate'))
     return forcast
 
-def set_chart_req(row, type='req'):
+def set_chart_req(row, row_type='req'):
     global chart_data
     for key, value in row.items():
-        if type == 'actuals':
+        if row_type == 'actuals':
             if not 'actuals_forcast' in key:
                 continue
             stage = key[15:-6]
         else:
-            stage = key[len(type):-6]
+            stage = key[len(row_type):-6]
 
         yearweek = key[-6:]
 
         if yearweek not in chart_data["labels"]:
             chart_data["labels"].append(yearweek)
 
-        if not stage or type == 'actuals':
-            if type == 'actuals':
+        if not stage or row_type == 'actuals':
+            if row_type == 'actuals':
                 key_type = 'forcastS2'
             else:
                 key_type = 'hoursT'
-        if type =='req':
-            key_type = '{}{}'.format(key[:len(type)], stage)
+        if row_type =='req':
+            key_type = '{}{}'.format(key[:len(row_type)], stage)
         else:
-            if type == 'hours' and stage:
-                key_type = '{}{}'.format(key[:len(type)], stage)
+            if row_type == 'hours' and stage:
+                key_type = '{}{}'.format(key[:len(row_type)], stage)
         if not chart_data.get(key_type):
             chart_data[key_type]={
                 "label":chart_cat_dict[key_type],
                 "data":{}
             }
-            if type =='hours':
+            if row_type =='hours':
                 chart_data[key_type].update({
-                    "type":"line",
+                    "row_type":"line",
                     "borderColor":elem_color[key_type],
                     "yAxisID":"ay",
                 })
-            if type == 'req' or type == 'actuals':
+            if row_type == 'req' or row_type == 'actuals':
                 chart_data[key_type].update({
-                    "type":"bar",
+                    "row_type":"bar",
                     "backgroundColor":elem_color[key_type],
                     "yAxisID":"ay1",
                 })
@@ -287,9 +288,9 @@ def set_chart_req(row, type='req'):
         #         "Categories":{"reqS2":0,"reqS3":0, "forcastS2":0},
         #         "LineCategory":{"hoursS3":0, "hoursS2":0,"hoursT":0}
         #         }
-        # if type == 'req' or type == 'actuals':
+        # if row_type == 'req' or row_type == 'actuals':
         #     chart_data[yearweek]["Categories"][key_type] +=  float(value)
-        # if type == 'hours':
+        # if row_type == 'hours':
         #     chart_data[yearweek]["LineCategory"][key_type] +=  float(value)
     return True
 
@@ -410,9 +411,9 @@ class Reports(Reports):
             {"$project":{
                 "_id":1,
                 "plant_code":f"$answers.{self.SKU_OBJ_ID}.{self.f['product_code']}",
-                "plant_name":{ "$arrayElemAt": [ f"$answers.{self.PRODUCT_OBJ_ID}.{self.f['product_name']}", 0 ] },
+                "plant_name":{ "$arrayElemAt": [ f"$answers.{self.SKU_OBJ_ID}.{self.f['product_name']}", 0 ] },
                 "actuals":f"$answers.{self.f['actual_eaches_on_hand']}",
-                "year_week":f"answers.{self.f['new_cutweek']}",
+                "year_week":{"$toInt":f"$answers.{self.f['new_cutweek']}"},
             }},
             {"$group":{
                 "_id":{
@@ -446,7 +447,7 @@ class Reports(Reports):
             {"$project":{
                 "_id":1,
                 "plant_code":f"$answers.{self.SKU_OBJ_ID}.{self.f['product_code']}",
-                "plant_name":{ "$arrayElemAt": [ f"$answers.{self.PRODUCT_OBJ_ID}.{self.f['product_name']}", 0 ] },
+                "plant_name":{ "$arrayElemAt": [ f"$answers.{self.SKU_OBJ_ID}.{self.f['product_name']}", 0 ] },
                 "actuals":f"$answers.{self.f['actual_eaches_on_hand']}",
             }},
             {"$group":{
@@ -483,7 +484,7 @@ class Reports(Reports):
                 "_id":1,
                 "plant_code":f"$answers.{self.PRODUCT_OBJ_ID}.{self.f['product_code']}",
                 "requierds":f"$answers.{self.f['prod_plan_development_group']}.{self.f['prod_plan_require_S2']}",
-                "year_week":f"$answers.{self.f['prod_plan_development_group']}.{self.f['prod_plan_S2_requier_yearweek']}",
+                "year_week":{"$toInt":f"$answers.{self.f['prod_plan_development_group']}.{self.f['prod_plan_S2_requier_yearweek']}"},
             }},
             {"$group":{
                 "_id":{
@@ -519,7 +520,7 @@ class Reports(Reports):
                 "_id":1,
                 "plant_code":f"$answers.{self.PRODUCT_OBJ_ID}.{self.f['product_code']}",
                 "requierds":f"$answers.{self.f['prod_plan_require_S3']}",
-                "year_week":f"$answers.{self.f['prod_plan_S3_requier_yearweek']}",
+                "year_week":{"$toInt":f"$answers.{self.f['prod_plan_S3_requier_yearweek']}"},
             }},
             {"$group":{
                 "_id":{
@@ -559,17 +560,24 @@ def get_week_report(year_week_from, year_week_to):
     if not plant_codes:
         return {}
     recipes = report_obj.get_plant_recipe(plant_codes, stage=[2,])
+    # print('recipes', recipes)
     recipesS3 = report_obj.get_plant_recipe(plant_codes, stage=[3,])
     for rec in inventory_flow:
         if not plant_actuals.get(rec.get('plant_code')):
             plant_actuals[rec.get('plant_code')] = {}
         actuals = rec.get('actuals')
-        actuals_forcast = actuals * recipes.get(rec.get('plant_code'),{}).get('S2_mult_rate',1)
+        print('rec', rec)
+        print('actualas', actuals)
+        print('plant code', rec['plant_code'])
+        print('plant code', recipes[rec['plant_code']])
+        actuals_forcast = floor(actuals * recipes.get(rec.get('plant_code'),{}).get('S2_mult_rate',1))
+        print('actuals_forcast', actuals_forcast)
         plant_actuals[rec.get('plant_code')].update( {
             "plant_name":rec.get('plant_name'),
             "actuals{}".format(rec.get('year_week')):actuals,
             "actuals_forcast{}{}".format("S2",rec.get('year_week')):actuals_forcast,
             })
+        print('plant_actuals',plant_actuals[rec.get('plant_code')])
     for rec in inventory_previos_weeks:
         if not plant_actuals.get(rec.get('plant_code')):
             plant_actuals[rec.get('plant_code')] = {}
