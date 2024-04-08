@@ -35,7 +35,6 @@ def cut_day_to_date(cutday, year=None):
 
 class Reports(Reports):
 
-
     def get_report(self, plant_code, stage, date_from, date_to):
         global REQUIRED, PRODUCED
         detail = self.query_get_production(plant_code, date_from, date_to, stage, group_by="work_order")
@@ -385,7 +384,7 @@ class Reports(Reports):
         #year
         match_query.update(self.get_date_query(int(week_from[:4]), int(week_to[:4]), date_field_id=self.f['plant_cut_year'], field_type='int'))
         #print('Variable Date Query', date_query)
-        date_query = self.get_date_query(int(week_from[-2:]), int(week_to[-2:]), date_field_id=self.f['plant_cut_day'], field_type='int')
+        date_query = self.get_date_query(int(week_from[-2:]), int(week_to[-2:]), date_field_id=self.f['production_cut_week'], field_type='int')
 
         match_query.update(date_query)
 
@@ -435,7 +434,7 @@ class Reports(Reports):
             match_query.update({f"answers.{self.SKU_OBJ_ID}.{self.f['reicpe_stage']}":stage})
         #year
         match_query.update(self.get_date_query(int(week_from[:4]), int(week_to[:4]), date_field_id=self.f['plant_cut_year'], field_type='int'))
-        match_query.update(self.get_date_query(int(week_from[-2:]), int(week_to[-2:]), date_field_id=self.f['plant_cut_day'], field_type='int'))
+        match_query.update(self.get_date_query(int(week_from[-2:]), int(week_to[-2:]), date_field_id=self.f['production_cut_week'], field_type='int'))
         query= [{'$match': match_query },
             {'$project':
                 {   '_id': 0,
@@ -457,7 +456,6 @@ class Reports(Reports):
             },
             {'$sort': {'total': -1, }}
             ]
-
         res = self.cr.aggregate(query)
         result = [r for r in res]
         return result
@@ -471,7 +469,7 @@ class Reports(Reports):
             match_query.update({f"answers.{self.SKU_OBJ_ID}.{self.f['product_code']}":plant_code})
         #year
         match_query.update(self.get_date_query(int(week_from[:4]), int(week_to[:4]), date_field_id=self.f['plant_cut_year'], field_type='int'))
-        match_query.update(self.get_date_query(int(week_from[-2:]), int(week_to[-2:]), date_field_id=self.f['plant_cut_day'], field_type='int'))
+        match_query.update(self.get_date_query(int(week_from[-2:]), int(week_to[-2:]), date_field_id=self.f['production_cut_week'], field_type='int'))
 
         #print('Match Query', match_query)
         query= [{'$match': match_query },
@@ -683,7 +681,6 @@ if __name__ == "__main__":
     report_obj = Reports(settings, sys_argv=sys.argv, use_api=True)
     report_obj.console_run()
     all_data = report_obj.data
-    print(sys.argv)
     print('\n\n\n\n\n')
     data = all_data.get("data", {})
     plant_code = data.get("plant_code")
@@ -709,8 +706,8 @@ if __name__ == "__main__":
 
         detail, grouped_res, grouped_week , grouped_cut_day= report_obj.get_report(plant_code, stage, date_from, date_to)
         by_team = report_obj.report_by_team(plant_code, week_from, week_to, stage)
-        by_crop_s2 = report_obj.report_by_crop(plant_code, week_from, week_to, stage=2)
-        by_crop_s3 = report_obj.report_by_crop(plant_code, week_from, week_to, stage=3)
+        by_crop_s2 = report_obj.report_by_crop(plant_code, week_from, week_to, stage='S2')
+        by_crop_s3 = report_obj.report_by_crop(plant_code, week_from, week_to, stage='S3')
         by_stage = report_obj.report_by_stage(plant_code, week_from, week_to, stage)
         # response = get_requires(plant_code)
         # query_report_second(date_from, date_to )
