@@ -5,13 +5,13 @@ from datetime import timedelta, datetime
 from linkaform_api import settings
 from account_settings import *
 
-from stock_report import Reports
+from gh_stock_report import Reports
 
     
 
 if __name__ == '__main__':
     report_obj = Reports(settings, sys_argv=sys.argv, use_api=True)
-    # report_obj.console_run()
+    report_obj.console_run()
     answers = {"61ef32bcdf0ec2ba73dec33c":{"61ef32bcdf0ec2ba73dec33d":"LNAFP"},"620a9ee0a449b98114f61d77":202350}
     report_obj.data = {'data':
         {

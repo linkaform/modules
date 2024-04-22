@@ -15,6 +15,8 @@ if __name__ == '__main__':
     # print(f"python { sys.argv[0].split('/')[-1]} '{ sys.argv[1]}' '{ sys.argv[2]}'")
     stock_obj = Stock(settings, sys_argv=sys.argv)
     stock_obj.console_run()
+    if not stock_obj.record_id:
+        stock_obj.record_id = stock_obj.object_id() 
     current_record = stock_obj.current_record
     folio =current_record.get('folio')
     # print('current_record',current_record)
@@ -36,5 +38,6 @@ if __name__ == '__main__':
     #     }))
     sys.stdout.write(simplejson.dumps({
         'status': 101,
-        'replace_ans': current_record['answers']
+        'replace_ans': current_record['answers'],
+        'metadata':{"id":stock_obj.record_id}
     }))
