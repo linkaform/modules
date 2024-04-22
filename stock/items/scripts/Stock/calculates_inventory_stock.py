@@ -45,6 +45,10 @@ class Stock(Stock):
             self.answers[self.f['inventory_status']] = 'done'
         else:
             self.answers[self.f['inventory_status']] = 'active'
+
+        wh_type = self.warehouse_type(warehouse)
+        if wh_type.lower() not in  ('stock'):
+            self.answers[self.f['inventory_status']] = 'done'
         # self.answers.update({self.f['inv_group']:self.get_grading()})
         return self.answers
 

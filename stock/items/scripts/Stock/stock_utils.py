@@ -40,6 +40,7 @@ class Stock(Stock):
 
         self.f.update({
             })
+        self.answer_label = self._labels()
 
     def add_racks_and_containers(self, container_type, racks, containers):
         print('TODO: SETUP UOM MODULE')
@@ -951,11 +952,29 @@ class Stock(Stock):
         location = answers.get(self.WAREHOUSE_LOCATION_OBJ_ID,{}).get(self.f['warehouse_location'])
         return product_code, sku, lot_number, warehouse, location
 
+    def get_group_skus(self, products):
+        search_codes = {}
+        for product in products:
+            product_code =  product.get('product_code')
+            if not product_code:
+                product_code = product[self.SKU_OBJ_ID][self.f['product_code']]
+            sku =  self.unlist(product.get('sku'))
+            if not sku:
+                sku = self.unlist(product[self.SKU_OBJ_ID][self.f['sku']])
+            search_codes[product_code] = search_codes.get(product_code, [])
+            search_codes[product_code].append(sku)
+            if sku not in search_codes[product_code]:
+                search_codes[product_code].append(sku)
+        skus = self.get_product_sku(search_codes)
+        return skus
+
+
     def get_stock_info_form_answer(self, answers={}, data={}):
         if not answers:
             answers = self.answers
-        product_info = answers.get(self.STOCK_INVENTORY_OBJ_ID, {})
+        product_info = answers.get(self.STOCK_INVENTORY_OBJ_ID, answers.get(self.SKU_OBJ_ID,{}))
         data['product_code'] = data.get(self.f['product_code'],self.unlist(product_info.get(self.f['product_code'])))
+        print('data====',data)
         data['sku'] = data.get(self.f['sku'],self.unlist(product_info.get(self.f['sku'])))
         wh_info =  self.get_stock_info_from_catalog_wl(answers, data=data)
         whd_info = self.get_stock_info_from_catalog_wld(answers, data=data)
@@ -1002,6 +1021,8 @@ class Stock(Stock):
             answers = self.answers
         res = {}
         wh_info = answers.get(self.WAREHOUSE_LOCATION_OBJ_ID, {})
+        if not wh_info:
+            wh_info = self.get_stock_info_from_catalog_wl(answers=self.answers, data=data)
         res['warehouse'] = data.get('warehouse',wh_info.get(self.f['warehouse']))
         res['warehouse_location'] = data.get('warehouse_location', wh_info.get(self.f['warehouse_location']))
         return res
@@ -1010,7 +1031,10 @@ class Stock(Stock):
         if not answers:
             answers = self.answers
         res = {}
+        print('answers', answers)
         wh_info = answers.get(self.WAREHOUSE_LOCATION_DEST_OBJ_ID, {})
+        if not wh_info:
+            wh_info = self.get_stock_info_from_catalog_wld(answers=self.answers, data=data)
         res['warehouse_dest'] = data.get('warehouse_dest',wh_info.get(self.f['warehouse_dest']))
         res['warehouse_location_dest'] = data.get('warehouse_location_dest',wh_info.get(self.f['warehouse_location_dest']))
         return res
@@ -1019,7 +1043,10 @@ class Stock(Stock):
         if not answers:
             answers = self.answers
         res = deepcopy(data)
+        print('data=',data)
+        print('answers=',answers)
         res.update(self.get_stock_info_form_answer(answers=answers, data=res))
+        print('res=',res)
         if not res.get('folio'):
             kwargs['require'] = kwargs.get('require',[])
             kwargs['require'].append('folio')
@@ -1114,18 +1141,8 @@ class Stock(Stock):
                         'warehouse':warehouse,
                         'location':location_id
                     }
-
-        search_codes = {}
+        skus = self.get_group_skus(products)
         not_found = []
-        for product in products:
-            product_code =  product[self.SKU_OBJ_ID][self.f['product_code']]
-            sku =  product[self.SKU_OBJ_ID][self.f['sku']]
-            search_codes[product_code] = search_codes.get(product_code, [])
-            search_codes[product_code].append(sku)
-            if sku not in search_codes[product_code]:
-                search_codes[product_code].append(sku)
-        print('search_codes',search_codes)
-        skus = self.get_product_sku(search_codes)
         for idx, product in enumerate(products):
             product_code =  product[self.SKU_OBJ_ID][self.f['product_code']]
             sku =  product[self.SKU_OBJ_ID][self.f['sku']]
@@ -1263,13 +1280,17 @@ class Stock(Stock):
         self.answers[self.f['inv_adjust_comments']] = comments
         return True
 
-    def stock_inventory_model(self, product, recipe):
-        res =  deepcopy(product)
+    def stock_inventory_model(self, product, recipe, labels=False):
+        if labels:
+            product = self._lables_to_ids(product)
+            print('>>>>product',product)
+            res = {}
+            res[self.SKU_OBJ_ID ] = deepcopy(product)
+        else:
+            res =  deepcopy(product)
         res[self.SKU_OBJ_ID ][self.f['reicpe_container']] = recipe['sku_package']
         res[self.SKU_OBJ_ID ][self.f['reicpe_per_container']] = recipe['sku_per_package']
         res[self.SKU_OBJ_ID ][self.f['product_name']] = recipe['product_name']
-
-        #res[self.f['product_lot']] = self.create_proudction_lot_number(production_date, group, cycle)
         return res
 
     def merge_stock_records(self):
@@ -1507,6 +1528,88 @@ class Stock(Stock):
     #             print('ya existe.....', record)
     #             folios_2_update.append(record.get('folio'))
     #     return res
+
+    def move_in(self):
+        # answers = self._labels()
+        print('-----------------------------answers', self.answer_label)
+        warehouse = self.answer_label['warehouse']
+        location = self.answer_label['warehouse_location']
+        warehouse_to = self.answer_label['warehouse_dest']
+        location_to = self.answer_label['warehouse_location_dest']
+        move_lines = self.answer_label['move_group']
+        # Información original del Inventory Flow
+        status_code = 0
+        move_locations = []
+        folios = []
+        # lots_in = {}
+        data_from = {'warehouse':warehouse, 'warehouse_location':location}
+        print('data_from', data_from)
+        new_records_data = []
+        skus = self.get_group_skus(move_lines)
+        metadata = self.lkf_api.get_metadata(self.FORM_INVENTORY_ID)
+        for idx, moves in enumerate(move_lines):
+            move_line = self.answers[self.f['move_group']][idx]
+            print('moves', moves)
+            # product_code = info_product.get(self.f['product_code'])
+            # sku = info_product.get(self.f['sku'])
+            exists = self.product_stock_exists(
+                product_code=moves['product_code'], 
+                sku=moves['sku'], 
+                lot_number=moves['product_lot'], 
+                warehouse=warehouse_to, 
+                location=location_to)
+            print('exists', exists)
+            cache_data = {
+                        '_id': f"{moves['product_code']}_{moves['sku']}_{moves['product_lot']}_{warehouse_to}_{location_to}",
+                        'move_in': moves['move_group_qty'],
+                        'product_lot': moves['product_lot'],
+                        'product_code':moves['product_code'],
+                        'sku':moves['sku'],
+                        'warehouse': warehouse_to,
+                        'warehouse_location': location_to
+                        }
+            if exists:
+                self.cache_set(cache_data)
+                response = self.update_stock(answers=exists.get('answers',{}), form_id=self.FORM_INVENTORY_ID, folios=exists['folio'])
+                if not response:
+                    comments += f"Error updating product {moves['product_lot']} lot {moves['product_lot']}. "
+                    move_line[self.f['inv_adjust_grp_status']] = 'error'
+                else:
+                    move_line[self.f['move_dest_folio']] = exists['folio']
+                    move_line[self.f['inv_adjust_grp_status']] = 'done'
+                    move_line[self.f['inv_adjust_grp_comments']] = ""
+                    print('moves', move_line)
+
+            else:
+                print('moves', moves)
+                answers = self.stock_inventory_model(moves, skus[moves['product_code']], labels=True)
+                answers.update({
+                    self.WAREHOUSE_LOCATION_OBJ_ID:{
+                        self.f['warehouse']:warehouse_to,
+                        self.f['warehouse_location']:location_to},
+                    self.f['product_lot']:moves['product_lot']
+                        },
+                    )
+                metadata['answers'] = answers
+               
+                print('cache_data',cache_data)
+                self.cache_set(cache_data)
+                create_resp = self.lkf_api.post_forms_answers(metadata)
+                print('response_sistema',create_resp)
+                try:
+                    new_inv = self.get_record_by_id(create_resp.get('id'))
+                except:
+                    print('no encontro...')
+                status_code = create_resp.get('status_code',404)
+                if status_code == 201:
+                    folio = create_resp.get('json',{}).get('folio','')
+                    move_line[self.f['inv_adjust_grp_status']] = 'done'
+                    move_line[self.f['move_dest_folio']] = folio
+                else:
+                    error = create_resp.get('json',{}).get('error', 'Unkown error')
+                    move_line[self.f['inv_adjust_grp_status']] = 'error'
+                    move_line[self.f['inv_adjust_grp_comments']] = f'Status Code: {status_code}, Error: {error}'
+        return True
 
     def move_one_many_one(self):
         move_lines = self.answers[self.f['move_group']]

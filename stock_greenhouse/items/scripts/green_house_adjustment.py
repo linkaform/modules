@@ -16,5 +16,7 @@ print('usando greeeeeenhouse....')
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)
     stock_obj.console_run()
+    if not stock_obj.record_id:
+        stock_obj.record_id = stock_obj.object_id() 
     folio = stock_obj.current_record.get('folio')
     stock_obj.inventory_adjustment(folio, stock_obj.current_record)

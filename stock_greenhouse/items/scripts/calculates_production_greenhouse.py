@@ -10,10 +10,11 @@ from account_settings import *
 from lkf_addons.addons.stock_greenhouse.stock_utils import Stock
 
 
-
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)
     stock_obj.console_run()
+    if not stock_obj.record_id:
+        stock_obj.record_id = stock_obj.object_id()
     current_record = stock_obj.current_record
     # ------------------------------------------------------------------------------
     lkf_api = stock_obj.lkf_api
@@ -36,5 +37,6 @@ if __name__ == '__main__':
     else:
         sys.stdout.write(simplejson.dumps({
             'status': 101,
-            'replace_ans': current_record['answers']
+            'replace_ans': current_record['answers'],
+            'metadata':{"id":stock_obj.record_id}
         }))
