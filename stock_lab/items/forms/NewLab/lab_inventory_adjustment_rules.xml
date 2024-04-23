@@ -253,5 +253,51 @@
             <rule_type>disabled</rule_type>
             <user_conditions>{}</user_conditions>
         </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>not__empty=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>6442e4537775ce64ef72dd6a</field_id>
+                        <group_id>None</group_id>
+                        <id>6442e4537775ce64ef72dd6a</id>
+                        <label>Status</label>
+                        <type>select</type>
+                    </field>
+                    <value> </value>
+                </item>
+                <item>
+                    <condition>is__empty=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>6442e4537775ce64ef72dd6a</field_id>
+                        <group_id>None</group_id>
+                        <id>6442e4537775ce64ef72dd6a</id>
+                        <label>Status</label>
+                        <type>select</type>
+                    </field>
+                    <value> </value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>620a9ee0a449b98114f61d77</field_id>
+                    <group_id>644bf7ccfa9830903f087867</group_id>
+                    <id>620a9ee0a449b98114f61d77</id>
+                    <label>Lot Number</label>
+                    <type>text</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Hide Fields</name>
+            <operator>or</operator>
+            <rule_id>230812cf26a31dc1</rule_id>
+            <rule_type>invisible</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
     </rules>
 </lkf>

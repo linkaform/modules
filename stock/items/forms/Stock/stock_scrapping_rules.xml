@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <lkf>
     <form_id>{{ form.stock_scrapping.id }}</form_id>
-    <id>6464feb556c0a56da27987eb</id>
+    <id>{{ form.stock_scrapping.obj_id }}</id>
     <rules>
         <item>
             <conditions>
