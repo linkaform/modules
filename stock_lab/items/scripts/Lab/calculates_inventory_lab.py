@@ -33,7 +33,6 @@ class Stock(Stock):
             self.answers[self.f['new_cutweek']] = nextcut_week
         per_container = self.answers.get(self.PRODUCT_RECIPE_OBJ_ID,{}).get(self.f['reicpe_per_container'],0)
         product_stock = self.get_product_stock(product_code, lot_number=lot_number, warehouse=warehouse, location=location, kwargs=kwargs.get('kwargs',{}) )
-        print('=== stock de calculate ====', product_stock)
         self.answers[self.f['product_lot_produced']] = product_stock['production']
         self.answers[self.f['product_lot_move_in']] = product_stock['move_in']
         self.answers[self.f['product_lot_scrapped']] = product_stock['scrapped']
@@ -41,7 +40,7 @@ class Stock(Stock):
         self.answers[self.f['product_lot_sales']] = product_stock['sales']
         self.answers[self.f['product_lot_cuarentin']] = product_stock['cuarentin']
         self.answers[self.f['product_lot_actuals']] = product_stock['actuals'] 
-        self.answers[self.f['actual_eaches_on_hand']] = product_stock['actuals'] * per_container
+        self.answers[self.f['actual_eaches_on_hand']] = product_stock['actuals'] * int(per_container)
         self.answers[self.f['product_lot_adjustments']] = product_stock['adjustments']
 
         if self.answers[self.f['product_lot_actuals']] <= 0:
