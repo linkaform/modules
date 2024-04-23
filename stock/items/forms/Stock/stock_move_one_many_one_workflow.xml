@@ -1,12 +1,11 @@
 <?xml version='1.0' encoding='utf-8'?>
 <lkf>
     <form_id>{{ form.stock_move_one_many_one.id }}</form_id>
-    <id>65e117b189c0e0790f8843fd</id>
+    <id>{{ form.stock_move_one_many_one.obj_id }}</id>
     <workflows>
         <item>
             <actions>
                 <item>
-                    <_id>65e117b189c0e0790f8843f6</_id>
                     <action_id>7</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -26,7 +25,6 @@
                     <name>None</name>
                 </item>
             </actions>
-            <id>65e117b189c0e0790f8843f7</id>
             <name>None</name>
             <rules>
                 <metadata>

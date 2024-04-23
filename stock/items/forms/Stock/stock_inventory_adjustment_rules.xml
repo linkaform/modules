@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <lkf>
     <form_id>{{ form.stock_inventory_adjustment.id }}</form_id>
-    <id>651cea7caa5e3a5ef9741c2b</id>
+    <id>{{ form.stock_inventory_adjustment.obj_id }}</id>
     <rules>
         <item>
             <conditions>

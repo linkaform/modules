@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <lkf>
     <form_id>{{ form.stock_inventory.id }}</form_id>
-    <id>65dfa8c53199f9a040829280</id>
+    <id>661621c7f9432505e32fb3bd</id>
     <workflows>
         <item>
             <actions>

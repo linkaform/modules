@@ -1,12 +1,11 @@
 <?xml version='1.0' encoding='utf-8'?>
 <lkf>
     <form_id>{{ form.stock_inventory_adjustment.id }}</form_id>
-    <id>64d315ce2cd9bb4ca6a2ffbd</id>
+    <id>{{ form.stock_inventory_adjustment.obj_id }}</id>
     <workflows>
         <item>
             <actions>
                 <item>
-                    <_id>65cdaafb45c2e0021f8595d2</_id>
                     <action_id>7</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -26,7 +25,6 @@
                     <name>Do Adjustment</name>
                 </item>
             </actions>
-            <id>64d3162c6bc57c1147065028</id>
             <name>Run Adjustments</name>
             <rules>
                 <metadata>
