@@ -42,6 +42,7 @@ class Reports(Reports):
 
     def get_productivity(self, yearweek_form, yearweek_to, plant_code, stage):
         res = []
+
         print('========== cr==========', self.cr)
         productivity_lab = self.get_plants_per_hr(yearweek_form, yearweek_to, plant_code, stage, by_team=False)
         productivity_lab += self.get_plants_per_hr(yearweek_form, yearweek_to, plant_code, stage)
@@ -94,8 +95,6 @@ class Reports(Reports):
         self.json['tenthElement'] = cutter_hours_chart
         self.json['eleventhElement']['tabledata'] = cutter_hours_table
         # return prod_stage
-
-
 
     def get_plants_per_hr(self, yearweek_form, yearweek_to, plant_code, stage, by_team=True):
         aggregate = self.get_productivity_base(yearweek_form, yearweek_to, plant_code, stage)
@@ -155,8 +154,7 @@ class Reports(Reports):
         aggregate.append(group_by)
         aggregate.append(project)
         aggregate.append(sort)
-        print('query=', simplejson.dumps(aggregate, indent=4))
-        print('elf.cr.', self.cr)
+        # print('query=', simplejson.dumps(aggregate, indent=4))
         res = self.cr.aggregate(aggregate)
         result = []
         for r in res:
@@ -167,8 +165,7 @@ class Reports(Reports):
             elif r['stage'] == 'S3':
                 r['stage'] = 'Stage 3'
             result.append(r)
-            print('r',r)
-            return result
+        return result
 
     def get_plants_per_hr_by_plant(self, yearweek_form, yearweek_to, plant_code, stage, sort_by={'plant_code':1} ):
         aggregate = self.get_productivity_base(yearweek_form, yearweek_to, plant_code, stage)
@@ -327,7 +324,6 @@ class Reports(Reports):
         return aggregate
 
 
-
 def arrage_stage(prod_stage):
     char = {'labels':[], 'datasets':[]}
     res_by_stage = {'Stage 2':{'total':0},'Stage 3':{'total':0}}
@@ -457,7 +453,7 @@ def arrage_hours_team(data):
         hplant_dir[pcode] = hplant_dir.get(pcode, 0)
         hplant_dir[pcode] += total
     data = []
-    hteam_sorted = sorted(hteam_dir.items(), key=lambda x:x[1], reverse=True)
+    hteam_sorted = sorted(hteam_dir.items(), key=lambda x:x[1], reverse=False)
     for vals in hteam_sorted:
         team  = vals[0]
         hours = vals[1]
@@ -472,7 +468,6 @@ def arrage_hours_team(data):
         hours = vals[1]
         char_pl['labels'].append(pcode)
         data.append(int(hours))
-    # print('hplant_dir=',hplant_dir)
     char_pl['datasets'].append({'label':'Hours by Plant','data':data, 'backgroundColor':BG_COLORS.get('none','#7C4DFF')})
     return char, char_pl
 
@@ -519,6 +514,7 @@ if __name__ == "__main__":
     plant_code = data.get("plant_code")
     stage = data.get("stage")
     test = data.get("test",[])
+    print('stage', stage)
     if stage == "":
         stage = None
     if stage =='stage2' or stage == 'stage_2' or stage == '2':
@@ -531,9 +527,10 @@ if __name__ == "__main__":
     yearweek_form = date_from
     yearweek_to = date_to
     try:
-        ####
+            ####
         productivity = report_obj.get_productivity(yearweek_form, yearweek_to, plant_code, stage)
-        sys.stdout.write(simplejson.dumps(report_obj.report_print()))
+        if not test:
+            sys.stdout.write(simplejson.dumps(report_obj.report_print()))
 
-    except:
-        sys.stdout.write(simplejson.dumps({"firstElement": {"error":"Something went wrong"}}))
+    except Exception as e:
+        sys.stdout.write(simplejson.dumps({"firstElement": {"error":f"Something went wrong: {e}"}}))
