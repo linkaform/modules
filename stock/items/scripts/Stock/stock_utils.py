@@ -26,8 +26,8 @@ class Stock(Stock):
             }
 
 
-
         self.CONTACTO_CENTER_FORM_ID = 111563
+        
         self.f.update({
             'parts_group':'62c5da67f850f35cc2483346',
             })
