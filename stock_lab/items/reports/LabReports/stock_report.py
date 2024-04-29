@@ -257,7 +257,7 @@ class Reports(Reports, Stock):
             },
             {'$sort': {'_id.product_code': 1, '_id.cut_yearWeek': 1, '_id.cut_week':1}}
             ]
-        # print('query=', simplejson.dumps(query, indent=4))
+        print('query=', simplejson.dumps(query, indent=4))
         res = self.cr.aggregate(query)
         result = [r for r in res]
         all_codes = []
