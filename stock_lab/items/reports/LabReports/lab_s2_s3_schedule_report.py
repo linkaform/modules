@@ -431,6 +431,7 @@ class Reports(Reports):
             }},
             {"$sort": {"plant_code": 1}}
         ]
+        # print('query=', simplejson.dumps(query, indent=3))
         result = self.cr.aggregate(query)
         return result
 
@@ -566,18 +567,12 @@ def get_week_report(year_week_from, year_week_to):
         if not plant_actuals.get(rec.get('plant_code')):
             plant_actuals[rec.get('plant_code')] = {}
         actuals = rec.get('actuals')
-        print('rec', rec)
-        print('actualas', actuals)
-        print('plant code', rec['plant_code'])
-        print('plant code', recipes[rec['plant_code']])
         actuals_forcast = floor(actuals * recipes.get(rec.get('plant_code'),{}).get('S2_mult_rate',1))
-        print('actuals_forcast', actuals_forcast)
         plant_actuals[rec.get('plant_code')].update( {
             "plant_name":rec.get('plant_name'),
             "actuals{}".format(rec.get('year_week')):actuals,
             "actuals_forcast{}{}".format("S2",rec.get('year_week')):actuals_forcast,
             })
-        print('plant_actuals',plant_actuals[rec.get('plant_code')])
     for rec in inventory_previos_weeks:
         if not plant_actuals.get(rec.get('plant_code')):
             plant_actuals[rec.get('plant_code')] = {}
