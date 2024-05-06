@@ -1,38 +1,38 @@
 <?xml version='1.0' encoding='utf-8'?>
 <lkf>
-    <form_id>{{ form.alta_de_equipos.id }}</form_id>
-    <id>65f39e0e13351427a7f6f17f</id>
+    <form_id>{{ form.ubicaciones.id }}</form_id>
+    <id>65fb6b67c19747ab9173691d</id>
     <workflows>
         <item>
             <actions>
                 <item>
-                    <_id>65f39e8cc56ceb5c04f34d09</_id>
+                    <_id>65fb6b67c19747ab91736916</_id>
                     <action_id>9</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
                         <catalog>
-                            <couch_id>{{ catalog.equipos.obj_id }}</couch_id>
-                            <created_at>1709592923</created_at>
+                            <couch_id>{{ catalog.ubicaciones.obj_id }}</couch_id>
+                            <created_at>1709592921</created_at>
                             <created_by_id>20</created_by_id>
                             <deleted_at>None</deleted_at>
                             <end_date>None</end_date>
-                            <form_id>116105</form_id>
+                            <form_id>116100</form_id>
                             <group_id>None</group_id>
-                            <id>{{ catalog.equipos.id }}</id>
+                            <id>{{ catalog.ubicaciones.id }}</id>
                             <is_fileShared>False</is_fileShared>
                             <is_shared>False</is_shared>
                             <is_shared_from_connection>False</is_shared_from_connection>
                             <is_shared_root>False</is_shared_root>
                             <itype>catalog</itype>
                             <leaf_node>True</leaf_node>
-                            <name>{{ catalog.equipos.name }}</name>
+                            <name>{{ catalog.ubicaciones.name }}</name>
                             <owner_id>20</owner_id>
                             <parent_id>116099</parent_id>
                             <perm>can_manage_item</perm>
-                            <resource_uri>/api/infosync/get_catalogs/{{ catalog.equipos.id }}/</resource_uri>
+                            <resource_uri>/api/infosync/get_catalogs/{{ catalog.ubicaciones.id }}/</resource_uri>
                             <shared_id>None</shared_id>
-                            <start_date>2024-03-15T00:52:44.639536+00:00</start_date>
-                            <updated_at>1710463964</updated_at>
+                            <start_date>2024-03-20T22:59:32.103486+00:00</start_date>
+                            <updated_at>1710975572</updated_at>
                             <updated_by_id>20</updated_by_id>
                         </catalog>
                         <mapping>
@@ -41,13 +41,13 @@
                                     <conditions>[]</conditions>
                                 </etl>
                                 <input>
-                                    <field_type>radio</field_type>
-                                    <id>65ce42a9650ac96bb07c2090</id>
+                                    <field_type>text</field_type>
+                                    <id>65fb6a21b93f0fd24df64054</id>
                                     <type>field_to_field</type>
                                     <value>None</value>
                                 </input>
                                 <output>
-                                    <id>65ce42a9650ac96bb07c2090</id>
+                                    <id>65ce4088f9f1cb6b9fcbe45f</id>
                                 </output>
                             </item>
                             <item>
@@ -56,12 +56,12 @@
                                 </etl>
                                 <input>
                                     <field_type>text</field_type>
-                                    <id>65d63d5b0040b43ab1f772cb</id>
+                                    <id>65fb6a21b93f0fd24df64055</id>
                                     <type>field_to_field</type>
                                     <value>None</value>
                                 </input>
                                 <output>
-                                    <id>65d63d5b0040b43ab1f772cb</id>
+                                    <id>65ce50c54baa1408e379f6bc</id>
                                 </output>
                             </item>
                             <item>
@@ -70,12 +70,12 @@
                                 </etl>
                                 <input>
                                     <field_type>text</field_type>
-                                    <id>65e0b9e2e5ad6d35a8124d5d</id>
+                                    <id>65fb6a21b93f0fd24df64056</id>
                                     <type>field_to_field</type>
                                     <value>None</value>
                                 </input>
                                 <output>
-                                    <id>65d63d5b0040b43ab1f772cc</id>
+                                    <id>65ce50c54baa1408e379f6bd</id>
                                 </output>
                             </item>
                             <item>
@@ -84,35 +84,21 @@
                                 </etl>
                                 <input>
                                     <field_type>text</field_type>
-                                    <id>65ce42a9650ac96bb07c2092</id>
+                                    <id>65fb6a21b93f0fd24df64057</id>
                                     <type>field_to_field</type>
                                     <value>None</value>
                                 </input>
                                 <output>
-                                    <id>65ce42a9650ac96bb07c2092</id>
-                                </output>
-                            </item>
-                            <item>
-                                <etl>
-                                    <conditions>[]</conditions>
-                                </etl>
-                                <input>
-                                    <field_type>radio</field_type>
-                                    <id>65d63da87b24c60e4422e4d3</id>
-                                    <type>field_to_field</type>
-                                    <value>None</value>
-                                </input>
-                                <output>
-                                    <id>65d63da87b24c60e4422e4d3</id>
+                                    <id>65ce50c54baa1408e379f6be</id>
                                 </output>
                             </item>
                         </mapping>
                     </configuration>
-                    <name>Forma a catálogo equipos</name>
+                    <name>Sincronizar ubicaciones</name>
                 </item>
             </actions>
-            <id>65f39e8cc56ceb5c04f34d0a</id>
-            <name>Agregar equipos</name>
+            <id>65fb6b67c19747ab91736917</id>
+            <name>Sincronizar forma a catálogo ubicaciones</name>
             <rules>
                 <metadata>
                     <connection>[]</connection>
@@ -123,9 +109,9 @@
                             <year>2014</year>
                         </period>
                         <range>
-                            <end>2024-03-15T06:00:00.000Z</end>
+                            <end>2024-03-21T06:00:00.000Z</end>
                             <selected>False</selected>
-                            <start>2024-03-15T01:00:20.366Z</start>
+                            <start>2024-03-20T22:59:44.473Z</start>
                         </range>
                     </date>
                     <grading>{}</grading>
@@ -134,7 +120,7 @@
                 <record>
                     <created>True</created>
                     <deleted>False</deleted>
-                    <edited>False</edited>
+                    <edited>True</edited>
                     <run_multiple_times>False</run_multiple_times>
                     <runtime>after</runtime>
                 </record>
@@ -148,10 +134,10 @@
                             <prefix>answer</prefix>
                             <trigger_field>
                                 <catalog>{}</catalog>
-                                <field_id>65ce42a9650ac96bb07c2090</field_id>
+                                <field_id>65fb6a21b93f0fd24df64054</field_id>
                                 <group>{}</group>
-                                <label>Tipo</label>
-                                <type>radio</type>
+                                <label>Nombre de la ubicación</label>
+                                <type>text</type>
                             </trigger_field>
                             <value> </value>
                         </item>

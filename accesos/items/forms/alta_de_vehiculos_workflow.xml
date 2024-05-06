@@ -1,38 +1,38 @@
 <?xml version='1.0' encoding='utf-8'?>
 <lkf>
-    <form_id>{{ form.alta_de_colaboradores_visitantes.id }}</form_id>
-    <id>6622bc48bb2e35766b1c1c7a</id>
+    <form_id>{{ form.alta_de_vehiculos.id }}</form_id>
+    <id>65f3a35c5214a7c81630490f</id>
     <workflows>
         <item>
             <actions>
                 <item>
-                    <_id>6622bc48bb2e35766b1c1c73</_id>
+                    <_id>65f3a35c5214a7c816304908</_id>
                     <action_id>9</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
                         <catalog>
-                            <couch_id>{{ catalog.colaboradores_autorizados_v2.obj_id }}</couch_id>
-                            <created_at>1709592922</created_at>
+                            <couch_id>{{ catalog.vehiculos.obj_id }}</couch_id>
+                            <created_at>1709592924</created_at>
                             <created_by_id>20</created_by_id>
                             <deleted_at>None</deleted_at>
                             <end_date>None</end_date>
-                            <form_id>116102</form_id>
+                            <form_id>116107</form_id>
                             <group_id>None</group_id>
-                            <id>{{ catalog.colaboradores_autorizados_v2.id }}</id>
+                            <id>{{ catalog.vehiculos.id }}</id>
                             <is_fileShared>False</is_fileShared>
                             <is_shared>False</is_shared>
                             <is_shared_from_connection>False</is_shared_from_connection>
                             <is_shared_root>False</is_shared_root>
                             <itype>catalog</itype>
                             <leaf_node>True</leaf_node>
-                            <name>{{ catalog.colaboradores_autorizados_v2.name }}</name>
+                            <name>{{ catalog.vehiculos.name }}</name>
                             <owner_id>20</owner_id>
                             <parent_id>116099</parent_id>
                             <perm>can_manage_item</perm>
-                            <resource_uri>/api/infosync/get_catalogs/{{ catalog.colaboradores_autorizados_v2.id }}/</resource_uri>
+                            <resource_uri>/api/infosync/get_catalogs/{{ catalog.vehiculos.id }}/</resource_uri>
                             <shared_id>None</shared_id>
-                            <start_date>2024-04-26T18:16:03.954721+00:00</start_date>
-                            <updated_at>1714155363</updated_at>
+                            <start_date>2024-03-21T22:28:30.412987+00:00</start_date>
+                            <updated_at>1711060110</updated_at>
                             <updated_by_id>20</updated_by_id>
                         </catalog>
                         <mapping>
@@ -41,97 +41,13 @@
                                     <conditions>[]</conditions>
                                 </etl>
                                 <input>
-                                    <field_type>text</field_type>
-                                    <id>5ea0693a0c12d5a8e43d37df</id>
+                                    <field_type>catalog-select</field_type>
+                                    <id>65f22098d1dc5e0b9529e89a</id>
                                     <type>field_to_field</type>
                                     <value>None</value>
                                 </input>
                                 <output>
-                                    <id>5ea0693a0c12d5a8e43d37df</id>
-                                </output>
-                            </item>
-                            <item>
-                                <etl>
-                                    <conditions>[]</conditions>
-                                </etl>
-                                <input>
-                                    <field_type>text</field_type>
-                                    <id>5ea0897550b8dfe1f4d83a9f</id>
-                                    <type>field_to_field</type>
-                                    <value>None</value>
-                                </input>
-                                <output>
-                                    <id>5ea0897550b8dfe1f4d83a9f</id>
-                                </output>
-                            </item>
-                            <item>
-                                <etl>
-                                    <conditions>[]</conditions>
-                                </etl>
-                                <input>
-                                    <field_type>text</field_type>
-                                    <id>5ea069562f8250acf7d83aca</id>
-                                    <type>field_to_field</type>
-                                    <value>None</value>
-                                </input>
-                                <output>
-                                    <id>5ea069562f8250acf7d83aca</id>
-                                </output>
-                            </item>
-                            <item>
-                                <etl>
-                                    <conditions>[]</conditions>
-                                </etl>
-                                <input>
-                                    <field_type>text</field_type>
-                                    <id>661ea07bf7cb16e7fa1de540</id>
-                                    <type>field_to_field</type>
-                                    <value>None</value>
-                                </input>
-                                <output>
-                                    <id>661ea59c15baf5666f32360e</id>
-                                </output>
-                            </item>
-                            <item>
-                                <etl>
-                                    <conditions>[]</conditions>
-                                </etl>
-                                <input>
-                                    <field_type>images</field_type>
-                                    <id>5ea35de83ab7dad56c66e045</id>
-                                    <type>field_to_field</type>
-                                    <value>None</value>
-                                </input>
-                                <output>
-                                    <id>5ea35de83ab7dad56c66e045</id>
-                                </output>
-                            </item>
-                            <item>
-                                <etl>
-                                    <conditions>[]</conditions>
-                                </etl>
-                                <input>
-                                    <field_type>images</field_type>
-                                    <id>65ce34985fa9df3dbf9dd2d0</id>
-                                    <type>field_to_field</type>
-                                    <value>None</value>
-                                </input>
-                                <output>
-                                    <id>65ce34985fa9df3dbf9dd2d0</id>
-                                </output>
-                            </item>
-                            <item>
-                                <etl>
-                                    <conditions>[]</conditions>
-                                </etl>
-                                <input>
-                                    <field_type>select</field_type>
-                                    <id>5ea1bd280ae8bad095055e61</id>
-                                    <type>field_to_field</type>
-                                    <value>None</value>
-                                </input>
-                                <output>
-                                    <id>5ea1bd280ae8bad095055e61</id>
+                                    <id>65f22098d1dc5e0b9529e89a</id>
                                 </output>
                             </item>
                             <item>
@@ -140,12 +56,26 @@
                                 </etl>
                                 <input>
                                     <field_type>catalog-select</field_type>
-                                    <id>64ecc95271803179d68ee081</id>
+                                    <id>65f22098d1dc5e0b9529e89b</id>
                                     <type>field_to_field</type>
                                     <value>None</value>
                                 </input>
                                 <output>
-                                    <id>64ecc95271803179d68ee081</id>
+                                    <id>65f22098d1dc5e0b9529e89b</id>
+                                </output>
+                            </item>
+                            <item>
+                                <etl>
+                                    <conditions>[]</conditions>
+                                </etl>
+                                <input>
+                                    <field_type>catalog-select</field_type>
+                                    <id>65f22098d1dc5e0b9529e89c</id>
+                                    <type>field_to_field</type>
+                                    <value>None</value>
+                                </input>
+                                <output>
+                                    <id>65f22098d1dc5e0b9529e89c</id>
                                 </output>
                             </item>
                             <item>
@@ -154,21 +84,57 @@
                                 </etl>
                                 <input>
                                     <field_type>text</field_type>
-                                    <id>662fee3ac79c5a0549a944b6</id>
+                                    <id>65d63e267b24c60e4422e4dd</id>
                                     <type>field_to_field</type>
                                     <value>None</value>
                                 </input>
                                 <output>
-                                    <id>662ff092c961b4c3121e5b48</id>
+                                    <id>65d63e267b24c60e4422e4dd</id>
+                                </output>
+                            </item>
+                            <item>
+                                <etl>
+                                    <conditions>
+                                        <item>
+                                            <answer_id>None</answer_id>
+                                            <answer_type>None</answer_type>
+                                            <answer_value>None</answer_value>
+                                            <condition_type>None</condition_type>
+                                            <condition_value>None</condition_value>
+                                        </item>
+                                    </conditions>
+                                </etl>
+                                <input>
+                                    <field_type>radio</field_type>
+                                    <id>65e0c66337e8d7f0eced239d</id>
+                                    <type>field_to_field</type>
+                                    <value>None</value>
+                                </input>
+                                <output>
+                                    <id>65d63e267b24c60e4422e4de</id>
+                                </output>
+                            </item>
+                            <item>
+                                <etl>
+                                    <conditions>[]</conditions>
+                                </etl>
+                                <input>
+                                    <field_type>catalog</field_type>
+                                    <id>65f220264d43cef6e610f0b2</id>
+                                    <type>field_to_field</type>
+                                    <value>None</value>
+                                </input>
+                                <output>
+                                    <id>65f220264d43cef6e610f0b2</id>
                                 </output>
                             </item>
                         </mapping>
                     </configuration>
-                    <name>Sincronizar forma a catálogo visita autorizada</name>
+                    <name>Forma a catálogo vehículos</name>
                 </item>
             </actions>
-            <id>6622bc48bb2e35766b1c1c74</id>
-            <name>Sincronizar forma con catálogo</name>
+            <id>65f3a35c5214a7c816304909</id>
+            <name>vehiculos</name>
             <rules>
                 <metadata>
                     <connection>[]</connection>
@@ -179,9 +145,9 @@
                             <year>2014</year>
                         </period>
                         <range>
-                            <end>2024-04-20T06:00:00.000Z</end>
+                            <end>2024-03-15T06:00:00.000Z</end>
                             <selected>False</selected>
-                            <start>2024-04-19T18:41:26.803Z</start>
+                            <start>2024-03-15T00:36:52.301Z</start>
                         </range>
                     </date>
                     <grading>{}</grading>
@@ -191,7 +157,7 @@
                     <created>True</created>
                     <deleted>False</deleted>
                     <edited>True</edited>
-                    <run_multiple_times>True</run_multiple_times>
+                    <run_multiple_times>False</run_multiple_times>
                     <runtime>after</runtime>
                 </record>
                 <wf_fields>
@@ -204,9 +170,9 @@
                             <prefix>answer</prefix>
                             <trigger_field>
                                 <catalog>{}</catalog>
-                                <field_id>5ea0693a0c12d5a8e43d37df</field_id>
+                                <field_id>65d63e267b24c60e4422e4dd</field_id>
                                 <group>{}</group>
-                                <label>Nombre Completo</label>
+                                <label>Placas</label>
                                 <type>text</type>
                             </trigger_field>
                             <value> </value>

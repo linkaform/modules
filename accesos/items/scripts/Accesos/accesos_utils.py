@@ -57,6 +57,8 @@ class Accesos(Accesos):
         self.FORM_LOCKER = self.lkm.form_id('locker','id')
         self.FORM_PASE_DE_ENTRADA = self.lkm.form_id('pase_de_entrada','id')
         self.FORM_REGISTRO_PERMISOS = self.lkm.form_id('registro_de_permisos','id')
+        #self.FORM_BITACORA_TURNOS = self.lkm.form_id('bitcora_de_turnos','id')
+        #self.FORM_NOTAS = self.lkm.form_id('notas','id')
 
 
 
@@ -106,6 +108,20 @@ class Accesos(Accesos):
             'visitante_locker':'65e0b6f7a07a72e587124dc5',
             'documento_locker':'65e0b6f7a07a72e587124dc6',
             'numero_gafete_locker':'65e0b6f7a07a72e587124dc8',
+
+            #---FORM TURNOS
+            'catalogo_nombre_caseta':'65f31a6ed660c56f2f10f245.65f31a6ed660c56f2f10f246',
+            'catalog_guardia_email':'6092c0ebd8b748522446af25.6092c0ebd8b748522446af28',
+            'catalogo_nombre_ubicacion':'65f31a6ed660c56f2f10f245.65ce4088f9f1cb6b9fcbe45f',
+            'guardias_apoyo':'662a805bb1027d2608f8cb74',
+            'set_catalog_nombre':'662a805bb1027d2608f8cb74.65f343b97b26737ac7184d28.65f343b97b26737ac7184d29',
+            'set_catalog_img':'662a805bb1027d2608f8cb74.65f343b97b26737ac7184d28.6601d443f3c55669281c3fb7',
+            'status':'662a7f6b18ad9cd2bdc789ea',
+            #---FORM NOTAS
+            'catalogo_guardia_nombre':'6092c0ebd8b748522446af25.6092c0ebd8b748522446af26',
+            'notas_nota':'66036be9ba295277a5d09c68',
+            'notas_status':'66036dc5209433eb51e9cf05',
+
         }
 
         self.fecha = self.date_from_str('2024-01-15')
@@ -123,6 +139,49 @@ class Accesos(Accesos):
             seconds_res = secondsTotal % 60
             str_time="{:02d}:{:02d}:{:02d}".format(hours, minutes, seconds_res)
         return str_time;
+
+    def set_format_catalog_brands (self, data):
+        data_format = {
+            'types_cars':[],
+            'brands_cars':[],
+            'model_cars':[],
+        };
+
+        list_type = [];
+        list_brands = [];
+        
+        #--Iteration
+        for x in data:
+            type_car = x.get('65f22098d1dc5e0b9529e89a','')
+            brand_car = x.get('65f22098d1dc5e0b9529e89b','')
+            model_car = x.get('65f22098d1dc5e0b9529e89c','')
+
+            if type_car not in list_type and type_car != '':
+                list_type.append(type_car)
+                data_format['types_cars'].append(type_car)
+
+            if brand_car not in list_brands and brand_car != '':
+                list_brands.append(brand_car)
+                data_format['brands_cars'].append({'type': type_car,'brand': brand_car})
+
+            if model_car != '':
+                data_format['model_cars'].append({'brand': brand_car,'model': model_car})
+
+        return data_format
+
+    def set_format_catalog_locations (self, data):
+        #--Format Data
+        element = {}
+        if len(data) > 0:
+            element = data[0];
+
+        data_format = {
+            'location': element.get('65ce4088f9f1cb6b9fcbe45f',''),
+            'city': element.get('65ce50c54baa1408e379f6bc',''),
+            'state': element.get('65ce50c54baa1408e379f6bd',''),
+            'direction': element.get('65ce50c54baa1408e379f6be',''),
+        };
+        return data_format
 
     def set_format_data_user(self, data):
         if len(data)>0:
@@ -243,6 +302,24 @@ class Accesos(Accesos):
             }
             return data_return;
 
+    def set_format_location(self, data):
+        data_answers = {
+            'folio':'',
+            'location':'',
+            'booth':'',
+            'status':'',
+        };
+        for x in data:
+            folio = x.get('folio',''); 
+            catalogo_nombre_caseta = x.get('catalogo_nombre_caseta',''); 
+            catalogo_nombre_ubicacion = x.get('catalogo_nombre_ubicacion',''); 
+            status = x.get('status',''); 
+            data_answers['folio'] = folio
+            data_answers['location'] = catalogo_nombre_ubicacion
+            data_answers['booth'] = catalogo_nombre_caseta
+            data_answers['status'] = status
+        return data_answers;
+
     def set_format_list_items(self, data):
         data_answers = [];
         data_list = data.get('listItemsData',[]);
@@ -340,6 +417,45 @@ class Accesos(Accesos):
                 data_list.append({'name_user':name_user,'curp_user':curp_user})
 
         return data_list
+
+    def set_format_list_guards(self, data):
+        data_answers = [];
+        for x in data:
+            folio = x.get('folio',{});
+            name_guard =  x.get('set_catalog_nombre','');
+            img_guard =  x.get('set_catalog_img',{});
+            url_img_guard = ''
+
+            if len(img_guard)>0:
+                url_img_guard = img_guard[0].get('file_url','');
+
+            data_answers.append({
+                'name_guard':name_guard,
+                'img_url':url_img_guard,
+                'folio':folio,
+            })
+        return data_answers;
+
+    def set_format_list_notes(self, data):
+        data_answers = [];
+        for x in data:
+            folio = x.get('folio','');
+            catalogo_guardia_nombre = x.get('catalogo_guardia_nombre','');
+            notas_nota = x.get('notas_nota','');
+            notas_status = x.get('notas_status','');
+
+            data_answers.append({
+                'folio':folio,
+                'catalogo_guardia_nombre':catalogo_guardia_nombre,
+                'notas_nota':notas_nota,
+                'notas_status':notas_status,
+            })
+
+            print(x)
+            print('=========')
+        return data_answers;
+
+
 
     #---Change Record
     def set_add_record(self, data_user, data_item, data_vehicule, location = ''):
@@ -453,6 +569,194 @@ class Accesos(Accesos):
         result = self.cr.find(match_query).count()
         dic_alert['count_out_register'] = result
         return dic_alert
+   
+    def get_bitacora_users(self, location):
+        match_query = {
+            "form_id":self.FORM_LOCKER,
+            f"answers.{self.f['date_out_bitacora']}":{"$ne": ''},
+        }
+
+        query= [{'$match': match_query },
+            {"$project":
+                {
+                    "_id":"$id",
+                    "folio":"$folio",
+                    "planta_bitacora": f"$answers.{self.f['planta_bitacora']}",
+                    "curp_bitacora": f"$answers.{self.f['curp_bitacora']}",
+                    "nombre_bitacora": f"$answers.{self.f['nombre_bitacora']}",
+                    "rfc_bitacora": f"$answers.{self.f['rfc_bitacora']}",
+                    "visita_bitacora": f"$answers.{self.f['visita_bitacora']}",
+                    "acceso_bitacora": f"$answers.{self.f['acceso_bitacora']}",
+                    "type_user_bitacora": f"$answers.{self.f['type_user_bitacora']}",
+                    "status_bitacora": f"$answers.{self.f['status_bitacora']}",
+                    "entrada_bitacora": f"$answers.{self.f['entrada_bitacora']}",
+                    "gafete_bitacora": f"$answers.{self.f['gafete_bitacora']}",
+                    "date_in_bitacora": f"$answers.{self.f['date_in_bitacora']}",
+                    "date_out_bitacora": f"$answers.{self.f['date_out_bitacora']}",
+                    "duration_bitacora": f"$answers.{self.f['duration_bitacora']}",
+                }
+            },
+        ]
+        res = self.cr.aggregate(query)
+        list_response = [x for x in res]
+        return list_response
+
+    def get_list_items(self, curp):
+        match_query = {
+            "form_id":self.FORM_PASE_DE_ENTRADA,
+            f"answers.{self.f['colaborador_curp_pase_entrada']}":curp,
+        }
+
+        query= [{'$match': match_query },
+            {"$project":
+                {
+                    "_id":"$id",
+                    "folio":"$folio",
+                    "items_pase_entrada": f"$answers.{self.f['items_pase_entrada']}",
+                    "vehiculos_pase_entrada": f"$answers.{self.f['vehiculos_pase_entrada']}",
+                }
+            },
+        ]
+        res = self.cr.aggregate(query)
+        list_response = [x for x in res]
+        return list_response
+
+    def get_list_users(self, location):
+        match_query = {
+            "form_id":self.FORM_PASE_DE_ENTRADA,
+            f"answers.{self.f['status_pase_entrada']}":'activo',
+        }
+        
+        query= [{'$match': match_query },
+            {"$project":
+                {
+                    "_id":"$id",
+                    "folio":"$folio",
+                    "colaborador_nombre_pase_entrada": f"$answers.{self.f['colaborador_nombre_pase_entrada']}",
+                    "colaborador_curp_pase_entrada": f"$answers.{self.f['colaborador_curp_pase_entrada']}",
+                    "plantas_pase_entrada": f"$answers.{self.f['plantas_pase_entrada']}",
+                }
+            },
+        ]
+        res = self.cr.aggregate(query)
+        list_response = [x for x in res]
+        data_format = self.set_format_list_users(list_response, location)
+        return data_format
+
+    def get_locker_users(self, location):
+        match_query = {
+            "form_id":self.FORM_BITACORA,
+            #f"answers.{self.f['location_locker']}":{"$eq": location},
+        }
+        query= [{'$match': match_query },
+            {"$project":
+                {
+                    "_id":"$id",
+                    "folio":"$folio",
+                    "location_locker": f"$answers.{self.f['location_locker']}",
+                    "locker_locker": f"$answers.{self.f['locker_locker']}",
+                    "ocupado_locker": f"$answers.{self.f['ocupado_locker']}",
+                    "visitante_locker": f"$answers.{self.f['visitante_locker']}",
+                    "documento_locker": f"$answers.{self.f['documento_locker']}",
+                    "numero_gafete_locker": f"$answers.{self.f['numero_gafete_locker']}",
+                }
+            },
+        ]
+        res = self.cr.aggregate(query)
+        list_response = [x for x in res]
+        return list_response
+
+    def get_guard_list(self, location, booth):
+        match_query = {
+            "form_id": 117924,
+            f"answers.{self.f['catalogo_nombre_ubicacion']}":{"$in":[location,[location],'"' + location + '"']},
+            f"answers.{self.f['catalogo_nombre_caseta']}":{"$in":[booth,[booth],'"' + booth + '"']},
+        }       
+        query= [{'$match': match_query },
+            {"$unwind":  f"$answers.{self.f['guardias_apoyo']}"},
+            {"$project":
+                {
+                    "_id":0,
+                    "folio":'$folio',
+                    "set_catalog_nombre": f"$answers.{self.f['set_catalog_nombre']}",
+                    "set_catalog_img": f"$answers.{self.f['set_catalog_img']}",
+                }
+            },
+        ]   
+        res = self.cr.aggregate(query)
+        data_format = self.set_format_list_guards(res)
+        return data_format
+
+    def get_guard_location(self, email):
+        match_query = {
+            "form_id": 117924,
+            f"answers.{self.f['catalog_guardia_email']}":{"$in":[email,[email],'"' + email + '"']},
+        }       
+        query= [{'$match': match_query },
+            {"$project":
+                {
+                    "_id":0,
+                    "folio":'$folio',
+                    "catalogo_nombre_caseta": f"$answers.{self.f['catalogo_nombre_caseta']}",
+                    "catalogo_nombre_ubicacion": f"$answers.{self.f['catalogo_nombre_ubicacion']}",
+                    "status": f"$answers.{self.f['status']}",
+                }
+            },
+            {'$sort': {'folio': -1 }},
+            {'$limit':1}
+        ]   
+
+        res = self.cr.aggregate(query)
+        data_format = self.set_format_location(res)
+        return data_format
+
+    def get_guard_notes(self, location, booth):
+        match_query = {
+            "form_id": 116802,
+            f"answers.{self.f['catalogo_nombre_ubicacion']}":{"$in":[location,[location],'"' + location + '"']},
+            f"answers.{self.f['catalogo_nombre_caseta']}":{"$in":[booth,[booth],'"' + booth + '"']},
+        }         
+        query= [{'$match': match_query },
+            {"$project":
+                {
+                    "_id":0,
+                    "folio":'$folio',
+                    "catalogo_guardia_nombre": f"$answers.{self.f['catalogo_guardia_nombre']}",
+                    "notas_nota": f"$answers.{self.f['notas_nota']}",
+                    "notas_status": f"$answers.{self.f['notas_status']}",
+                }
+            },
+        ]   
+
+        res = self.cr.aggregate(query)
+        data_format = self.set_format_list_notes(res)
+        return data_format
+
+
+
+    def get_user_bitacora(self, curp):
+        data_bitacora = []
+        match_query = {
+            "form_id":self.FORM_BITACORA,
+            f"answers.{self.f['curp_bitacora']}":{"$in":[curp,[curp],'"' + curp + '"']},
+        }       
+        query= [{'$match': match_query },
+            {"$project":
+                {
+                    "_id":0,
+                    "folio":"$folio",
+                    "visita": f"$answers.{self.f['visita_bitacora']}",
+                    "acceso": f"$answers.{self.f['acceso_bitacora']}",
+                    "date_in": f"$answers.{self.f['date_in_bitacora']}",
+                    "date_out": f"$answers.{self.f['date_out_bitacora']}",
+                    "duration": f"$answers.{self.f['duration_bitacora']}",
+                }
+            },
+            {"$sort": {"folio":1}},
+        ]   
+        res = self.cr.aggregate(query)
+        list_response = [x for x in res];
+        return list_response;
 
     def get_user_information(self, curp):
         match_query = {
@@ -531,122 +835,37 @@ class Accesos(Accesos):
             data_movement['type'] = 'in';
         return data_movement;
 
-    def get_user_bitacora(self, curp):
-        data_bitacora = []
-        match_query = {
-            "form_id":self.FORM_BITACORA,
-            f"answers.{self.f['curp_bitacora']}":{"$in":[curp,[curp],'"' + curp + '"']},
-        }       
-        query= [{'$match': match_query },
-            {"$project":
-                {
-                    "_id":0,
-                    "folio":"$folio",
-                    "visita": f"$answers.{self.f['visita_bitacora']}",
-                    "acceso": f"$answers.{self.f['acceso_bitacora']}",
-                    "date_in": f"$answers.{self.f['date_in_bitacora']}",
-                    "date_out": f"$answers.{self.f['date_out_bitacora']}",
-                    "duration": f"$answers.{self.f['duration_bitacora']}",
-                }
-            },
-            {"$sort": {"folio":1}},
-        ]   
-        res = self.cr.aggregate(query)
-        list_response = [x for x in res];
-        return list_response;
-
-    def get_list_items(self, curp):
-        match_query = {
-            "form_id":self.FORM_PASE_DE_ENTRADA,
-            f"answers.{self.f['colaborador_curp_pase_entrada']}":curp,
+    #---Query Catalogs
+    def get_catalog_brands(self):
+        match_query = { 
+            'deleted_at':{"$exists":False},
         }
 
-        query= [{'$match': match_query },
-            {"$project":
-                {
-                    "_id":"$id",
-                    "folio":"$folio",
-                    "items_pase_entrada": f"$answers.{self.f['items_pase_entrada']}",
-                    "vehiculos_pase_entrada": f"$answers.{self.f['vehiculos_pase_entrada']}",
-                }
+        mango_query = {"selector":
+            {"answers":
+                {"$and":[match_query]}
             },
-        ]
-        res = self.cr.aggregate(query)
-        list_response = [x for x in res]
-        return list_response
+            "limit":10000,
+            "skip":0
+        }
+        res = self.lkf_api.search_catalog( 116404, mango_query)
+        res_format = self.set_format_catalog_brands(res)
+        return res_format
 
-    def get_bitacora_users(self, location):
-        match_query = {
-            "form_id":self.FORM_LOCKER,
-            f"answers.{self.f['date_out_bitacora']}":{"$ne": ''},
+    def get_catalog_locations(self, location):
+        match_query = { 
+            'deleted_at':{"$exists":False},
+            '65ce4088f9f1cb6b9fcbe45f':{"$eq":location},
         }
 
-        query= [{'$match': match_query },
-            {"$project":
-                {
-                    "_id":"$id",
-                    "folio":"$folio",
-                    "planta_bitacora": f"$answers.{self.f['planta_bitacora']}",
-                    "curp_bitacora": f"$answers.{self.f['curp_bitacora']}",
-                    "nombre_bitacora": f"$answers.{self.f['nombre_bitacora']}",
-                    "rfc_bitacora": f"$answers.{self.f['rfc_bitacora']}",
-                    "visita_bitacora": f"$answers.{self.f['visita_bitacora']}",
-                    "acceso_bitacora": f"$answers.{self.f['acceso_bitacora']}",
-                    "type_user_bitacora": f"$answers.{self.f['type_user_bitacora']}",
-                    "status_bitacora": f"$answers.{self.f['status_bitacora']}",
-                    "entrada_bitacora": f"$answers.{self.f['entrada_bitacora']}",
-                    "gafete_bitacora": f"$answers.{self.f['gafete_bitacora']}",
-                    "date_in_bitacora": f"$answers.{self.f['date_in_bitacora']}",
-                    "date_out_bitacora": f"$answers.{self.f['date_out_bitacora']}",
-                    "duration_bitacora": f"$answers.{self.f['duration_bitacora']}",
-                }
+        mango_query = {"selector":
+            {"answers":
+                {"$and":[match_query]}
             },
-        ]
-        res = self.cr.aggregate(query)
-        list_response = [x for x in res]
-        return list_response
-
-    def get_locker_users(self, location):
-        match_query = {
-            "form_id":self.FORM_BITACORA,
-            #f"answers.{self.f['location_locker']}":{"$eq": location},
+            "limit":1,
+            "skip":0
         }
-        query= [{'$match': match_query },
-            {"$project":
-                {
-                    "_id":"$id",
-                    "folio":"$folio",
-                    "location_locker": f"$answers.{self.f['location_locker']}",
-                    "locker_locker": f"$answers.{self.f['locker_locker']}",
-                    "ocupado_locker": f"$answers.{self.f['ocupado_locker']}",
-                    "visitante_locker": f"$answers.{self.f['visitante_locker']}",
-                    "documento_locker": f"$answers.{self.f['documento_locker']}",
-                    "numero_gafete_locker": f"$answers.{self.f['numero_gafete_locker']}",
-                }
-            },
-        ]
-        res = self.cr.aggregate(query)
-        list_response = [x for x in res]
-        return list_response
+        res_location = self.lkf_api.search_catalog( 116100, mango_query)
+        res_format = self.set_format_catalog_locations(res_location)
+        return res_format
 
-    def get_list_users(self, location):
-        match_query = {
-            "form_id":self.FORM_PASE_DE_ENTRADA,
-            f"answers.{self.f['status_pase_entrada']}":'activo',
-        }
-        
-        query= [{'$match': match_query },
-            {"$project":
-                {
-                    "_id":"$id",
-                    "folio":"$folio",
-                    "colaborador_nombre_pase_entrada": f"$answers.{self.f['colaborador_nombre_pase_entrada']}",
-                    "colaborador_curp_pase_entrada": f"$answers.{self.f['colaborador_curp_pase_entrada']}",
-                    "plantas_pase_entrada": f"$answers.{self.f['plantas_pase_entrada']}",
-                }
-            },
-        ]
-        res = self.cr.aggregate(query)
-        list_response = [x for x in res]
-        data_format = self.set_format_list_users(list_response, location)
-        return data_format
