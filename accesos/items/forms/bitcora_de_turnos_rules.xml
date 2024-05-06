@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='utf-8'?>
+<lkf>
+    <form_id>{{ form.bitcora_de_turnos.id }}</form_id>
+    <id>662a8fe5c2e499efbb32b866</id>
+    <rules>
+        <item>
+            <conditions>
+                <item>
+                    <condition>in=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>662a7f6b18ad9cd2bdc789ea</field_id>
+                        <group_id>None</group_id>
+                        <id>662a7f6b18ad9cd2bdc789ea</id>
+                        <label>Estatus</label>
+                        <type>radio</type>
+                    </field>
+                    <value>turno_cerrado</value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>662a8fc20cc8afe562f78ff7</field_id>
+                    <group_id>None</group_id>
+                    <id>662a8fc20cc8afe562f78ff7</id>
+                    <label>Fecha y hora de cierre</label>
+                    <type>datetime</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Regla 1</name>
+            <operator>and</operator>
+            <rule_id>155f100821292127</rule_id>
+            <rule_type>show</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+    </rules>
+</lkf>

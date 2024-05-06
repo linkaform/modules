@@ -50,7 +50,7 @@ def arrange_info(data, stage, recipes3={}, recipes4={}):
                     cut_week = int(cut_yearWeek)
                 stage_multi_rate = 'S4_overage'
                 stage_grow_weeks = 'S4_growth_weeks'
-                x['total_planting'] = x['total'] * multi_rate
+                x['total_planting'] = x['total'] #* multi_rate
                 #Stage 4 Green House growth_time and multiplaction
                 selected_recipe = report_obj.select_S4_recipe(recipes4.get(pcode,{}), str(cut_week)[4:])
                 multi_rate = 1 - selected_recipe.get(stage_multi_rate,0)

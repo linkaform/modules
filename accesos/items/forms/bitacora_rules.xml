@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<lkf>
+    <form_id>{{ form.bitacora.id }}</form_id>
+    <id>65cbe06cfb981b2d079f47e2</id>
+    <rules>[]</rules>
+</lkf>
