@@ -53,10 +53,11 @@ class Accesos(Accesos):
         self.FORM_ALTA_COLABORADORES = self.lkm.form_id('alta_de_colaboradores_visitantes','id')
         self.FORM_ALTA_EQUIPOS = self.lkm.form_id('alta_de_equipos','id')
         self.FORM_ALTA_VEHICULOS = self.lkm.form_id('alta_de_vehiculos','id')
-        self.FORM_BITACORA = self.lkm.form_id('bitacora','id')
+        #self.FORM_BITACORA = self.lkm.form_id('bitacora','id')
         self.FORM_LOCKER = self.lkm.form_id('locker','id')
-        self.FORM_PASE_DE_ENTRADA = self.lkm.form_id('pase_de_entrada','id')
-        self.FORM_REGISTRO_PERMISOS = self.lkm.form_id('registro_de_permisos','id')
+        #self.FORM_PASE_DE_ENTRADA = self.lkm.form_id('pase_de_entrada','id')
+        #self.FORM_REGISTRO_PERMISOS = self.lkm.form_id('registro_de_permisos','id')
+        self.FORM_BITACORA_TURNOS = 117924
         #self.FORM_BITACORA_TURNOS = self.lkm.form_id('bitcora_de_turnos','id')
         #self.FORM_NOTAS = self.lkm.form_id('notas','id')
 
@@ -455,8 +456,6 @@ class Accesos(Accesos):
             print('=========')
         return data_answers;
 
-
-
     #---Change Record
     def set_add_record(self, data_user, data_item, data_vehicule, location = ''):
         #----Variables
@@ -519,7 +518,6 @@ class Accesos(Accesos):
         print('location', location);
         print('dataGafete',dataGafete);
         return ''
-
 
     #---Query Functions
     def get_alerts(self, location):
@@ -668,7 +666,7 @@ class Accesos(Accesos):
 
     def get_guard_list(self, location, booth):
         match_query = {
-            "form_id": 117924,
+            "form_id": self.FORM_BITACORA_TURNOS,
             f"answers.{self.f['catalogo_nombre_ubicacion']}":{"$in":[location,[location],'"' + location + '"']},
             f"answers.{self.f['catalogo_nombre_caseta']}":{"$in":[booth,[booth],'"' + booth + '"']},
         }       
@@ -731,8 +729,6 @@ class Accesos(Accesos):
         res = self.cr.aggregate(query)
         data_format = self.set_format_list_notes(res)
         return data_format
-
-
 
     def get_user_bitacora(self, curp):
         data_bitacora = []
@@ -869,3 +865,11 @@ class Accesos(Accesos):
         res_format = self.set_format_catalog_locations(res_location)
         return res_format
 
+
+
+    def load_shifts(self):
+        print('loads shifts....')
+        # print(dir(self))
+        print('user.............................. ', self.user)
+        # print('user ', self.lkf_api.get_user_by_email())
+        # print('user ', self.get_user_data())

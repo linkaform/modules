@@ -5,6 +5,7 @@ from account_settings import *
 from accesos_utils import Accesos
 
 if __name__ == "__main__":
+    # print('sys.argv', sys.argv)
     #acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=True) 
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
@@ -13,10 +14,13 @@ if __name__ == "__main__":
     data = all_data.get("data", {})
     option = data.get("option",'')
     location = data.get("location",'')
+    print('option', option)
     #-FUNCTIONS
     if option == 'catalog_location':
         response = acceso_obj.get_catalog_locations(location)
         sys.stdout.write(simplejson.dumps({"data": response}))
+    elif option == 'load_shifts':
+        response = acceso_obj.load_shifts()
     elif option == 'location_guard':
         email = 'guardia1@linkaform.com'
         response = acceso_obj.get_guard_location(email)
