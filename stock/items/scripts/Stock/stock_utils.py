@@ -31,7 +31,8 @@ class Stock(Stock):
         self.f.update({
             'parts_group':'62c5da67f850f35cc2483346',
             })
-        self.answer_label = self._labels()
+        
+        # self.answer_label = self._labels()
 
     def stock_one_many_one(self, move_type, product_code=None, sku=None, lot_number=None, warehouse=None, location=None, date_from=None, date_to=None, status='done', **kwargs):
         print('11move_type=',move_type)
