@@ -987,7 +987,8 @@ class Stock(Stock):
             else:
                 result.append(res)
         if new_records_data:
-            set_order = new_record_answers_list = []
+            set_order = []
+            new_record_answers_list = []
             for idx, x in new_records_data.items():
                 set_order.append(idx)
                 new_record_answers_list.append(x)
@@ -996,11 +997,15 @@ class Stock(Stock):
             print('cuantos van...',simplejson.dumps(new_record_answers_list, indent=3))
             result = self.lkf_api.post_forms_answers_list(new_record_answers_list)
             print('reulst=', result)
+            print('set_order', set_order)
+            print("self.f['move_group_status']=", self.f['move_group_status'])
             for idx, r in enumerate(result):
                 print('idx=============== ', idx)
                 print('r=', r)
                 set_status_code = r.get('status_code',0)
                 if set_status_code in (200,201,202):
+                    print('aself answers=',self.answers[self.f['new_location_group']])
+                    print('aself set_order=',set_order[idx])
                     self.answers[self.f['new_location_group']][set_order[idx]][self.f['move_group_status']] = 'done'
                 else:
                     self.answers[self.f['new_location_group']][set_order[idx]][self.f['move_group_status']] = 'error'
