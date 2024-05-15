@@ -118,88 +118,22 @@
         <item>
             <conditions>
                 <item>
-                    <condition>iexact=</condition>
-                    <field>
-                        <field_id>61041b50d9ee55ab14965000</field_id>
-                        <id>61041b50d9ee55ab14965000</id>
-                        <label>Destino</label>
-                        <type>radio</type>
-                    </field>
-                    <value>otro</value>
-                </item>
-            </conditions>
-            <element_ids>[]</element_ids>
-            <empty>False</empty>
-            <fields_ruled>
-                <item>
-                    <field_id>61041b50d9ee55ab14965ba0</field_id>
-                    <id>61041b50d9ee55ab14965ba0</id>
-                    <label>Destino</label>
-                    <type>text</type>
-                </item>
-                <item>
-                    <field_id>61041c9a9242368dd3965da1</field_id>
-                    <id>61041c9a9242368dd3965da1</id>
-                    <label>Costo de Transportación</label>
-                    <type>decimal</type>
-                </item>
-            </fields_ruled>
-            <group_conditions>{}</group_conditions>
-            <name>Mostrar Otro Destino</name>
-            <operator>and</operator>
-            <rule_id>19bc195017311d33</rule_id>
-            <rule_type>show</rule_type>
-            <user_conditions>{}</user_conditions>
-        </item>
-        <item>
-            <conditions>
-                <item>
-                    <condition>iexact=</condition>
-                    <field>
-                        <field_id>61041b50d9ee55ab14965000</field_id>
-                        <id>61041b50d9ee55ab14965000</id>
-                        <label>Destino</label>
-                        <type>radio</type>
-                    </field>
-                    <value>otro</value>
-                </item>
-            </conditions>
-            <element_ids>[]</element_ids>
-            <empty>False</empty>
-            <fields_ruled>
-                <item>
-                    <field_id>61041b50d9ee55ab14965ba0</field_id>
-                    <id>61041b50d9ee55ab14965ba0</id>
-                    <label>Especifique otro destino</label>
-                    <type>text</type>
-                </item>
-            </fields_ruled>
-            <group_conditions>{}</group_conditions>
-            <name>Requerir Destino</name>
-            <operator>and</operator>
-            <rule_id>1c612364a47125a</rule_id>
-            <rule_type>required</rule_type>
-            <user_conditions>{}</user_conditions>
-        </item>
-        <item>
-            <conditions>
-                <item>
                     <condition>is__empty=</condition>
                     <field>
-                        <field_id>61041b50d9ee55ab14965ba2</field_id>
-                        <id>61041b50d9ee55ab14965ba2</id>
-                        <label>Fecha de Salida</label>
-                        <type>date</type>
+                        <field_id>61041b8370c14c09eff167ae</field_id>
+                        <id>61041b8370c14c09eff167ae</id>
+                        <label>Monto Solicitado (Presupuesto)</label>
+                        <type>decimal</type>
                     </field>
                     <value> </value>
                 </item>
                 <item>
                     <condition>not__empty=</condition>
                     <field>
-                        <field_id>61041b50d9ee55ab14965ba2</field_id>
-                        <id>61041b50d9ee55ab14965ba2</id>
-                        <label>Fecha de Salida</label>
-                        <type>date</type>
+                        <field_id>61041b8370c14c09eff167ae</field_id>
+                        <id>61041b8370c14c09eff167ae</id>
+                        <label>Monto Solicitado (Presupuesto)</label>
+                        <type>decimal</type>
                     </field>
                     <value> </value>
                 </item>
@@ -226,12 +160,6 @@
                     <type>catalog-select</type>
                 </item>
                 <item>
-                    <field_id>610419b5d28657c73e36fcd4</field_id>
-                    <id>610419b5d28657c73e36fcd4</id>
-                    <label>Destino</label>
-                    <type>catalog-detail</type>
-                </item>
-                <item>
                     <field_id>649d02057880ff495300bcc0</field_id>
                     <id>649d02057880ff495300bcc0</id>
                     <label>Anticipo Efectivo</label>
@@ -240,7 +168,7 @@
                 <item>
                     <field_id>629fb33a8758b5808890b22e</field_id>
                     <id>629fb33a8758b5808890b22e</id>
-                    <label>Gasto ejecutado</label>
+                    <label>Gasto (Presupuesto) ejecutado</label>
                     <type>decimal</type>
                 </item>
                 <item>
@@ -258,7 +186,7 @@
                 <item>
                     <field_id>629fb33a8758b5808890b22f</field_id>
                     <id>629fb33a8758b5808890b22f</id>
-                    <label>Monto restante</label>
+                    <label>Monto (Presupuesto) restante</label>
                     <type>decimal</type>
                 </item>
                 <item>
@@ -288,7 +216,7 @@
                 <item>
                     <field_id>aaaa1fa92c20405af671d122</field_id>
                     <id>aaaa1fa92c20405af671d122</id>
-                    <label>Monteo en Ex</label>
+                    <label>Moneda Extranjera</label>
                     <type>decimal</type>
                 </item>
                 <item>
@@ -302,12 +230,6 @@
                     <id>627bf0d5c651931d3c7eedd3</id>
                     <label>Monto Autorizado</label>
                     <type>decimal</type>
-                </item>
-                <item>
-                    <field_id>5893798cb43fdd4b53ab6e1e</field_id>
-                    <id>5893798cb43fdd4b53ab6e1e</id>
-                    <label>Metodo de Pago</label>
-                    <type>select</type>
                 </item>
                 <item>
                     <field_id>{{ catalog.conceptos_de_gastos.obj_id}}</field_id>
@@ -327,6 +249,12 @@
                     <label>Estatus</label>
                     <type>select</type>
                 </item>
+                <item>
+                    <field_id>65a0925c6a3fdf3e32659bb8</field_id>
+                    <id>65a0925c6a3fdf3e32659bb8</id>
+                    <label>Pagado por</label>
+                    <type>radio</type>
+                </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>
             <name>Ocultar campos rellenados Automaticamente</name>
@@ -340,20 +268,20 @@
                 <item>
                     <condition>is__empty=</condition>
                     <field>
-                        <field_id>61041b50d9ee55ab14965ba2</field_id>
-                        <id>61041b50d9ee55ab14965ba2</id>
-                        <label>Fecha de Salida</label>
-                        <type>date</type>
+                        <field_id>61041b8370c14c09eff167ae</field_id>
+                        <id>61041b8370c14c09eff167ae</id>
+                        <label>Monto Solicitado (Presupuesto)</label>
+                        <type>decimal</type>
                     </field>
                     <value> </value>
                 </item>
                 <item>
                     <condition>not__empty=</condition>
                     <field>
-                        <field_id>61041b50d9ee55ab14965ba2</field_id>
-                        <id>61041b50d9ee55ab14965ba2</id>
-                        <label>Fecha de Salida</label>
-                        <type>date</type>
+                        <field_id>61041b8370c14c09eff167ae</field_id>
+                        <id>61041b8370c14c09eff167ae</id>
+                        <label>Monto Solicitado (Presupuesto)</label>
+                        <type>decimal</type>
                     </field>
                     <value> </value>
                 </item>
@@ -373,6 +301,42 @@
             <operator>or</operator>
             <rule_id>1a03159e12961bef</rule_id>
             <rule_type>disabled</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>in=</condition>
+                    <field>
+                        <field_id>64dd637965b8662fabb5ac2d</field_id>
+                        <id>64dd637965b8662fabb5ac2d</id>
+                        <label>Puede ser sobre girada</label>
+                        <type>radio</type>
+                    </field>
+                    <value>si</value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <field_id>64dd637965b8662fabb5ac2e</field_id>
+                    <id>64dd637965b8662fabb5ac2e</id>
+                    <label>Limite de Sobre Giro</label>
+                    <type>integer</type>
+                </item>
+                <item>
+                    <field_id>64dd637965b8662fabb5ac2f</field_id>
+                    <id>64dd637965b8662fabb5ac2f</id>
+                    <label>Cerrar Solicitud en Sobre Grio</label>
+                    <type>radio</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Mostrar monto Sobregiro</name>
+            <operator>and</operator>
+            <rule_id>16755ab16571f2f</rule_id>
+            <rule_type>show</rule_type>
             <user_conditions>{}</user_conditions>
         </item>
     </rules>

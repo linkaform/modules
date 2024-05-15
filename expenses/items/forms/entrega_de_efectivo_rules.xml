@@ -6,24 +6,24 @@
         <item>
             <conditions>
                 <item>
-                    <condition>nin=</condition>
+                    <condition>in=</condition>
                     <field>
                         <field_id>544d5b4e01a4de205e2b2169</field_id>
                         <id>544d5b4e01a4de205e2b2169</id>
                         <label>Status del Anticipo</label>
                         <type>select</type>
                     </field>
-                    <value>en_proceso</value>
+                    <value>realizado</value>
                 </item>
                 <item>
-                    <condition>nin=</condition>
+                    <condition>in=</condition>
                     <field>
                         <field_id>544d5b4e01a4de205e2b2169</field_id>
                         <id>544d5b4e01a4de205e2b2169</id>
                         <label>Status del Anticipo</label>
                         <type>select</type>
                     </field>
-                    <value>cancelado</value>
+                    <value>autorizado</value>
                 </item>
             </conditions>
             <element_ids>[]</element_ids>

@@ -22,7 +22,7 @@ def add_info_catalog_sol_gts():
     print('++++++ record_solicitud =',record_solicitud)
     dict_sol_gts = {}
     for r in record_solicitud:
-        dict_sol_gts[ expense_obj.f['cat_destino'] ] = r[ expense_obj.f['cat_destino'] ]
+        dict_sol_gts[ expense_obj.f['cat_destinos'] ] = r[ expense_obj.f['cat_destinos'] ]
         dict_sol_gts[ expense_obj.f['cat_folio'] ] = r[ expense_obj.f['cat_folio'] ]
         dict_sol_gts[ expense_obj.f['fecha_salida'] ] = [r[ expense_obj.f['fecha_salida'] ],]
         dict_sol_gts[ expense_obj.f['fecha_regreso'] ] = [r[ expense_obj.f['fecha_regreso'] ],]

@@ -6,11 +6,9 @@
             <_id>form_108426</_id>
             <config>True</config>
             <inc_by>1</inc_by>
-            <manual>False</manual>
             <next>5</next>
             <padding_zeros>0</padding_zeros>
             <prefix>None</prefix>
-            <required>False</required>
             <suffix>None</suffix>
         </folio>
     </advanced_options>
@@ -51,7 +49,14 @@
             <page_description>None</page_description>
             <page_fields>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>17da1369210f10ea</rule_id>
+                            <rule_index>0</rule_index>
+                            <rule_type>required</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -372,7 +377,7 @@
                             </related_fields>
                         </related_catalog>
                         <view_fields>
-                            <item>610419b5d28657c73e36fcd4</item>
+                            <item>66107030fc70de34c53e622d</item>
                             <item>610419b5d28657c73e36fcd3</item>
                         </view_fields>
                         <view_index>0</view_index>
@@ -381,7 +386,7 @@
                         <item>610419b5d28657c73e36fcd5</item>
                         <item>610419b5d28657c73e36fcd6</item>
                         <item>610419e33a05c520d90814d3</item>
-                        <item>610419b5d28657c73e36fcd4</item>
+                        <item>66107030fc70de34c53e622d</item>
                         <item>610419b5d28657c73e36fcd3</item>
                     </catalog_fields>
                     <catalog_relation>None</catalog_relation>
@@ -465,7 +470,7 @@
                     <default_value />
                     <descriptor>None</descriptor>
                     <fav>True</fav>
-                    <field_id>610419b5d28657c73e36fcd4</field_id>
+                    <field_id>66107030fc70de34c53e622d</field_id>
                     <field_type>catalog-select</field_type>
                     <grading_criteria>{}</grading_criteria>
                     <group>None</group>
@@ -515,7 +520,7 @@
                         <watermark_config>None</watermark_config>
                         <watermark_enable>False</watermark_enable>
                     </properties>
-                    <required>False</required>
+                    <required>True</required>
                     <rules>[]</rules>
                     <show_for_rule>True</show_for_rule>
                     <validations>{}</validations>
@@ -1633,7 +1638,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>16ab8a31060214f</rule_id>
+                            <rule_index>1</rule_index>
+                            <rule_type>disabled</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>
                         <item>6509dee1145b0afdcd9873fe</item>
                     </buttons_ids>
@@ -1732,7 +1744,12 @@
                         <watermark_enable>False</watermark_enable>
                     </properties>
                     <required>False</required>
-                    <rules>[]</rules>
+                    <rules>
+                        <item>17da1369210f10ea</item>
+                        <item>17da1369210f10ea</item>
+                        <item>16ab8a31060214f</item>
+                        <item>16ab8a31060214f</item>
+                    </rules>
                     <show_for_rule>True</show_for_rule>
                     <validations>{}</validations>
                     <visible>True</visible>
@@ -1866,5 +1883,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1704234905.0</updated_at>
+    <updated_at>1712980085.0</updated_at>
 </lkf>
