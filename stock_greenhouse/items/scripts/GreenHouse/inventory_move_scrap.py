@@ -17,7 +17,6 @@ if __name__ == '__main__':
     stock_obj.answers[stock_obj.f['inv_scrap_status']] = 'done'
     update_ok = False
     print('res=',status_code)
-    print('status_code33333',status_code.get('status_code'))
     if status_code.get('status_code') == 202:
         stock_obj.answers[stock_obj.f['inv_scrap_status']] = 'done'
         print('new answers=', stock_obj.answers)

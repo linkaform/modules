@@ -1,16 +1,17 @@
 <?xml version='1.0' encoding='utf-8'?>
 <lkf>
     <form_id>{{ form.weekly_production_plan_green_house.id }}</form_id>
-    <id>63c9e664d431c2962b04fa8e</id>
+    <id>65bd527ead3afa9a681a33f8</id>
     <workflows>
         <item>
             <actions>
                 <item>
-                    <_id>63c9f5ce38b6549eaa522596</_id>
+                    <_id>65bd52972ab56f9d0647ee1b</_id>
                     <action_id>8</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
                         <form>
+                            <deleted_at>None</deleted_at>
                             <id>{{ form.greenhouse_production.id }}</id>
                             <name>{{ form.greenhouse_production.name }}</name>
                         </form>
@@ -49,20 +50,6 @@
                                     <conditions>[]</conditions>
                                 </etl>
                                 <input>
-                                    <field_type>integer</field_type>
-                                    <id>62ed38d9f86d40b49767c44e</id>
-                                    <type>field_to_field</type>
-                                    <value>None</value>
-                                </input>
-                                <output>
-                                    <id>62ed38d9f86d40b49767c44e</id>
-                                </output>
-                            </item>
-                            <item>
-                                <etl>
-                                    <conditions>[]</conditions>
-                                </etl>
-                                <input>
                                     <field_type>catalog-select</field_type>
                                     <id>61ef32bcdf0ec2ba73dec33d</id>
                                     <type>field_to_field</type>
@@ -70,6 +57,20 @@
                                 </input>
                                 <output>
                                     <id>61ef32bcdf0ec2ba73dec33d</id>
+                                </output>
+                            </item>
+                            <item>
+                                <etl>
+                                    <conditions>[]</conditions>
+                                </etl>
+                                <input>
+                                    <field_type>catalog-detail</field_type>
+                                    <id>61ef32bcdf0ec2ba73dec33e</id>
+                                    <type>field_to_field</type>
+                                    <value>None</value>
+                                </input>
+                                <output>
+                                    <id>61ef32bcdf0ec2ba73dec33e</id>
                                 </output>
                             </item>
                             <item>
@@ -98,34 +99,6 @@
                                 </input>
                                 <output>
                                     <id>6209705080c17c97320e3383</id>
-                                </output>
-                            </item>
-                            <item>
-                                <etl>
-                                    <conditions>[]</conditions>
-                                </etl>
-                                <input>
-                                    <field_type>integer</field_type>
-                                    <id>62e4bc58d9814e169a3f6beb</id>
-                                    <type>field_to_field</type>
-                                    <value>None</value>
-                                </input>
-                                <output>
-                                    <id>62e4bc58d9814e169a3f6beb</id>
-                                </output>
-                            </item>
-                            <item>
-                                <etl>
-                                    <conditions>[]</conditions>
-                                </etl>
-                                <input>
-                                    <field_type>textarea</field_type>
-                                    <id>62e978cb8547b4453ac8959d</id>
-                                    <type>field_to_field</type>
-                                    <value>None</value>
-                                </input>
-                                <output>
-                                    <id>62e9792828d443833d74ebeb</id>
                                 </output>
                             </item>
                             <item>
@@ -148,12 +121,26 @@
                                 </etl>
                                 <input>
                                     <field_type>integer</field_type>
-                                    <id>63f8f4cad090912501be306a</id>
+                                    <id>62ed38d9f86d40b49767c44e</id>
                                     <type>field_to_field</type>
                                     <value>None</value>
                                 </input>
                                 <output>
-                                    <id>63f8f4cad090912501be306a</id>
+                                    <id>62ed38d9f86d40b49767c44e</id>
+                                </output>
+                            </item>
+                            <item>
+                                <etl>
+                                    <conditions>[]</conditions>
+                                </etl>
+                                <input>
+                                    <field_type>integer</field_type>
+                                    <id>62e4bc58d9814e169a3f6beb</id>
+                                    <type>field_to_field</type>
+                                    <value>None</value>
+                                </input>
+                                <output>
+                                    <id>62e4bc58d9814e169a3f6beb</id>
                                 </output>
                             </item>
                             <item>
@@ -175,13 +162,27 @@
                                     <conditions>[]</conditions>
                                 </etl>
                                 <input>
-                                    <field_type>catalog-detail</field_type>
-                                    <id>61ef32bcdf0ec2ba73dec33e</id>
+                                    <field_type>textarea</field_type>
+                                    <id>62e978cb8547b4453ac8959d</id>
                                     <type>field_to_field</type>
                                     <value>None</value>
                                 </input>
                                 <output>
-                                    <id>61ef32bcdf0ec2ba73dec33e</id>
+                                    <id>62e9792828d443833d74ebeb</id>
+                                </output>
+                            </item>
+                            <item>
+                                <etl>
+                                    <conditions>[]</conditions>
+                                </etl>
+                                <input>
+                                    <field_type>integer</field_type>
+                                    <id>63f8f4cad090912501be306a</id>
+                                    <type>field_to_field</type>
+                                    <value>None</value>
+                                </input>
+                                <output>
+                                    <id>63f8f4cad090912501be306a</id>
                                 </output>
                             </item>
                             <item>
@@ -200,10 +201,10 @@
                             </item>
                         </mapping>
                     </configuration>
-                    <name>Create Production</name>
+                    <name>Green House Production</name>
                 </item>
             </actions>
-            <id>63c9e664d431c2962b04fa88</id>
+            <id>65bd52972ab56f9d0647ee1d</id>
             <name>Green House Production</name>
             <rules>
                 <metadata>
@@ -215,9 +216,9 @@
                             <year>2014</year>
                         </period>
                         <range>
-                            <end>2023-01-20T06:00:00.000Z</end>
+                            <end>2024-02-03T06:00:00.000Z</end>
                             <selected>False</selected>
-                            <start>2023-01-20T00:50:33.699Z</start>
+                            <start>2024-02-02T20:26:14.657Z</start>
                         </range>
                     </date>
                     <grading>{}</grading>
@@ -254,7 +255,7 @@
         <item>
             <actions>
                 <item>
-                    <_id>63f803d826f6d846e141d03e</_id>
+                    <_id>65bd52972ab56f9d0647ee1c</_id>
                     <action_id>7</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -267,15 +268,15 @@
                             <itype>script</itype>
                             <name>{{ script.calculates_weekly_plantation_plan.name }}</name>
                             <start_date>2023-02-24T00:22:41.204071</start_date>
-                            <updated_at>2023-02-24T00:22:41.217750</updated_at>
+                            <updated_at>2024-01-04T01:13:33.496645</updated_at>
                         </script>
                         <user>SCRIPT_OWNER</user>
                     </configuration>
-                    <name>None</name>
+                    <name>Calculates plantation plan</name>
                 </item>
             </actions>
-            <id>63f803d826f6d846e141d044</id>
-            <name>Calculate Eaches and Flats</name>
+            <id>65bd52972ab56f9d0647ee20</id>
+            <name>Calculates plantation plan</name>
             <rules>
                 <metadata>
                     <connection>[]</connection>
@@ -286,9 +287,9 @@
                             <year>2014</year>
                         </period>
                         <range>
-                            <end>2023-02-24T06:00:00.000Z</end>
+                            <end>2024-02-03T06:00:00.000Z</end>
                             <selected>False</selected>
-                            <start>2023-02-23T20:56:47.786Z</start>
+                            <start>2024-02-02T20:26:14.657Z</start>
                         </range>
                     </date>
                     <grading>{}</grading>
