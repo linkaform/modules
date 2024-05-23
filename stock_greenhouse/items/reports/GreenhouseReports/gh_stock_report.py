@@ -10,7 +10,7 @@ from lkf_addons.addons.stock_greenhouse.stock_utils import Stock
 
 # sys.path.append('/srv/scripts/addons/modules/stock_greenhouse/items/scripts/')
 
-print("4module products sys.path[0], __package__ ==", sys.path)
+print("module products sys.path[0], __package__ ==", sys.path)
 
 # from stock_utils import Stock
 
