@@ -388,6 +388,7 @@
                         <item>620a9ee0a449b98114f61d77</item>
                         <item>620a9ee0a449b98114f61d75</item>
                         <item>620a9ee0a449b98114f61d76</item>
+                        <item>622bb9946d0d6fef17fe0842</item>
                         <item>620ad6247a217dbcb888d168</item>
                         <item>620ad6247a217dbcb888d167</item>
                         <item>6441d33a153b3521f5b2afcb</item>
@@ -1187,7 +1188,20 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>105778523316b8</rule_id>
+                            <rule_index>5</rule_index>
+                            <rule_type>invisible</rule_type>
+                        </item>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>480a861dbe2167</rule_id>
+                            <rule_index>6</rule_index>
+                            <rule_type>required</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -1249,8 +1263,96 @@
                         <watermark_config>None</watermark_config>
                         <watermark_enable>False</watermark_enable>
                     </properties>
-                    <required>True</required>
-                    <rules>[]</rules>
+                    <required>False</required>
+                    <rules>
+                        <item>20a921521cdd8c0</item>
+                        <item>2314173711601e09</item>
+                    </rules>
+                    <show_for_rule>True</show_for_rule>
+                    <validations>{}</validations>
+                    <visible>True</visible>
+                </item>
+                <item>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>20a921521cdd8c0</rule_id>
+                            <rule_index>4</rule_index>
+                            <rule_type>invisible</rule_type>
+                        </item>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>2314173711601e09</rule_id>
+                            <rule_index>7</rule_index>
+                            <rule_type>required</rule_type>
+                        </item>
+                    </affecting_rules>
+                    <buttons_ids>[]</buttons_ids>
+                    <catalog>None</catalog>
+                    <catalog_fields>[]</catalog_fields>
+                    <catalog_relation>None</catalog_relation>
+                    <default>False</default>
+                    <default_value />
+                    <descriptor>None</descriptor>
+                    <fav>True</fav>
+                    <field_id>622bb9946d0d6fef17fe0842</field_id>
+                    <field_type>integer</field_type>
+                    <grading_criteria>{}</grading_criteria>
+                    <group>
+                        <group_id>644bf7ccfa9830903f087867</group_id>
+                        <group_set_id>0</group_set_id>
+                    </group>
+                    <groups_fields>[]</groups_fields>
+                    <help_text>None</help_text>
+                    <label>Cut Week</label>
+                    <number_type>None</number_type>
+                    <options>[]</options>
+                    <properties>
+                        <body_payload>[]</body_payload>
+                        <color />
+                        <comment />
+                        <custom />
+                        <elements_ids>[]</elements_ids>
+                        <email_configuration>None</email_configuration>
+                        <enable_barcode>None</enable_barcode>
+                        <fieldId>[]</fieldId>
+                        <file_name />
+                        <file_name_array>[]</file_name_array>
+                        <help_text>False</help_text>
+                        <icon>{}</icon>
+                        <image_origin>None</image_origin>
+                        <input_parameter>[]</input_parameter>
+                        <max>None</max>
+                        <max_images_count>5</max_images_count>
+                        <metadata>[]</metadata>
+                        <method />
+                        <mime_types>[]</mime_types>
+                        <min>None</min>
+                        <min_images_count>0</min_images_count>
+                        <multi_selection>False</multi_selection>
+                        <notification>{}</notification>
+                        <number_of_decimals>2</number_of_decimals>
+                        <openChoice>False</openChoice>
+                        <parameters>[]</parameters>
+                        <pfd_print>always</pfd_print>
+                        <pfd_style>Tabla_respuestas</pfd_style>
+                        <selected>None</selected>
+                        <send_email>False</send_email>
+                        <send_record>False</send_record>
+                        <send_to_lkf>False</send_to_lkf>
+                        <service_name />
+                        <update_values>{}</update_values>
+                        <url />
+                        <visible_on />
+                        <wait_response>False</wait_response>
+                        <watermark_config>None</watermark_config>
+                        <watermark_enable>False</watermark_enable>
+                    </properties>
+                    <required>False</required>
+                    <rules>
+                        <item>105778523316b8</item>
+                        <item>480a861dbe2167</item>
+                    </rules>
                     <show_for_rule>True</show_for_rule>
                     <validations>{}</validations>
                     <visible>True</visible>
@@ -1956,5 +2058,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1713387533.0</updated_at>
+    <updated_at>1716354295.0</updated_at>
 </lkf>

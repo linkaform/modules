@@ -4,7 +4,6 @@ import sys, simplejson
 from datetime import datetime, timedelta, date
 from copy import deepcopy
 
-print('antesrrrr33344...')
 from lkf_addons.addons.stock_greenhouse.stock_reports import Reports
 
 #Se agrega path para que obtenga el archivo de Stock de este modulo
@@ -20,8 +19,132 @@ class Reports(Reports, Stock):
     def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False):
         #base.LKF_Base.__init__(self, settings, sys_argv=sys_argv, use_api=use_api)
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
-        self.GREENHOUSE_INVENTORY_ID = self.lkm.form_id('green_house_inventroy','id')
+        self.GREENHOUSE_INVENTORY_ID = self.lkm.form_id('green_house_inventory','id')
         self.plants_by_week = {}
+        self.f.update({
+            'weely_production_plan_week':'61f1da41b112fe4e7fe85830',
+            'weely_production_plan_year':'61f1da41b112fe4e7fe8582f',
+            'weely_production_status':'62e4bd2ed9814e169a3f6bef',
+            })
+
+
+
+    def get_production_plan(self, cut_year, cut_week, plant_code=None, stage=None, team=None):
+        # stage ='pull'
+        cut_week = 23
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id":self.WEEKLY_PRODUCTION_PLAN_LAB,
+            f"answers.{self.f['weely_production_plan_year']}": cut_year,
+            f"answers.{self.f['weely_production_plan_week']}": cut_week,
+            f"answers.{self.f['weely_production_status']}":'execute', #status
+            }
+        match_dos = {}
+        if plant_code:
+            match_dos.update({f"answers.{self.f['production_group']}.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_code']}":plant_code,})
+        if stage:
+            match_dos.update({f"answers.{self.f['production_group']}.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['reicpe_start_size']}":stage})
+        if team:
+            match_dos.update({f"answers.{self.f['production_group']}.{self.TEAM_OBJ_ID}.{self.f['team_name']}":team})
+        else:
+            match_dos.update({f"answers.{self.f['production_group']}.{self.TEAM_OBJ_ID}.{self.f['team_name']}":{"$exists":True}})
+
+        query= [
+            {'$match': match_query },
+            {'$unwind':f"$answers.{self.f['production_group']}"}]
+        if match_dos:
+            query.append({'$match': match_dos },)
+        query += [
+            {'$project':
+                {'_id': 1,
+                    'plant_code': f"$answers.{self.f['production_group']}.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_code']}",
+                    'cut_year': f"$answers.{self.f['weely_production_plan_year']}",
+                    'cut_week': f"$answers.{self.f['weely_production_plan_week']}",
+                    'team': f"$answers.{self.f['production_group']}.{self.TEAM_OBJ_ID}.{self.f['team_name']}",
+                    'stage': f"$answers.{self.f['production_group']}.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['recipe_stage']}",
+                    'plants':{ '$multiply':[
+                        f"$answers.{self.f['production_group']}.{self.f['production_requier_containers']}",
+                        f"$answers.{self.f['production_group']}.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['reicpe_per_container']}"]}
+                    }},
+            ]
+        if plant_code:
+            query += [
+            {'$group':
+                {'_id':
+                    { 'plant_code': '$plant_code',
+                      'stage': '$stage',
+                      },
+                  'total': {'$sum': '$plants'}}},
+            {'$project':
+                {'_id': 0,
+                'plant_code': '$_id.plant_code',
+                'stage': '$_id.stage',
+                'total': '$total'
+                }
+            },
+            {'$sort': { 'stage': 1, 'total':1 , 'plant_code': 1}}
+            ]
+        else:
+            query += [
+                {'$group':
+                    {'_id':
+                        { 'team': '$team',
+                          'stage': '$stage',
+                          },
+                      'total': {'$sum': '$plants'}}},
+                {'$project':
+                    {'_id': 0,
+                    'team': '$_id.team',
+                    'stage': '$_id.stage',
+                    'total': '$total'
+                    }
+                },
+                {'$sort': {'team': 1, 'stage': 1}}
+            ]
+        res = self.cr.aggregate(query)
+        result = [r for r in res]
+        return result
+
+
+    def get_produced(self, cut_week, cut_year, from_week, to_week ):
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id":self.LAB_MOVE_NEW_PRODUCTION,
+            f"answers.{self.f['plant_cut_year']}": {"$gte": int(cut_year),"$lte": int(cut_year) },
+            f"answers.{self.f['production_cut_week']}": {"$gte": int(from_week),"$lte": int(to_week) },
+            }
+        query= [{'$match': match_query },
+            # {'$unwind':'$answers.61f1fab3ce39f01fe8a7ca8c'},
+            {'$project':
+                {   '_id': 0,
+                    'year':   f"$answers.{self.f['production_cut_week']}",
+                    'week':   f"$answers.{self.f['production_cut_week']}",
+                    'stage':  f"$answers.{self.f['plant_stage']}",
+                    'team':   f"$answers.{self.TEAM_OBJ_ID}.{self.f['team_name']}",
+                    'eaches': f"$answers.{self.f['actual_eaches_on_hand']}",
+                    }
+            },
+            {'$group':
+                {'_id':
+                    {
+                    'team': '$team',
+                    'stage': '$stage',
+                      },
+                  'total': {'$sum': '$eaches'}}},
+            {'$project':
+                {
+                    '_id':0,
+                    'team':'$_id.team',
+                    'stage':'$_id.stage',
+                    'total':'$total',
+                }
+            },
+            {'$sort': {'team': 1,'stage':1 }}
+            ]
+        res = self.cr.aggregate(query)
+        result = [r for r in res]
+        return result
+
 
     def get_requierd_plan(self, yearWeek_from, yearWeek_to):
         self.columsTable_title
