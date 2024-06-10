@@ -3,7 +3,7 @@ import sys, simplejson
 from datetime import datetime
 from copy import deepcopy
 
-from lkf_addons.addons.expenses.expense_utils import Expenses
+from expense_utils import Expenses
 
 from account_settings import *
 

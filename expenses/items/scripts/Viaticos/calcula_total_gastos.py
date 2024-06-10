@@ -3,7 +3,7 @@ import sys, simplejson
 from datetime import datetime
 from copy import deepcopy
 
-from lkf_addons.addons.expenses.expense_utils import Expenses
+from expense_utils import Expenses
 
 from account_settings import *
 
@@ -14,7 +14,13 @@ if __name__ == '__main__':
     exp_obj.current_record['answers'] = exp_obj.get_total(answers)
     catalog_obj_id = exp_obj.CATALOG_SOL_VIAJE_OBJ_ID
     folio = answers.get(catalog_obj_id,{}).get(exp_obj.f['cat_folio'])
-    update_ok = exp_obj.update_solicitud(folio, run_validations=True, background=True)
+    is_closing_gasto = answers.get( exp_obj.f['status_gasto'], '' ) == 'cerrada'
+    print('is_closing_gasto=',is_closing_gasto)
+    update_ok = exp_obj.update_solicitud(folio, 
+        run_validations=True, 
+        background=True,
+        force_close_sol=is_closing_gasto
+    )
     if update_ok:
             sys.stdout.write(simplejson.dumps({
                 'status': 101,

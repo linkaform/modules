@@ -30,7 +30,7 @@ class Stock(Stock):
             date_yearweek = datetime.strptime(f'{yearWeek}-1', '%Y%W-%w')
             cutweek = date_yearweek + timedelta(weeks=growth_week)
             nextcut_week = cutweek.strftime('%Y%W')
-            self.answers[self.f['new_cutweek']] = nextcut_week
+            self.answers[self.f['new_cutweek']] = int(nextcut_week)
         per_container = self.answers.get(self.PRODUCT_RECIPE_OBJ_ID,{}).get(self.f['reicpe_per_container'],0)
         product_stock = self.get_product_stock(product_code, lot_number=lot_number, warehouse=warehouse, location=location, kwargs=kwargs.get('kwargs',{}) )
         self.answers[self.f['product_lot_produced']] = product_stock['production']
