@@ -25,13 +25,157 @@ class Reports(Reports, Stock):
             'weely_production_plan_week':'61f1da41b112fe4e7fe85830',
             'weely_production_plan_year':'61f1da41b112fe4e7fe8582f',
             'weely_production_status':'62e4bd2ed9814e169a3f6bef',
+            'workhouse_yearweek':'63d06a8f01fe398a70e4166f',
+            'workhouse_house':'63d06a8f01fe398a70e4166e',
             })
 
+    def available_hours(self, yearweek=None):
+        # stage ='pull'
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id":94948,
+            }
 
+        if yearweek:
+            match_query.update({f"answers.{self.f['workhouse_yearweek']}":int(yearweek)})
+        else:
+            match_query.update({f"answers.{self.f['workhouse_yearweek']}":{"$exists":False}})
+        query = [
+            {'$match': match_query },
+            {'$project':
+                {'_id': 1,
+                    'team': f"$answers.{self.TEAM_OBJ_ID}.{self.f['team_name']}",
+                    'hours': f"$answers.{self.f['workhouse_house']}",
+                    }
+            },
+            {'$group':
+                {'_id':
+                    { 'team': '$team',
+                      },
+                  'hours': {'$sum': '$hours'}}
+              },
+              {'$project':
+                {'_id': 0,
+                'team': '$_id.team',
+                'hours': '$hours',
+              }
+              },
+                {'$sort': {'team': 1, 'hours': 1}}
+            ]
+        # print('match_query=',simplejson.dumps(query))
+        res = self.cr.aggregate(query)
+        result = [r for r in res]
+        return result
+
+    def get_estimated_hours(self, cut_year, cut_week):
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id":self.WEEKLY_PRODUCTION_PLAN_LAB,
+            f"answers.{self.f['weely_production_plan_year']}": cut_year,
+            f"answers.{self.f['weely_production_plan_week']}": cut_week,
+            }
+        query= [{'$match': match_query },
+            {'$unwind':f"$answers.{self.f['production_group']}"},
+            {'$project':
+                {   '_id': 0,
+                    'year': f"#answers.{self.f['weely_production_plan_year']}",
+                    'week': f"#answers.{self.f['weely_production_plan_week']}",
+                    'stage': f"$answers.{self.f['production_group']}.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['recipe_stage']}",
+                    'team': f"$answers.{self.f['production_group']}.{self.TEAM_OBJ_ID}.{self.f['team_name']}",
+                    'hours': f"$answers.{self.f['production_group']}.{self.f['production_group_estimated_hrs']}",
+                    }
+                },
+            {'$group':
+                {'_id':
+                    {
+                    'team': '$team',
+                    'stage': '$stage',
+                      },
+                  'total': {'$sum': '$hours'}}},
+            {'$project':
+                {
+                    '_id':0,
+                    'team':'$_id.team',
+                    'stage':'$_id.stage',
+                    'hours':'$total',
+                }
+            },
+            {'$sort': {'team': 1,'stage':1 }}
+            ]
+
+        res = self.cr.aggregate(query)
+        result = {}
+        for r in res:
+            team = r.get('team')
+            stage = r.get('stage')
+            result[team] = result.get(team, {'S2':0, 'S3':0,'total':0})
+            result[team][stage] = r.get('hours',0)
+            result[team]['total'] = result[team]['S2'] + result[team]['S3']
+        return result
+
+    def get_plan_by_plant(self, cut_year, cut_week, produced_plants):
+        # stage ='pull'
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id":self.WEEKLY_PRODUCTION_PLAN_LAB,
+            f"answers.{self.f['weely_production_plan_year']}": cut_year,
+            f"answers.{self.f['weely_production_plan_week']}": cut_week,
+            f"answers.{self.f['weely_production_status']}":'execute', #status
+            }
+        query= [
+            {'$match': match_query },
+            {'$unwind':f"$answers.{self.f['production_group']}"}]
+        query += [
+            {'$project':
+                {'_id': 1,
+                    'plant_code': f"$answers.{self.f['production_group']}.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_code']}",
+                    'plant_name': {'$arrayElemAt':[f"$answers.{self.f['production_group']}.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_name']}",0]},
+                    'container': f"$answers.{self.f['production_group']}.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['reicpe_container']}",
+                    'stage': f"$answers.{self.f['production_group']}.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['recipe_stage']}",
+                    'plants':{ '$multiply':[
+                        f"$answers.{self.f['production_group']}.{self.f['production_requier_containers']}",
+                        f"$answers.{self.f['production_group']}.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['reicpe_per_container']}"]}
+                    }},
+            ]
+        query += [
+            {'$group':
+                {'_id':
+                    { 'plant_code': '$plant_code',
+                      'plant_name': '$plant_name',
+                      'container': '$container',
+                      'stage': '$stage',
+                      },
+                  'total': {'$sum': '$plants'}}},
+            {'$project':
+                {'_id': 0,
+                'plant_code': '$_id.plant_code',
+                'plant_name': '$_id.plant_name',
+                'container': '$_id.container',
+                'stage': '$_id.stage',
+                'total': '$total'
+                }
+            },
+            {'$sort': { 'plant_code': 1, 'stage': 1, 'total':1 }}
+            ]
+        res = self.cr.aggregate(query)
+        # result = [r for r in res]
+        for r in res:
+            code = r.get('plant_code')
+            pname = r.get('plant_name','')
+            stage = int(r.get('stage')[1])
+            if stage == 2 or stage == '2':
+                stage = 'S2'
+            elif stage == 3 or stage == '3':
+                stage = 'S3'
+            container = r.get('container','').replace('_',' ').title()
+            produced_plants[code] = produced_plants.get(code,{'S2':{},'S3':{}, 'plant_name':pname })
+            produced_plants[code][stage] = produced_plants[code].get(stage, {})
+            produced_plants[code][stage][container] = produced_plants[code][stage].get(container, {'produced':0, 'planned':0})
+            produced_plants[code][stage][container]['planned'] = r.get('total',0)
+        return produced_plants
 
     def get_production_plan(self, cut_year, cut_week, plant_code=None, stage=None, team=None):
         # stage ='pull'
-        cut_week = 23
         match_query = {
             "deleted_at":{"$exists":False},
             "form_id":self.WEEKLY_PRODUCTION_PLAN_LAB,
@@ -105,7 +249,6 @@ class Reports(Reports, Stock):
         result = [r for r in res]
         return result
 
-
     def get_produced(self, cut_week, cut_year, from_week, to_week ):
         match_query = {
             "deleted_at":{"$exists":False},
@@ -114,7 +257,7 @@ class Reports(Reports, Stock):
             f"answers.{self.f['production_cut_week']}": {"$gte": int(from_week),"$lte": int(to_week) },
             }
         query= [{'$match': match_query },
-            # {'$unwind':'$answers.61f1fab3ce39f01fe8a7ca8c'},
+            # {'$unwind':'$answers.{self.f['production_group']}'},
             {'$project':
                 {   '_id': 0,
                     'year':   f"$answers.{self.f['production_cut_week']}",
@@ -145,6 +288,60 @@ class Reports(Reports, Stock):
         result = [r for r in res]
         return result
 
+    def get_produced_by_plant(self, cut_year, from_week, to_week):
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id":self.LAB_MOVE_NEW_PRODUCTION,
+            f"answers.{self.f['plant_cut_year']}": {"$gte": int(cut_year),"$lte": int(cut_year) },
+            f"answers.{self.f['production_cut_week']}": {"$gte": int(from_week),"$lte": int(to_week) },
+            }
+        query= [{'$match': match_query },
+            # {'$unwind':'$answers.{self.f['production_group']}'},
+            {'$project':
+                {   '_id': 0,
+                    'year':   f"$answers.{self.f['production_cut_week']}",
+                    'week':   f"$answers.{self.f['production_cut_week']}",
+                    'stage':  f"$answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['recipe_stage']}",
+                    'container': f"$answers.{self.f['plant_conteiner_type']}",
+                    'plant_code':f"$answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_code']}",
+                    # 'plant_code':f"$answers.6205f7690e752ce25bb30102.61ef32bcdf0ec2ba73dec33d",
+                    'plant_name': {'$arrayElemAt':[f"$answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_name']}",0]},
+                    'eaches': f"$answers.{self.f['actual_eaches_on_hand']}"}
+                    },
+            {'$group':
+                {'_id':
+                    {
+                    'plant_code': '$plant_code',
+                    'plant_name': '$plant_name',
+                    'container': '$container',
+                    'stage': '$stage',
+                      },
+                  'total': {'$sum': '$eaches'}}},
+            {'$project':
+                {
+                    '_id':0,
+                    'plant_code':'$_id.plant_code',
+                    'plant_name':'$_id.plant_name',
+                    'container':'$_id.container',
+                    'stage':'$_id.stage',
+                    'total':'$total',
+                }
+            },
+            {'$sort': {'team': 1,'stage':1 }}
+            ]
+        res = self.cr.aggregate(query)
+        # print('query=', simplejson.dumps(query, indent=3))
+        result = {}
+        for r in res:
+            code = r.get('plant_code')
+            pname = r.get('plant_name','')
+            stage = r.get('stage','')
+            container = r.get('container','').replace('_',' ').title()
+            result[code] = result.get(code,{"S2":{},"S3":{}, 'plant_name':pname })
+            result[code][stage] = result[code].get(stage, {})
+            result[code][stage][container] = result[code][stage].get(container, {'produced':0, 'planned':0})
+            result[code][stage][container]['produced'] = r.get('total',0)
+        return result
 
     def get_requierd_plan(self, yearWeek_from, yearWeek_to):
         self.columsTable_title
@@ -483,6 +680,59 @@ class Reports(Reports, Stock):
         res = []
         result = self.group_by_week(result, "year_week_S3", plant_code)
         print('resut333333333', result)
+        return result
+
+    def get_worked_hours(self, cut_week, cut_year, from_week, to_week):
+        now = datetime.now()
+        monday = now - timedelta(days = now.weekday())
+        sunday = monday + timedelta(days = 6)
+
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id":self.PRODUCTION_FORM_ID,
+            # "$or":
+            #     [{"answers.61f1da41b112fe4e7fe8582f": {"$gte": int(cut_year),"$lte": int(cut_year) }},
+            #     {"answers.61f1da41b112fe4e7fe8582f": {"$gte": str(cut_year),"$lte": str(cut_year) }},
+            # ],
+            # "$or":
+            #     [{"answers.62e8343e236c89c216a7cec3": {"$gte": int(from_week),"$lte": int(to_week) }},
+            #     {"answers.62e8343e236c89c216a7cec3": {"$gte": str(from_week),"$lte": str(to_week) }},
+            # ],
+            }
+        query= [{'$match': match_query },
+            {'$unwind':f"$answers.{self.f['production_group']}"},
+            {'$match':{f"answers.{self.f['production_group']}.{self.f['set_production_date']}":
+                {
+                "$gte": monday.strftime('%Y-%m-%d'),
+                "$lte": sunday.strftime('%Y-%m-%d')
+            }}},
+            {'$project':
+                {   '_id': 1,
+                    'folio':'$folio',
+                    'stage': f"$answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['recipe_stage']}",
+                    'team': f"$answers.{self.TEAM_OBJ_ID}.{self.f['team_name']}",
+                    'hours': f"$answers.{self.f['production_group']}.{self.f['set_total_hours']}",
+                    }
+                    },
+            {'$group':
+                {'_id':
+                    {
+                    'team': '$team',
+                    'stage': '$stage',
+                      },
+                  'total': {'$sum': '$hours'}}},
+            {'$project':
+                {
+                    '_id':0,
+                    'team':'$_id.team',
+                    'stage':'$_id.stage',
+                    'hours':'$total',
+                }
+            },
+            {'$sort': {'team': 1,'stage':1 }}
+            ]
+        res = self.cr.aggregate(query)
+        result = [r for r in res]
         return result
 
     def group_by_week(self, plant_list, key, plant_code):

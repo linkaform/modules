@@ -42,6 +42,7 @@ class Stock(Stock):
         self.ADJUIST_FORM_ID = self.lkm.form_id('lab_inventory_adjustment','id')
         self.WEEKLY_PRODUCTION_PLAN_LAB = self.lkm.form_id('weekly_production_plan_lab','id')
         self.LAB_MOVE_NEW_PRODUCTION = self.lkm.form_id('lab_move_new_production','id')
+        self.LAB_MOVE_NEW_PRODUCTION = self.lkm.form_id('lab_move_new_production','id')
         #TODO
         self.PRODUCTION_PLAN = 81420
 

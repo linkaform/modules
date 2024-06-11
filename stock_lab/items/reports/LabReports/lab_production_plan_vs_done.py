@@ -17,259 +17,9 @@ plants = {}
 WEEKS = []
 
 
-def get_plan_by_plant(produced_plants):
-    # stage ='pull'
-    global cut_week, cut_year
-    match_query = {
-        "deleted_at":{"$exists":False},
-        "form_id":80815,
-        "answers.61f1da41b112fe4e7fe8582f":cut_year,
-        "answers.61f1da41b112fe4e7fe85830":cut_week,
-        "answers.62e4bd2ed9814e169a3f6bef":'execute', #status
-        }
-    query= [
-        {'$match': match_query },
-        {'$unwind':'$answers.62e4babc46ff76c5a6bee76c'}]
-    query += [
-        {'$project':
-            {'_id': 1,
-                'plant_code': '$answers.62e4babc46ff76c5a6bee76c.61ef32bcdf0ec2ba73dec33c.61ef32bcdf0ec2ba73dec33d',
-                'plant_name': {'$arrayElemAt':['$answers.62e4babc46ff76c5a6bee76c.61ef32bcdf0ec2ba73dec33c.61ef32bcdf0ec2ba73dec33e',0]},
-                'container': '$answers.62e4babc46ff76c5a6bee76c.61ef32bcdf0ec2ba73dec33c.6209705080c17c97320e3382',
-                'stage': '$answers.62e4babc46ff76c5a6bee76c.61ef32bcdf0ec2ba73dec33c.6205f73281bb36a6f1573358',
-                'plants':{ '$multiply':[
-                    '$answers.62e4babc46ff76c5a6bee76c.62e4bc58d9814e169a3f6beb',
-                    '$answers.62e4babc46ff76c5a6bee76c.61ef32bcdf0ec2ba73dec33c.6205f73281bb36a6f157335b']}
-                }},
-        ]
-    query += [
-        {'$group':
-            {'_id':
-                { 'plant_code': '$plant_code',
-                  'plant_name': '$plant_name',
-                  'container': '$container',
-                  'stage': '$stage',
-                  },
-              'total': {'$sum': '$plants'}}},
-        {'$project':
-            {'_id': 0,
-            'plant_code': '$_id.plant_code',
-            'plant_name': '$_id.plant_name',
-            'container': '$_id.container',
-            'stage': '$_id.stage',
-            'total': '$total'
-            }
-        },
-        {'$sort': { 'plant_code': 1, 'stage': 1, 'total':1 }}
-        ]
-    res = cr.aggregate(query)
-    # result = [r for r in res]
-    for r in res:
-        code = r.get('plant_code')
-        pname = r.get('plant_name','')
-        stage = int(r.get('stage')[1])
-        container = r.get('container','').replace('_',' ').title()
-        produced_plants[code] = produced_plants.get(code,{2:{},3:{}, 'plant_name':pname })
-        produced_plants[code][stage] = produced_plants[code].get(stage, {})
-        produced_plants[code][stage][container] = produced_plants[code][stage].get(container, {'produced':0, 'planned':0})
-        produced_plants[code][stage][container]['planned'] = r.get('total',0)
-    return produced_plants
-
-def available_hours(yearweek=None):
-    # stage ='pull'
-    match_query = {
-        "deleted_at":{"$exists":False},
-        "form_id":94948,
-        }
-
-    if yearweek:
-        match_query.update({"answers.63d06a8f01fe398a70e4166f":int(yearweek)})
-    else:
-        match_query.update({"answers.63d06a8f01fe398a70e4166f":{"$exists":False}})
-    print('match_query=',simplejson.dumps(match_query))
-    query = [
-        {'$match': match_query },
-        {'$project':
-            {'_id': 1,
-                'team': '$answers.62c5ff0162a70c261328845c.62c5ff0162a70c261328845d',
-                'hours': '$answers.63d06a8f01fe398a70e4166e',
-                }
-        },
-        {'$group':
-            {'_id':
-                { 'team': '$team',
-                  },
-              'hours': {'$sum': '$hours'}}
-          },
-          {'$project':
-            {'_id': 0,
-            'team': '$_id.team',
-            'hours': '$hours',
-          }
-          },
-            {'$sort': {'team': 1, 'hours': 1}}
-        ]
-    print('match_query=',simplejson.dumps(query))
-    res = cr.aggregate(query)
-    result = [r for r in res]
-    return result
-
-def get_produced_by_plant():
-    global cut_week, cut_year, from_week, to_week
-    match_query = {
-        "deleted_at":{"$exists":False},
-        "form_id":87499,
-        "answers.620a9ee0a449b98114f61d75": {"$gte": int(cut_year),"$lte": int(cut_year) },
-        "answers.622bb9946d0d6fef17fe0842": {"$gte": int(from_week),"$lte": int(to_week) },
-        }
-    query= [{'$match': match_query },
-        # {'$unwind':'$answers.61f1fab3ce39f01fe8a7ca8c'},
-        {'$project':
-            {   '_id': 0,
-                'year': '$answers.620a9ee0a449b98114f61d75',
-                'week': '$answers.622bb9946d0d6fef17fe0842',
-                'stage': '$answers.621007e60718d93b752312c4',
-                'container': '$answers.620ad6247a217dbcb888d16f',
-                'plant_code': '$answers.6205f7690e752ce25bb30102.61ef32bcdf0ec2ba73dec33d',
-                'plant_name': {'$arrayElemAt':['$answers.6205f7690e752ce25bb30102.61ef32bcdf0ec2ba73dec33e',0]},
-                'eaches': '$answers.620ad6247a217dbcb888d172'}
-                },
-        {'$group':
-            {'_id':
-                {
-                'plant_code': '$plant_code',
-                'plant_name': '$plant_name',
-                'container': '$container',
-                'stage': '$stage',
-                  },
-              'total': {'$sum': '$eaches'}}},
-        {'$project':
-            {
-                '_id':0,
-                'plant_code':'$_id.plant_code',
-                'plant_name':'$_id.plant_name',
-                'container':'$_id.container',
-                'stage':'$_id.stage',
-                'total':'$total',
-            }
-        },
-        {'$sort': {'team': 1,'stage':1 }}
-        ]
-    # print('query=', simplejson.dumps(query))
-    res = cr.aggregate(query)
-    result = {}
-    for r in res:
-        code = r.get('plant_code')
-        pname = r.get('plant_name','')
-        stage = r.get('stage','')
-        container = r.get('container','').replace('_',' ').title()
-        result[code] = result.get(code,{2:{},3:{}, 'plant_name':pname })
-        result[code][stage] = result[code].get(stage, {})
-        result[code][stage][container] = result[code][stage].get(container, {'produced':0, 'planned':0})
-        result[code][stage][container]['produced'] = r.get('total',0)
-    return result
 
 
-def get_worked_hours():
-    now = datetime.now()
-    monday = now - timedelta(days = now.weekday())
-    sunday = monday + timedelta(days = 6)
 
-    global cut_week, cut_year, from_week, to_week
-    match_query = {
-        "deleted_at":{"$exists":False},
-        "form_id":80817,
-        # "$or":
-        #     [{"answers.61f1da41b112fe4e7fe8582f": {"$gte": int(cut_year),"$lte": int(cut_year) }},
-        #     {"answers.61f1da41b112fe4e7fe8582f": {"$gte": str(cut_year),"$lte": str(cut_year) }},
-        # ],
-        # "$or":
-        #     [{"answers.62e8343e236c89c216a7cec3": {"$gte": int(from_week),"$lte": int(to_week) }},
-        #     {"answers.62e8343e236c89c216a7cec3": {"$gte": str(from_week),"$lte": str(to_week) }},
-        # ],
-        }
-    query= [{'$match': match_query },
-        {'$unwind':'$answers.61f1fab3ce39f01fe8a7ca8c'},
-        {'$match':{'answers.61f1fab3ce39f01fe8a7ca8c.61f1fcf8c66d2990c8fc7cc4':
-            {
-            "$gte": monday.strftime('%Y-%m-%d'),
-            "$lte": sunday.strftime('%Y-%m-%d')
-        }}},
-        {'$project':
-            {   '_id': 1,
-                'folio':'$folio',
-                'stage': '$answers.61ef32bcdf0ec2ba73dec33c.6205f73281bb36a6f1573358',
-                'team': '$answers.62c5ff0162a70c261328845c.62c5ff0162a70c261328845d',
-                'hours': '$answers.61f1fab3ce39f01fe8a7ca8c.61f1fcf8c66d2990c8fc7cc7',
-                }
-                },
-        {'$group':
-            {'_id':
-                {
-                'team': '$team',
-                'stage': '$stage',
-                  },
-              'total': {'$sum': '$hours'}}},
-        {'$project':
-            {
-                '_id':0,
-                'team':'$_id.team',
-                'stage':'$_id.stage',
-                'hours':'$total',
-            }
-        },
-        {'$sort': {'team': 1,'stage':1 }}
-        ]
-    res = cr.aggregate(query)
-    result = [r for r in res]
-    return result
-
-def get_estimated_hours(yearweek):
-    global cut_week, cut_year, from_week, to_week
-    match_query = {
-        "deleted_at":{"$exists":False},
-        "form_id":80815,
-        "answers.61f1da41b112fe4e7fe8582f": {"$gte": int(cut_year),"$lte": int(cut_year) },
-        "answers.61f1da41b112fe4e7fe85830": {"$gte": int(from_week),"$lte": int(to_week) },
-        }
-    query= [{'$match': match_query },
-        {'$unwind':'$answers.62e4babc46ff76c5a6bee76c'},
-        {'$project':
-            {   '_id': 0,
-                'year': '$answers.61f1da41b112fe4e7fe8582f',
-                'week': '$answers.61f1da41b112fe4e7fe85830',
-                'stage': '$answers.62e4babc46ff76c5a6bee76c.61ef32bcdf0ec2ba73dec33c.6205f73281bb36a6f1573358',
-                'team': '$answers.62e4babc46ff76c5a6bee76c.62c5ff0162a70c261328845c.62c5ff0162a70c261328845d',
-                'hours': '$answers.62e4babc46ff76c5a6bee76c.ab000000000000000000a111',
-                }
-            },
-        {'$group':
-            {'_id':
-                {
-                'team': '$team',
-                'stage': '$stage',
-                  },
-              'total': {'$sum': '$hours'}}},
-        {'$project':
-            {
-                '_id':0,
-                'team':'$_id.team',
-                'stage':'$_id.stage',
-                'hours':'$total',
-            }
-        },
-        {'$sort': {'team': 1,'stage':1 }}
-        ]
-
-    res = cr.aggregate(query)
-    result = {}
-    for r in res:
-        team = r.get('team')
-        stage = r.get('stage')
-        result[team] = result.get(team, {'S2':0, 'S3':0,'total':0})
-        result[team][stage] = r.get('hours',0)
-        result[team]['total'] = result[team]['S2'] + result[team]['S3']
-    return result
 
 def arrange_info(planned, produced):
     total_planned = 0
@@ -385,16 +135,17 @@ def get_report(cut_year, cut_week):
     from_week = cut_week
     planned = report_obj.get_production_plan(cut_year, cut_week)
     produced = report_obj.get_produced(cut_week, cut_year, from_week, to_week)
-    produced_plants = get_produced_by_plant()
-    produced_plants = get_plan_by_plant(produced_plants)
+    produced_plants = report_obj.get_produced_by_plant(cut_year, from_week, to_week)
+    produced_plants = report_obj.get_plan_by_plant(cut_year, cut_week, produced_plants)
     plant_rows = plants_table(produced_plants)
-    hours = available_hours()
-    hours_w = available_hours(yearweek)
-    worked_hours = get_worked_hours()
-    estimated_hours = get_estimated_hours(yearweek)
+    hours = report_obj.available_hours()
+    hours_w = report_obj.available_hours(yearweek)
+    worked_hours = report_obj.get_worked_hours(cut_week, cut_year, from_week, to_week)
+    # print('worked_hours=',worked_hours)
+    estimated_hours = report_obj.get_estimated_hours(cut_year, cut_week)
     hours = week_hours(hours, hours_w, worked_hours, estimated_hours)
     res = arrange_info(planned, produced,)
-    return plant_rows, res , hours
+    return plant_rows, res, hours
 
 
 
@@ -416,7 +167,6 @@ if __name__ == "__main__":
         yearweek = tnow.strftime('%Y%W')
         cut_year = int(str(yearweek)[:4])
         cut_week =   int(str(yearweek)[-2:])
-
         plant_rows, response, hours = get_report(cut_year, cut_week)
         sys.stdout.write(simplejson.dumps(
             {"firstElement":{
