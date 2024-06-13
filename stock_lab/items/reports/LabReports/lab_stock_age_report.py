@@ -1,5 +1,5 @@
 #-*- coding: utf-8 -*-
-import simplejson, sys
+import simplejson, sys, string
 from linkaform_api import settings
 from bson import ObjectId
 import time
@@ -47,6 +47,8 @@ def calc_cycles(cycle):
         cycle_num = int(cycle[1])
     except:
         cycle_num = 1
+    print('cycle_seq',cycle_seq)
+    print('cycle_num',cycle_num)
     cycle_wight = (string.ascii_lowercase.find(cycle_seq) +1) + (cycle_num * 24)
     return cycle_wight
 
@@ -54,34 +56,34 @@ def calc_info(records, recipes):
     tnow = time.time()
     tnow = datetime.fromtimestamp(tnow)
     data_list = []
+
     for lot in records:
-        print('recipes',recipes)
-        print('-------------')
         plant_code = lot.get('product_code')
         stage = lot.get('from')
+        cut_yearWeek = lot.get('cut_yearWeek')
         recipe = recipes[stage].get(plant_code)
         lot['mult_rate'] = lot.get('mult_rate')
         if not recipe:
             continue
         mult_rate = 0
-        if stage == 'active':
+        if stage == 'Stage 2':
             growth_weeks = recipe['S2_growth_weeks']
             if not lot['mult_rate']:
                 mult_rate = recipe['S2_mult_rate']
                 lot['mult_rate'] = mult_rate
             overage = recipe['S2_overage']
-        elif stage == 'pull':
+        elif stage == 'Stage 3':
             growth_weeks = recipe['S3_growth_weeks']
             if not lot['mult_rate']:
                 mult_rate = recipe['S3_mult_rate']
                 lot['mult_rate'] = mult_rate
             overage = recipe['S3_overage']
         forcast = lot.get('eaches',0) * mult_rate * (1-overage)
-        cut_day = '{}-{}'.format(lot['cut_year'], lot['cut_day'])
-        cut_day = datetime.strptime(cut_day, '%Y-%j')
+        cut_day = datetime.strptime(str(cut_yearWeek), '%Y%j')
         cycle_age = tnow - cut_day
         next_cut_day = cut_day + timedelta(weeks=growth_weeks)
         days_next_cut_day = next_cut_day - tnow
+
         cycles = calc_cycles(lot.get('cycle'))
         group_time = growth_weeks * 7
         group_age = group_time * cycles
@@ -91,7 +93,6 @@ def calc_info(records, recipes):
         lot['cycles'] = cycles
         lot['cycle_age'] = cycle_age.days
         lot['forcast'] = forcast
-        print('========================')   
     return records
 
 if __name__ == "__main__":
@@ -104,21 +105,15 @@ if __name__ == "__main__":
     test = data.get("test", False)
     plant_code = data.get('plant_code','')
     stage = data.get('stage')
-    
+    stage_tmp = ''
+    if stage == 2:
+        stage_tmp = 'Stage 2'
+    elif stage == 3:
+        stage_tmp = 'Stage 3'
     res , all_codes = report_obj.query_get_stock(plant_code, stage)
-    recipe = {2:{},3:{}}
-    if stage:
-        recipe[stage] = report_obj.get_plant_recipe(all_codes, stage=stage)
-    else:
-        recipe[2] = report_obj.get_plant_recipe(all_codes, stage=2)
-        recipe[3] = report_obj.get_plant_recipe(all_codes, stage=3)
-
-
-    print('recipes',recipe)
-    print('=================')
-    #response = calc_info(res, recipes)
-    '''
-    response = calc_info(response, recipes)
+    recipe = {'Stage 2':{},'Stage 3':{}}
+    recipe[stage_tmp] = report_obj.get_plant_recipe(all_codes, stage=stage)
+    response = calc_info(res, recipe)
     sys.stdout.write(simplejson.dumps(
         {
         "firstElement":{
@@ -128,4 +123,3 @@ if __name__ == "__main__":
         }
         )
     )
-    '''

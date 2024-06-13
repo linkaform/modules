@@ -68,13 +68,13 @@ def arrange_info(data, stage, col, recipes={}):
             plants[pcode] = set_header(pcode)
         plants[pcode][stage_key] += x.get('total') * multi_rate
         
-        
-        if not plants[pcode].get(year_week):
-            plants[pcode]['year_week'] = {}
 
-        plants[pcode]['year_week'][stage_key] = plants[pcode]['year_week'].get(stage_key,0)
-        plants[pcode]['year_week'][stage_key] +=  x.get('total') * multi_rate
         
+        plants[pcode]['year_week'] = plants[pcode].get('year_week',{}) 
+        plants[pcode]['year_week'][year_week] = plants[pcode]['year_week'].get(year_week,{}) 
+        plants[pcode]['year_week'][year_week][stage_key] = plants[pcode]['year_week'][year_week].get(stage_key,0)
+        plants[pcode]['year_week'][year_week][stage_key] +=  x.get('total') * multi_rate
+
         '''
         if not plants[pcode]['year_week'].get(year_week):
                 plants[pcode]['year_week'][year_week] = {}
@@ -82,7 +82,6 @@ def arrange_info(data, stage, col, recipes={}):
         plants[pcode]['year_week'][year_week][stage_key] = plants[pcode]['year_week'][year_week].get(stage_key,0)
         plants[pcode]['year_week'][year_week][stage_key] +=  x.get('total') * multi_rate
         '''
-        print('===============');
 
 def get_report(plant_code, stage=2):
     res, all_codes = report_obj.query_get_stock(plant_code, stage)
@@ -102,14 +101,16 @@ def set_children():
     global plants
     res = []
     for plant_code, plant in plants.items():
-        cut_weeks = plant.pop('cut_weeks')
-        weeks = list(cut_weeks.keys())
+        year_week = plant.pop('year_week')
+        print('plant_code',plant_code)
+        print('plant',plant)
+        weeks = list(year_week.keys())
         weeks.sort()
         weeks.reverse()
         for w in weeks:
-            if cut_weeks.get(w):
-                cut_weeks[w]['cut_week'] = w
-                plant['_children'].append(cut_weeks[w])
+            if year_week.get(w):
+                year_week[w]['cut_week'] = w
+                plant['_children'].append(year_week[w])
 
 if __name__ == "__main__":
     report_obj = Reports(settings, sys_argv=sys.argv, use_api=True)
