@@ -346,8 +346,15 @@ class Reports(Reports, Stock):
             }
         if product_code:
             match_query.update({f"answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_code']}":product_code})
+        
+        from_stage = ''
         if stage:
-            match_query.update({f"answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['reicpe_stage']}":stage})
+            if stage == 2:
+                from_stage = 'Stage 2'
+                match_query.update({f"answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['reicpe_stage']}":'S2'})
+            if stage == 3:
+                from_stage = 'Stage 3'
+                match_query.update({f"answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['reicpe_stage']}":'S3'})
         if lot_number:
             match_query.update({f"answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_lot']}":lot_number})
         if warehouse:
@@ -375,7 +382,7 @@ class Reports(Reports, Stock):
                 'product_code': '$_id.product_code',
                 'cut_yearWeek': '$_id.cut_yearWeek',
                 'total': '$total',
-                'from': 'Stage 3'
+                'from': from_stage,
                 }
             },
             {'$sort': {'_id.product_code': 1, '_id.cut_yearWeek': 1, '_id.cut_week':1}}
@@ -387,6 +394,7 @@ class Reports(Reports, Stock):
         for r in result:
             if r.get('product_code') and r.get('product_code') not in all_codes:
                 all_codes.append(r['product_code'])
+
         return result, all_codes
 
     def query_greenhouse_stock(self, product_code=None, all_codes=[], status='active'):
