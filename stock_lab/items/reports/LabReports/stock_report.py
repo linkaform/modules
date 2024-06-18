@@ -546,10 +546,10 @@ class Reports(Reports, Stock):
         
         from_stage = ''
         if stage:
-            if stage == 2:
+            if stage == 2 or str(stage).lower() == 's2':
                 from_stage = 'Stage 2'
                 match_query.update({f"answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['reicpe_stage']}":'S2'})
-            if stage == 3:
+            if stage == 3 or str(stage).lower() == 's3':
                 from_stage = 'Stage 3'
                 match_query.update({f"answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['reicpe_stage']}":'S3'})
         if lot_number:
@@ -584,7 +584,7 @@ class Reports(Reports, Stock):
             },
             {'$sort': {'_id.product_code': 1, '_id.cut_yearWeek': 1, '_id.cut_week':1}}
             ]
-        print('query=', simplejson.dumps(query, indent=4))
+        # print('query=', simplejson.dumps(query, indent=4))
         res = self.cr.aggregate(query)
         result = [r for r in res]
         all_codes = []
