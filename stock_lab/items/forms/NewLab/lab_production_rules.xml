@@ -93,14 +93,6 @@
                 </item>
                 <item>
                     <catalog_id>None</catalog_id>
-                    <field_id>62e948f79928ba006783dc5c</field_id>
-                    <group_id>None</group_id>
-                    <id>62e948f79928ba006783dc5c</id>
-                    <label>Media Lot Number</label>
-                    <type>text</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
                     <field_id>dd0000000000000000000001</field_id>
                     <group_id>None</group_id>
                     <id>dd0000000000000000000001</id>
