@@ -544,7 +544,7 @@ class Reports(Reports, Stock):
         if product_code:
             match_query.update({f"answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_code']}":product_code})
         
-        from_stage = ''
+        from_stage = 'Stage 3'
         if stage:
             if stage == 2 or str(stage).lower() == 's2':
                 from_stage = 'Stage 2'
@@ -564,13 +564,15 @@ class Reports(Reports, Stock):
                     'product_code': f"$answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_code']}",
                     'cut_yearWeek': f"$answers.{self.f['plant_cut_year']}",
                     'cut_week': f"$answers.{self.f['production_cut_week']}",
-                    'eaches': f"$answers.{self.f['actual_eaches_on_hand']}"
+                    'eaches': f"$answers.{self.f['actual_eaches_on_hand']}",
+                    'cycle': f"$answers.{self.f['plant_cycle']}"
                     }
             },
             {'$group':
                 {'_id':
                     { 'product_code': '$product_code',
                       'cut_yearWeek': '$cut_yearWeek',
+                      'cycle': '$cycle',
                       # 'cut_week': '$cut_week'
                       },
                   'total': {'$sum': '$eaches'}}},
@@ -578,6 +580,7 @@ class Reports(Reports, Stock):
                 {'_id': 0,
                 'product_code': '$_id.product_code',
                 'cut_yearWeek': '$_id.cut_yearWeek',
+                'cycle': '$_id.cycle',
                 'total': '$total',
                 'from': from_stage,
                 }
@@ -587,6 +590,7 @@ class Reports(Reports, Stock):
         # print('query=', simplejson.dumps(query, indent=4))
         res = self.cr.aggregate(query)
         result = [r for r in res]
+
         all_codes = []
         for r in result:
             if r.get('product_code') and r.get('product_code') not in all_codes:
