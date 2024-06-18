@@ -57,7 +57,7 @@ def arrange_info(data, stage, col, recipes={}):
             year_week = int(x.get('cut_yearWeek'))
             cut_week = str(year_week)[4:]
             t_grow_weeks = int(cut_week) + grow_weeks
-            harvest_date = datetime.strptime(str(year_week)[:4], "%Y") + timedelta(weeks=t_grow_weeks)
+            harvest_date = datetime.strptime(str(year_week)[:4], "%Y") + timedelta(weeks=t_grow_weeks -1 )
             harvest_week= int(harvest_date.strftime('%Y%W'))
             ready_year_week = int(x.get('cut_yearWeek')) + grow_weeks
             if col == 'forcast':
@@ -120,7 +120,6 @@ if __name__ == "__main__":
 
     #--Filters
     data = report_obj.data.get('data')
-    print('data',data)
     plant_code = data.get("plant_code")
     response = get_report(plant_code)
     response = set_children()

@@ -611,7 +611,7 @@ class Reports(Reports, Stock):
                 {'_id': 1,
                     'product_code': f"$answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_code']}",
                     'plant_name': {"$arrayElemAt" : [f"$answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_name']}",0]},
-                    'product_lot': f"$answers.{self.f['product_lot']}",
+                    'product_lot': f"$answers.{self.f['plant_cut_yearweek']}",
                     'eaches': f"$answers.{self.f['product_lot_actuals']}"}},
             {'$group':
                 {'_id':

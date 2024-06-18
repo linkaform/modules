@@ -27,6 +27,7 @@ def arrange_info(data, stage, recipes3={}, recipes4={}):
     today_week = int(today.strftime('%Y%W'))
     res = []
     t = 0
+    res_dict = {}
     for x in data:
         pcode = x.get('product_code')
         x['plant_name'] = x.get('product_name')
@@ -34,45 +35,34 @@ def arrange_info(data, stage, recipes3={}, recipes4={}):
         # if True:
         try:
             if x.get('from') == 'Stage 3':
-                multi_rate = 1
-                grow_weeks = 0
-                stage_multi_rate = 'S4_mult_rate'
-                stage_grow_weeks = 'S4_growth_weeks'
                 cut_yearWeek = x.get('cut_yearWeek')
-                selected_recipe = report_obj.select_S4_recipe(recipes3.get(pcode,{}), str(cut_yearWeek)[4:])
-                multi_rate = selected_recipe.get(pcode,{}).get(stage_multi_rate,1)
-                grow_weeks = selected_recipe.get(pcode,{}).get(stage_grow_weeks,1)
-                overage = selected_recipe.get('S4_overage_rate',0)
-                cut_week = datetime.strptime(str(cut_yearWeek), "%Y%W") + timedelta(weeks=grow_weeks)
-                cut_week = int(cut_week.strftime('%Y%W'))
-                if col == 'forcast':
-                    if cut_week < today_week:
-                        cut_week = today_week
-                else:
-                    cut_week = int(cut_yearWeek)
-                x['total_planting'] = (x['total'] * multi_rate) * (1-overage) 
-                # stage_multi_rate = 'S4_overage'
-                # stage_grow_weeks = 'S4_growth_weeks'
-                # #Stage 4 Green House growth_time and multiplaction
-                # selected_recipe = report_obj.select_S4_recipe(recipes4.get(pcode,{}), str(cut_week)[4:])
-                # multi_rate = 1 - selected_recipe.get(stage_multi_rate,0)
-                # grow_weeks = selected_recipe.get(stage_grow_weeks,1)
-                t_grow_weeks = int(str(cut_week)[4:]) + grow_weeks
-                harvest_date = datetime.strptime(str(cut_week)[:4], "%Y") + timedelta(weeks=t_grow_weeks)
-                harvest_week= int(harvest_date.strftime('%Y%W'))
-                x['havest_week'] = int(harvest_date.strftime('%W'))
-                x['havest_month'] = int(harvest_date.strftime('%m'))
-                x['havest_year'] = int(harvest_date.strftime('%Y'))
-                x['total_harvest'] = int(x['total_planting'] * multi_rate)
             else:
-                cut_week = x['product_lot']
-                overage = 0
-                selected_recipe = report_obj.select_S4_recipe(recipes4.get(pcode,{}), str(cut_week)[4:])
-                multi_rate = 1 - selected_recipe.get(stage_multi_rate,0)
-                if recipes4[x['product_code']] and len(recipes4[x['product_code']]) > 0:
-                    this_recipe = recipes4[x['product_code']][0]
-                    overage = this_recipe.get('S4_overage', this_recipe.get('S4_overage_rate',0))
-                x['total_harvest'] = int(x['total_harvest'] * (1-overage) )
+                cut_yearWeek = x.get('product_lot')
+            selected_recipe_s4 = report_obj.select_S4_recipe(recipes4.get(pcode,{}), str(cut_yearWeek)[4:])
+            multi_rate_s4 = selected_recipe_s4.get('S4_mult_rate',1)
+            overage_s4 = selected_recipe_s4.get('S4_overage', selected_recipe_s4.get('S4_overage_rate',0))
+            grow_weeks_s4 = selected_recipe_s4.get('S4_growth_weeks', 0)
+            t_grow_weeks = int(str(cut_yearWeek)[4:]) + grow_weeks_s4
+            x['total'] = x.get('total', x.get('total_harvest',0))
+            if x.get('from') == 'Stage 3':
+                selected_recipe = report_obj.select_S4_recipe(recipes3.get(pcode,{}), str(cut_yearWeek)[4:])
+                multi_rate = selected_recipe.get('S4_mult_rate',1)
+                grow_weeks = selected_recipe.get('S4_growth_weeks',0)
+                overage = selected_recipe.get('S4_overage_rate', selected_recipe_s4.get('S4_overage', 0))
+                x['total'] =  (x['total'] * multi_rate) * (1-overage)
+                t_grow_weeks +=  grow_weeks
+            harvest_date = datetime.strptime(str(cut_yearWeek)[:4], "%Y") + timedelta(weeks=t_grow_weeks-1)
+            harvest_week= int(harvest_date.strftime('%Y%W'))
+            if col == 'forcast':
+                if harvest_week < today_week:
+                    harvest_date = today
+                
+            x['total_harvest'] = int(round((x['total'] * multi_rate) * (1-overage_s4) ,0))
+            x['havest_week'] =  int(harvest_date.strftime('%W'))
+            x['havest_month'] = int(harvest_date.strftime('%m'))
+            x['havest_year'] = int(harvest_date.strftime('%Y'))
+            # x['total_harvest'] = int(x['total_planting'] * multi_rate)
+            # x['total_harvest'] = int(x['total_harvest'] * (1-overage_s4) )
         except:
             x['plant_name'] ='Recipe not found'
             x['total_planting'] = 0
@@ -80,8 +70,26 @@ def arrange_info(data, stage, recipes3={}, recipes4={}):
             x['havest_month'] = 0
             x['havest_year'] = 0
             x['total_harvest'] = 0
+        # print('x2=',x)
+        # print('havest_year=',x['havest_year'] )
+        # print('havest_year=',x['havest_year'] )
+        # print('havest_week=',x['havest_week'] )
+        line_id = f"{x['plant_code']}_{x['havest_year']}_{x['havest_month']}_{x['havest_week']}_{x['from']}"
+        res_dict[line_id] = res_dict.get(line_id,0)
+        res_dict[line_id] += x['total_harvest']
+    for line, total in res_dict.items():
+        x = {}
+        plant_code, havest_year, havest_month, havest_week, stage_from = line.split('_')
+        x['plant_name'] = ''
+        x['plant_code'] = plant_code
+        x['havest_year'] = havest_year
+        x['havest_month'] = havest_month
+        x['from'] = stage_from
+        x['havest_week'] = havest_week
+        x['total_harvest'] = total
         res.append(x)
     return res
+
 
 def get_report(report_obj, product_code, stage='S3'):
     global plants, WEEKS
@@ -99,7 +107,7 @@ if __name__ == '__main__':
     #getFilters
     data = report_obj.data.get("data", {})
     product_code = data.get("product_code")
-    # product_code = 'LAGBG'
+    # product_code = 'LAGTW'
     response = get_report(report_obj, product_code)
     sys.stdout.write(simplejson.dumps(
         {"firstElement":{
