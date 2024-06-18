@@ -31,23 +31,23 @@ def arrange_info(data, stage, col, recipes={}):
     for x in data:
         #pcode = x.get('plant_code')
         pcode = x.get('product_code')
-        
-        
         multi_rate = 1
         grow_weeks = 0
         if col == 'forcast':
             if stage == 3:
-                stage_multi_rate = 'S{}_overage'.format(stage+1)
-                stage_grow_weeks = 'S{}_growth_weeks'.format(stage+1)
+                cut_yearWeek = x['cut_yearWeek']
                 if recipes.get(pcode,{}):
-
-                    multi_rate = 1 - recipes.get(pcode,{}).get(stage_multi_rate,0)
-                    #multi_rate = 1 - recipes.get(pcode,{})[0].get(stage_multi_rate,0)
+                    recipe = report_obj.select_S4_recipe(recipes.get(pcode,{}), str(cut_yearWeek)[4:])
                 else:
+                    print('not found...')
                     continue
                     #plants[pcode]
+                stage_multi_rate = 'S{}_overage'.format(stage+1)
+                stage_grow_weeks = 'S{}_growth_weeks'.format(stage+1)
+
+                multi_rate = 1 - recipe.get(stage_multi_rate,0)
                 #grow_weeks = recipes.get(pcode,{})[0].get(stage_grow_weeks,1)
-                grow_weeks = recipes.get(pcode,{}).get(stage_grow_weeks,1)
+                grow_weeks = recipe.get(stage_grow_weeks,1)
             else:
                 stage_multi_rate = 'S{}_mult_rate'.format(stage)
                 stage_grow_weeks = 'S{}_growth_weeks'.format(stage)
@@ -55,10 +55,16 @@ def arrange_info(data, stage, col, recipes={}):
                 grow_weeks = recipes.get(pcode,{}).get(stage_grow_weeks,1)
         if x.get('cut_yearWeek'):
             year_week = int(x.get('cut_yearWeek'))
-            ready_year_week = int(x.get('cut_yearWeek')) + year_week
+            cut_week = str(year_week)[4:]
+            t_grow_weeks = int(cut_week) + grow_weeks
+            harvest_date = datetime.strptime(str(year_week)[:4], "%Y") + timedelta(weeks=t_grow_weeks)
+            harvest_week= int(harvest_date.strftime('%Y%W'))
+            ready_year_week = int(x.get('cut_yearWeek')) + grow_weeks
             if col == 'forcast':
-                if year_week < today_week:
+                if harvest_week < today_week:
                     year_week = today_week
+                else:
+                    year_week = harvest_week
         else:
             year_week = int(x.get('year_week',0))
         stage_key = 'stage_{}_{}'.format(stage, col)
@@ -66,14 +72,12 @@ def arrange_info(data, stage, col, recipes={}):
             WEEKS.append(year_week)
         if not plants.get(pcode):
             plants[pcode] = set_header(pcode)
-        plants[pcode][stage_key] += x.get('total') * multi_rate
-        
-
+        plants[pcode][stage_key] += int(round(x.get('total') * multi_rate,0))
         
         plants[pcode]['year_week'] = plants[pcode].get('year_week',{}) 
         plants[pcode]['year_week'][year_week] = plants[pcode]['year_week'].get(year_week,{}) 
         plants[pcode]['year_week'][year_week][stage_key] = plants[pcode]['year_week'][year_week].get(stage_key,0)
-        plants[pcode]['year_week'][year_week][stage_key] +=  x.get('total') * multi_rate
+        plants[pcode]['year_week'][year_week][stage_key] +=  int(round(x.get('total') * multi_rate))
 
         '''
         if not plants[pcode]['year_week'].get(year_week):
@@ -85,10 +89,10 @@ def arrange_info(data, stage, col, recipes={}):
 
 def get_report(plant_code, stage=2):
     res, all_codes = report_obj.query_get_stock(plant_code, stage)
-    print('Res',res)
     if stage == 3:
-        #recipes = report_obj.get_plant_recipe(all_codes, stage=[4,])
-        recipes = report_obj.get_plant_recipe(all_codes, stage=[3,])
+        recipes = report_obj.get_plant_recipe(all_codes, stage=[4,])
+
+        #recipes = report_obj.get_plant_recipe(all_codes, stage=[3,])
     else:
         recipes = report_obj.get_plant_recipe(all_codes, stage=[stage,])
     arrange_info(res, stage, 'actuals')
@@ -102,8 +106,6 @@ def set_children():
     res = []
     for plant_code, plant in plants.items():
         year_week = plant.pop('year_week')
-        print('plant_code',plant_code)
-        print('plant',plant)
         weeks = list(year_week.keys())
         weeks.sort()
         weeks.reverse()
@@ -117,7 +119,8 @@ if __name__ == "__main__":
     report_obj.console_run()
 
     #--Filters
-    data = report_obj.data
+    data = report_obj.data.get('data')
+    print('data',data)
     plant_code = data.get("plant_code")
     response = get_report(plant_code)
     response = set_children()
