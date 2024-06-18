@@ -1194,8 +1194,6 @@ class Stock(Stock):
 
         if stage_tmp:
             stage = stage_tmp
-        print(stage)
-
         if 2 in stage:
             mango_query = self.plant_recipe_query(all_codes, "S2", "S2", recipe_type)
             recipe_s2 = self.lkf_api.search_catalog(self.CATALOG_PRODUCT_RECIPE_ID, mango_query)
@@ -1206,7 +1204,7 @@ class Stock(Stock):
             if 'Ln72' in stage:
                 mango_query = self.plant_recipe_query(all_codes,  "S4", "Ln72", recipe_type)
             else:
-                mango_query = self.plant_recipe_query(all_codes, "S4", "S3", recipe_type)
+                mango_query = self.plant_recipe_query(all_codes, "S3", "S4", recipe_type)
             recipe_s4 = self.lkf_api.search_catalog(self.CATALOG_PRODUCT_RECIPE_ID, mango_query, jwt_settings_key='APIKEY_JWT_KEY')
         if recipe_s2 and not recipe:
             for this_recipe in recipe_s2:
