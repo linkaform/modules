@@ -10,7 +10,6 @@ from lkf_addons.addons.stock_greenhouse.stock_utils import Stock
 
 # sys.path.append('/srv/scripts/addons/modules/stock_greenhouse/items/scripts/')
 
-print("444In module products sys.path[0], __package__ ==", sys.path)
 
 # from stock_utils import Stock
 
@@ -23,7 +22,7 @@ class Reports(Reports, Stock):
     def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False):
         #base.LKF_Base.__init__(self, settings, sys_argv=sys_argv, use_api=use_api)
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
-        self.GREENHOUSE_INVENTORY_ID = self.lkm.form_id('green_house_inventroy','id')
+        self.GREENHOUSE_INVENTORY_ID = self.lkm.form_id('green_house_inventory','id')
 
     def get_requierd_plan(self, yearWeek_from, yearWeek_to):
         self.columsTable_title
