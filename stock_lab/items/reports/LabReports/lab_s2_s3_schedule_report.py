@@ -269,13 +269,13 @@ def set_chart_req(row, row_type='req'):
             }
             if row_type =='hours':
                 chart_data[key_type].update({
-                    "row_type":"line",
+                    "type":"line",
                     "borderColor":elem_color[key_type],
                     "yAxisID":"ay",
                 })
             if row_type == 'req' or row_type == 'actuals':
                 chart_data[key_type].update({
-                    "row_type":"bar",
+                    "type":"bar",
                     "backgroundColor":elem_color[key_type],
                     "yAxisID":"ay1",
                 })

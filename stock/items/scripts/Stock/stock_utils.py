@@ -300,6 +300,24 @@ class Stock(Stock):
     #             folios_2_update.append(record.get('folio'))
     #     return res
 
+    def duplicate_lot_record(self, lot_number, folio=None):
+        if folio:
+            match_query = {
+                "deleted_at":{"$exists":False},
+                "form_id": self.FORM_INVENTORY_ID,
+                "folio": folio
+                }
+        else:
+            match_query = {
+                "deleted_at":{"$exists":False},
+                "form_id": self.FORM_INVENTORY_ID,
+                f"answers.{self.f['prouct_lot']}": lot_number
+                }
+        try:
+            res = self.cr.find_one(match_query, {'answers':1})
+        except:
+            res = None
+        return res
 
     def move_in(self):
         answers = self._labels()
@@ -495,25 +513,6 @@ class Stock(Stock):
         print('res_create', res_create)
         #res = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=folios)
         return True
-
-    def duplicate_lot_record(self, lot_number, folio=None):
-        if folio:
-            match_query = {
-                "deleted_at":{"$exists":False},
-                "form_id": self.FORM_INVENTORY_ID,
-                "folio": folio
-                }
-        else:
-            match_query = {
-                "deleted_at":{"$exists":False},
-                "form_id": self.FORM_INVENTORY_ID,
-                f"answers.{self.f['prouct_lot']}": lot_number
-                }
-        try:
-            res = self.cr.find_one(match_query, {'answers':1})
-        except:
-            res = None
-        return res
 
     def move_out_multi_location(self):
         move_lines = self.answers[self.f['move_group']]
