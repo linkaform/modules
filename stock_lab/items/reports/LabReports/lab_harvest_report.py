@@ -53,9 +53,9 @@ def arrange_info(data, stage, recipes3={}, recipes4={}):
                 t_grow_weeks +=  grow_weeks
             harvest_date = datetime.strptime(str(cut_yearWeek)[:4], "%Y") + timedelta(weeks=t_grow_weeks-1)
             harvest_week= int(harvest_date.strftime('%Y%W'))
-            if col == 'forcast':
-                if harvest_week < today_week:
-                    harvest_date = today
+            # if col == 'forcast':
+            #     if harvest_week < today_week:
+            #         harvest_date = today
                 
             x['total_harvest'] = int(round((x['total'] * multi_rate) * (1-overage_s4) ,0))
             x['havest_week'] =  int(harvest_date.strftime('%W'))
@@ -74,20 +74,21 @@ def arrange_info(data, stage, recipes3={}, recipes4={}):
         # print('havest_year=',x['havest_year'] )
         # print('havest_year=',x['havest_year'] )
         # print('havest_week=',x['havest_week'] )
-        line_id = f"{x['plant_code']}_{x['havest_year']}_{x['havest_month']}_{x['havest_week']}_{x['from']}"
-        res_dict[line_id] = res_dict.get(line_id,0)
-        res_dict[line_id] += x['total_harvest']
-    for line, total in res_dict.items():
-        x = {}
-        plant_code, havest_year, havest_month, havest_week, stage_from = line.split('_')
-        x['plant_name'] = ''
-        x['plant_code'] = plant_code
-        x['havest_year'] = havest_year
-        x['havest_month'] = havest_month
-        x['from'] = stage_from
-        x['havest_week'] = havest_week
-        x['total_harvest'] = total
         res.append(x)
+        # line_id = f"{x['plant_code']}_{x['havest_year']}_{x['havest_month']}_{x['havest_week']}_{x['from']}"
+        # res_dict[line_id] = res_dict.get(line_id,0)
+        # res_dict[line_id] += x['total_harvest']
+    # for line, total in res_dict.items():
+    #     x = {}
+    #     plant_code, havest_year, havest_month, havest_week, stage_from = line.split('_')
+    #     x['plant_name'] = ''
+    #     x['plant_code'] = plant_code
+    #     x['havest_year'] = havest_year
+    #     x['havest_month'] = havest_month
+    #     x['from'] = stage_from
+    #     x['havest_week'] = havest_week
+    #     x['total_harvest'] = total
+    #     res.append(x)
     return res
 
 

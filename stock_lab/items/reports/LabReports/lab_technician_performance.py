@@ -42,11 +42,12 @@ class Reports(Reports):
 
     def get_productivity(self, yearweek_form, yearweek_to, plant_code, stage):
         res = []
-        print('========== cr==========', self.cr)
-        productivity_lab = self.get_plants_per_hr(yearweek_form, yearweek_to, plant_code, stage, by_team=False)
-        productivity_lab += self.get_plants_per_hr(yearweek_form, yearweek_to, plant_code, stage)
+        # productivity_lab = self.get_plants_per_hr(yearweek_form, yearweek_to, plant_code, stage, by_team=False)
+        # productivity_lab += self.get_plants_per_hr(yearweek_form, yearweek_to, plant_code, stage)
         prod_stage = self.get_plants_per_hr_by_stage(yearweek_form, yearweek_to, plant_code, stage)
+
         prod_stage, prod_stage_char = arrage_stage(prod_stage)
+        # print('prod_stage_char=' ,prod_stage_chard)
         ###
         # print('1- prod_stage',prod_stage)
         # print('2- prod_stage_char',prod_stage_char)
@@ -66,10 +67,7 @@ class Reports(Reports):
         plant_cutter_table = arrage_plant_cutter(prod_code, prod_code_cutter_plant)
         cutter_plant_table = arrage_cutter_plant(prod_code_cutter, prod_code_cutter_plant)
         cutter_plant_char = arrage_cutter_plant_chart(prod_code_cutter)
-        print('5- plant_cutter_table')
         # print('5- plant_cutter_table',plant_cutter_table)
-        print('6. cutter_plant_char')
-        print('7. cutter_plant_table')
         # print('6. cutter_plant_char',cutter_plant_char)
         ## hours
         # print('4- prod_code_team',prod_code_team)
@@ -94,8 +92,6 @@ class Reports(Reports):
         self.json['tenthElement'] = cutter_hours_chart
         self.json['eleventhElement']['tabledata'] = cutter_hours_table
         # return prod_stage
-
-
 
     def get_plants_per_hr(self, yearweek_form, yearweek_to, plant_code, stage, by_team=True):
         aggregate = self.get_productivity_base(yearweek_form, yearweek_to, plant_code, stage)
@@ -123,7 +119,6 @@ class Reports(Reports):
         aggregate.append(group_by)
         aggregate.append(project)
         aggregate.append(sort)
-        # print('aggregate=',simplejson.dumps(aggregate, indent=4))
         res = self.cr.aggregate(aggregate)
         result = []
         for r in res:
@@ -155,8 +150,6 @@ class Reports(Reports):
         aggregate.append(group_by)
         aggregate.append(project)
         aggregate.append(sort)
-        print('query=', simplejson.dumps(aggregate, indent=4))
-        print('elf.cr.', self.cr)
         res = self.cr.aggregate(aggregate)
         result = []
         for r in res:
@@ -167,8 +160,7 @@ class Reports(Reports):
             elif r['stage'] == 'S3':
                 r['stage'] = 'Stage 3'
             result.append(r)
-            print('r',r)
-            return result
+        return result
 
     def get_plants_per_hr_by_plant(self, yearweek_form, yearweek_to, plant_code, stage, sort_by={'plant_code':1} ):
         aggregate = self.get_productivity_base(yearweek_form, yearweek_to, plant_code, stage)
