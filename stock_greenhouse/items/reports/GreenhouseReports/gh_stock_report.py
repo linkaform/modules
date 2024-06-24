@@ -23,7 +23,7 @@ class Reports(Reports, Stock):
     def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False):
         #base.LKF_Base.__init__(self, settings, sys_argv=sys_argv, use_api=use_api)
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
-        self.GREENHOUSE_INVENTORY_ID = self.lkm.form_id('green_house_inventroy','id')
+        #self.GREENHOUSE_INVENTORY_ID = self.lkm.form_id('green_house_inventroy','id')
 
     def get_requierd_plan(self, yearWeek_from, yearWeek_to):
         self.columsTable_title
@@ -251,3 +251,4 @@ class Reports(Reports, Stock):
             r['total_harvest'] = r['total_planting'] * 72
             result.append(r)
         return result, all_codes
+
