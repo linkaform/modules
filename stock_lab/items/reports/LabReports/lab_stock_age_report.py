@@ -102,6 +102,7 @@ if __name__ == "__main__":
     #-----Filter
     plants = {}
     data = report_obj.data
+    data = data.get('data',[])
     test = data.get("test", False)
     plant_code = data.get('plant_code','')
     stage = data.get('stage')
@@ -112,7 +113,7 @@ if __name__ == "__main__":
         stage_tmp = 'Stage 3'
     res , all_codes = report_obj.query_get_stock(plant_code, stage)
     recipe = {'Stage 2':{},'Stage 3':{}}
-    recipe[stage_tmp] = report_obj.get_plant_recipe(all_codes, stage=stage)
+    recipe[stage_tmp] = report_obj.get_plant_recipe(all_codes, stage=int(stage))
     response = calc_info(res, recipe)
     sys.stdout.write(simplejson.dumps(
         {
