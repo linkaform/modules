@@ -68,6 +68,7 @@ class Stock(Stock):
 
         self.f.update({
             'actual_eaches_on_hand':'620ad6247a217dbcb888d172',
+            'adjust_lot_by':'667cfa3238a62e061d3434e4',
             'media_name':'61ef43c226fd42cc223c98f7',
             'media_lot':'62e948f79928ba006783dc5c',
             'move_status':'62e9d296cf8d5b373b24e028',
@@ -884,6 +885,22 @@ class Stock(Stock):
         lot_number = f"{year}{week_num}-{group}{cycle}"
         return lot_number
 
+    def create_proudction_lot_number_by_cutday(self, prod_date=None, group=None, cycle=None):
+        if not prod_date:
+            year = today.strftime('%Y')
+            day_num = today.strftime('%j')
+            week_num = today.strftime('%W')
+        else:
+            year = prod_date.strftime('%Y')
+            day_num = prod_date.strftime('%j')
+            week_num = prod_date.strftime('%W')
+        if not group:
+            group = self.answers.get(self.f['production_working_group'])
+        if not cycle:
+            cycle = self.answers.get(self.f['production_working_cycle'])
+        lot_number = f"{year}{day_num}-{group}{cycle}"
+        return lot_number
+
     def create_production_move(self, new_production):
         metadata = self.lkf_api.get_metadata(form_id=self.MOVE_NEW_PRODUCTION_ID, user_id=self.record_user_id )
         metadata.update({
@@ -1415,7 +1432,13 @@ class Stock(Stock):
 
             contamin_code = product.get(self.f['plant_contamin_code'])
             prduction_date = datetime.strptime(f'{year}{day:03}','%Y%j')
-            lot_number = self.create_proudction_lot_number(prduction_date, group, cycle)
+            adjust_lot_by = product.get(self.f['adjust_lot_by'], 'week')
+            print('adjust_lot_by',adjust_lot_by)
+            if adjust_lot_by == 'week':
+                lot_number = self.create_proudction_lot_number_by_cutday(prduction_date, group, cycle)
+            else:
+                lot_number = self.create_proudction_lot_number_by_cutday(prduction_date, group, cycle)
+            print('lot_number',lot_number)
             product[self.f['product_lot']] = lot_number
             adjust_qty = product.get(self.f['inv_adjust_grp_qty'])
             adjust_in = product.get(self.f['inv_adjust_grp_in'], 0)

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime
 from linkaform_api import base
-from lkf_addons.addons.accesos.accesos_utils import Accesos
+from lkf_addons.addons.accesos.app import Accesos
 
 class Accesos(Accesos):
 
@@ -11,58 +11,58 @@ class Accesos(Accesos):
         self.name =  __class__.__name__
         self.settings = settings
 
-        #--Variable Catalogs
-        self.ACCESOS = self.lkm.catalog_id('accesos')
-        self.ACCESOS_ID = self.ACCESOS.get('id')
-        self.ACCESOS_OBJ_ID = self.ACCESOS.get('obj_id')
+        # Forms
+        # self.FORM_ALTA_COLABORADORES = self.lkm.form_id('alta_de_colaboradores_visitantes','id')
+        # self.FORM_ALTA_EQUIPOS = self.lkm.form_id('alta_de_equipos','id')
+        # self.FORM_ALTA_VEHICULOS = self.lkm.form_id('alta_de_vehiculos','id')
+        # self.FORM_BITACORA = self.lkm.form_id('bitacora','id')
+        # self.FORM_LOCKER = self.lkm.form_id('locker','id')
+        # self.FORM_PASE_DE_ENTRADA = self.lkm.form_id('pase_de_entrada','id')
+        # self.FORM_REGISTRO_PERMISOS = self.lkm.form_id('registro_de_permisos','id')
+        # #self.FORM_BITACORA_TURNOS = self.lkm.form_id('bitcora_de_turnos','id')
+        # self.ACCESOS_NOTAS = self.lkm.form_id('notas','id')
 
-        self.COLABORADORES_AUTORIZADOS = self.lkm.catalog_id('colaboradores_autorizados_v2')
-        self.COLABORADORES_AUTORIZADOS_ID = self.COLABORADORES_AUTORIZADOS.get('id')
-        self.COLABORADORES_AUTORIZADOS_OBJ_ID = self.COLABORADORES_AUTORIZADOS.get('obj_id')
+        # #--Variable Catalogs
+        # self.ACCESOS = self.lkm.catalog_id('accesos')
+        # self.ACCESOS_ID = self.ACCESOS.get('id')
+        # self.ACCESOS_OBJ_ID = self.ACCESOS.get('obj_id')
 
-        self.COLORES = self.lkm.catalog_id('colores')
-        self.COLORES_ID = self.COLORES.get('id')
-        self.COLORES_OBJ_ID = self.COLORES.get('obj_id')
+        # self.COLABORADORES_AUTORIZADOS = self.lkm.catalog_id('colaboradores_autorizados_v2')
+        # self.COLABORADORES_AUTORIZADOS_ID = self.COLABORADORES_AUTORIZADOS.get('id')
+        # self.COLABORADORES_AUTORIZADOS_OBJ_ID = self.COLABORADORES_AUTORIZADOS.get('obj_id')
 
-
-        self.CONTRATISTAS = self.lkm.catalog_id('contratistas_v2')
-        self.CONTRATISTAS_ID = self.CONTRATISTAS.get('id')
-        self.CONTRATISTAS_OBJ_ID = self.CONTRATISTAS.get('obj_id')
-
-        self.EQUIPOS = self.lkm.catalog_id('equipos')
-        self.EQUIPOS_ID = self.EQUIPOS.get('id')
-        self.EQUIPOS_OBJ_ID = self.EQUIPOS.get('obj_id')
-
-        self.PERMISOS = self.lkm.catalog_id('permisos_certificaciones')
-        self.PERMISOS_ID = self.PERMISOS.get('id')
-        self.PERMISOS_OBJ_ID = self.PERMISOS.get('obj_id')
-
-        self.UBICACIONES = self.lkm.catalog_id('ubicaciones')
-        self.UBICACIONES_ID = self.UBICACIONES.get('id')
-        self.UBICACIONES_OBJ_ID = self.UBICACIONES.get('obj_id')
-
-        self.VEHICULOS = self.lkm.catalog_id('vehiculos')
-        self.VEHICULOS_ID = self.VEHICULOS.get('id')
-        self.VEHICULOS_OBJ_ID = self.VEHICULOS.get('obj_id')
-
-        self.VISITAS = self.lkm.catalog_id('visitas')
-        self.VISITAS_ID = self.VISITAS.get('id')
-        self.VISITAS_OBJ_ID = self.VISITAS.get('obj_id')
-
-        #--Variable Forms
-        self.FORM_ALTA_COLABORADORES = self.lkm.form_id('alta_de_colaboradores_visitantes','id')
-        self.FORM_ALTA_EQUIPOS = self.lkm.form_id('alta_de_equipos','id')
-        self.FORM_ALTA_VEHICULOS = self.lkm.form_id('alta_de_vehiculos','id')
-        self.FORM_BITACORA = self.lkm.form_id('bitacora','id')
-        self.FORM_LOCKER = self.lkm.form_id('locker','id')
-        self.FORM_PASE_DE_ENTRADA = self.lkm.form_id('pase_de_entrada','id')
-        self.FORM_REGISTRO_PERMISOS = self.lkm.form_id('registro_de_permisos','id')
-        #self.FORM_BITACORA_TURNOS = self.lkm.form_id('bitcora_de_turnos','id')
-        #self.FORM_NOTAS = self.lkm.form_id('notas','id')
+        # self.COLORES = self.lkm.catalog_id('colores')
+        # self.COLORES_ID = self.COLORES.get('id')
+        # self.COLORES_OBJ_ID = self.COLORES.get('obj_id')
 
 
+        # self.CONTRATISTAS = self.lkm.catalog_id('contratistas_v2')
+        # self.CONTRATISTAS_ID = self.CONTRATISTAS.get('id')
+        # self.CONTRATISTAS_OBJ_ID = self.CONTRATISTAS.get('obj_id')
 
-        self.f = {
+        # self.EQUIPOS = self.lkm.catalog_id('equipos')
+        # self.EQUIPOS_ID = self.EQUIPOS.get('id')
+        # self.EQUIPOS_OBJ_ID = self.EQUIPOS.get('obj_id')
+
+        # self.PERMISOS = self.lkm.catalog_id('permisos_certificaciones')
+        # self.PERMISOS_ID = self.PERMISOS.get('id')
+        # self.PERMISOS_OBJ_ID = self.PERMISOS.get('obj_id')
+
+        # self.UBICACIONES = self.lkm.catalog_id('ubicaciones')
+        # self.UBICACIONES_ID = self.UBICACIONES.get('id')
+        # self.UBICACIONES_OBJ_ID = self.UBICACIONES.get('obj_id')
+
+        # self.VEHICULOS = self.lkm.catalog_id('vehiculos')
+        # self.VEHICULOS_ID = self.VEHICULOS.get('id')
+        # self.VEHICULOS_OBJ_ID = self.VEHICULOS.get('obj_id')
+
+        # self.VISITAS = self.lkm.catalog_id('visitas')
+        # self.VISITAS_ID = self.VISITAS.get('id')
+        # self.VISITAS_OBJ_ID = self.VISITAS.get('obj_id')
+
+        
+
+        self.f.update(  {
             'colaborador_nombre_pase_entrada':'65e6515a7cc2c9fe60dfd8b7.5ea0693a0c12d5a8e43d37df',
             'colaborador_foto_pase_entrada':'65e6515a7cc2c9fe60dfd8b7.5ea35de83ab7dad56c66e045',
             'colaborador_identificacion_pase_entrada':'65e6515a7cc2c9fe60dfd8b7.65ce34985fa9df3dbf9dd2d0',
@@ -123,6 +123,7 @@ class Accesos(Accesos):
             'notas_status':'66036dc5209433eb51e9cf05',
 
         }
+        )
 
         self.fecha = self.date_from_str('2024-01-15')
     
@@ -455,8 +456,6 @@ class Accesos(Accesos):
             print('=========')
         return data_answers;
 
-
-
     #---Change Record
     def set_add_record(self, data_user, data_item, data_vehicule, location = ''):
         #----Variables
@@ -731,8 +730,6 @@ class Accesos(Accesos):
         res = self.cr.aggregate(query)
         data_format = self.set_format_list_notes(res)
         return data_format
-
-
 
     def get_user_bitacora(self, curp):
         data_bitacora = []

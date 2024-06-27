@@ -83,7 +83,8 @@ class Reports(Reports):
             year_week = int('{}{:02d}'.format(row.get('cut_year'), row.get('cut_week')))
             row.update({'year_week':year_week})
             print('planned_dict',planned_dict)
-            if planned_dict[stage].get(pcode,{}).get(year_week):
+            print('stage',stage)
+            if planned_dict.get(stage,{}).get(pcode,{}).get(year_week):
                 req_variance =  row.get('eaches',0) - planned_dict[stage][pcode][year_week]
                 row.update({'required':planned_dict[stage][pcode][year_week], 'req_variance':req_variance})
             if work_orders.get(pcode,{}).get(stage,{}).get(year_week):

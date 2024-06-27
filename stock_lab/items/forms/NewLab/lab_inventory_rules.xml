@@ -42,7 +42,7 @@
                     <type>catalog</type>
                 </item>
                 <item>
-                    <catalog_id>65b414650ade76b12c6631b4</catalog_id>
+                    <catalog_id>None</catalog_id>
                     <field_id>6442e4831198daf81456f274</field_id>
                     <group_id>None</group_id>
                     <id>6442e4831198daf81456f274</id>
@@ -50,7 +50,7 @@
                     <type>catalog-select</type>
                 </item>
                 <item>
-                    <catalog_id>65b414650ade76b12c6631b4</catalog_id>
+                    <catalog_id>None</catalog_id>
                     <field_id>65ac6fbc070b93e656bd7fbe</field_id>
                     <group_id>None</group_id>
                     <id>65ac6fbc070b93e656bd7fbe</id>
@@ -123,14 +123,6 @@
                 </item>
                 <item>
                     <catalog_id>None</catalog_id>
-                    <field_id>61ef32bcdf0ec2ba73dec33e</field_id>
-                    <group_id>None</group_id>
-                    <id>61ef32bcdf0ec2ba73dec33e</id>
-                    <label>Botanical Name</label>
-                    <type>catalog-detail</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
                     <field_id>620a9ee0a449b98114f61d77</field_id>
                     <group_id>None</group_id>
                     <id>620a9ee0a449b98114f61d77</id>
@@ -144,14 +136,6 @@
                     <id>620a9ee0a449b98114f61d75</id>
                     <label>Planted YearWeek</label>
                     <type>integer</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>65e241959ee4e466eadd2be3</field_id>
-                    <group_id>None</group_id>
-                    <id>65e241959ee4e466eadd2be3</id>
-                    <label>Next Cut Week</label>
-                    <type>text</type>
                 </item>
                 <item>
                     <catalog_id>None</catalog_id>
@@ -295,14 +279,6 @@
                     <group_id>None</group_id>
                     <id>620ad6247a217dbcb888d175</id>
                     <label>Inventroy Status</label>
-                    <type>select</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>644c36f1d20db114694a495a</field_id>
-                    <group_id>None</group_id>
-                    <id>644c36f1d20db114694a495a</id>
-                    <label>Grading Status</label>
                     <type>select</type>
                 </item>
             </fields_ruled>
