@@ -250,3 +250,4 @@ class Reports(Reports, Stock):
             r['total_harvest'] = r['total_planting'] * 72
             result.append(r)
         return result, all_codes
+
