@@ -56,15 +56,23 @@ class Accesos(Accesos):
         load_shift_json = { }
         username = self.user.get('username')
         user_id = self.user.get('user_id')
-        booth = self.get_user_boot(search_default=True)
-        location = booth.get('location')
-        if not booth:
+        default_booth , user_booths = self.get_user_boot(search_default=False)
+        location = default_booth.get('location')
+        if not default_booth:
             return self.LKFException({"status_code":400, "msg":'No booth found or configure for user'})
-        booth_area = booth['area']
-        booth_location = booth['location']
+        booth_area = default_booth['area']
+        booth_location = default_booth['location']
         booth_addres = self.get_area_address(booth_location, booth_area)
-        location_employees = self.get_users_by_location_area(booth_location, booth_area)
-        guard, support_guards = self.get_support_guards(location_employees)
+        guards_positions = self.config_get_guards_positions()
+        location_employees = {}
+        for guard_type in guards_positions:
+            puesto = guard_type['tipo_de_guardia']
+            location_employees[puesto] = location_employees.get(puesto,
+                self.get_users_by_location_area(booth_location, booth_area, **{'position': guard_type['puestos']})
+                )
+            if guard_type['tipo_de_guardia'] == 'guardia_de_apoyo':
+                support_positions = guard_type['puestos']
+        guard = self.get_user_guards(location_employees['guardia'])
         notes = self.get_access_notes(booth_location, booth_area)
         load_shift_json["location"] = {
             "name":  booth_location,
@@ -75,28 +83,29 @@ class Accesos(Accesos):
             }
         load_shift_json["boot_stats"] = self.get_boot_stats( booth_area, location)
         load_shift_json["boot_status"] = self.get_boot_status(booth_area, location)
-        load_shift_json["support_guards"] = support_guards
-        #Agregar
-        # 'status_turn' y 'turn_start_datetime'
-        load_shift_json["guard"] = guard
+        load_shift_json["support_guards"] = location_employees['guardia_de_apoyo']
+        load_shift_json["guard"] = self.update_guard_status(guard)
         load_shift_json["notes"] = notes
-
+        load_shift_json["user_booths"] = user_booths
         return load_shift_json
 
-    def get_support_guards(self, location_employees):
-        user_ids = []
+    def get_user_guards(self, location_employees):
         for employee in location_employees:
-            if employee.get('user_id'):
-                user_ids.append(employee['user_id'])
-        # user_ids.append(self.user.get('user_id'))
-        employee_data = self.get_employee_data(user_id=user_ids)
-        support_guards = []
-        for x in employee_data:
-            if x.get('user_id',0) != self.user.get('user_id'):
-                support_guards.append(x)
-            else:
-                guard = x
-        return guard, support_guards
+            if employee.get('user_id',0) == self.user.get('user_id'):
+                    return employee
+        self.LKFException(f"El usuario con id {self.user['user_id']}, no se ecuentra configurado como guardia")
+
+
+    def update_guard_status(self, guard):
+        last_checkin = self.get_user_last_checkin(guard['user_id'])
+        status_turn = 'Turno Cerrado'
+        if last_checkin.get('checkin_type') == 'entrada':
+            status_turn = 'Turno Abierto'
+
+        guard['turn_start_datetime'] =  last_checkin.get('checkin_date','')
+        guard['status_turn'] =  status_turn
+        return guard
+
 
     # def do_checkin(self, location, area):
     #     username = self.user.get('username')
@@ -116,43 +125,45 @@ if __name__ == "__main__":
     #option = 'checkin'
     #option = 'checkout'
     #option = 'search_access_pass'
+    #option = 'do_access'
     location = data.get("location", "Planta Monterrey")
     area = data.get("area","Caseta Vigilancia Norte 3")
     employee_list = data.get("employee_list",[])
     checkin_id = data.get("checkin_id","")
     qr_code = data.get('qr_code',"")
+    vehiculo = data.get('vehiculo',"")
+    equipo = data.get('equipo',"")
     #-FUNCTIONS
     #location = "Planta Durango"
     #area = "Almacen de equipos industriales"
     print('option', option)
     if option == 'load_shift':
-        print('-------------------------------------- aqui')
         response = acceso_obj.get_shift_data()
-        sys.stdout.write(simplejson.dumps({"data":response}))
+        acceso_obj.HttpResponse({"data":response})
     elif option == 'catalog_location':
         response = acceso_obj.get_catalog_locations(location)
-        sys.stdout.write(simplejson.dumps({"data": response}))
+        acceso_obj.HttpResponse({"data": response})
     elif option == 'checkin':
         response = acceso_obj.do_checkin(location, area, employee_list)
-        sys.stdout.write(simplejson.dumps({"data": response}))
+        acceso_obj.HttpResponse({"data": response})
     elif option == 'checkout':
         response = acceso_obj.do_checkout(checkin_id=checkin_id, location=location, area= area)
-        sys.stdout.write(simplejson.dumps({"data": response}))
+        acceso_obj.HttpResponse({"data": response})
     elif option == 'search_access_pass':
         response = acceso_obj.search_access_pass(qr_code=qr_code, location=location)
-        sys.stdout.write(simplejson.dumps({"data": response}))
+        acceso_obj.HttpResponse({"data": response}, indent=4)
     elif option == 'do_access':
-        response = acceso_obj.do_access(qr_code, location, area)
-        sys.stdout.write(simplejson.dumps({"data": response}))
+        response = acceso_obj.do_access(qr_code, location, area, vehiculo, equipo)
+        acceso_obj.HttpResponse({"data": response})
     elif option == 'list_chiken_guards':
         location = 'Planta Monterrey'
         booth = 'Caseta Vigilancia Poniente 7'
         response = acceso_obj.get_guard_list(location, booth)
-        sys.stdout.write(simplejson.dumps({"data": response}))
+        acceso_obj.HttpResponse({"data": response})
     elif option == 'notes_guard':
         location = 'Planta Puebla'
         booth = 'Caseta Vigilancia Norte 8'
         response = acceso_obj.get_guard_notes(location, booth)
-        sys.stdout.write(simplejson.dumps({"data": response}))
+        acceso_obj.HttpResponse({"data": response})
     else :
-        sys.stdout.write(simplejson.dumps({"msg": "Empty"}))
+        acceso_obj.HttpResponse({"msg": "Empty"})
