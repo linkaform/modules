@@ -565,22 +565,25 @@ class Reports(Reports, Stock):
                     'cut_yearWeek': f"$answers.{self.f['plant_cut_year']}",
                     'cut_week': f"$answers.{self.f['production_cut_week']}",
                     'eaches': f"$answers.{self.f['actual_eaches_on_hand']}",
-                    'cycle': f"$answers.{self.f['plant_cycle']}"
+                    'cycle': f"$answers.{self.f['plant_cycle']}",
+                    'lot_number':f"$answers.{self.f['catalog_product_lot']}"
                     }
             },
             {'$group':
                 {'_id':
-                    { 'product_code': '$product_code',
-                      'cut_yearWeek': '$cut_yearWeek',
-                      'cycle': '$cycle',
+                    {   'product_code': '$product_code',
+                        'cut_yearWeek': '$cut_yearWeek',
+                        'cycle': '$cycle',
                       # 'cut_week': '$cut_week'
-                      },
+                        'lot_number': '$lot_number',
+                    },
                   'total': {'$sum': '$eaches'}}},
             {'$project':
                 {'_id': 0,
                 'product_code': '$_id.product_code',
                 'cut_yearWeek': '$_id.cut_yearWeek',
                 'cycle': '$_id.cycle',
+                'lot_number': '$_id.lot_number',
                 'total': '$total',
                 'from': from_stage,
                 }

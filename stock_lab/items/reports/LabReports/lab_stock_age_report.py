@@ -10,22 +10,22 @@ from account_settings import *
 
 all_codes = {}
 columsTable = [
-  { "title":"Plant Code", "field":'plant_code',"hozAlign":"left","width":150},
+  { "title":"Plant Code", "field":'product_code',"hozAlign":"left","width":150},
   { "title":"Folio", "field":'folio',"hozAlign":"left","width":150},
-  { "title":"Stage", "field":'stage',"hozAlign":"left","width":150},
+  { "title":"Stage", "field":'from',"hozAlign":"left","width":150},
   { "title":"Quantity (eaches)", "field":'eaches',"hozAlign":"right","width":150},
   { "title":"Forcast (eaches)", "field":'eaches',"hozAlign":"right","width":150},
   { "title":"Group Time", "field":'group_time',"hozAlign":"right","width":150},
   { "title":"Plant Group", "field":'plant_group',"hozAlign":"right","width":150},
-  { "title":"Location", "field":'location',"hozAlign":"right","width":150},
   { "title":"Cycles", "field":'cycles',"hozAlign":"right","width":150},
   { "title":"Next Cut Week", "field":'next_cut_week',"hozAlign":"right","width":200},
   { "title":"Last Cut Day", "field":'cut_day',"hozAlign":"right","width":200},
-  { "title":"Cycle age", "field":'cycle_age',"hozAlign":"right","width":200},
+  { "title":"Cycle age", "field":'cycle',"hozAlign":"right","width":200},
   { "title":"Days to next cut day", "field":'days_next_cut_day',"hozAlign":"right","width":250},
   { "title":"Group age (days)", "field":'group_age',"hozAlign":"right","width":250},
   { "title":"Contamination", "field":'contamin_code',"hozAlign":"left","width":150},
   { "title":"Multiplication Factor", "field":'mult_rate',"hozAlign":"right","width":250},
+  { "title":"Total", "field":'total',"hozAlign":"right","width":250},
 ]
 
 def set_recipes():
