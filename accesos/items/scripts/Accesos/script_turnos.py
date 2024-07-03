@@ -21,7 +21,7 @@ class Accesos(Accesos):
             ]
         return self.format_cr_result(self.cr.aggregate(query))
 
-    def get_boot_stats(self, booth_area, location):
+    def get_booth_stats(self, booth_area, location):
         res ={
                 "in_invitees":11,
                 "articulos_concesionados":12,
@@ -31,9 +31,9 @@ class Accesos(Accesos):
             }
         return res
 
-    def get_boot_status(self, booth_area, location):
+    def get_booth_status(self, booth_area, location):
         last_chekin = self.get_last_checkin(location, booth_area)
-        boot_status = {
+        booth_status = {
             "status":'Disponible',
             "guard_on_dutty":'',
             "user_id":'',
@@ -42,12 +42,12 @@ class Accesos(Accesos):
         if last_chekin.get('checkin_type') == 'entrada':
             #todo
             #user_id 
-            boot_status['status'] = 'No Disponible'
-            boot_status['guard_on_dutty'] = last_chekin.get('employee') 
-            boot_status['stated_at'] = last_chekin.get('checkin_date')
-            boot_status['checkin_id'] = last_chekin['_id']
+            booth_status['status'] = 'No Disponible'
+            booth_status['guard_on_dutty'] = last_chekin.get('employee') 
+            booth_status['stated_at'] = last_chekin.get('checkin_date')
+            booth_status['checkin_id'] = last_chekin['_id']
 
-        return boot_status
+        return booth_status
 
     def get_shift_data(self, search_default=True):
         """
@@ -56,7 +56,7 @@ class Accesos(Accesos):
         load_shift_json = { }
         username = self.user.get('username')
         user_id = self.user.get('user_id')
-        default_booth , user_booths = self.get_user_boot(search_default=False)
+        default_booth , user_booths = self.get_user_booth(search_default=False)
         location = default_booth.get('location')
         if not default_booth:
             return self.LKFException({"status_code":400, "msg":'No booth found or configure for user'})
@@ -81,13 +81,22 @@ class Accesos(Accesos):
             "state": booth_addres.get('state'),
             "address": booth_addres.get('address'),
             }
-        load_shift_json["boot_stats"] = self.get_boot_stats( booth_area, location)
-        load_shift_json["boot_status"] = self.get_boot_status(booth_area, location)
+        load_shift_json["booth_stats"] = self.get_booth_stats( booth_area, location)
+        load_shift_json["booth_status"] = self.get_booth_status(booth_area, location)
         load_shift_json["support_guards"] = location_employees['guardia_de_apoyo']
         load_shift_json["guard"] = self.update_guard_status(guard)
         load_shift_json["notes"] = notes
         load_shift_json["user_booths"] = user_booths
         return load_shift_json
+
+    def get_user_booths_availability(self):
+        default_booth , user_booths = self.get_user_booth(search_default=False)
+        for booth in user_booths:
+            booth_area = booth.get('area')
+            location = booth.get('location')
+            booth_status = self.get_booth_status(booth_area, location)
+            booth['status'] = booth_status.get('status', 'Disponible')
+        return user_booths
 
     def get_user_guards(self, location_employees):
         for employee in location_employees:
@@ -121,11 +130,12 @@ if __name__ == "__main__":
     #-FILTROS
     data = acceso_obj.data.get('data',{})
     option = data.get("option",'')
-    #option = 'load_shift'
+    option = 'load_shift'
     #option = 'checkin'
     #option = 'checkout'
     #option = 'search_access_pass'
     #option = 'do_access'
+    option = 'get_user_booths'
     location = data.get("location", "Planta Monterrey")
     area = data.get("area","Caseta Vigilancia Norte 3")
     employee_list = data.get("employee_list",[])
@@ -139,6 +149,9 @@ if __name__ == "__main__":
     print('option', option)
     if option == 'load_shift':
         response = acceso_obj.get_shift_data()
+        acceso_obj.HttpResponse({"data":response})
+    elif option == 'get_user_booths':
+        response = acceso_obj.get_user_booths_availability()
         acceso_obj.HttpResponse({"data":response})
     elif option == 'catalog_location':
         response = acceso_obj.get_catalog_locations(location)
