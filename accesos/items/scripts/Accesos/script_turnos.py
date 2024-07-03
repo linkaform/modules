@@ -104,7 +104,6 @@ class Accesos(Accesos):
                     return employee
         self.LKFException(f"El usuario con id {self.user['user_id']}, no se ecuentra configurado como guardia")
 
-
     def update_guard_status(self, guard):
         last_checkin = self.get_user_last_checkin(guard['user_id'])
         status_turn = 'Turno Cerrado'
@@ -130,12 +129,17 @@ if __name__ == "__main__":
     #-FILTROS
     data = acceso_obj.data.get('data',{})
     option = data.get("option",'')
-    option = 'load_shift'
+    option = 'do_out'
+    #option = 'list_bitacora'
+    #option = 'new_note'
+    #--
+    #option = 'load_shift'
     #option = 'checkin'
     #option = 'checkout'
     #option = 'search_access_pass'
     #option = 'do_access'
-    option = 'get_user_booths'
+    #option = 'get_user_booths'
+    name_visit = data.get("name_visit", "Leticia Hernández Hernández")
     location = data.get("location", "Planta Monterrey")
     area = data.get("area","Caseta Vigilancia Norte 3")
     employee_list = data.get("employee_list",[])
@@ -149,6 +153,9 @@ if __name__ == "__main__":
     print('option', option)
     if option == 'load_shift':
         response = acceso_obj.get_shift_data()
+        acceso_obj.HttpResponse({"data":response})
+    elif option == 'list_bitacora':
+        response = acceso_obj.get_list_bitacora(location)
         acceso_obj.HttpResponse({"data":response})
     elif option == 'get_user_booths':
         response = acceso_obj.get_user_booths_availability()
@@ -164,7 +171,11 @@ if __name__ == "__main__":
         acceso_obj.HttpResponse({"data": response})
     elif option == 'search_access_pass':
         response = acceso_obj.search_access_pass(qr_code=qr_code, location=location)
-        acceso_obj.HttpResponse({"data": response}, indent=4)
+        acceso_obj.HttpResponse({"data": response})
+        #acceso_obj.HttpResponse({"data": response}, indent=4)
+    elif option == 'do_out':
+        response = acceso_obj.do_out(qr_code)
+        acceso_obj.HttpResponse({"data": response})
     elif option == 'do_access':
         response = acceso_obj.do_access(qr_code, location, area, vehiculo, equipo)
         acceso_obj.HttpResponse({"data": response})
