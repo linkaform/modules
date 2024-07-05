@@ -6,124 +6,8 @@ from account_settings import *
 from app import Accesos
 
 class Accesos(Accesos):
-
-    def get_access_notes(self, location_name, area_name):
-        match_query = {
-            "deleted_at":{"$exists":False},
-            "form_id": self.ACCESOS_NOTAS,
-            f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['location']}":location_name,
-            f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['area']}":area_name
-            }
-        query = [
-            {'$match': match_query },
-            {'$project': self.proyect_format(self.notes_project_fields)},
-            {'$sort':{self.f['note_open_date']:1}}
-            ]
-        return self.format_cr_result(self.cr.aggregate(query))
-
-    def get_booth_stats(self, booth_area, location):
-        res ={
-                "in_invitees":11,
-                "articulos_concesionados":12,
-                "incidentes_pendites": 13,
-                "vehiculos_estacionados": 14,
-                "gefetes_pendientes": 15,
-            }
-        return res
-
-    def get_booth_status(self, booth_area, location):
-        last_chekin = self.get_last_checkin(location, booth_area)
-        booth_status = {
-            "status":'Disponible',
-            "guard_on_dutty":'',
-            "user_id":'',
-            "stated_at":'',
-            }
-        if last_chekin.get('checkin_type') == 'entrada':
-            #todo
-            #user_id 
-            booth_status['status'] = 'No Disponible'
-            booth_status['guard_on_dutty'] = last_chekin.get('employee') 
-            booth_status['stated_at'] = last_chekin.get('checkin_date')
-            booth_status['checkin_id'] = last_chekin['_id']
-
-        return booth_status
-
-    def get_shift_data(self, search_default=True):
-        """
-        Obtiene informacion del turno del usuario logeado
-        """
-        load_shift_json = { }
-        username = self.user.get('username')
-        user_id = self.user.get('user_id')
-        default_booth , user_booths = self.get_user_booth(search_default=False)
-        location = default_booth.get('location')
-        if not default_booth:
-            return self.LKFException({"status_code":400, "msg":'No booth found or configure for user'})
-        booth_area = default_booth['area']
-        booth_location = default_booth['location']
-        booth_addres = self.get_area_address(booth_location, booth_area)
-        guards_positions = self.config_get_guards_positions()
-        location_employees = {}
-        for guard_type in guards_positions:
-            puesto = guard_type['tipo_de_guardia']
-            location_employees[puesto] = location_employees.get(puesto,
-                self.get_users_by_location_area(booth_location, booth_area, **{'position': guard_type['puestos']})
-                )
-            if guard_type['tipo_de_guardia'] == 'guardia_de_apoyo':
-                support_positions = guard_type['puestos']
-        guard = self.get_user_guards(location_employees['guardia'])
-        notes = self.get_access_notes(booth_location, booth_area)
-        load_shift_json["location"] = {
-            "name":  booth_location,
-            "area": booth_area,
-            "city": booth_addres.get('city'),
-            "state": booth_addres.get('state'),
-            "address": booth_addres.get('address'),
-            }
-        load_shift_json["booth_stats"] = self.get_booth_stats( booth_area, location)
-        load_shift_json["booth_status"] = self.get_booth_status(booth_area, location)
-        load_shift_json["support_guards"] = location_employees['guardia_de_apoyo']
-        load_shift_json["guard"] = self.update_guard_status(guard)
-        load_shift_json["notes"] = notes
-        load_shift_json["user_booths"] = user_booths
-        return load_shift_json
-
-    def get_user_booths_availability(self):
-        default_booth , user_booths = self.get_user_booth(search_default=False)
-        for booth in user_booths:
-            booth_area = booth.get('area')
-            location = booth.get('location')
-            booth_status = self.get_booth_status(booth_area, location)
-            booth['status'] = booth_status.get('status', 'Disponible')
-        return user_booths
-
-    def get_user_guards(self, location_employees):
-        for employee in location_employees:
-            if employee.get('user_id',0) == self.user.get('user_id'):
-                    return employee
-        self.LKFException(f"El usuario con id {self.user['user_id']}, no se ecuentra configurado como guardia")
-
-    def update_guard_status(self, guard):
-        last_checkin = self.get_user_last_checkin(guard['user_id'])
-        status_turn = 'Turno Cerrado'
-        if last_checkin.get('checkin_type') == 'entrada':
-            status_turn = 'Turno Abierto'
-
-        guard['turn_start_datetime'] =  last_checkin.get('checkin_date','')
-        guard['status_turn'] =  status_turn
-        return guard
-
-
-    # def do_checkin(self, location, area):
-    #     username = self.user.get('username')
-    #     user_id = self.user.get('user_id')
-    #     self.do_checkin(location, area, employee_list=[])
-
-
+    pass
 if __name__ == "__main__":
-    # print('sysarg',sys.argv)
-    #acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=True) 
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
     #-FILTROS
@@ -133,7 +17,6 @@ if __name__ == "__main__":
     # option = 'do_out'
     #option = 'list_bitacora'
     #option = 'new_note'
-    #--
     #option = 'load_shift'
     #option = 'checkin'
     #option = 'checkout'
@@ -148,8 +31,6 @@ if __name__ == "__main__":
     vehiculo = data.get('vehiculo',"")
     equipo = data.get('equipo',"")
     #-FUNCTIONS
-    #location = "Planta Durango"
-    #area = "Almacen de equipos industriales"
     print('option', option)
     if option == 'load_shift':
         response = acceso_obj.get_shift_data()
@@ -180,6 +61,5 @@ if __name__ == "__main__":
         response = acceso_obj.get_guard_notes(location, booth)
     else :
         response = {"msg": "Empty"}
-
     acceso_obj.HttpResponse({"data":response})
 
