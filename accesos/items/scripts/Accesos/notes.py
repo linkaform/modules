@@ -19,7 +19,7 @@ if __name__ == "__main__":
         'note_open_date':'2024-05-29 12:36:00',
         'note_close_date':'2024-05-29 12:36:00',
         'note':'Vienen a recoger un paquete ',
-        'note_booth':'Caseta Vigilancia Av 16',
+        'note_booth':'Caseta Vigilancia Norte 3',
         'note_guard':'Jacinto Sánchez Hil',
         'note_guard_close':'Lucia Perez N',
         'note_pic':[
@@ -46,10 +46,10 @@ if __name__ == "__main__":
             'Segundo Comentario',
         ],
     })
-    area = data.get("data_notes",'Caseta Vigilancia Av 16')
+    area = data.get("area",'Caseta Vigilancia Av 16')
     folio = data.get("folio",'470-10')
     #-FUNCTIONS
-    option = 'new_notes';
+    #option = 'new_notes';
     #option = 'get_notes';
     #option = 'update_note';
     #option = 'delete_note';
