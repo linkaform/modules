@@ -22,13 +22,13 @@ if __name__ == "__main__":
         'note_booth':'Caseta Vigilancia Av 16',
         'note_guard':'Jacinto Sánchez Hil',
         'note_guard_close':'Lucia Perez N',
-        'photos':[
+        'note_pic':[
             #{'file_url':'','file_name':''}
         ],
-        'files':[
+        'note_file':[
             #{'file_url':'','file_name':''}
         ],
-        'list_comments':[
+        'note_comments':[
             'Primer Comentario',
             'Segundo Comentario',
         ],
@@ -47,21 +47,21 @@ if __name__ == "__main__":
         ],
     })
     area = data.get("data_notes",'Caseta Vigilancia Av 16')
-    folio = data.get("folio",'459-10')
+    folio = data.get("folio",'470-10')
     #-FUNCTIONS
     option = 'new_notes';
-    option = 'get_notes';
-    option = 'update_note';
-    option = 'delete_note';
+    #option = 'get_notes';
+    #option = 'update_note';
+    #option = 'delete_note';
     print('option', option)
     if option == 'new_notes':
-        response = acceso_obj.set_create_note(data_notes)
+        response = acceso_obj.create_note(data_notes)
     elif option == 'get_notes':
         response = acceso_obj.get_list_notes(area)
     elif option == 'update_note':
-        response = acceso_obj.set_update_notes(data_update, folio)
+        response = acceso_obj.update_notes(data_update, folio)
     elif option == 'delete_note':
-        response = acceso_obj.set_delete_notes(folio)
+        response = acceso_obj.delete_notes(folio)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
