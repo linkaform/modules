@@ -22,6 +22,8 @@ if __name__ == "__main__":
     #option = 'checkout'
     #option = 'search_access_pass'
     #option = 'get_user_booths'
+    #option = 'get_detail_user'
+    option = 'create_pase'
     name_visit = data.get("name_visit", "Leticia Hernández Hernández")
     location = data.get("location", "Planta Monterrey")
     area = data.get("area","Caseta Vigilancia Norte 3")
@@ -30,6 +32,58 @@ if __name__ == "__main__":
     qr_code = data.get('qr_code',"667c70ae36d4fc26bc12dfaa")
     vehiculo = data.get('vehiculo',"")
     equipo = data.get('equipo',"")
+    id_catalog = data.get('id_catalog',"119199")
+    curp_code = data.get('curp_code',"LET56165")
+    data_pase = data.get('data_pase',{
+        #-opcion
+        "visitante_pase":'alta_de_nuevo_visitante',
+        #-catalog
+        "ubicacion_pase":'Planta Monterrey',
+        "nombre_pase":'Josue',
+        "email_pase":'Josue@linkaform.com',
+        "telefono_pase":'89921232',
+        "empresa_pase":'Linkaform',
+        #-catalog
+        "perfil_pase":'Visita General',
+        #-set
+        'visita_a_pase':[{
+            #-catalog
+            'nombre_completo':'Josue De Jesus',
+        }],
+        #-catalog
+        'authorized_pase':'Pedro Cervante',
+        #-opcion
+        'visita_de_pase':'fecha_fija',
+        'fecha_desde_pase':'2024-07-01 14:00:48',
+        #-set
+        'areas_group_pase':['Caseta Vigilancia Norte 3'],
+        #-set
+        'vehiculos_group_pase':[
+            {
+                'tipo':'Automóvil',
+                'marca':'ALFA ROMEO',
+                'modelo':'Alfa Romeo 166',
+                'estado':'Ciudad de México',
+                'placas':'Azul',
+                'color':'AL1234',
+            }
+        ],
+        #-set
+        'equipo_group_pase':[
+            {
+                'nombre':'Laptop',
+                'marca':'Lenovo',
+                'color':'Negro',
+                'tipo':'Computo',
+                'serie':'123556',
+            }
+        ],
+        #-set
+        'instrucciones_group_pase':['Sin comentarios'],
+        #-opcion
+        'status_pase':'activo'
+    })
+
     #-FUNCTIONS
     print('option', option)
     if option == 'load_shift':
@@ -59,6 +113,12 @@ if __name__ == "__main__":
         location = 'Planta Puebla'
         booth = 'Caseta Vigilancia Norte 8'
         response = acceso_obj.get_guard_notes(location, booth)
+    elif option == 'get_catalog':
+        response = acceso_obj.get_information_catalog(id_catalog)
+    elif option == 'get_detail_user':
+        response = acceso_obj.get_detail_user(curp_code)
+    elif option == 'create_pase':
+        response = acceso_obj.create_pase(data_pase)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})

@@ -19,8 +19,8 @@ if __name__ == "__main__":
         'ubicacion_incidence':'Planta Monterrey',
         'area_incidence':'Caseta Vigilancia Poniente 7',
         'incidence':'Accidentes laborales, como resbalones, tropiezos o caídas',
-        'note_guard':'Jacinto Sánchez Hil',
-        'comments':'Se partierón toda la cara',
+        'guard_incident':'Jacinto Sánchez Hil',
+        'comments_incidence':'Se partierón toda la cara',
     })
     data_incidence_update = data.get("data_incidence_update",{
         'incidence':'Se detuvierón las escaleras',

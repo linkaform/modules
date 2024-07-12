@@ -41,12 +41,12 @@ if __name__ == "__main__":
         'note_booth':'Caseta Vigilancia Av 16',
         'note_guard':'Jacinto Sánchez Hil',
         'note_guard_close':'Lucia Perez N',
-        'list_comments':[
+        'note_comments':[
             'Primer Comentario',
             'Segundo Comentario',
         ],
     })
-    area = data.get("area",'Caseta Vigilancia Av 16')
+    area = data.get("area",'Caseta Vigilancia Norte 3')
     folio = data.get("folio",'470-10')
     #-FUNCTIONS
     #option = 'new_notes';
