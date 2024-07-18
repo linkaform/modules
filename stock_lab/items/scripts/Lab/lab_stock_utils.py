@@ -2030,6 +2030,8 @@ class Stock(Stock):
             self.record_id = self.object_id()
         else:
             rec = self.get_record_by_id(self.record_id)
+            if not rec:
+                rec = self.current_record
             old_move_lines_ans = rec['answers'][self.f['move_group']]
             for move in old_move_lines_ans:
                 prod_info = move.get(self.CATALOG_INVENTORY_OBJ_ID)
