@@ -18,7 +18,7 @@ if __name__ == "__main__":
         'status_concesion':'abierto',
         'ubicacion_concesion':'Planta Monterrey',
         'solicita_concesion':'compartida',
-        'persona_nombre_concesion':'Fernando Sntibañez',
+        'nombre_concesion':'Fernando Sntibañez',
         'caseta_concesion':'Caseta Vigilancia Poniente 7',
         'fecha_concesion':'2024-07-25 19:31:54',
         'area_concesion':'Recursos eléctricos',

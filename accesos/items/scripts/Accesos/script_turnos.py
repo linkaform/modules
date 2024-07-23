@@ -23,7 +23,9 @@ if __name__ == "__main__":
     #option = 'search_access_pass'
     #option = 'get_user_booths'
     #option = 'get_detail_user'
-    option = 'create_pase'
+    #option = 'create_pase'
+    #option = 'get_support_guards'
+    #option = 'update_guards'
     name_visit = data.get("name_visit", "Leticia Hernández Hernández")
     location = data.get("location", "Planta Monterrey")
     area = data.get("area","Caseta Vigilancia Norte 3")
@@ -34,6 +36,8 @@ if __name__ == "__main__":
     equipo = data.get('equipo',"")
     id_catalog = data.get('id_catalog',"119199")
     curp_code = data.get('curp_code',"LET56165")
+    id_checkin = data.get('id_checkin',"669a9f6f5d9f890700be89ab")
+    folio = data.get('folio',"685-10")
     data_pase = data.get('data_pase',{
         #-opcion
         "visitante_pase":'alta_de_nuevo_visitante',
@@ -83,6 +87,7 @@ if __name__ == "__main__":
         #-opcion
         'status_pase':'activo'
     })
+    support_guards = data.get('data_guards', ['Josue','Mari'])
 
     #-FUNCTIONS
     print('option', option)
@@ -119,6 +124,8 @@ if __name__ == "__main__":
         response = acceso_obj.get_detail_user(curp_code)
     elif option == 'create_pase':
         response = acceso_obj.create_pase(data_pase)
+    elif option == 'update_guards':
+        response = acceso_obj.update_guards_booths(support_guards, folio)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})

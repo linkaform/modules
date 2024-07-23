@@ -16,8 +16,6 @@ if __name__ == "__main__":
 
     data_notes = data.get("data_notes",{
         'note_status':'cerrado',
-        'note_open_date':'2024-05-29 12:36:00',
-        'note_close_date':'2024-05-29 12:36:00',
         'note':'Vienen a recoger un paquete ',
         'note_booth':'Caseta Vigilancia Norte 3',
         'note_guard':'Jacinto Sánchez Hil',
@@ -35,19 +33,13 @@ if __name__ == "__main__":
     })
     data_update = data.get("data_update",{
         'note_status':'cerrado',
-        'note_open_date':'2024-05-29 12:40:00',
-        'note_close_date':'2024-05-29 12:36:00',
         'note':'Vienen a recoger un paquete ',
         'note_booth':'Caseta Vigilancia Av 16',
         'note_guard':'Jacinto Sánchez Hil',
         'note_guard_close':'Lucia Perez N',
-        'note_comments':[
-            'Primer Comentario',
-            'Segundo Comentario',
-        ],
     })
     area = data.get("area",'Caseta Vigilancia Norte 3')
-    folio = data.get("folio",'470-10')
+    folio = data.get("folio",'588-10')
     #-FUNCTIONS
     #option = 'new_notes';
     #option = 'get_notes';
