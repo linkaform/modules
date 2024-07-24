@@ -16,9 +16,6 @@ if __name__ == '__main__':
     #getFilters
     option = report_obj.data.get('data').get("option",0)
     product_code = report_obj.data.get('data').get("product_code")
-    print('data',report_obj.data.get('data'))
-    print('option',option)
-    print('product_code',product_code)
     if option == 'getFilters': 
         filters = ['products','warehouse']
         filter_data = report_obj.get_report_filters(filters)
