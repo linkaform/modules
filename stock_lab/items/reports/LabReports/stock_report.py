@@ -22,6 +22,7 @@ class Reports(Reports, Stock):
         self.GREENHOUSE_INVENTORY_ID = self.lkm.form_id('green_house_inventory','id')
         self.plants_by_week = {}
         self.f.update({
+            'catalog_product_lot':'620a9ee0a449b98114f61d77',
             'weely_production_plan_week':'61f1da41b112fe4e7fe85830',
             'weely_production_plan_year':'61f1da41b112fe4e7fe8582f',
             'weely_production_status':'62e4bd2ed9814e169a3f6bef',
@@ -546,10 +547,11 @@ class Reports(Reports, Stock):
         
         from_stage = 'Stage 3'
         if stage:
-            if stage == 2 or str(stage).lower() == 's2':
+            if stage == 2 or str(stage).lower() == 's2' or str(stage).lower() == '2':
                 from_stage = 'Stage 2'
+                print('>>>>>>>>>>>>>>stage', stage)
                 match_query.update({f"answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['reicpe_stage']}":'S2'})
-            if stage == 3 or str(stage).lower() == 's3':
+            if stage == 3 or str(stage).lower() == 's3' or str(stage).lower() == '3':
                 from_stage = 'Stage 3'
                 match_query.update({f"answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['reicpe_stage']}":'S3'})
         if lot_number:

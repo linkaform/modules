@@ -14,46 +14,22 @@ if __name__ == "__main__":
     data = acceso_obj.data.get('data',{})
     option = data.get("option",'')
 
-    data_notes = data.get("data_notes",{
-        'note_status':'cerrado',
-        'note':'Vienen a recoger un paquete ',
-        'note_booth':'Caseta Vigilancia Norte 3',
-        'note_guard':'Jacinto Sánchez Hil',
-        'note_guard_close':'Lucia Perez N',
-        'note_pic':[
-            #{'file_url':'','file_name':''}
-        ],
-        'note_file':[
-            #{'file_url':'','file_name':''}
-        ],
-        'note_comments':[
-            'Primer Comentario',
-            'Segundo Comentario',
-        ],
-    })
-    data_update = data.get("data_update",{
-        'note_status':'cerrado',
-        'note':'Vienen a recoger un paquete ',
-        'note_booth':'Caseta Vigilancia Av 16',
-        'note_guard':'Jacinto Sánchez Hil',
-        'note_guard_close':'Lucia Perez N',
-    })
-    area = data.get("area",'Caseta Vigilancia Norte 3')
+    data_notes = data.get("data_notes",{})
+    data_update = data.get("data_update",{})
+    location = data.get("location",'Planta Monterrey')
+    area = data.get("area",'Caseta Principal')
+    status = data.get("status",'abierto')
     folio = data.get("folio",'588-10')
     #-FUNCTIONS
-    #option = 'new_notes';
-    #option = 'get_notes';
-    #option = 'update_note';
-    #option = 'delete_note';
-    print('option', option)
     if option == 'new_notes':
-        response = acceso_obj.create_note(data_notes)
+        response = acceso_obj.create_note(location, area, data_notes)
     elif option == 'get_notes':
-        response = acceso_obj.get_list_notes(area)
+        response = acceso_obj.get_list_notes(location, area, status=status)
     elif option == 'update_note':
         response = acceso_obj.update_notes(data_update, folio)
     elif option == 'delete_note':
-        response = acceso_obj.delete_notes(folio)
+        response = acceso_obj.LKFException({'msg':'No hay permisos para borrar notas'})
+        #response = acceso_obj.delete_notes(folio)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
