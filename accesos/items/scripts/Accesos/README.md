@@ -1,14 +1,15 @@
-#####
-#####
-## Documentacion de Servicios
-#####
-#####
+# Documentación de Servicios
 
-- end_point: script_turnos.py
+## Servicio: Gestión de Turnos
 
-- options:
+### Endpoint `load_shift` (script_turnos.py)
 
-- load_shift: retorna informacion del status completa del turno del guardia truno
+- **Descripción**: Retorna información completa del estado del turno del guardia, incluyendo la ubicación, la caseta, guardias de apoyo y notas.
+
+- **Método HTTP**: `GET`
+
+**Ejemplo de Request**
+
 ```
 {
    "location": {
@@ -128,8 +129,13 @@
 }
 ```
 
-- guardias_de_apoyo / get_boot_guards ó list_chiken_guards :P 
-    Esta opcion retorna los guradias disponibles
+### Endpoint `guardias_de_apoyo` / `get_boot_guards` ó `list_chiken_guards`
+
+- **Descripción**: Retorna una lista de guardias de apoyo disponibles.
+
+- **Método HTTP**: `GET`
+
+**Ejemplo de Request**
 
 ```
 {
