@@ -356,7 +356,8 @@ class Stock(Stock):
                         'product_code':moves['product_code'],
                         'sku':moves['sku'],
                         'warehouse': warehouse_to,
-                        'warehouse_location': location_to
+                        'warehouse_location': location_to,
+                        'record_id': self.record_id
                         }
             if exists:
                 self.cache_set(cache_data)
@@ -375,8 +376,8 @@ class Stock(Stock):
                 answers = self.stock_inventory_model(moves, skus[moves['product_code']], labels=True)
                 answers.update({
                     self.WAREHOUSE_LOCATION_OBJ_ID:{
-                        self.f['warehouse']:warehouse_to,
-                        self.f['warehouse_location']:location_to},
+                    self.f['warehouse']:warehouse_to,
+                    self.f['warehouse_location']:location_to},
                     self.f['product_lot']:moves['product_lot']
                         },
                     )
@@ -470,7 +471,8 @@ class Stock(Stock):
                         'product_code':product_code,
                         'product_lot':lot_number,
                         'warehouse': warehouse,
-                        'warehouse_location': location
+                        'warehouse_location': location,
+                        'record_id':self.record_id
                         }
             if self.folio:
                 move_vals_from.update({'kwargs': {'nin_folio':self.folio }})
@@ -569,7 +571,8 @@ class Stock(Stock):
                     'sku':sku,
                     'product_lot':stock['lot_number'],
                     'warehouse': stock['warehouse'],
-                    'warehouse_location': stock['warehouse_location']
+                    'warehouse_location': stock['warehouse_location'],
+                    'record_id':self.record_id
                     })
         print('fokios', folios)
         res = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=folios)
