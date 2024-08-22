@@ -360,6 +360,8 @@ class Stock(Stock):
                         'record_id': self.record_id
                         }
             if exists:
+                if self.folio:
+                    cache_data.update({'kwargs': {'nin_folio':self.folio }})
                 self.cache_set(cache_data)
                 response = self.update_stock(answers=exists.get('answers',{}), form_id=self.FORM_INVENTORY_ID, folios=exists['folio'])
                 if not response:
