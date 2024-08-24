@@ -320,7 +320,11 @@ class Stock(Stock):
         return res
 
     def move_in(self):
+        # print('-- -- -- -- -- -- answers=',self.answers)
         answers = self._labels()
+
+        self.answer_label = self._labels()
+
         print('-----------------------------answers', self.answer_label)
         warehouse = self.answer_label['warehouse']
         location = self.answer_label['warehouse_location']
