@@ -1,11 +1,22 @@
 # -*- coding: utf-8 -*-
-import sys, simplejson
+import sys, simplejson, copy
 
 from stock_utils import Stock
 
 from account_settings import *
 
 class Stock(Stock):
+
+    def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False):
+        super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
+
+        self.mf.update({
+            'xls_file': '66c797955cfca4851db2c3b8',
+            'product_material': '66b10b87a1d4483b5369f409',
+            'series_group':'66c75ca499596663582eed59',
+            'num_serie': '66c75d1e601ad1dd405593fe',
+            'capture_num_serie': '66c75e0c0810217b0b5593ca'
+        })
 
     def get_skus_records(self):
         """
@@ -17,28 +28,18 @@ class Stock(Stock):
             productCode = r.get( self.f['product_code'] )
             productSku = r.get( self.f['sku'] )
             productName = r.get( self.f['product_name'] )
-            productTipoMaterial = r.get( self.f['product_material'] )
+            productTipoMaterial = r.get( self.mf['product_material'] )
             if not productCode or not productSku:
                 continue
             dict_skus[ f'{productCode}_{productSku}' ] = {
                 self.f['product_name']: [productName,],
-                self.f['product_material']: [productTipoMaterial,],
+                self.mf['product_material']: [productTipoMaterial,],
             }
         return dict_skus
 
-    def show_error_app(self, field_id, label, msg):
-        raise Exception( simplejson.dumps({
-            field_id: { 'msg': [msg], 'label': label, 'error': [] }
-        }) )
-
     def read_xls_file(self):
-        # return False
-        self.f.update({
-            'xls_file': '66c797955cfca4851db2c3b8',
-            'product_material': '66b10b87a1d4483b5369f409'
-        })
 
-        file_url_xls = self.answers.get( self.f['xls_file'] )
+        file_url_xls = self.answers.get( self.mf['xls_file'] )
         if not file_url_xls:
             print('no hay excel de carga masiva')
             return False
@@ -50,12 +51,16 @@ class Stock(Stock):
         si ya tiene folio, entonces es una edicion y se debe revisar si en la version previa ya existia un excel
         si ya existia un excel entonces se ignora
         """
-        if self.folio and self.current_record.get('other_versions'):
-            # print('entra al other_versions')
-            prev_version = stock_obj.get_prev_version(self.current_record['other_versions'], select_columns=[ 'answers.{}'.format( self.f['xls_file'] ) ])
+        if self.folio: 
+            if self.current_record.get('other_versions'):
+                # print('entra al other_versions')
+                prev_version = stock_obj.get_prev_version(self.current_record['other_versions'], select_columns=[ 'answers.{}'.format( self.mf['xls_file'] ) ])
+            else:
+                print('Ya tiene folio pero aun no hay mas versiones... revisando el current_record en la BD')
+                prev_version = stock_obj.get_record_from_db(self.form_id, self.folio, select_columns=[ 'answers.{}'.format( self.mf['xls_file'] ) ])
             print('prev_version=',prev_version)
-            if prev_version.get('answers', {}).get( self.f['xls_file'] ):
-                print( 'ya hay un excel previamente cargado... se ignora en esta ejecucion =',prev_version.get('answers', {}).get( self.f['xls_file'] ) )
+            if prev_version.get('answers', {}).get( self.mf['xls_file'] ):
+                print( 'ya hay un excel previamente cargado... se ignora en esta ejecucion =',prev_version.get('answers', {}).get( self.mf['xls_file'] ) )
                 return False
 
         header, records = stock_obj.read_file( file_url_xls )
@@ -68,7 +73,7 @@ class Stock(Stock):
         cols_not_found = stock_obj.check_keys_and_missing(cols_required, header_dict)
         if cols_not_found:
             cols_not_found = [ c.replace('_', ' ').title() for c in cols_not_found ]
-            self.show_error_app( self.f['xls_file'], 'Excel de carga masiva', f'Se requieren las columnas: {stock_obj.list_to_str(cols_not_found)}' )
+            self.LKFException( f'Se requieren las columnas: {stock_obj.list_to_str(cols_not_found)}' )
 
         """
         # Se revisan los renglones del excel para verificar que los codigos y skus existan en el catalogo
@@ -114,18 +119,54 @@ class Stock(Stock):
                 self.f['move_group_qty'] : cantidad,
             })
         if error_rows:
-            self.show_error_app( self.f['xls_file'], 'Excel de carga masiva', stock_obj.list_to_str(error_rows) )
+            self.LKFException( stock_obj.list_to_str(error_rows) )
         if self.answers.get( self.f['move_group'] ):
             self.answers[ self.f['move_group'] ] += sets_to_products
         else:
             self.answers[ self.f['move_group'] ] = sets_to_products
-        # self.show_error_app( 'folio', 'Folio', 'En Pruebas!' )
+
+    def read_series_ONTs(self):
+        """
+        Se revisa que no haya numeros de serie repetidas
+        """
+        series_unique = []
+        series_repeated = []            
+
+        """
+        Preparo una lista de tuplas con la info del producto MODEM / ONT y la cantidad de series que se requieren para cada producto
+        """
+        move_group = self.answers.get( self.f['move_group'], [] )[:]
+        for idx, set_product in enumerate(move_group):
+            capture_num_serie = stock_obj.unlist( set_product.get( self.SKU_OBJ_ID, {} ).get( self.mf['capture_num_serie'] ) ) == 'Si'
+            cantidad_solicitada = set_product.get( self.f['move_group_qty'], 0 )
+            if capture_num_serie and cantidad_solicitada:
+                if cantidad_solicitada != len( self.answers.get( self.mf['series_group'], [] ) ):
+                    self.LKFException( {
+                        'msg': f"La cantidad de series requeridas {cantidad_solicitada} no corresponde con las capturadas {len( self.answers.get( self.mf['series_group'], [] ) )}"
+                    } )
+                new_set = self.answers[ self.f['move_group'] ].pop(idx)
+                for idx_serie, serie_set in enumerate(self.answers.get(self.mf['series_group'], [])):
+                    num_serie = serie_set.get( self.mf['num_serie'] )
+                    if num_serie not in series_unique:
+                        series_unique.append(num_serie)
+                    else:
+                        series_repeated.append( (idx_serie + 1, num_serie) )
+                    row_set = copy.deepcopy(new_set)
+                    row_set[ self.f['move_group_qty'] ] = 1
+                    row_set[ self.f['lot_number'] ] = serie_set.get( self.mf['num_serie'] )
+                    self.answers[ self.f['move_group'] ].insert( idx, row_set )
+        
+        if series_repeated:
+            self.LKFException( stock_obj.list_to_str( [f'Codigo {i[1]} esta repetido en el Set {i[0]}' for i in series_repeated] ) )
+        self.answers[self.mf['series_group']] = []
+        return True
 
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
     stock_obj.console_run()
 
     stock_obj.read_xls_file()
+    stock_obj.read_series_ONTs()
 
     response = stock_obj.move_in()
     print('TODO: revisar si un create no estuvo bien y ponerlo en error o algo')
