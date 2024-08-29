@@ -85,7 +85,7 @@ class Stock(Stock):
         cols_not_found = stock_obj.check_keys_and_missing(cols_required, header_dict)
         if cols_not_found:
             cols_not_found = [ c.replace('_', ' ').title() for c in cols_not_found ]
-            self.LKFException( f'Se requieren las columnas: {stock_obj.list_to_str(cols_not_found)}' )
+            self.show_error_app( self.f['xls_file'], 'Excel de carga masiva', f'Se requieren las columnas: {stock_obj.list_to_str(cols_not_found)}' )
 
         """
         Se obtiene la lista de productos que tiene el Warehouse Origen
@@ -138,7 +138,7 @@ class Stock(Stock):
                 self.f['move_group_qty'] : cantidad,
             })
         if error_rows:
-            self.LKFException( stock_obj.list_to_str(error_rows) )
+            self.show_error_app( self.f['xls_file'], 'Excel de carga masiva', stock_obj.list_to_str(error_rows) )
         if self.answers.get( self.f['move_group'] ):
             self.answers[ self.f['move_group'] ] += sets_to_products
         else:
@@ -155,7 +155,9 @@ class Stock(Stock):
             if cant_solicitada > cant_disponible:
                 error_cantidades.append( f'Producto: {p} SKU: {s} la cantidad solicitada {cant_solicitada} es mayor a la cantidad disponible {cant_disponible}' )
         if error_cantidades:
-            self.LKFException( stock_obj.list_to_str(error_cantidades) )
+            self.show_error_app( self.f['xls_file'], 'Excel de carga masiva', stock_obj.list_to_str(error_cantidades) )
+
+        # self.show_error_app( 'folio', 'Folio', 'En Pruebas!' )
 
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)

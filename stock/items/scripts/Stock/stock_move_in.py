@@ -137,6 +137,11 @@ class Stock(Stock):
         """
         move_group = self.answers.get( self.f['move_group'], [] )[:]
         for idx, set_product in enumerate(move_group):
+
+            capture_num_serie = set_product.get( self.SKU_OBJ_ID, {} ).get( self.mf['capture_num_serie'] )
+            if capture_num_serie and type(capture_num_serie[0]) == list:
+                set_product[ self.SKU_OBJ_ID ][ self.mf['capture_num_serie'] ] = [ stock_obj.unlist(capture_num_serie) ]
+
             capture_num_serie = stock_obj.unlist( set_product.get( self.SKU_OBJ_ID, {} ).get( self.mf['capture_num_serie'] ) ) == 'Si'
             cantidad_solicitada = set_product.get( self.f['move_group_qty'], 0 )
             if capture_num_serie and cantidad_solicitada:
