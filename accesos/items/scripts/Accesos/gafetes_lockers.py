@@ -14,6 +14,8 @@ if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
     #-FILTROS
+    argument_option = acceso_obj.data.get('option')
+
     data = acceso_obj.data.get('data',{})
     option = data.get("option",'')
     data_gafete = data.get("data_gafete",{
@@ -31,12 +33,16 @@ if __name__ == "__main__":
     limit = data.get("limit",1000)
     skip = data.get("skip",0)
     folio = data.get("folio",'512-10')
-    print('optio', option)
+    print('option', option)
+    print('data', data)
+    print('data', datad)
     #-FUNCTIONS
     #option = 'new_badge';
     #option = 'get_badge';
     #option = 'deliver_badge';
-    if option == 'new_badge':
+    if argument_option == 'update_status':
+        response = acceso_obj.update_gafet_status(data_gafete)
+    elif option == 'new_badge':
         response = acceso_obj.create_badge(data_gafete)
     elif option == 'get_gafetes':
         response = acceso_obj.get_gafetes(status=status, location=location, area=area, limit=limit, skip=skip)
