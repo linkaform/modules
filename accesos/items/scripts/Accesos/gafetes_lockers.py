@@ -7,6 +7,9 @@ from app import Accesos
 
 class Accesos(Accesos):
     pass
+
+
+
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
@@ -21,16 +24,24 @@ if __name__ == "__main__":
         'id_gafete':'00001',
         'documento_gafete':['INE'],
     })
-    location = data.get("location",'Planta Durango')
+    location = data.get("location")
+    area = data.get("area")
+    tipo_locker = data.get("tipo_locker")
+    status = data.get("status")
+    limit = data.get("limit",1000)
+    skip = data.get("skip",0)
     folio = data.get("folio",'512-10')
+    print('optio', option)
     #-FUNCTIONS
     #option = 'new_badge';
     #option = 'get_badge';
     #option = 'deliver_badge';
     if option == 'new_badge':
         response = acceso_obj.create_badge(data_gafete)
-    elif option == 'get_badge':
-        response = acceso_obj.get_list_badge(location)
+    elif option == 'get_gafetes':
+        response = acceso_obj.get_gafetes(status=status, location=location, area=area, limit=limit, skip=skip)
+    elif option == 'get_lockers':
+        response = acceso_obj.get_lockers(status=status, tipo_locker=tipo_locker, location=location, area=area, limit=limit, skip=skip)
     elif option == 'deliver_badge':
         response = acceso_obj.deliver_badge(folio)
     else :

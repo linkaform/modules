@@ -14,27 +14,21 @@ if __name__ == "__main__":
     #-FILTROS
     data = acceso_obj.data.get('data',{})
     option = data.get("option",'')
-    area = data.get("area","Caseta Vigilancia Sur 5")
 
+    area = data.get("area")
     comments = data.get('comments',"")
     checkin_id = data.get("checkin_id","")
-    curp_code = data.get('curp_code',"")
     employee_list = data.get("employee_list",[])
-    folio = data.get('folio')
-    guards = data.get('guards',[])
     equipo = data.get('equipo',"")
-    checkin_id = data.get('checkin_id')
-    name_visit = data.get("name_visit")
     forzar = data.get('forzar')
-    id_checkin = data.get('id_checkin')
-    id_catalog = data.get('id_catalog')
-    location = data.get("location")
-    area = data.get("area")
-    support_guards = data.get('support_guards')
-    qr_code = data.get('qr_code')
-    vehiculo = data.get('vehiculo',"")
-    tipo = data.get('tipo',"")
     marca = data.get('marca',"")
+    guards = data.get('guards',[])
+    location = data.get("location")
+    qr_code = data.get('qr_code')
+    record_id = data.get('record_id')
+    support_guards = data.get('support_guards')
+    tipo = data.get('tipo',"")
+    vehiculo = data.get('vehiculo',"")
     visita_a = data.get('visita_a',"")
 
     #-FUNCTIONS
@@ -72,19 +66,18 @@ if __name__ == "__main__":
     elif option == 'do_access':
         # used
         response = acceso_obj.do_access(qr_code, location, area, data)
+    elif option == 'update_bitacora_entrada':
+        # used
+        response = acceso_obj.update_bitacora_entrada(data, record_id=record_id)
     elif option == 'notes_guard':
         response = acceso_obj.get_guard_notes(location, booth)
     elif option == 'vehiculo_tipo':
-        print('tipo', tipo)
-        print('marca', marca)
         if tipo and marca:
             response = acceso_obj.vehiculo_modelo(tipo, marca)
         elif tipo:
             response = acceso_obj.vehiculo_marca(tipo)
         else:
             response = acceso_obj.vehiculo_tipo()
-    elif option == 'get_detail_user':
-        response = acceso_obj.get_detail_user(curp_code)
     elif option == 'create_pase' or option == 'crear_pase':
         response = acceso_obj.create_access_pass(data_pase)
     elif option == 'update_guards':
