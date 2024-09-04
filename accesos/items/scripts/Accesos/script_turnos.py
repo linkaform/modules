@@ -30,6 +30,7 @@ if __name__ == "__main__":
     tipo = data.get('tipo',"")
     vehiculo = data.get('vehiculo',"")
     visita_a = data.get('visita_a',"")
+    gafete_id = data.get('gafete_id',"")
 
     #-FUNCTIONS
     print('option', option)
@@ -62,7 +63,7 @@ if __name__ == "__main__":
         #acceso_obj.HttpResponse({"data": response}, indent=4)
     elif option == 'do_out':
         # used
-        response = acceso_obj.do_out(qr_code, location, area)
+        response = acceso_obj.do_out(qr_code, location, area, gafete_id)
     elif option == 'do_access':
         # used
         response = acceso_obj.do_access(qr_code, location, area, data)
