@@ -34,20 +34,30 @@ if __name__ == "__main__":
     skip = data.get("skip",0)
     folio = data.get("folio",'512-10')
     gafete_id= data.get("gafete_id" , data.get('id_gafete'))
+    locker_id= data.get("locker_id" , data.get('id_locker'))
+    tipo_locker= data.get("tipo_locker")
     tipo_movimiento= data.get("tipo_movimiento")
+    print('argument_option=', argument_option)
     print('option=', option)
     #-FUNCTIONS
     #option = 'new_badge';
     #option = 'get_badge';
     #option = 'deliver_badge';
-    if option == 'update_status':
+    if argument_option == 'update_status':
         response = acceso_obj.update_gafet_status()
     elif option == 'new_badge':
         response = acceso_obj.create_badge(data_gafete)
     elif option == 'get_gafetes':
         response = acceso_obj.get_gafetes(status=status, location=location, area=area, gafete_id=gafete_id,limit=limit, skip=skip)
     elif option == 'get_lockers':
-        response = acceso_obj.get_lockers(status=status, tipo_locker=tipo_locker, location=location, area=area, limit=limit, skip=skip)
+        response = acceso_obj.get_lockers(
+            status=status, 
+            location=location, 
+            area=area, 
+            tipo_locker=tipo_locker, 
+            locker_id=locker_id, 
+            limit=limit, 
+            skip=skip)
     elif option == 'deliver_badge':
         response = acceso_obj.deliver_badge(folio)
     else :
