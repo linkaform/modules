@@ -17,40 +17,6 @@ if __name__ == "__main__":
     location = data.get("location",'')
     access_pass = data.get("access_pass",{})
 
-
-        # answers[self.UBICACIONES_CAT_OBJ_ID][self.m['location']] = location
-        # answers[self.pase_entrada_fields['tipo_visita']] = 'alta_nuevo_visitante'
-        # answers[self.pase_entrada_fields['walkin_nombre']] = access_pass.get('nombre')
-        # answers[self.pase_entrada_fields['walkin_email']] = access_pass.get('email')
-        # answers[self.pase_entrada_fields['walkin_empresa']] = access_pass.get('empresa')
-        # answers[self.pase_entrada_fields['walkin_fotografia']] = access_pass.get('foto')
-        # answers[self.pase_entrada_fields['walkin_identificacion']] = access_pass.get('identificacion')
-        # answers[self.pase_entrada_fields['walkin_telefono']] = access_pass.get('telefono')
-
-    access_pass = {
-        "nombre" : "Benito Juarez",
-        "perfil_pase":"Walkin",
-        "visita_a":"Venustiano Carranza",
-        # "visita_a":"Pedro Parmo",
-        "email" : "beno@juarez.com",
-        "empresa" : "Linkaform",
-        "foto" :[
-         {
-            "file_name": "benito.jpg",
-            "file_url": "https://f001.backblazeb2.com/file/app-linkaform/public-client-10/121736/66c4d5b6d1095c4ce8b2c42a/66c5184c54ba9236c755940b.jpg"
-         }
-            ],
-        "identificacion" : [
-         {
-            "file_name": "joeduck_id.jpg",
-            "file_url": "https://f001.backblazeb2.com/file/app-linkaform/public-client-10/121736/66c4d5b6d1095c4ce8b2c42b/66c51852ed8e5696211adeea.jpg"
-         }
-            ],
-        "telefono" : "8115778888"
-        }
-
-
-
     if option == 'assets_access_pass':
         # used
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)

@@ -23,7 +23,7 @@ if __name__ == "__main__":
         'ubicacion_gafete':'Planta Durango',
         'caseta_gafete':'Caseta Vigilancia Av 16',
         'visita_gafete':'Leticia Hernández Hernández',
-        'id_gafete':'00001',
+        'gafete_id':'00001',
         'documento_gafete':['INE'],
     })
     location = data.get("location")
@@ -33,19 +33,19 @@ if __name__ == "__main__":
     limit = data.get("limit",1000)
     skip = data.get("skip",0)
     folio = data.get("folio",'512-10')
-    print('option', option)
-    print('data', data)
-    print('data', datad)
+    gafete_id= data.get("gafete_id" , data.get('id_gafete'))
+    tipo_movimiento= data.get("tipo_movimiento")
+    print('option=', option)
     #-FUNCTIONS
     #option = 'new_badge';
     #option = 'get_badge';
     #option = 'deliver_badge';
-    if argument_option == 'update_status':
-        response = acceso_obj.update_gafet_status(data_gafete)
+    if option == 'update_status':
+        response = acceso_obj.update_gafet_status()
     elif option == 'new_badge':
         response = acceso_obj.create_badge(data_gafete)
     elif option == 'get_gafetes':
-        response = acceso_obj.get_gafetes(status=status, location=location, area=area, limit=limit, skip=skip)
+        response = acceso_obj.get_gafetes(status=status, location=location, area=area, gafete_id=gafete_id,limit=limit, skip=skip)
     elif option == 'get_lockers':
         response = acceso_obj.get_lockers(status=status, tipo_locker=tipo_locker, location=location, area=area, limit=limit, skip=skip)
     elif option == 'deliver_badge':
