@@ -4,7 +4,7 @@ import sys, simplejson
 from datetime import datetime, timedelta, date
 from copy import deepcopy
 
-from lkf_addons.addons.stock.stock_utils import Stock
+from lkf_addons.addons.stock.app import Stock
 
 today = date.today()
 year_week = int(today.strftime('%Y%W'))
@@ -44,6 +44,7 @@ class Stock(Stock):
             'parts_group':'62c5da67f850f35cc2483346',
             })
         self.answer_label = self._labels()
+        self.FOLDER_FORMS_ID = self.lkm.item_id('Stock', 'form_folder').get('id')
 
     #### Se heredaron funciones para hacer lote tipo string
 
@@ -343,6 +344,9 @@ class Stock(Stock):
         metadata = self.lkf_api.get_metadata(self.FORM_INVENTORY_ID)
         for idx, moves in enumerate(move_lines):
             move_line = self.answers[self.f['move_group']][idx]
+            if not moves.get('product_lot'):
+                moves['product_lot'] = 'LotePCI001'
+                move_line[self.f['product_lot']] = 'LotePCI001'
             print('moves', moves)
             # product_code = info_product.get(self.f['product_code'])
             # sku = info_product.get(self.f['sku'])
