@@ -7,7 +7,7 @@
         <button_message>Send</button_message>
     </confirmation>
     <description />
-    <_rev>18-d558b1981027ea0a5ea5b5b5e88ecf32</_rev>
+    <_rev>58-51e04f56f3d1a61baf8f2f9223f8f808</_rev>
     <updated_at>2024-01-26T20:21:28.359341+00:00Z</updated_at>
     <sync>
         <element_request>{}</element_request>
@@ -23,6 +23,9 @@
                 </item>
             </amp_and>
         </TeamLeader>
+        <client_9908__slash__ba0879b9c8ef4b5feec7122926e67e1b>None</client_9908__slash__ba0879b9c8ef4b5feec7122926e67e1b>
+        <client_9908__slash__2637ccfc44c099fdeadde1babcdc6c17>None</client_9908__slash__2637ccfc44c099fdeadde1babcdc6c17>
+        <client_9908__slash__07041e68b76f84413decada21f6d74e9>None</client_9908__slash__07041e68b76f84413decada21f6d74e9>
         <Team1>
             <amp_and>
                 <item>
@@ -50,6 +53,34 @@
                 </item>
             </amp_and>
         </Team3>
+        <WarehouseOnly>
+            <amp_and>
+                <item>
+                    <num_6442e4831198daf81456f274>
+                        <amp_eq>Lab A</amp_eq>
+                    </num_6442e4831198daf81456f274>
+                </item>
+                <item>
+                    <num_6442e4831198daf81456f274>
+                        <amp_eq>Lab B</amp_eq>
+                    </num_6442e4831198daf81456f274>
+                </item>
+                <item>
+                    <num_6442e4831198daf81456f274>
+                        <amp_eq>Lab C</amp_eq>
+                    </num_6442e4831198daf81456f274>
+                </item>
+                <item>
+                    <num_6442e4831198daf81456f274>
+                        <amp_eq>Lab D</amp_eq>
+                    </num_6442e4831198daf81456f274>
+                </item>
+            </amp_and>
+        </WarehouseOnly>
+        <client_9908__slash__78af09f357ee0d4f578d27ecef751ad0>None</client_9908__slash__78af09f357ee0d4f578d27ecef751ad0>
+        <client_9908__slash__c795c71527f505ea66b229fbdbfd3cc5>None</client_9908__slash__c795c71527f505ea66b229fbdbfd3cc5>
+        <client_9908__slash__2f91da6d0fc8ebcb2649d94b9a82a835>None</client_9908__slash__2f91da6d0fc8ebcb2649d94b9a82a835>
+        <client_9908__slash__3b926084a2e912b27d7ad01beab4d540>None</client_9908__slash__3b926084a2e912b27d7ad01beab4d540>
     </filters>
     <name>Lab Inventory</name>
     <edit_public_records>False</edit_public_records>
@@ -62,10 +93,6 @@
             <manual>False</manual>
         </folio>
     </advanced_options>
-    <catalog_id>113816</catalog_id>
-    <sync_last_update>None</sync_last_update>
-    <_id>65b41448b2f9af986d0d612e</_id>
-    <public>False</public>
     <catalog_pages>
         <item>
             <page_fields>
@@ -353,6 +380,19 @@
                     </properties>
                 </item>
                 <item>
+                    <field_type>integer</field_type>
+                    <field_id>622bb9946d0d6fef17fe0842</field_id>
+                    <required>False</required>
+                    <fav>True</fav>
+                    <label>Cut Week</label>
+                    <properties>
+                        <number_of_decimals>2</number_of_decimals>
+                        <custom>None</custom>
+                        <step>1</step>
+                        <size>small</size>
+                    </properties>
+                </item>
+                <item>
                     <field_type>text</field_type>
                     <field_id>620ad6247a217dbcb888d168</field_id>
                     <required>False</required>
@@ -451,8 +491,12 @@
                     </properties>
                 </item>
             </page_fields>
-            <page_description>None</page_description>
             <page_name>Page 1</page_name>
+            <page_description>None</page_description>
         </item>
     </catalog_pages>
+    <sync_last_update>None</sync_last_update>
+    <_id>65b41448b2f9af986d0d612e</_id>
+    <public>False</public>
+    <catalog_id>113816</catalog_id>
 </lkf>
