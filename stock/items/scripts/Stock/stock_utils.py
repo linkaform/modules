@@ -4,7 +4,7 @@ import sys, simplejson
 from datetime import datetime, timedelta, date
 from copy import deepcopy
 
-from lkf_addons.addons.stock.stock_utils import Stock
+from lkf_addons.addons.stock.app import Stock
 
 today = date.today()
 year_week = int(today.strftime('%Y%W'))
@@ -44,6 +44,7 @@ class Stock(Stock):
             'parts_group':'62c5da67f850f35cc2483346',
             })
         self.answer_label = self._labels()
+        self.FOLDER_FORMS_ID = self.lkm.item_id('Stock', 'form_folder').get('id')
 
     #### Se heredaron funciones para hacer lote tipo string
 
@@ -300,9 +301,31 @@ class Stock(Stock):
     #             folios_2_update.append(record.get('folio'))
     #     return res
 
+    def duplicate_lot_record(self, lot_number, folio=None):
+        if folio:
+            match_query = {
+                "deleted_at":{"$exists":False},
+                "form_id": self.FORM_INVENTORY_ID,
+                "folio": folio
+                }
+        else:
+            match_query = {
+                "deleted_at":{"$exists":False},
+                "form_id": self.FORM_INVENTORY_ID,
+                f"answers.{self.f['prouct_lot']}": lot_number
+                }
+        try:
+            res = self.cr.find_one(match_query, {'answers':1})
+        except:
+            res = None
+        return res
 
     def move_in(self):
+        # print('-- -- -- -- -- -- answers=',self.answers)
         answers = self._labels()
+
+        self.answer_label = self._labels()
+
         print('-----------------------------answers', self.answer_label)
         warehouse = self.answer_label['warehouse']
         location = self.answer_label['warehouse_location']
@@ -321,6 +344,9 @@ class Stock(Stock):
         metadata = self.lkf_api.get_metadata(self.FORM_INVENTORY_ID)
         for idx, moves in enumerate(move_lines):
             move_line = self.answers[self.f['move_group']][idx]
+            if not moves.get('product_lot'):
+                moves['product_lot'] = 'LotePCI001'
+                move_line[self.f['product_lot']] = 'LotePCI001'
             print('moves', moves)
             # product_code = info_product.get(self.f['product_code'])
             # sku = info_product.get(self.f['sku'])
@@ -338,9 +364,12 @@ class Stock(Stock):
                         'product_code':moves['product_code'],
                         'sku':moves['sku'],
                         'warehouse': warehouse_to,
-                        'warehouse_location': location_to
+                        'warehouse_location': location_to,
+                        'record_id': self.record_id
                         }
             if exists:
+                if self.folio:
+                    cache_data.update({'kwargs': {'nin_folio':self.folio }})
                 self.cache_set(cache_data)
                 response = self.update_stock(answers=exists.get('answers',{}), form_id=self.FORM_INVENTORY_ID, folios=exists['folio'])
                 if not response:
@@ -357,8 +386,8 @@ class Stock(Stock):
                 answers = self.stock_inventory_model(moves, skus[moves['product_code']], labels=True)
                 answers.update({
                     self.WAREHOUSE_LOCATION_OBJ_ID:{
-                        self.f['warehouse']:warehouse_to,
-                        self.f['warehouse_location']:location_to},
+                    self.f['warehouse']:warehouse_to,
+                    self.f['warehouse_location']:location_to},
                     self.f['product_lot']:moves['product_lot']
                         },
                     )
@@ -452,7 +481,8 @@ class Stock(Stock):
                         'product_code':product_code,
                         'product_lot':lot_number,
                         'warehouse': warehouse,
-                        'warehouse_location': location
+                        'warehouse_location': location,
+                        'record_id':self.record_id
                         }
             if self.folio:
                 move_vals_from.update({'kwargs': {'nin_folio':self.folio }})
@@ -495,25 +525,6 @@ class Stock(Stock):
         print('res_create', res_create)
         #res = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=folios)
         return True
-
-    def duplicate_lot_record(self, lot_number, folio=None):
-        if folio:
-            match_query = {
-                "deleted_at":{"$exists":False},
-                "form_id": self.FORM_INVENTORY_ID,
-                "folio": folio
-                }
-        else:
-            match_query = {
-                "deleted_at":{"$exists":False},
-                "form_id": self.FORM_INVENTORY_ID,
-                f"answers.{self.f['prouct_lot']}": lot_number
-                }
-        try:
-            res = self.cr.find_one(match_query, {'answers':1})
-        except:
-            res = None
-        return res
 
     def move_out_multi_location(self):
         move_lines = self.answers[self.f['move_group']]
@@ -570,7 +581,8 @@ class Stock(Stock):
                     'sku':sku,
                     'product_lot':stock['lot_number'],
                     'warehouse': stock['warehouse'],
-                    'warehouse_location': stock['warehouse_location']
+                    'warehouse_location': stock['warehouse_location'],
+                    'record_id':self.record_id
                     })
         print('fokios', folios)
         res = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=folios)

@@ -1,35 +1,95 @@
+# coding: utf-8
 import sys, simplejson
-from linkaform_api import settings, network, utils
+from linkaform_api import settings
 from account_settings import *
 
-from accesos_utils import Accesos
+from app import Accesos
 
+class Accesos(Accesos):
+    pass
+    
 if __name__ == "__main__":
-    #acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=True) 
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
     #-FILTROS
-    all_data = simplejson.loads(sys.argv[2])
-    data = all_data.get("data", {})
+    data = acceso_obj.data.get('data',{})
     option = data.get("option",'')
-    location = data.get("location",'')
+
+    area = data.get("area")
+    comments = data.get('comments',"")
+    checkin_id = data.get("checkin_id","")
+    employee_list = data.get("employee_list",[])
+    equipo = data.get('equipo',"")
+    forzar = data.get('forzar')
+    marca = data.get('marca',"")
+    guards = data.get('guards',[])
+    location = data.get("location")
+    qr_code = data.get('qr_code')
+    record_id = data.get('record_id')
+    support_guards = data.get('support_guards')
+    tipo = data.get('tipo',"")
+    vehiculo = data.get('vehiculo',"")
+    visita_a = data.get('visita_a',"")
+    gafete_id = data.get('gafete_id',"")
+
     #-FUNCTIONS
-    if option == 'catalog_location':
+    print('option', option)
+    if option == 'load_shift':
+        # used
+        response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
+    elif option == 'assets_access_pass':
+        response = acceso_obj.assets_access_pass(location)
+    elif option == 'list_bitacora':
+        response = acceso_obj.get_list_bitacora(location,  area)
+    elif option == 'get_user_booths':
+        response = acceso_obj.get_user_booths_availability()
+    elif option == 'get_boot_guards' or option == 'guardias_de_apoyo':
+        response = acceso_obj.get_booths_guards(location, area, solo_disponibles=True, **{'position':acceso_obj.support_guard})
+    elif option == 'catalog_location':
         response = acceso_obj.get_catalog_locations(location)
-        sys.stdout.write(simplejson.dumps({"data": response}))
-    elif option == 'location_guard':
-        email = 'guardia1@linkaform.com'
-        response = acceso_obj.get_guard_location(email)
-        sys.stdout.write(simplejson.dumps({"data": response}))
-    elif option == 'list_chiken_guards':
-        location = 'Planta Monterrey'
-        booth = 'Caseta Vigilancia Poniente 7'
-        response = acceso_obj.get_guard_list(location, booth)
-        sys.stdout.write(simplejson.dumps({"data": response}))
+    elif option == 'checkin':
+        # used
+        response = acceso_obj.do_checkin(location, area, employee_list)
+    elif option == 'checkout':
+        # used
+        response = acceso_obj.do_checkout(checkin_id=checkin_id, \
+            location=location, area= area, guards=guards, forzar=forzar, comments=comments)
+    elif option == 'search_access_pass':
+        # used
+        response = acceso_obj.search_access_pass(qr_code=qr_code, location=location)
+    elif option == 'lista_pases':
+        # used
+        response = acceso_obj.get_lista_pase(location=location)
+        #acceso_obj.HttpResponse({"data": response}, indent=4)
+    elif option == 'do_out':
+        # used
+        response = acceso_obj.do_out(qr_code, location, area, gafete_id)
+    elif option == 'do_access':
+        # used
+        response = acceso_obj.do_access(qr_code, location, area, data)
+    elif option == 'update_bitacora_entrada':
+        # used
+        response = acceso_obj.update_bitacora_entrada(data, record_id=record_id)
     elif option == 'notes_guard':
-        location = 'Planta Puebla'
-        booth = 'Caseta Vigilancia Norte 8'
         response = acceso_obj.get_guard_notes(location, booth)
-        sys.stdout.write(simplejson.dumps({"data": response}))
+    elif option == 'vehiculo_tipo':
+        if tipo and marca:
+            response = acceso_obj.vehiculo_modelo(tipo, marca)
+        elif tipo:
+            response = acceso_obj.vehiculo_marca(tipo)
+        else:
+            response = acceso_obj.vehiculo_tipo()
+    elif option == 'create_pase' or option == 'crear_pase':
+        response = acceso_obj.create_access_pass(data_pase)
+    elif option == 'update_guards':
+        response = acceso_obj.update_guards_checkin(support_guards, checkin_id, location, area)
+    elif option == 'visita_a':
+        response = acceso_obj.visita_a(location)
+    elif option == 'visita_a_detail':
+        response = acceso_obj.visita_a_detail(location, visita_a)
     else :
-        sys.stdout.write(simplejson.dumps({"msg": "Empty"}))
+        response = {"msg": "Empty"}
+    print('================ END RETURN =================')
+    print(simplejson.dumps(response, indent=3))
+    acceso_obj.HttpResponse({"data":response})
+

@@ -10,7 +10,10 @@ from lkf_addons.addons.stock_greenhouse.stock_utils import Stock
 
 # sys.path.append('/srv/scripts/addons/modules/stock_greenhouse/items/scripts/')
 
+<<<<<<< HEAD
 print("module products sys.path[0], __package__ ==", sys.path)
+=======
+>>>>>>> 690d5bfe9b217e0909c10e5ff6da8a7a97485956
 
 # from stock_utils import Stock
 
@@ -251,3 +254,4 @@ class Reports(Reports, Stock):
             r['total_harvest'] = r['total_planting'] * 72
             result.append(r)
         return result, all_codes
+
