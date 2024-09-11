@@ -1440,7 +1440,7 @@ class Stock(Stock):
                 lot_number = self.create_proudction_lot_number_by_cutday(prduction_date, group, cycle)
             print('lot_number',lot_number)
             product[self.f['product_lot']] = lot_number
-            adjust_qty = product.get(self.f['inv_adjust_grp_qty'])
+            adjust_qty = product.get(self.f['inv_adjust_grp_qty'],0)
             adjust_in = product.get(self.f['inv_adjust_grp_in'], 0)
             adjust_out = product.get(self.f['inv_adjust_grp_out'], 0)
             product_code = product[self.CATALOG_PRODUCT_RECIPE_OBJ_ID][self.f['product_code']]
