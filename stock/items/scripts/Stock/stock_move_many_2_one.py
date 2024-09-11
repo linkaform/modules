@@ -182,6 +182,7 @@ class Stock(Stock):
         all_connections = self.lkf_api.get_all_connections()
         connections = { c.get('first_name'): {'id': c.get('id'), 'email': c.get('username')} for c in all_connections }
         if connections.get(connection_name):
+            self.answers['id_user_to_assign'] = connections[connection_name].get('id')
             # Es una conexion, se debe crear su filtro
             uri_user = f"/api/infosync/user/{connections[connection_name].get('id')}/"
             # Filtro para Warehouse Location
@@ -214,11 +215,11 @@ if __name__ == '__main__':
 
     stock_obj.read_xls_file()
 
+    stock_obj.share_filter_and_forms_to_connection()
     response = stock_obj.move_one_many_one()
     print('TODO: revisar si un create no estuvo bien y ponerlo en error o algo')
     stock_obj.answers[stock_obj.f['inv_adjust_status']] =  'done'
     
-    stock_obj.share_filter_and_forms_to_connection()
 
     sys.stdout.write(simplejson.dumps({
         'status': 101,

@@ -426,6 +426,8 @@ class Stock(Stock):
         # lots_in = {}
         data_from = {'warehouse':warehouse, 'warehouse_location':location}
         new_records_data = []
+        connection_to_assign = self.answers.pop('id_user_to_assign', None)
+        print('connection_to_assign =',connection_to_assign)
         for moves in move_lines:
             info_product = moves.get(self.STOCK_INVENTORY_OBJ_ID, {})
             # product_code = info_product.get(self.f['product_code'])
@@ -523,6 +525,14 @@ class Stock(Stock):
         res = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=folios)
         res ={}
         print('res_create', res_create)
+        if connection_to_assign:
+            for stock_inv_created in res_create:
+                new_record = '/api/infosync/form_answer/' + stock_inv_created['json']['id'] +'/'
+                response_assign = self.lkf_api.assigne_connection_records( connection_to_assign, [new_record,])
+                print('response_assign =',response_assign)
+        """
+        Despues de crear el registro de Stock Inventory hay que asignarlo al contratista
+        """
         #res = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=folios)
         return True
 
