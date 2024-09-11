@@ -220,10 +220,6 @@ if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
     stock_obj.console_run()
 
-    stock_obj.read_xls_file()
-    stock_obj.read_xls_onts()
-    stock_obj.read_series_ONTs()
-
     response = stock_obj.move_in()
     print('TODO: revisar si un create no estuvo bien y ponerlo en error o algo')
     stock_obj.answers[stock_obj.f['inv_adjust_status']] =  'done'
