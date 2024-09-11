@@ -12,11 +12,13 @@ class Stock(Stock):
 
         self.mf.update({
             'xls_file': '66c797955cfca4851db2c3b8',
+            'xls_onts': '66e0cd760cc8e3fb75f23803',
             'product_material': '66b10b87a1d4483b5369f409',
             'series_group':'66c75ca499596663582eed59',
             'num_serie': '66c75d1e601ad1dd405593fe',
             'capture_num_serie': '66c75e0c0810217b0b5593ca'
         })
+        self.prev_version = {}
 
     def get_skus_records(self):
         """
@@ -37,33 +39,35 @@ class Stock(Stock):
             }
         return dict_skus
 
+    def read_xls(self, id_field_xls):
+        file_url_xls = self.answers.get( id_field_xls )
+        if not file_url_xls:
+            print(f'no hay excel de carga {id_field_xls}')
+            return False
+        file_url_xls = file_url_xls[0].get('file_url')
+        if not self.prev_version:
+            if self.folio: 
+                if self.current_record.get('other_versions'):
+                    # print('entra al other_versions')
+                    self.prev_version = stock_obj.get_prev_version(self.current_record['other_versions'], select_columns=[ 'answers.{}'.format(self.mf['xls_file']), 'answers.{}'.format(self.mf['xls_onts']) ])
+                else:
+                    print('Ya tiene folio pero aun no hay mas versiones... revisando el current_record en la BD')
+                    self.prev_version = stock_obj.get_record_from_db(self.form_id, self.folio, select_columns=[ 'answers.{}'.format(self.mf['xls_file']), 'answers.{}'.format(self.mf['xls_onts']) ])
+                print('prev_version=',self.prev_version)
+        if self.prev_version.get('answers', {}).get( id_field_xls ):
+            print( 'ya hay un excel previamente cargado... se ignora en esta ejecucion =',self.prev_version.get('answers', {}).get( id_field_xls ) )
+            return False
+        header, records = stock_obj.read_file( file_url_xls )
+        return {'header': header, 'records': records}
+
     def read_xls_file(self):
 
-        file_url_xls = self.answers.get( self.mf['xls_file'] )
-        if not file_url_xls:
-            print('no hay excel de carga masiva')
+        # header, records = stock_obj.read_file( file_url_xls )
+        data_xls = self.read_xls( self.mf['xls_file'] )
+        if not data_xls:
             return False
-        
-        file_url_xls = file_url_xls[0].get('file_url')
-
-        """
-        Para evitar que se carguen los renglones cada que editan el registro se revisa
-        si ya tiene folio, entonces es una edicion y se debe revisar si en la version previa ya existia un excel
-        si ya existia un excel entonces se ignora
-        """
-        if self.folio: 
-            if self.current_record.get('other_versions'):
-                # print('entra al other_versions')
-                prev_version = stock_obj.get_prev_version(self.current_record['other_versions'], select_columns=[ 'answers.{}'.format( self.mf['xls_file'] ) ])
-            else:
-                print('Ya tiene folio pero aun no hay mas versiones... revisando el current_record en la BD')
-                prev_version = stock_obj.get_record_from_db(self.form_id, self.folio, select_columns=[ 'answers.{}'.format( self.mf['xls_file'] ) ])
-            print('prev_version=',prev_version)
-            if prev_version.get('answers', {}).get( self.mf['xls_file'] ):
-                print( 'ya hay un excel previamente cargado... se ignora en esta ejecucion =',prev_version.get('answers', {}).get( self.mf['xls_file'] ) )
-                return False
-
-        header, records = stock_obj.read_file( file_url_xls )
+        header = data_xls.get('header')
+        records = data_xls.get('records')
         header_dict = stock_obj.make_header_dict(header)
         
         """
@@ -125,12 +129,58 @@ class Stock(Stock):
         else:
             self.answers[ self.f['move_group'] ] = sets_to_products
 
+    def read_xls_onts(self):
+
+        # header, records = stock_obj.read_file( file_url_xls )
+        data_xls = self.read_xls( self.mf['xls_onts'] )
+        if not data_xls:
+            return False
+        header = data_xls.get('header')
+        records = data_xls.get('records')
+        header_dict = stock_obj.make_header_dict(header)
+        
+        """
+        # Se revisa que el excel tenga todas las columnas que se requieren para el proceso
+        """
+        cols_required = ['serie_ont']
+        cols_not_found = stock_obj.check_keys_and_missing(cols_required, header_dict)
+        if cols_not_found:
+            cols_not_found = [ c.replace('_', ' ').title() for c in cols_not_found ]
+            self.LKFException( f'Se requieren las columnas: {stock_obj.list_to_str(cols_not_found)}' )
+
+        pos_serie = header_dict.get('serie_ont')
+        error_rows = []
+        move_group = self.answers.get( self.f['move_group'], [] )
+        if move_group:
+            capture_num_serie = stock_obj.unlist( move_group[0].get( self.SKU_OBJ_ID, {} ).get( self.mf['capture_num_serie'] ) ) == 'Si'
+            cantidad_solicitada = move_group[0].get( self.f['move_group_qty'], 0 )
+            if capture_num_serie and cantidad_solicitada:
+                if cantidad_solicitada != len( records ):
+                    self.LKFException( {
+                        'msg': f"La cantidad de series requeridas {cantidad_solicitada} no corresponde con las capturadas {len( records )}"
+                    } )
+                series_unique = []
+                series_repeated = []
+                sets_to_series = []
+                for row in records:
+                    num_serie = row[ pos_serie ]
+                    if num_serie not in series_unique:
+                        series_unique.append(num_serie)
+                    else:
+                        series_repeated.append( num_serie )
+                    sets_to_series.append({ 
+                        self.mf['num_serie'] : num_serie
+                    })
+                if series_repeated:
+                    self.LKFException( 'Se encontraron series repetidas en el excel: {}'.format( stock_obj.list_to_str(series_repeated) ) )
+                self.answers[ self.mf['series_group'] ] = sets_to_series
+
     def read_series_ONTs(self):
         """
         Se revisa que no haya numeros de serie repetidas
         """
         series_unique = []
-        series_repeated = []            
+        series_repeated = []
 
         """
         Preparo una lista de tuplas con la info del producto MODEM / ONT y la cantidad de series que se requieren para cada producto
@@ -171,6 +221,7 @@ if __name__ == '__main__':
     stock_obj.console_run()
 
     stock_obj.read_xls_file()
+    stock_obj.read_xls_onts()
     stock_obj.read_series_ONTs()
 
     response = stock_obj.move_in()
