@@ -45,6 +45,8 @@ if __name__ == "__main__":
         response = acceso_obj.get_user_booths_availability()
     elif option == 'get_boot_guards' or option == 'guardias_de_apoyo':
         response = acceso_obj.get_booths_guards(location, area, solo_disponibles=True, **{'position':acceso_obj.support_guard})
+    elif option == 'catalog_estado':
+        response = acceso_obj.catalogo_estados()
     elif option == 'catalog_location':
         response = acceso_obj.get_catalog_locations(location)
     elif option == 'checkin':

@@ -35,9 +35,9 @@ if __name__ == "__main__":
         'status_perdido':'entregado',
         'date_entrega_perdido':'2024-07-09 19:43:01',
     })
-    location = data.get("location",'Planta Monterrey')
-    area = data.get("area",'Recursos eléctricos')
-    folio = data.get("folio",'481-10')
+    location = data.get("location")
+    area = data.get("area")
+    folio = data.get("folio")
 
     #-FUNCTIONS
     #option = 'new_article';
