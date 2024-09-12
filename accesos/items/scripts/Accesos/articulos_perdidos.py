@@ -38,7 +38,7 @@ if __name__ == "__main__":
     location = data.get("location")
     area = data.get("area")
     folio = data.get("folio")
-
+    tipo = data.get("tipo","")
     #-FUNCTIONS
     #option = 'new_article';
     #option = 'get_articles';
@@ -53,7 +53,10 @@ if __name__ == "__main__":
     elif option == 'delete_article':
         response = acceso_obj.delete_article_lost(folio)
     elif option == 'catalogo_tipo_articulo':
-        response = acceso_obj.catalogo_tipo_articulo()
+        if tipo:
+            response = acceso_obj.catalogo_tipo_articulo(tipo)
+        else:
+            response = acceso_obj.catalogo_tipo_articulo()
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
