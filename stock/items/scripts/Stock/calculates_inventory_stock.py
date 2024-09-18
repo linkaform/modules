@@ -19,9 +19,7 @@ class Stock(Stock):
         except Exception as e:
             print('**********************************************')
             self.LKFException('Warehosue and product code are requierd', e)
-        print('getting product tock........', sku)
         a = f'{product_code}_{sku}_{lot_number}_{warehouse}_{location}'
-        print('reading cache...', a)
         values = {
                 '_id': a
                 }

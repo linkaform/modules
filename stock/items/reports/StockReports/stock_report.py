@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, date
 from copy import deepcopy
 
 print('Arranca Stock - Report en modulo stock....')
-from lkf_addons.addons.stock.stock_report import Reports
+from lkf_addons.addons.stock.report import Reports
 
 #Se agrega path para que obtenga el archivo de Stock de este modulo
 sys.path.append('/srv/scripts/addons/modules/stock/items/scripts/Stock')
@@ -45,6 +45,7 @@ class Reports(Reports, Stock):
         return True
 
     def get_product_kardex(self):
+        print('-----------get_product_kardex')
         data = self.data.get('data')
         product_code = data.get('product_code', [])
         lot_number = data.get('lot_number',[])
