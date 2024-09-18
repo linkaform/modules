@@ -15,19 +15,19 @@ if __name__ == "__main__":
     option = data.get("option",'')
 
     data_article = data.get("data_article",{
-        'status_perdido':'pendiente',
+        'estatus_perdido':'pendiente',
         'date_hallazgo_perdido':'2024-07-08 19:43:01',
         'ubicacion_perdido':'Planta Monterrey',
         'area_perdido':'Recursos eléctricos',
         'articulo_perdido':'Suéter',
-        'photo_perdido':[{
+        'foto_perdido':[{
             'file_url':'https://f001.backblazeb2.com/file/app-linkaform/public-client-126/71202/60b81349bde5588acca320e1/65dd1061092cd19498857933.jpg',
             'file_name':'ejemploidentificacion.jpg',
         }],
-        'comments_perdido':'Se perdio Suetercito',
+        'comentario_perdido':'Se perdio Suetercito',
         'guard_perdido':'Pedro Cervantes',
         'recibe_perdido':'Karla Perez',
-        'phone_recibe_perdido':'1234567891',
+        'telefono_recibe_perdido':'1234567891',
         'identification_perdido':[],
         'date_entrega_perdido':'',
     })
@@ -35,16 +35,16 @@ if __name__ == "__main__":
         'status_perdido':'entregado',
         'date_entrega_perdido':'2024-07-09 19:43:01',
     })
-    location = data.get("location",'Planta Monterrey')
-    area = data.get("area",'Recursos eléctricos')
-    folio = data.get("folio",'481-10')
-
+    location = data.get("location")
+    area = data.get("area")
+    folio = data.get("folio")
+    tipo = data.get("tipo","")
     #-FUNCTIONS
     #option = 'new_article';
     #option = 'get_articles';
     #option = 'update_article';
     #option = 'delete_article';
-    if option == 'new_article':
+    if option == 'nuevo_articulo':
         response = acceso_obj.create_article_lost(data_article)
     elif option == 'get_articles':
         response = acceso_obj.get_list_article_lost(location, area)
@@ -52,6 +52,11 @@ if __name__ == "__main__":
         response = acceso_obj.update_article_lost(data_article_update, folio)
     elif option == 'delete_article':
         response = acceso_obj.delete_article_lost(folio)
+    elif option == 'catalogo_tipo_articulo':
+        if tipo:
+            response = acceso_obj.catalogo_tipo_articulo(tipo)
+        else:
+            response = acceso_obj.catalogo_tipo_articulo()
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})

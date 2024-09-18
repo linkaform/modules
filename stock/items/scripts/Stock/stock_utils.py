@@ -24,17 +24,14 @@ class Stock(Stock):
             self.FORM_INVENTORY_ID:self.CATALOG_INVENTORY_ID,
             }
 
-
-
-        self.CONTACTO_CENTER_FORM_ID = 111563
         self.f.update({
             'parts_group':'62c5da67f850f35cc2483346',
             })
         self.answer_label = self._labels()
         self.FOLDER_FORMS_ID = self.lkm.item_id('Stock', 'form_folder').get('id')
 
-
     def move_in(self):
+        #solo se usa en pci y en pruebas de exposion de materiales
         # print('-- -- -- -- -- -- answers=',self.answers)
         answers = self._labels()
 
@@ -45,7 +42,7 @@ class Stock(Stock):
         location = self.answer_label['warehouse_location']
         warehouse_to = self.answer_label['warehouse_dest']
         location_to = self.answer_label['warehouse_location_dest']
-        move_lines = self.answer_label['move_group']
+        move_lines = self.explote_kit(self.answer_label['move_group'])
         # Información original del Inventory Flow
         status_code = 0
         move_locations = []
@@ -64,6 +61,9 @@ class Stock(Stock):
             print('moves', moves)
             # product_code = info_product.get(self.f['product_code'])
             # sku = info_product.get(self.f['sku'])
+            package = move_line.get(self.f['sku_package'])
+            print('package', package)
+            print('package', packadge)
             exists = self.product_stock_exists(
                 product_code=moves['product_code'], 
                 sku=moves['sku'], 
