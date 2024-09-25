@@ -30,7 +30,6 @@ if __name__ == "__main__":
         'articulo_perdido':"",
         'color_perdido':"Blanco",
         'descripcion':"dron blanco",
-        'guard_perdido':"",
         'quien_entrega':"Interno",
         'quien_entrega_interno':"",
         'quien_entrega_externo':"nombre de persona",
