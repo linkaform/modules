@@ -13,6 +13,6 @@ if __name__ == '__main__':
     print("data=", data)
     print("actuals", actuals)
     actuals = str(actuals)
-    res = {'response':data, 'product_code':product_code, 'lot_number': lot_number, 'actuals':actuals}
+    res = {'response':data, 'actuals':actuals}
     sys.stdout.write(simplejson.dumps(res))
 
