@@ -57,10 +57,7 @@ class Stock(Stock, Reports):
         location = self.answer_label['warehouse_location']
         warehouse_to = self.answer_label['warehouse_dest']
         location_to = self.answer_label['warehouse_location_dest']
-        # move_lines = self.answer_label['move_group']
-        move_lines = self.explote_kit(self.answer_label['move_group'], warehouse=warehouse, location=location )
-        print('move lines EXPLOE', move_lines)
-        print('move lines EXPLOE', revisar_bien)
+        move_lines = self.JIT.explote_kit(self.answer_label['move_group'])
         # Información original del Inventory Flow
         status_code = 0
         move_locations = []
@@ -83,6 +80,7 @@ class Stock(Stock, Reports):
             # product_code = info_product.get(self.f['product_code'])
             # sku = info_product.get(self.f['sku'])
             package = move_line.get(self.f['sku_package'])
+            print('package', package)
             exists = self.product_stock_exists(
                 product_code=moves['product_code'], 
                 sku=moves['sku'], 
