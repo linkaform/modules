@@ -32,6 +32,19 @@ class Stock(Stock, Reports):
         self.answer_label = self._labels()
         self.FOLDER_FORMS_ID = self.lkm.item_id('Stock', 'form_folder').get('id')
 
+    def explote_kit(self, bom_lines, warehouse=None, location=None):
+        bom_res = super().explote_kit(bom_lines, warehouse, location)
+        add_row = 0
+        rows_added = 0
+        for idx, row in enumerate(bom_res):
+            if row.get('bom_type') or row.get('bom_name'):
+                row['move_group_qty'] = row['qty']
+                if add_row > 0:
+                    self.answers[self.f['move_group']].insert(idx+rows_added, self.answers[self.f['move_group']][idx+rows_added - 1])
+                add_row += 1
+            
+        return bom_res
+
     def move_in(self):
         #solo se usa en pci y en pruebas de exposion de materiales
         # print('-- -- -- -- -- -- answers=',self.answers)
@@ -44,7 +57,10 @@ class Stock(Stock, Reports):
         location = self.answer_label['warehouse_location']
         warehouse_to = self.answer_label['warehouse_dest']
         location_to = self.answer_label['warehouse_location_dest']
-        move_lines = self.explote_kit(self.answer_label['move_group'])
+        # move_lines = self.answer_label['move_group']
+        move_lines = self.explote_kit(self.answer_label['move_group'], warehouse=warehouse, location=location )
+        print('move lines EXPLOE', move_lines)
+        print('move lines EXPLOE', revisar_bien)
         # Información original del Inventory Flow
         status_code = 0
         move_locations = []
@@ -61,18 +77,18 @@ class Stock(Stock, Reports):
                 moves['product_lot'] = 'LotePCI001'
                 move_line[self.f['product_lot']] = 'LotePCI001'
             print('moves', moves)
+            if moves.get('bom_name'):
+               move_line[self.f['bom_name']] = moves['bom_name']
+
             # product_code = info_product.get(self.f['product_code'])
             # sku = info_product.get(self.f['sku'])
             package = move_line.get(self.f['sku_package'])
-            print('package', package)
-            print('package', packadge)
             exists = self.product_stock_exists(
                 product_code=moves['product_code'], 
                 sku=moves['sku'], 
                 lot_number=moves['product_lot'], 
                 warehouse=warehouse_to, 
                 location=location_to)
-            print('exists', exists)
             cache_data = {
                         '_id': f"{moves['product_code']}_{moves['sku']}_{moves['product_lot']}_{warehouse_to}_{location_to}",
                         'move_in': moves['move_group_qty'],
