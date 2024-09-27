@@ -3,7 +3,8 @@ import sys, simplejson
 from datetime import datetime, timedelta
 from linkaform_api import settings, network, utils
 from bson import errors, ObjectId
-from linkaform_api import base
+
+from lkf_addons.addons.base.app import Schedule
 
 from account_settings import *
 
@@ -347,6 +348,7 @@ def schedule_task(current_record):
     dag_id = answers.get('abcde0001000000000000000')
     action = answers.get('abcde00010000000a0000001')
     print(action )
+    print(action )
     if not answers or  action in ('eliminar', 'delete'):
         if dag_id:
             return delete_cron(cron_id = dag_id)
@@ -606,7 +608,6 @@ def lkf_date(date_str):
     lkf_date = lkf_date.strftime('%Y-%m-%d %H:%M:%S')
     return lkf_date
 
-
 def get_dag_dates(data):
     res = {}
     dag_info = data.get('dag_info',{})
@@ -622,11 +623,10 @@ def get_dag_dates(data):
 
 if __name__ == "__main__":
     # print(sys.argv)
-    script_obj = base.LKF_Base(settings, sys_argv=sys.argv, use_api=True)
-    script_obj.console_run()
-    current_record = script_obj.current_record
-    lkf_api = script_obj.lkf_api
-    res = schedule_task(current_record)
+    schedule_obj = Schedule(settings, sys_argv=sys.argv, use_api=True)
+    schedule_obj.console_run()
+    lkf_api = schedule_obj.lkf_api
+    res = schedule_obj.schedule_task()
     data = res.get('data')
     if res.get('status_code') == 0:
         print('Ningun cambio')
