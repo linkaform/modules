@@ -28,7 +28,9 @@ if __name__ == "__main__":
         'evidencia_incidencia':[],
         'documento_incidencia':[],
         'prioridad_incidencia':"",
-        'notificacion_incidencia':""
+        'notificacion_incidencia':"",
+        'total_deposito_incidencia':"",
+        'datos_deposito_incidenica':[]
     })
     data_incidence_update = data.get("data_incidence_update",{
         'incidence':'Se detuvierón las escaleras'

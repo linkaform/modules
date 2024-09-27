@@ -33,7 +33,7 @@ if __name__ == "__main__":
         'quien_entrega':"Interno",
         'quien_entrega_interno':"",
         'quien_entrega_externo':"nombre de persona",
-        'locker_perdido':'L2'
+        'locker_perdido':'L2',
     })
     data_article_update = data.get("data_article_update",{
         'status_perdido':'entregado',
