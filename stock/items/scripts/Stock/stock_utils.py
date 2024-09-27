@@ -31,6 +31,7 @@ class Stock(Stock, Reports):
             })
         self.answer_label = self._labels()
         self.FOLDER_FORMS_ID = self.lkm.item_id('Stock', 'form_folder').get('id')
+        self.mf = {}
 
     def explote_kit(self, bom_lines, warehouse=None, location=None):
         bom_res = super().explote_kit(bom_lines, warehouse, location)
