@@ -31,6 +31,7 @@ if __name__ == "__main__":
     location = data.get("location",'Planta Monterrey')
     area = data.get("area",'Caseta Vigilancia Poniente 7')
     folio = data.get("folio",'479-10')
+    status = data.get("status",'')
     #-FUNCTIONS
     #option = 'new_failure';
     #option = 'get_failures';
@@ -38,9 +39,9 @@ if __name__ == "__main__":
     #option = 'delete_failure';
     print('option', option)
     if option == 'new_failure':
-        response = acceso_obj.create_failure(data_failure)
+        response = acceso_obj.create_failure(data_failure, status)
     elif option == 'get_failures':
-        response = acceso_obj.get_list_fallas(location, area)
+        response = acceso_obj.get_list_fallas(location, area, status=status)
     elif option == 'update_failure':
         response = acceso_obj.update_failure(data_failure_update, folio)
     elif option == 'delete_failure':
