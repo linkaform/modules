@@ -28,9 +28,11 @@ if __name__ == "__main__":
     data_failure_update = data.get("data_failure_update",{
         'falla_status':'resuelto',
     })
-    location = data.get("location",'Planta Monterrey')
-    area = data.get("area",'Caseta Vigilancia Poniente 7')
-    folio = data.get("folio",'479-10')
+    location = data.get("location",'')
+    area = data.get("area",'')
+    folio = data.get("folio",'')
+    status = data.get("status",'')
+    tipo = data.get("tipo",'')
     #-FUNCTIONS
     #option = 'new_failure';
     #option = 'get_failures';
@@ -40,11 +42,18 @@ if __name__ == "__main__":
     if option == 'new_failure':
         response = acceso_obj.create_failure(data_failure)
     elif option == 'get_failures':
-        response = acceso_obj.get_list_fallas(location, area)
+        response = acceso_obj.get_list_fallas(location, area, status=status)
     elif option == 'update_failure':
         response = acceso_obj.update_failure(data_failure_update, folio)
     elif option == 'delete_failure':
         response = acceso_obj.delete_failure(folio)
+    elif option =='catalogo_area_empleado_apoyo':
+        response = acceso_obj.catalogo_config_area_empleado_apoyo()
+    elif option == 'catalogo_fallas':
+        if tipo:
+            response = acceso_obj.catalogo_falla(tipo)
+        else:
+            response = acceso_obj.catalogo_falla()
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
