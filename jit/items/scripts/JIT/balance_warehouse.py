@@ -13,7 +13,6 @@ if __name__ == '__main__':
     response = jit_obj.balance_warehouse()
     print('TODO: revisar si un create no estuvo bien y ponerlo en error o algo')
     jit_obj.answers[jit_obj.f['status']] =  'done'
-    print('asi termina', jit_obj.answers)
     sys.stdout.write(simplejson.dumps({
         'status': 101,
         'replace_ans': jit_obj.answers,
