@@ -7,7 +7,6 @@ from account_settings import *
 
 
 if __name__ == '__main__':
-    print('sys=', sys.argv)
     jit_obj = JIT(settings, sys_argv=sys.argv, use_api=True)
     jit_obj.console_run()
     response = jit_obj.ave_daily_demand()
