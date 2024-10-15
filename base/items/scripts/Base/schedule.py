@@ -633,9 +633,9 @@ class Schedule(Schedule):
             })
 
 
-        self.LOCALIDADES = self.lkm.catalog_id('localidades')
-        self.LOCALIDADES_ID = self.LOCALIDADES.get('id')
-        self.LOCALIDADES_OBJ_ID = self.LOCALIDADES.get('obj_id')
+        # self.LOCALIDADES = self.lkm.catalog_id('localidades')
+        # self.LOCALIDADES_ID = self.LOCALIDADES.get('id')
+        # self.LOCALIDADES_OBJ_ID = self.LOCALIDADES.get('obj_id')
 
     def get_answers_map(self, task, description, first_date, due_date, status, field_map, group_field_map ):
         ans = super().get_answers_map(task, description, first_date, due_date, status, field_map, group_field_map )
