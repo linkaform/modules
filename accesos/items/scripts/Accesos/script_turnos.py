@@ -31,7 +31,7 @@ if __name__ == "__main__":
     vehiculo = data.get('vehiculo',"")
     visita_a = data.get('visita_a',"")
     gafete_id = data.get('gafete_id',"")
-
+    data_msj=data.get("data_msj", {})
     #-FUNCTIONS
     print('option', option)
     if option == 'load_shift':
@@ -89,6 +89,8 @@ if __name__ == "__main__":
         response = acceso_obj.visita_a(location)
     elif option == 'visita_a_detail':
         response = acceso_obj.visita_a_detail(location, visita_a)
+    elif option == 'enviar_msj':
+        response = acceso_obj.create_enviar_msj(data_msj)
     else :
         response = {"msg": "Empty"}
     print('================ END RETURN =================')
