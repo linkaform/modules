@@ -31,7 +31,11 @@ class Stock(Stock, Reports):
             })
         self.answer_label = self._labels()
         self.FOLDER_FORMS_ID = self.lkm.item_id('Stock', 'form_folder').get('id')
-        self.mf = {}
+        self.mf = {
+            'xls_file': '66c797955cfca4851db2c3b8',
+            'xls_onts': '66e0cd760cc8e3fb75f23803',
+            'capture_num_serie': '66c75e0c0810217b0b5593ca'
+        }
 
     def explote_kit(self, bom_lines, warehouse=None, location=None):
         bom_res = super().explote_kit(bom_lines, warehouse, location)
@@ -268,7 +272,26 @@ class Stock(Stock, Reports):
         #res = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=folios)
         return True
 
-
+    def read_xls__temp(self, id_field_xls):
+        file_url_xls = self.answers.get( id_field_xls )
+        if not file_url_xls:
+            print(f'no hay excel de carga {id_field_xls}')
+            return False
+        file_url_xls = file_url_xls[0].get('file_url')
+        prev_version = {}
+        if self.folio: 
+            if self.current_record.get('other_versions'):
+                # print('entra al other_versions')
+                prev_version = self.get_prev_version(self.current_record['other_versions'], select_columns=[ 'answers.{}'.format(self.mf['xls_file']), 'answers.{}'.format(self.mf['xls_onts']) ])
+            else:
+                print('Ya tiene folio pero aun no hay mas versiones... revisando el current_record en la BD')
+                prev_version = self.get_record_from_db(self.form_id, self.folio, select_columns=[ 'answers.{}'.format(self.mf['xls_file']), 'answers.{}'.format(self.mf['xls_onts']) ])
+            print('prev_version=',prev_version)
+        if prev_version.get('answers', {}).get( id_field_xls ):
+            print( 'ya hay un excel previamente cargado... se ignora en esta ejecucion =',prev_version.get('answers', {}).get( id_field_xls ) )
+            return False
+        header, records = self.read_file( file_url_xls )
+        return {'header': header, 'records': records}
 
     def stock_one_many_one(self, move_type, product_code=None, sku=None, lot_number=None, warehouse=None, location=None, date_from=None, date_to=None, status='done', **kwargs):
         unwind =None
