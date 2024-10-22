@@ -15,7 +15,6 @@ class Oracle(Oracle, Employee, Vehiculo, base.LKF_Base):
         #use self.lkm.catalog_id() to get catalog id
         self.name =  __class__.__name__
         self.settings = settings
-        print('self f', self.f)
 
 #         # Forms
 

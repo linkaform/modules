@@ -96,47 +96,47 @@ class Oracle(Oracle):
             #         'DESCRIPCION': self.f['worker_position'],
             #         }
             # },
-            'LINK_EMPLEADOS':{
-                'catalog_id': self.EMPLOYEE_ID,
-                'schema':{
-                    'DEPARTAMENTO': self.f['worker_department'],
-                    'CONTACTOID': self.f['worker_code'],
-                    'EMAIL': self.f['email'],
-                    'ESTADO_EMPLEADO': self.f['estatus_dentro_empresa'],
-                    'GENERO': self.f['genero'],
-                    'PUESTO': self.f['worker_position'],
-                    'RAZON_SOCIAL': self.f['worker_name'],
-                    'TELEFONO1': self.f['telefono1'],
-                    'DIRECCION_CAT': self.f['address_name'],
-                    'PICUTRE': self.f['picture'],
-                    },
-            },
-            'LINK_FABRICANTE':{
-                'catalog_id': self.MARCA_ID,
-                'schema':{
-                    'MARCAID': self.f['marca_codigo'],
-                    'DESCRIPCION': self.f['marca'],
-                    }
-                },
-            'LINK_MODELO_EQUIPOS':{
-                'catalog_id': self.MODELO_ID,
-                'schema':{
-                    'MODELOID':  self.f['modelo_codigo'],
-                    'MARCA': self.f['marca'],
-                    'MODELO': self.f['modelo'],
-                    'TIPO_MAQ': self.f['categoria_marca'],
-                    }
-                },
-            'LINK_CLIENTES':{
-                'catalog_id': self.CLIENTE_CAT_ID,
-                'schema':{
-                    'CONTACTOID': self.f['client_code'],
-                    'NOMBRE_COMERCIAL': self.f['nombre_comercial'],
-                    'RAZON_SOCIAL': self.f['razon_social'],
-                    'DIRECCION_CAT': self.f['address_name'],
-                    'RUC': self.f['rfc_razon_social'],
-                    }
-            },
+            # 'LINK_EMPLEADOS':{
+            #     'catalog_id': self.EMPLOYEE_ID,
+            #     'schema':{
+            #         'DEPARTAMENTO': self.f['worker_department'],
+            #         'CONTACTOID': self.f['worker_code'],
+            #         'EMAIL': self.f['email'],
+            #         'ESTADO_EMPLEADO': self.f['estatus_dentro_empresa'],
+            #         'GENERO': self.f['genero'],
+            #         'PUESTO': self.f['worker_position'],
+            #         'RAZON_SOCIAL': self.f['worker_name'],
+            #         'TELEFONO1': self.f['telefono1'],
+            #         'DIRECCION_CAT': self.f['address_name'],
+            #         'PICUTRE': self.f['picture'],
+            #         },
+            # },
+            # 'LINK_FABRICANTE':{
+            #     'catalog_id': self.MARCA_ID,
+            #     'schema':{
+            #         'MARCAID': self.f['marca_codigo'],
+            #         'DESCRIPCION': self.f['marca'],
+            #         }
+            #     },
+            # 'LINK_MODELO_EQUIPOS':{
+            #     'catalog_id': self.MODELO_ID,
+            #     'schema':{
+            #         'MODELOID':  self.f['modelo_codigo'],
+            #         'MARCA': self.f['marca'],
+            #         'MODELO': self.f['modelo'],
+            #         'TIPO_MAQ': self.f['categoria_marca'],
+            #         }
+            #     },
+            # 'LINK_CLIENTES':{
+            #     'catalog_id': self.CLIENTE_CAT_ID,
+            #     'schema':{
+            #         'CONTACTOID': self.f['client_code'],
+            #         'NOMBRE_COMERCIAL': self.f['nombre_comercial'],
+            #         'RAZON_SOCIAL': self.f['razon_social'],
+            #         'DIRECCION_CAT': self.f['address_name'],
+            #         'RUC': self.f['rfc_razon_social'],
+            #         }
+            # },
             'LINK_EQUIPOS':{
                 'catalog_id': self.ACTIVOS_FIJOS_CAT_ID,
                 'schema':{
@@ -155,6 +155,7 @@ class Oracle(Oracle):
                     },
                 }
             }
+
         self.aux_view = {
             'EQUIPOS':{
                 'catalog_id': self.TIPO_DE_EQUIPO_ID,
@@ -162,9 +163,15 @@ class Oracle(Oracle):
                     'VEHICULO_TALID': '_id',
                     'EQUIPO': self.f['tipo_equipo'],
                     }
+            },
+            'DEPARTAMENTO':{
+                'catalog_id': self.CONF_DEPARTAMENTOS_PUESTOS_CAT_ID,
+                'schema':{
+                    'PUESTO': self.f['worker_position'],
+                    'DEPARTAMENTO': self.f['worker_department'],
+                    }
             }
             }
-
 
     def api_etl(self, data, schema):
         translated_dict = {}
@@ -177,7 +184,6 @@ class Oracle(Oracle):
         # translated_dict = {schema[key]: value for key, value in data.items() if schema.get(key) and if value}
         return translated_dict
 
-
     def load_data(self, v, view, response, schema):
         metadata_catalog = self.lkf_api.get_catalog_metadata( view['catalog_id'] )
         # schema = module_obj.view_a
@@ -185,6 +191,7 @@ class Oracle(Oracle):
         udpdate_data = []
         print('len=', len(response))
         print('v=',v)
+        departamento_puesto = {}
         for row in response:
             if v == 'LINK_EQUIPOS':
                 row['CATEGORIA'] = [row['EQUIPO'],]
@@ -196,6 +203,13 @@ class Oracle(Oracle):
                 #     self.equipos.append(this_eq)
                 #     self.equipos_row.append(row)
             elif v == 'LINK_EMPLEADOS':
+                puesto = row.get('PUESTO')
+                departamento = row['DEPARTAMENTO']
+                puesto = row['PUESTO']
+                if departamento:
+                    departamento_puesto[departamento] = departamento_puesto.get(departamento,[])
+                    if puesto and puesto not in departamento_puesto[departamento] :
+                        departamento_puesto[departamento].append(puesto)
                 row['TIPO_CONTACTO'] = 'Persona'
                 row['DIRECCION_CAT'] = row['RAZON_SOCIAL']
                 row['PICUTRE'] = {
@@ -206,6 +220,7 @@ class Oracle(Oracle):
                 row['DIRECCION_CAT'] = row['RAZON_SOCIAL']
                 row['TIPO_CONTACTO'] = 'Empresa'
             usr = {}
+
             usr.update(metadata_catalog)
             usr['answers'] = self.api_etl(row, schema)
             usr['_id'] = usr['answers'].get('_id')
@@ -217,7 +232,7 @@ class Oracle(Oracle):
             elif update:
                 udpdate_data.append(usr)
             #print('usr=', usr)
-        print('row=', row)
+        print(s)
         if self.equipos:
             eq = self.aux_view['EQUIPOS']
             metadata_equipos = self.lkf_api.get_catalog_metadata( eq['catalog_id'] )
@@ -229,11 +244,20 @@ class Oracle(Oracle):
                 eq_ans['_id'] = eq_ans['answers'].get('_id')
                 data_equipos.append(eq_ans)
             #self.lkf_api.post_catalog_answers_list(data_equipos)
+        if departamento_puesto:
+            eq = self.aux_view['DEPARTAMENTO']
+            metadata_equipos = self.lkf_api.get_catalog_metadata( eq['catalog_id'] )
+            this_data = []
+            for dep, puestos in departamento_puesto.items():
+                for puesto in puestos:
+                    eq_ans = {}
+                    t_row = {'DEPARTAMENTO':dep, 'PUESTO':puesto}
+                    eq_ans.update(metadata_equipos)
+                    eq_ans['answers'] = self.api_etl(t_row, eq['schema'])
+                    this_data.append(eq_ans)
+            self.lkf_api.post_catalog_answers_list(this_data)            
         if data:
-            print('a')
-            print('data=', data[-1])
             res = self.lkf_api.post_catalog_answers_list(data)
-            # print('res=',res)
 
 
 
