@@ -1428,19 +1428,19 @@ class Stock(Stock):
             cycle = product[self.f['plant_cycle']]
             group = product[self.f['plant_group']]
             year = product[self.f['plant_cut_year']]
-            day = product[self.f['plant_cut_day']]
+            day =  product.get(self.f['plant_cut_day'])
+            week = product.get(self.f['production_cut_week'])
 
             contamin_code = product.get(self.f['plant_contamin_code'])
-            prduction_date = datetime.strptime(f'{year}{day:03}','%Y%j')
             adjust_lot_by = product.get(self.f['adjust_lot_by'], 'week')
-            print('adjust_lot_by',adjust_lot_by)
             if adjust_lot_by == 'week':
+                prduction_date = datetime.strptime(f'{year}{week:02}0','%Y%j%w')
                 lot_number = self.create_proudction_lot_number_by_cutday(prduction_date, group, cycle)
             else:
+                prduction_date = datetime.strptime(f'{year}{day:03}','%Y%j')
                 lot_number = self.create_proudction_lot_number_by_cutday(prduction_date, group, cycle)
-            print('lot_number',lot_number)
             product[self.f['product_lot']] = lot_number
-            adjust_qty = product.get(self.f['inv_adjust_grp_qty'])
+            adjust_qty = product.get(self.f['inv_adjust_grp_qty'],0)
             adjust_in = product.get(self.f['inv_adjust_grp_in'], 0)
             adjust_out = product.get(self.f['inv_adjust_grp_out'], 0)
             product_code = product[self.CATALOG_PRODUCT_RECIPE_OBJ_ID][self.f['product_code']]
