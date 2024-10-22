@@ -11,12 +11,9 @@ class Stock(Stock):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
 
         self.mf.update({
-            'xls_file': '66c797955cfca4851db2c3b8',
-            'xls_onts': '66e0cd760cc8e3fb75f23803',
             'product_material': '66b10b87a1d4483b5369f409',
             'series_group':'66c75ca499596663582eed59',
             'num_serie': '66c75d1e601ad1dd405593fe',
-            'capture_num_serie': '66c75e0c0810217b0b5593ca'
         })
         self.prev_version = {}
 
@@ -100,6 +97,8 @@ class Stock(Stock):
             product_code = rec[pos_codigo]
             sku = rec[pos_sku]
             cantidad = rec[pos_cantidad]
+            if not product_code and not sku and not cantidad:
+                continue
             if not product_code or not sku:
                 error_rows.append(f'RENGLON {num_row}: Debe indicar el código del producto y el sku')
                 continue
