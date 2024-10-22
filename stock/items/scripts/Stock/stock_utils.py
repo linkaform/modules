@@ -272,6 +272,27 @@ class Stock(Stock, Reports):
         #res = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=folios)
         return True
 
+    def read_xls(self, id_field_xls):
+        file_url_xls = self.answers.get( id_field_xls )
+        if not file_url_xls:
+            print(f'no hay excel de carga {id_field_xls}')
+            return False
+        file_url_xls = file_url_xls[0].get('file_url')
+        if not hasattr(self, 'prev_version'):
+            if self.folio: 
+                if self.current_record.get('other_versions'):
+                    # print('entra al other_versions')
+                    self.prev_version = self.get_prev_version(self.current_record['other_versions'], select_columns=[ 'answers.{}'.format(self.mf['xls_file']), 'answers.{}'.format(self.mf['xls_onts']) ])
+                else:
+                    print('Ya tiene folio pero aun no hay mas versiones... revisando el current_record en la BD')
+                    self.prev_version = self.get_record_from_db(self.form_id, self.folio, select_columns=[ 'answers.{}'.format(self.mf['xls_file']), 'answers.{}'.format(self.mf['xls_onts']) ])
+                print('prev_version=',self.prev_version)
+        elif self.prev_version.get('answers', {}).get( id_field_xls ):
+            print( 'ya hay un excel previamente cargado... se ignora en esta ejecucion =',self.prev_version.get('answers', {}).get( id_field_xls ) )
+            return False
+        header, records = self.read_file( file_url_xls )
+        return {'header': header, 'records': records}
+
     def read_xls__temp(self, id_field_xls):
         file_url_xls = self.answers.get( id_field_xls )
         if not file_url_xls:

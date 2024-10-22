@@ -12,7 +12,13 @@ class Stock(Stock):
 
         self.mf.update({
             'error_onts': '',
+            'xls_file': '66c797955cfca4851db2c3b8',
+
         })
+
+
+    def load_onts(self):
+        self.read_xls_onts()
 
     def show_error_app(self, field_id, label, msg):
         raise Exception( simplejson.dumps({
@@ -53,11 +59,8 @@ class Stock(Stock):
         return dict_skus
 
     def read_xls_file(self):
-        self.f.update({
-            'xls_file': '66c797955cfca4851db2c3b8',
-        })
 
-        file_url_xls = self.answers.get( self.f['xls_file'] )
+        file_url_xls = self.answers.get( self.mf['xls_file'] )
         if not file_url_xls:
             print('no hay excel de carga masiva')
             return False
@@ -73,13 +76,13 @@ class Stock(Stock):
         if self.folio: 
             if self.current_record.get('other_versions'):
                 # print('entra al other_versions')
-                prev_version = stock_obj.get_prev_version(self.current_record['other_versions'], select_columns=[ 'answers.{}'.format( self.f['xls_file'] ) ])
+                prev_version = stock_obj.get_prev_version(self.current_record['other_versions'], select_columns=[ 'answers.{}'.format( self.mf['xls_file'] ) ])
             else:
                 print('Ya tiene folio pero aun no hay mas versiones... revisando el current_record en la BD')
-                prev_version = stock_obj.get_record_from_db(self.form_id, self.folio, select_columns=[ 'answers.{}'.format( self.f['xls_file'] ) ])
+                prev_version = stock_obj.get_record_from_db(self.form_id, self.folio, select_columns=[ 'answers.{}'.format( self.mf['xls_file'] ) ])
             print('prev_version=',prev_version)
-            if prev_version.get('answers', {}).get( self.f['xls_file'] ):
-                print( 'ya hay un excel previamente cargado... se ignora en esta ejecucion =',prev_version.get('answers', {}).get( self.f['xls_file'] ) )
+            if prev_version.get('answers', {}).get( self.mf['xls_file'] ):
+                print( 'ya hay un excel previamente cargado... se ignora en esta ejecucion =',prev_version.get('answers', {}).get( self.mf['xls_file'] ) )
                 return False
 
         header, records = stock_obj.read_file( file_url_xls )
@@ -92,7 +95,7 @@ class Stock(Stock):
         cols_not_found = stock_obj.check_keys_and_missing(cols_required, header_dict)
         if cols_not_found:
             cols_not_found = [ c.replace('_', ' ').title() for c in cols_not_found ]
-            self.show_error_app( self.f['xls_file'], 'Excel de carga masiva', f'Se requieren las columnas: {stock_obj.list_to_str(cols_not_found)}' )
+            self.show_error_app( self.mf['xls_file'], 'Excel de carga masiva', f'Se requieren las columnas: {stock_obj.list_to_str(cols_not_found)}' )
 
         """
         Se obtiene la lista de productos que tiene el Warehouse Origen
@@ -145,7 +148,7 @@ class Stock(Stock):
                 self.f['move_group_qty'] : cantidad,
             })
         if error_rows:
-            self.show_error_app( self.f['xls_file'], 'Excel de carga masiva', stock_obj.list_to_str(error_rows) )
+            self.show_error_app( self.mf['xls_file'], 'Excel de carga masiva', stock_obj.list_to_str(error_rows) )
         if self.answers.get( self.f['move_group'] ):
             self.answers[ self.f['move_group'] ] += sets_to_products
         else:
@@ -162,18 +165,22 @@ class Stock(Stock):
             if cant_solicitada > cant_disponible:
                 error_cantidades.append( f'Producto: {p} SKU: {s} la cantidad solicitada {cant_solicitada} es mayor a la cantidad disponible {cant_disponible}' )
         if error_cantidades:
-            self.show_error_app( self.f['xls_file'], 'Excel de carga masiva', stock_obj.list_to_str(error_cantidades) )
+            self.show_error_app( self.mf['xls_file'], 'Excel de carga masiva', stock_obj.list_to_str(error_cantidades) )
 
         # self.show_error_app( 'folio', 'Folio', 'En Pruebas!' )
 
     def read_xls_onts(self):
-        data_xls = self.read_xls( self.mf['xls_onts'] )
+        data_xls = self.read_xls( self.mf['xls_file'] )
+        print('data_xls', data_xls)
+        header, records = stock_obj.read_file( file_url_xls )
+        header_dict = stock_obj.make_header_dict(header)
+        print('header_dict', header_dict)
+        print('records', records)
         if not data_xls:
             return False
         header = data_xls.get('header')
         records = data_xls.get('records')
         header_dict = stock_obj.make_header_dict(header)
-
         """
         # Se revisa que el excel tenga todas las columnas que se requieren para el proceso
         """
@@ -282,11 +289,16 @@ class Stock(Stock):
             res_share_folder_forms = self.share_item(uri_user, folder_share, "can_share_item")
             print('== res_share_folder_forms=',res_share_folder_forms)
 
+
+
+
 if __name__ == '__main__':
+    print('sys_argv=', sys.argv)
     stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
     stock_obj.console_run()
 
-    stock_obj.read_xls_file()
+    stock_obj.load_onts()
+    
 
     stock_obj.share_filter_and_forms_to_connection()
     response = stock_obj.move_one_many_one()
