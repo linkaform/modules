@@ -7,6 +7,13 @@ from account_settings import *
 
 class Stock(Stock):
 
+    def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False):
+        super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
+
+        self.mf.update({
+            'error_onts': '',
+        })
+
     def show_error_app(self, field_id, label, msg):
         raise Exception( simplejson.dumps({
             field_id: { 'msg': [msg], 'label': label, 'error': [] }
@@ -158,6 +165,72 @@ class Stock(Stock):
             self.show_error_app( self.f['xls_file'], 'Excel de carga masiva', stock_obj.list_to_str(error_cantidades) )
 
         # self.show_error_app( 'folio', 'Folio', 'En Pruebas!' )
+
+    def read_xls_onts(self):
+        data_xls = self.read_xls( self.mf['xls_onts'] )
+        if not data_xls:
+            return False
+        header = data_xls.get('header')
+        records = data_xls.get('records')
+        header_dict = stock_obj.make_header_dict(header)
+
+        """
+        # Se revisa que el excel tenga todas las columnas que se requieren para el proceso
+        """
+        cols_required = ['serie_ont']
+        cols_not_found = stock_obj.check_keys_and_missing(cols_required, header_dict)
+        if cols_not_found:
+            cols_not_found = [ c.replace('_', ' ').title() for c in cols_not_found ]
+            self.LKFException( f'Se requieren las columnas: {stock_obj.list_to_str(cols_not_found)}' )
+
+        pos_serie = header_dict.get('serie_ont')
+        warehouse_name = self.answers.get( self.WAREHOUSE_LOCATION_OBJ_ID, {} ).get( self.f['warehouse'], '' )
+        warehouse_location = self.answers.get( self.WAREHOUSE_LOCATION_OBJ_ID, {} ).get( self.f['warehouse_location'], '' )
+
+        """
+        mango_query = {"selector":{"answers": {"$and":[ 
+            {"6442e4831198daf81456f274":{"$eq":"Almacen Distribuidor"}},
+            {"65ac6fbc070b93e656bd7fbe":{"$eq":"PCI Guadalajara"}},
+            {"620a9ee0a449b98114f61d77":{"$in": ["HWTC82C3D9AF","HWTC82D990AF","HWTC82CA9123"]}}
+        ]}},
+        "limit":20000,"skip":0}
+        """
+        list_onts = [ r[ pos_serie ] for r in records if r.get(pos_serie) ]
+        if not list_onts:
+            return False
+        mango_query = {"selector":{"answers": {"$and":[ 
+            {self.f['warehouse']: {"$eq": warehouse_name}},
+            {self.f['warehouse_location']: {"$eq": warehouse_location}},
+            {self.f['lot_number']: {"$in": list_onts}}
+        ]}},
+        "limit":20000,"skip":0}
+        records_inventory = self.lkf_api.search_catalog( self.STOCK_INVENTORY_ID, mango_query )
+        if not records_inventory:
+            self.show_error_app(self.mf['xls_onts'], 'Excel de carga ONTs', 'No se encontró ninguna ONT')
+
+        """
+        Se preparan los sets para el grupo repetitivo de productos
+        """
+        products = []
+        for record_inv in records_inventory:
+            num_serie_found = record_inv.get( self.f['lot_number'] )
+            products.append({
+                self.f['product_code']: record_inv.get( self.f['product_code'] ),
+                self.f['sku']: record_inv.get( self.f['sku'] ),
+                self.f['lot_number']: num_serie_found,
+                self.f['product_name']: [record_inv.get( self.f['product_name'] ),],
+                self.f['actuals']: [record_inv.get( self.f['actuals'] ),],
+                self.f['product_type']: [record_inv.get( self.f['product_type'] ),],
+                self.mf['capture_num_serie']: [record_inv.get( self.mf['capture_num_serie'] ),],
+            })
+            list_onts.remove( num_serie_found )
+
+        if products:
+            self.current_record['answers'][ self.f['move_group'] ] = products
+        if list_onts:
+            for ont in list_onts:
+                ont.append('No se encontró en el Inventario')
+            self.current_record['answers'].update( self.lkf_api.make_excel_file(['Serie ONT', 'Error',], list_onts, self.current_record['form_id'], self.mf['error_onts']) )
 
     def share_filter(self, filter_name, uri_user, CATALOG_ID_SHARE):
         catalog_share = f"/api/infosync/get_catalogs/{CATALOG_ID_SHARE}/"
