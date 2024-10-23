@@ -7,7 +7,6 @@ from stock_utils import Stock
 
 from account_settings import *
 
-
 class Stock(Stock):
 
     def get_product_info(self, **kwargs):
@@ -24,10 +23,7 @@ class Stock(Stock):
                 '_id': a
                 }
         ccache = self.cache_read(values)
-        print('reading ccache...', ccache)
         product_stock = self.get_product_stock(product_code, sku=sku, lot_number=lot_number, warehouse=warehouse, location=location, kwargs=kwargs.get('kwargs',{}) )
-        print('=== stock de calculate ====', product_stock)
-        print('=== stock de calculate ====', self.answers)
         per_container = self.answers.get(self.f['per_container'],1)
         self.answers[self.f['product_lot_produced']] = product_stock['production']
         self.answers[self.f['product_lot_move_in']] = product_stock['move_in']
