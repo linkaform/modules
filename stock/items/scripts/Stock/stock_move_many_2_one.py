@@ -251,7 +251,7 @@ class Stock(Stock):
 
         if sets:
             self.answers[self.f['move_group']] = sets
-        if list_onts:
+        if list_onts or not_found:
             for ont in list_onts:
                 not_found.append([ont, f'No se encontró ONT: {ont} en el Inventario'])
 
@@ -316,12 +316,10 @@ if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
     stock_obj.console_run()
     status = stock_obj.answers[stock_obj.f['inv_adjust_status']]
-    print('status=',status)
-    if status == 'cargaont':
-        stock_obj.load_onts()
-        stock_obj.share_filter_and_forms_to_connection()
-        response = stock_obj.move_one_many_one()
-        stock_obj.answers[stock_obj.f['inv_adjust_status']] =  'done'
+    stock_obj.load_onts()
+    stock_obj.share_filter_and_forms_to_connection()
+    response = stock_obj.move_one_many_one()
+    stock_obj.answers[stock_obj.f['inv_adjust_status']] =  'done'
 
     sys.stdout.write(simplejson.dumps({
         'status': 101,
