@@ -1708,12 +1708,6 @@
                     <number_type>None</number_type>
                     <options>
                         <item>
-                            <label>CargaOnt</label>
-                            <points>None</points>
-                            <selected>False</selected>
-                            <value>cargaont</value>
-                        </item>
-                        <item>
                             <label>To Do</label>
                             <points>None</points>
                             <selected>False</selected>
@@ -1886,5 +1880,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1729708418.0</updated_at>
+    <updated_at>1729723203.0</updated_at>
 </lkf>
