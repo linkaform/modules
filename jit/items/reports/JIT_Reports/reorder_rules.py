@@ -1,4 +1,4 @@
- # -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 import sys, simplejson, math
 import json
 from datetime import timedelta, datetime
@@ -141,7 +141,6 @@ if __name__ == "__main__":
     status = 'active'
 
     warehouse = data.get('warehouse', '')
-<<<<<<< HEAD
     product_family = data.get('product_family', 'TUBOS')
     product_line = data.get('product_line', '')
     # familia = data.get('familia', '')
@@ -211,116 +210,6 @@ if __name__ == "__main__":
                 stock_dict[code][f'p_stock_max_{warehouse}'] = round((stock_dict[code][f'actuals_{warehouse}'] / x[f'stock_maximum']) * 100, 2)
                     
         stock_list = list(stock_dict.values())
-=======
-    product_family = data.get('product_family', '')
-    product_line = data.get('product_line', '')
-    # familia = data.get('familia', '')
-
-    if option == 'get_report':
-        products = prod_obj.get_product_by_type(product_family)
-        product_dict = {x['product_code']:x for x in products}
-        #print('///////////product dict', product_dict)
-        product_code = list(product_dict.keys())
-        #print('///////PRODUCT CODES', product_code)
-        procurment = get_procurments(product_code=product_code)
-        #print('///////PROCURMENT', procurment)
-        product_stock = stock_obj.ger_products_inventory(product_code=product_code, warehouse=warehouse)
-        res_first = report_obj.reorder_rules_warehouse(product_code=product_code)
-        
-        stock_dict = {}
-        product_code = []
-        
-        for item in procurment:
-            if item['product_code'] not in product_code:
-                product_code.append(item['product_code'])
-                code = item['product_code']
-                warehouse = item['warehouse']
-                
-                product_name = product_dict[code]['product_name']
-                product_category = product_dict[code]['product_category']
-                product_type = product_dict[code]['product_type']
-
-                stock_dict[warehouse] = stock_dict.get(warehouse, {})
-                stock_dict[warehouse][code] = stock_dict.get(code,
-                    {
-                        'sku': item['sku'],
-                        'desc_producto': product_name,
-                        'line': product_category,
-                        'familia': product_type,
-                        'stock_to_move': item['procurment_qty'],
-                        'stock_mty': 0,
-                        'p_stock_min_mty': 0,
-                        'stock_gdl': 0,
-                        'stock_max': 0,
-                        'p_stock_min_gdl': 0,
-                        'stock_merida': 0,
-                        'p_stock_min_merida': 0,
-                        'actuals': 0,
-                        'percentage_stock_max': 0,
-                        'stock_final': 0,
-                    }
-                )
-        
-        for x in product_stock:
-            code = x['product_code']
-            warehouse = x['warehouse']
-            if stock_dict.get(warehouse):
-                if stock_dict[warehouse].get(code):
-                    stock_dict[warehouse][code]['actuals'] = x['actuals']
-
-                    if warehouse == 'ALM MONTERREY':
-                        stock_dict[warehouse][code]['stock_mty'] = x['actuals']
-                    elif warehouse == 'ALM GUADALAJARA':
-                        stock_dict[warehouse][code]['stock_gdl'] = x['actuals']
-                    elif warehouse == 'ALM MERIDA':
-                        stock_dict[warehouse][code]['stock_merida'] = x['actuals']            
-        
-        for x in res_first:
-            code = x['product_code']
-            warehouse = x['warehouse']
-            if stock_dict.get(warehouse):
-                if stock_dict[warehouse].get(code):
-                    if warehouse == 'ALM MONTERREY':
-                        stock_dict[warehouse][code]['stock_max_ALM MONTERREY'] = x['stock_maximum']
-                    elif warehouse == 'ALM GUADALAJARA':
-                        stock_dict[warehouse][code]['stock_max_ALM GUADALAJARA'] = x['stock_maximum']
-                    elif warehouse == 'ALM MERIDA':
-                        stock_dict[warehouse][code]['stock_max_ALM MERIDA'] = x['stock_maximum']
-                    
-                    # stock_dict[warehouse][code]['stock_max'] = x['stock_maximum']
-                    # stock_dict[warehouse][code]['percent_stock_max'] = round((stock_dict[warehouse][code]['actuals'] / x['stock_maximum']) * 100, 2)
-                    
-                    if warehouse == 'ALM MONTERREY':
-                        stock_dict[warehouse][code]['p_stock_max_ALM MONTERREY'] =  stock_dict[warehouse][code]['percent_stock_max'] = round((stock_dict[warehouse][code]['actuals'] / x['stock_maximum']) * 100, 2)
-                    elif warehouse == 'ALM GUADALAJARA':
-                        stock_dict[warehouse][code]['p_stock_max_ALM GUADALAJARA'] =  stock_dict[warehouse][code]['percent_stock_max'] = round((stock_dict[warehouse][code]['actuals'] / x['stock_maximum']) * 100, 2)
-                    elif warehouse == 'ALM MERIDA':
-                        stock_dict[warehouse][code]['p_stock_max_ALM MERIDA'] =  stock_dict[warehouse][code]['percent_stock_max'] = round((stock_dict[warehouse][code]['actuals'] / x['stock_maximum']) * 100, 2)
-                    
-        stock_list = []
-
-        for almacen, productos in stock_dict.items():
-            for sku, detalles in productos.items():
-                # print(detalles.keys())
-                stock_list.append({
-                    'sku': detalles['sku'],
-                    'desc_producto': detalles['desc_producto'],
-                    'line': detalles['line'],
-                    'familia': detalles['familia'],
-                    # 'stock_cedis': detalles['stock_cedis'],
-                    'stock_ALM MONTERREY': detalles['stock_mty'],
-                    'p_stock_min_ALM MONTERREY': detalles.get('p_stock_max_ALM MONTERREY', 0),
-                    'stock_ALM GUADALAJARA': detalles['stock_gdl'],
-                    #'stock_max': detalles['stock_max'],
-                    'p_stock_min_ALM GUADALAJARA': detalles.get('p_stock_max_ALM GUADALAJARA', 0),
-                    'stock_ALM MERIDA': detalles['stock_merida'],
-                    'p_stock_min_ALM MERIDA': detalles.get('p_stock_max_ALM MERIDA', 0),
-                    #'actuals': detalles['actuals'],
-                    #'percentage_stock_max': detalles['percentage_stock_max'],
-                    'stock_final': detalles['stock_final'],  
-                    'stock_to_move': detalles['stock_to_move'],
-                })
->>>>>>> 8df5eadae900e0ff17168e86ddb9e17cb467aa0d
         
         script_obj.HttpResponse({
             "stockInfo": stock_list,
