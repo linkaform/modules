@@ -3,7 +3,7 @@ import sys, simplejson
 from linkaform_api import settings
 from account_settings import *
 
-from app import Accesos
+from accesos_utils import Accesos
 
 class Accesos(Accesos):
     pass
