@@ -14,6 +14,56 @@ from lkf_addons.addons.jit.app import JIT
 from lkf_addons.addons.stock.app import Stock
 from itertools import zip_longest
 
+def gett_products_inventory(product_code, warehouse, location=None, status='active'):
+
+        match_query ={ 
+         'form_id': 123133,  
+         'deleted_at' : {'$exists':False},
+         } 
+
+        if product_code:
+            if type(product_code) == list:
+                match_query.update({f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['product_code']}":{"$in":product_code}})
+            else:
+                match_query.update({f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['product_code']}":product_code})
+                
+        if warehouse:
+            if type(warehouse) == list:                
+                match_query.update({f"answers.{warehouse_obj.WAREHOUSE_LOCATION_OBJ_ID}.{warehouse_obj.f['warehouse']}":{"$in":warehouse}})
+            else:
+                match_query.update({f"answers.{warehouse_obj.WAREHOUSE_LOCATION_OBJ_ID}.{warehouse_obj.f['warehouse']}":warehouse})
+        if location:
+            if type(location) == list:                
+                match_query.update({f"answers.{warehouse_obj.WAREHOUSE_LOCATION_OBJ_ID}.{warehouse_obj.f['warehouse_location']}":{"$in":location}})
+            else:
+                match_query.update({f"answers.{warehouse_obj.WAREHOUSE_LOCATION_OBJ_ID}.{warehouse_obj.f['warehouse_location']}":location})
+        query = [
+            {'$match': match_query},
+            {'$project':{
+                '_id':0,
+                'product_code':f"$answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['product_code']}",
+                'warehouse':f"$answers.{warehouse_obj.WAREHOUSE_LOCATION_OBJ_ID}.{warehouse_obj.f['warehouse']}",
+                'actuals':f"$answers.{stock_obj.f['actual_eaches_on_hand']}",
+            }},
+            {'$group':{
+                '_id':{
+                    'product_code':'$product_code',
+                    'warehouse':'$warehouse'
+                },
+                'actuals':{'$sum':'$actuals'}
+            }},
+            {"$project":{
+                "_id":0,
+                "product_code":"$_id.product_code",
+                "warehouse":"$_id.warehouse",
+                "actuals": "$actuals",
+            }},
+        ]
+        
+        #print('query=',simplejson.dumps(query, indent=5))
+        res = script_obj.format_cr(script_obj.cr.aggregate(query))
+        return res
+
 
 def get_report_filters(filters=[], product_code_aux=None):
     mango_query = {
@@ -152,14 +202,14 @@ if __name__ == "__main__":
         products = prod_obj.get_product_by_type(product_family)
         product_dict = {x['product_code']:x for x in products}
         #print('///////////product dict', product_dict)
-        #product_code = list(product_dict.keys())
-        product_code = ['750200301040']
+        product_code = list(product_dict.keys())
+        #product_code = ['750200301040']
         #print('///////PRODUCT CODES', product_code)
         procurment = get_procurments(product_code=product_code)
         
         #print('///////PROCURMENT', procurment)
-        product_stock = stock_obj.get_products_inventory(product_code=product_code, warehouse=warehouse)
-        stock_cedis = stock_obj.get_products_inventory(product_code=product_code, warehouse=warehouse_cedis)
+        product_stock = gett_products_inventory(product_code=product_code, warehouse=warehouse)
+        stock_cedis = gett_products_inventory(product_code=product_code, warehouse=warehouse_cedis)
         stock_cedis_dict = {x['product_code']:x['actuals'] for x in stock_cedis}
         
         # print(stock_cedis)
