@@ -14,6 +14,28 @@ from lkf_addons.addons.jit.app import JIT
 from lkf_addons.addons.stock.app import Stock
 from itertools import zip_longest
 
+def gett_product_by_type(product_type, product_line=""):
+    product_field = None
+    # Base query with both product_type and product_line (if not empty)
+    mango_query = {
+        "selector": {
+            "$and": [
+                {"answers." + prod_obj.f['product_type']: {"$eq": product_type}},
+                # Only add the product_line filter if it's not empty
+                {"answers." + prod_obj.f['product_category']: {"$eq": product_line}} if product_line else {}
+            ]
+        },
+        "limit": 10000,
+        "skip": 0
+    }
+    
+    # Clean up any empty $and conditions if product_line was empty
+    mango_query["selector"]["$and"] = [clause for clause in mango_query["selector"]["$and"] if clause]
+
+    # Execute query and return records
+    record = prod_obj._labels_list(prod_obj.lkf_api.search_catalog(prod_obj.PRODUCT_ID, mango_query), prod_obj.f)
+    return record
+
 def gett_products_inventory(product_code, warehouse, location=None, status='active'):
 
         match_query ={ 
@@ -192,14 +214,14 @@ if __name__ == "__main__":
 
     warehouse = data.get('warehouse', '')
     product_family = data.get('product_family', 'TUBOS')
-    product_line = data.get('product_line', '')
+    product_line = data.get('product_line', '304')
     # familia = data.get('familia', '')
     
     warehouse_cedis = 'CEDIS GUADALAJARA'
     warehouse_cedis = 'ALM GUADALAJARA'
     
     if option == 'get_report':
-        products = prod_obj.get_product_by_type(product_family)
+        products = gett_product_by_type(product_type=product_family, product_line=product_line)
         product_dict = {x['product_code']:x for x in products}
         #print('///////////product dict', product_dict)
         product_code = list(product_dict.keys())
