@@ -121,6 +121,8 @@ class Stock(Stock):
             product_code = rec[pos_codigo]
             sku = rec[pos_sku]
             cantidad = rec[pos_cantidad]
+            if not product_code and not sku and not cantidad:
+                continue
             if not product_code or not sku:
                 error_rows.append(f'RENGLON {num_row}: Debe indicar el código del producto y el sku')
                 continue
@@ -316,7 +318,10 @@ if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
     stock_obj.console_run()
     status = stock_obj.answers[stock_obj.f['inv_adjust_status']]
-    stock_obj.load_onts()
+    if status == 'cargar_onts':
+        stock_obj.load_onts()
+    else:
+        stock_obj.read_xls_file()
     stock_obj.share_filter_and_forms_to_connection()
     response = stock_obj.move_one_many_one()
     stock_obj.answers[stock_obj.f['inv_adjust_status']] =  'done'
