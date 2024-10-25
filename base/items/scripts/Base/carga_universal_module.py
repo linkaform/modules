@@ -380,6 +380,7 @@ class CargaUniversal(CargaUniversal):
 
 
 
+
 if __name__ == '__main__':
     class_obj = CargaUniversal(settings=settings, sys_argv=sys.argv, use_api=True)
     class_obj.console_run()
