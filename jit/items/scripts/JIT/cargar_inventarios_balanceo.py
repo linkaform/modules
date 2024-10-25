@@ -378,7 +378,6 @@ class CargaUniversal(CargaUniversal):
         #     print("------------------- error:",e)
         #     return self.update_status_record(current_record, record_id, 'error', msg_comentarios='Ocurrió un error inesperado, favor de contactar a soporte')
 
-
     def get_record_answers(self, records, form_id):
         wh_dict = {
             'ALM MONTERREY':'Almacen Monterrey',
