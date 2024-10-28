@@ -120,11 +120,11 @@ def get_procurments(warehouse=None, location=None, product_code=None, sku=None, 
         }
     if product_code:
         match_query.update({
-            f"answers.{procurment_obj.SKU_OBJ_ID}.{procurment_obj.f['product_code']}": {'$in': product_code}
+            f"answers.{procurment_obj.Product.SKU_OBJ_ID}.{procurment_obj.f['product_code']}": {'$in': product_code}
             })
     if sku:
         match_query.update({
-            f"answers.{procurment_obj.SKU_OBJ_ID}.{procurment_obj.f['sku']}":sku
+            f"answers.{procurment_obj.Product.SKU_OBJ_ID}.{procurment_obj.f['sku']}":sku
             })
     if warehouse:
         match_query.update({
@@ -142,8 +142,8 @@ def get_procurments(warehouse=None, location=None, product_code=None, sku=None, 
                 'date_schedule':f'$answers.{procurment_obj.mf["procurment_schedule_date"]}',
                 'procurment_method':f'$answers.{procurment_obj.mf["procurment_method"]}',
                 'procurment_qty':f'$answers.{procurment_obj.mf["procurment_qty"]}',
-                'product_code':f'$answers.{procurment_obj.SKU_OBJ_ID}.{procurment_obj.f["product_code"]}',
-                'sku':f'$answers.{procurment_obj.SKU_OBJ_ID}.{procurment_obj.f["sku"]}',
+                'product_code':f'$answers.{procurment_obj.Product.SKU_OBJ_ID}.{procurment_obj.f["product_code"]}',
+                'sku':f'$answers.{procurment_obj.Product.SKU_OBJ_ID}.{procurment_obj.f["sku"]}',
                 'uom':f'$answers.{procurment_obj.UOM_OBJ_ID}.{procurment_obj.f["uom"]}',
                 'warehouse':f'$answers.{procurment_obj.WH.WAREHOUSE_LOCATION_OBJ_ID}.{procurment_obj.WH.f["warehouse"]}',
                 'warehouse_location':f'$answers.{procurment_obj.WH.WAREHOUSE_LOCATION_OBJ_ID}.{procurment_obj.WH.f["warehouse_location"]}',
@@ -215,28 +215,20 @@ if __name__ == "__main__":
 
     warehouse = data.get('warehouse', '')
     product_family = data.get('product_family', 'TUBOS')
-<<<<<<< HEAD
+
     product_line = data.get('product_line', '')
-=======
-    product_line = data.get('product_line', '304')
-    # familia = data.get('familia', '')
->>>>>>> fb96d052a2b7ca05e37923fe0fbea7380960a9b9
-    
+
     warehouse_cedis = 'CEDIS GUADALAJARA'
     warehouse_cedis = 'ALM GUADALAJARA'
     
     if option == 'get_report':
         products = gett_product_by_type(product_type=product_family, product_line=product_line)
         product_dict = {x['product_code']:x for x in products}
-<<<<<<< HEAD
-        product_code = ['750200301040']
         #product_code = list(product_dict.keys())
-=======
         #print('///////////product dict', product_dict)
-        product_code = list(product_dict.keys())
-        #product_code = ['750200301040']
+        #product_code = list(product_dict.keys())
+        product_code = ['750200301040']
         #print('///////PRODUCT CODES', product_code)
->>>>>>> fb96d052a2b7ca05e37923fe0fbea7380960a9b9
         procurment = get_procurments(product_code=product_code)
         
         #print('///////PROCURMENT', procurment)
