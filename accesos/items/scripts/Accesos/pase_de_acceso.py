@@ -22,8 +22,8 @@ if __name__ == "__main__":
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
     elif option == 'create_access_pass' or option == 'crear_pase':
         response = acceso_obj.create_access_pass(location, access_pass)
+    elif option == 'area_by_location':
+        response = acceso_obj.catalago_area_location(location)
     else :
         response = {"msg": "Empty"}
-    print('================ END3 RETURN =================')
-    print(simplejson.dumps(response, indent=3))
     acceso_obj.HttpResponse({"data":response})
