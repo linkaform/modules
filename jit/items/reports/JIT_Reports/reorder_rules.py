@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson, math
 import json
+import math
 from datetime import timedelta, datetime
 
 from linkaform_api import settings, base
@@ -143,7 +144,6 @@ if __name__ == "__main__":
     warehouse = data.get('warehouse', '')
     product_family = data.get('product_family', 'TUBOS')
     product_line = data.get('product_line', '')
-    # familia = data.get('familia', '')
     
     warehouse_cedis = 'CEDIS GUADALAJARA'
     warehouse_cedis = 'ALM GUADALAJARA'
@@ -151,19 +151,15 @@ if __name__ == "__main__":
     if option == 'get_report':
         products = prod_obj.get_product_by_type(product_family)
         product_dict = {x['product_code']:x for x in products}
-        #print('///////////product dict', product_dict)
-        #product_code = list(product_dict.keys())
         product_code = ['750200301040']
-        #print('///////PRODUCT CODES', product_code)
+        #product_code = list(product_dict.keys())
         procurment = get_procurments(product_code=product_code)
         
         #print('///////PROCURMENT', procurment)
         product_stock = stock_obj.get_products_inventory(product_code=product_code, warehouse=warehouse)
         stock_cedis = stock_obj.get_products_inventory(product_code=product_code, warehouse=warehouse_cedis)
         stock_cedis_dict = {x['product_code']:x['actuals'] for x in stock_cedis}
-        
-        # print(stock_cedis)
-        # print(stop)
+                
         res_first = report_obj.reorder_rules_warehouse(product_code=product_code)
         stock_dict = {}
         product_code = []
@@ -186,7 +182,7 @@ if __name__ == "__main__":
                     'stock_gdl': 0,
                     'stock_max': 0,
                     'stock_merida': 0,
-                    'actuals': actuals,
+                    'actuals': actuals, #   proviene de stock_cedis_dict
                     'percentage_stock_max': 0,
                     'stock_final': actuals,
                 }
@@ -201,7 +197,6 @@ if __name__ == "__main__":
             if stock_dict.get(code):
                 stock_dict[code][f'actuals_{warehouse}'] = x['actuals']
         
-    
         for x in res_first:
             code = x['product_code']
             warehouse = x['warehouse'].lower().replace(' ','_')
@@ -211,10 +206,53 @@ if __name__ == "__main__":
                     
         stock_list = list(stock_dict.values())
         
-        script_obj.HttpResponse({
-            "stockInfo": stock_list,
-        })
+        percentage_values = [40, 30, 70]
 
+        for items in stock_list:
+            maximum_stock_mty = 435
+            stock_max_alm_gdl = 170
+            #stock_max_alm_merida = items['stock_max_alm_merida']
+            initial_stock_cedis = 150
+            
+            for value in items:
+                if value.startswith('p_stock_max_') and items[value] < 100:
+                    pass
+                    # percentage_values.append(round(items[value]))
+            
+            sorted_values = sorted(percentage_values)
+            
+            # Calcular diferencias de porcentaje
+            percentage_differences = []
+            for i in range(1, len(sorted_values)):
+                difference = sorted_values[i] - sorted_values[i - 1]
+                percentage_differences.append(difference)
+            
+            #   Crear un diccionario para almacenar los resultados
+            if len(percentage_differences) >= 2:
+                first_diference = percentage_differences[0]
+                second_diference = percentage_differences[1]
+                                
+                # Calculos para primer almacen
+                percentage_of_pieces_warehouse_one = math.floor((maximum_stock_mty * first_diference) / 100)
+                total_stock_cedis = initial_stock_cedis - percentage_of_pieces_warehouse_one
+                
+                # Calculos para segundo almacen
+                second_warehouse = math.floor((stock_max_alm_gdl * second_diference) / 100)
+                first_warehouse = math.floor((maximum_stock_mty * second_diference) / 100)
+                
+                total_relation = first_warehouse + second_warehouse
+                
+                stock_for_warehouse_two = round(second_warehouse * total_stock_cedis / total_relation)
+                stock_for_warehouse_one = math.ceil(stock_for_warehouse_two * first_warehouse / second_warehouse)
+                
+                print('almacen 1', stock_for_warehouse_one)
+                print('almacen 2', stock_for_warehouse_two)
+
+
+
+        # script_obj.HttpResponse({
+        #     "stockInfo": stock_list,
+        # })
 
     elif option == 'get_catalog':
         warehouse_types_catalog = warehouse_obj.get_all_stock_warehouse()
