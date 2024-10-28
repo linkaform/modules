@@ -10,7 +10,6 @@ today = date.today()
 year_week = int(today.strftime('%Y%W'))
 
 
-
 class Stock(Stock):
 
     # _inherit = 'employee'
