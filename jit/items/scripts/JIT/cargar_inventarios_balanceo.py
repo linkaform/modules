@@ -5,9 +5,9 @@ from account_settings import *
 
 
 from lkf_addons.addons.base.app import CargaUniversal
-from lkf_addons.addons.stock.app import Stock
-from lkf_addons.addons.jit.app import JIT
-
+# from lkf_addons.addons.stock.app import Stock
+# from lkf_addons.addons.jit.app import JIT
+from jit_utils import JIT
 
 class CargaUniversal(CargaUniversal):
 
@@ -428,6 +428,9 @@ class CargaUniversal(CargaUniversal):
                 new_records.append(row)
                 print('row=',row)
         return new_records
+    
+    # def db_options(self):
+    #     print(dir(self.cr))
 
 
 if __name__ == '__main__':
@@ -436,7 +439,10 @@ if __name__ == '__main__':
     class_obj.load('Stock', **class_obj.kwargs)
     class_obj.load('JIT', **class_obj.kwargs)
     step = class_obj.data.get('step')
+    jit_obj = JIT(settings, sys_argv=sys.argv, use_api=True)
+    
     if step == 'demanda':
+        
         from_id = class_obj.JIT.DEMANDA_UTIMOS_12_MES
         header = [
             'fecha',
@@ -450,7 +456,9 @@ if __name__ == '__main__':
         estatus = 'demanda_cargada'
         borrar = class_obj.answers.get(class_obj.f.get('borrar_historial'))
         if borrar == 'si':
-            self.borrar_historial()
+            jit_obj.borrar_historial()
+        
+        #    print()
     elif step == 'carga_stock':
         from_id = class_obj.Stock.STOCK_INVENTORY_ADJUSTMENT_ID
         header = [
@@ -468,7 +476,7 @@ if __name__ == '__main__':
             ]
         estatus = 'stock_actualizado'
 
-    print('header', header)
+    #print('header', header)
     records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records = class_obj.carga_doctos_headers(own_header=header,form_id_to_load=from_id)
     resp_cu = class_obj.carga_doctos_records(records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records )
     res = class_obj.update_status_record(estatus)

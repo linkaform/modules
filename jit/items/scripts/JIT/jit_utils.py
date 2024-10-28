@@ -5,13 +5,15 @@ from datetime import datetime, timedelta, date
 from copy import deepcopy
 
 from lkf_addons.addons.jit.app import JIT
+from lkf_addons.addons.stock.app import Stock
+
 
 today = date.today()
 year_week = int(today.strftime('%Y%W'))
 
 
 
-class JIT(JIT):
+class JIT(JIT, Stock):
 
     def __init__(self, settings, sys_argv=None, use_api=False, **kwargs):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
@@ -20,12 +22,13 @@ class JIT(JIT):
         print('arranca borrar')
         forms = [
             self.DEMANDA_UTIMOS_12_MES,
-            'Reglas de Reorden  ',
-            'stock ajustes de inventario',
-            'stock',
-            'procurment'
+            self.REGLAS_REORDEN,
+            self.STOCK_INVENTORY_ADJUSTMENT_ID,
+            self.FORM_INVENTORY_ID,
+            self.PROCURMENT,
         ]
-        self.cr.metodo_para_borrar_de_mongo({'form_id':{'$in':forms}})
+        self.cr.delete_many({'form_id':{'$in':forms}}) #    or _delete
+        
 
     def upsert_procurment(self, product_by_warehouse, **kwargs):
         print('product by warehouse',product_by_warehouse)
