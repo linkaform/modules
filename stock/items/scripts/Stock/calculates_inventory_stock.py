@@ -46,7 +46,7 @@ class Stock(Stock):
         else:
             self.answers[self.f['inventory_status']] = 'active'
 
-        wh_type = self.warehouse_type(warehouse)
+        wh_type = self.WH.warehouse_type(warehouse)
         if wh_type.lower() not in  ('stock'):
             self.answers[self.f['inventory_status']] = 'done'
         # self.answers.update({self.f['inv_group']:self.get_grading()})
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     stock_obj.console_run()
     values = {'_id': 'CP0001_XX01BS_L1_Almacen Norte_Tecnico 1'}
     ccache = stock_obj.cache_read(values)
-    print('44444444444444reading ccache...', ccache)
+    print('4444444444444reading ccache...', ccache)
     #stock_obj.merge_stock_records()
     # print('current_record',current_record)
 

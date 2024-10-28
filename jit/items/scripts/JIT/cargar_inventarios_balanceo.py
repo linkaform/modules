@@ -5,6 +5,8 @@ from account_settings import *
 
 
 from lkf_addons.addons.base.app import CargaUniversal
+from lkf_addons.addons.stock.app import Stock
+from lkf_addons.addons.jit.app import JIT
 
 
 class CargaUniversal(CargaUniversal):
@@ -41,9 +43,7 @@ class CargaUniversal(CargaUniversal):
                 id_forma_seleccionada = field_forma[self.field_id_catalog_form_detail][0]
             else:
                 id_forma_seleccionada = form_id_to_load
-            print('fid_forma_seleccionada',id_forma_seleccionada)
             form_fields = self.lkf_api.get_form_id_fields(id_forma_seleccionada)
-            print('fid_forma_seleccionada',id_forma_seleccionada)
 
             if not form_fields:
                 return self.update_status_record('error', msg_comentarios='No se encontró la forma %s'%(str(id_forma_seleccionada)))
@@ -84,7 +84,7 @@ class CargaUniversal(CargaUniversal):
                 if f['label'].lower() != 'folio'
                 and f['field_type'] not in ('catalog','catalog-select','catalog-detail')
                 and f['label'].lower().replace(' ','_') in self.header_dict.keys()}
-            print( 'pos_field_dict=',pos_field_dict)
+            # print( 'pos_field_dict=',pos_field_dict)
 
             self.ids_fields_no_update = [f['field_id'] for f in info_fields if f.get('label', '').lower().replace(' ','_') in self.fields_no_update]
             #print 'self.ids_fields_no_update=',self.ids_fields_no_update
@@ -256,9 +256,7 @@ class CargaUniversal(CargaUniversal):
             dict_records_copy = {'create': [], 'update': {}}
             list_cols_for_upload = list( pos_field_dict.keys() )
             for p, record in enumerate(records):
-                if p > 2:
-                    continue
-                print("=========================================== >> Procesando renglon:",p)
+                print("========================================== >> Procesando renglon:",p)
                 if p in subgrupo_errors:
                     error_records.append(record+['',])
                     continue
@@ -378,8 +376,12 @@ class CargaUniversal(CargaUniversal):
         #     print("------------------- error:",e)
         #     return self.update_status_record(current_record, record_id, 'error', msg_comentarios='Ocurrió un error inesperado, favor de contactar a soporte')
 
-
     def get_record_answers(self, records, form_id):
+        # self.load('Stock', **self.kwargs)
+        self.load('JIT', **self.kwargs)
+        # self.STOCK = Stock( self.settings, sys_argv=self.sys_argv, use_api=self.use_api)
+        # self.JIT = JIT( self.settings, sys_argv=self.sys_argv, use_api=self.use_api)
+
         wh_dict = {
             'ALM MONTERREY':'Almacen Monterrey',
             'ALM MERIDA':'Almacen Merida',
@@ -387,7 +389,7 @@ class CargaUniversal(CargaUniversal):
             'CEDIS GUADALAJARA':'Almacen CEDIS Guadalajara',
             }
         new_records = []
-        if form_id == 123769:
+        if form_id == self.JIT.DEMANDA_UTIMOS_12_MES:
             for x in records[:]:
                 row = []
                 warehouse_id = x.pop(0)
@@ -404,7 +406,7 @@ class CargaUniversal(CargaUniversal):
                 row.insert(5,'') 
                 row.insert(6,demand) 
                 new_records.append(row)
-        elif form_id == 123136:
+        elif form_id == self.Stock.STOCK_INVENTORY_ADJUSTMENT_ID:#123136:
             for x in records[:]:
                 row = []
                 warehouse_id = x.pop(0)
@@ -431,9 +433,11 @@ class CargaUniversal(CargaUniversal):
 if __name__ == '__main__':
     class_obj = CargaUniversal(settings=settings, sys_argv=sys.argv, use_api=True)
     class_obj.console_run()
+    class_obj.load('Stock', **class_obj.kwargs)
+    class_obj.load('JIT', **class_obj.kwargs)
     step = class_obj.data.get('step')
     if step == 'demanda':
-        from_id = 123769
+        from_id = class_obj.JIT.DEMANDA_UTIMOS_12_MES
         header = [
             'fecha',
             'almacen:_warehouse_name',
@@ -444,8 +448,11 @@ if __name__ == '__main__':
             'demanda_ultimos_12_meses',]
 
         estatus = 'demanda_cargada'
+        borrar = class_obj.answers.get(class_obj.f.get('borrar_historial'))
+        if borrar == 'si':
+            self.borrar_historial()
     elif step == 'carga_stock':
-        from_id = 123136
+        from_id = class_obj.Stock.STOCK_INVENTORY_ADJUSTMENT_ID
         header = [
             'fecha',
             'status',

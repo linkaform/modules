@@ -6,7 +6,6 @@ from stock_utils import Stock
 from account_settings import *
 
 
-
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)
     stock_obj.console_run()
