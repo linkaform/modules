@@ -16,7 +16,6 @@ if __name__ == "__main__":
     option = data.get("option",'')
     location = data.get("location",'')
     access_pass = data.get("access_pass",{})
-
     if option == 'assets_access_pass':
         # used
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
