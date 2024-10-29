@@ -144,4 +144,3 @@ if __name__ == '__main__':
             )
         )
     # except:
-    #     sys.stdout.write(simplejson.dumps({"firstElement": {"error":"Something went wrong"}}))

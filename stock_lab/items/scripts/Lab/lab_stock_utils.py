@@ -885,15 +885,6 @@ class Stock(Stock):
         lot_number = f"{year}{week_num}-{group}{cycle}"
         return lot_number
 
-<<<<<<< HEAD
-    def create_proudction_lot_number_old(self, prod_date=None, group=None, cycle=None):
-        if not prod_date:
-            year = today.strftime('%Y')
-            day_num = today.strftime('%j')
-        else:
-            year = prod_date.strftime('%Y')
-            day_num = prod_date.strftime('%j')
-=======
     def create_proudction_lot_number_by_cutday(self, prod_date=None, group=None, cycle=None):
         if not prod_date:
             year = today.strftime('%Y')
@@ -903,17 +894,12 @@ class Stock(Stock):
             year = prod_date.strftime('%Y')
             day_num = prod_date.strftime('%j')
             week_num = prod_date.strftime('%W')
->>>>>>> 690d5bfe9b217e0909c10e5ff6da8a7a97485956
         if not group:
             group = self.answers.get(self.f['production_working_group'])
         if not cycle:
             cycle = self.answers.get(self.f['production_working_cycle'])
         lot_number = f"{year}{day_num}-{group}{cycle}"
-<<<<<<< HEAD
         return lot_number   
-=======
-        return lot_number
->>>>>>> 690d5bfe9b217e0909c10e5ff6da8a7a97485956
 
     def create_production_move(self, new_production):
         metadata = self.lkf_api.get_metadata(form_id=self.MOVE_NEW_PRODUCTION_ID, user_id=self.record_user_id )
@@ -992,10 +978,6 @@ class Stock(Stock):
                     result.append(res)
 
         else:
-<<<<<<< HEAD
-            print('*********** empieza *******************')
-=======
->>>>>>> 690d5bfe9b217e0909c10e5ff6da8a7a97485956
             res = self.create_inventory_flow(answers)
             if res.get('new_record'):
                 new_records_data = res['new_record']
@@ -1451,7 +1433,6 @@ class Stock(Stock):
             cut_week = product.get(self.f['production_cut_week'])
 
             contamin_code = product.get(self.f['plant_contamin_code'])
-<<<<<<< HEAD
             if day:
                 prduction_date = datetime.strptime(f'{year}{day:03}','%Y%j')
                 lot_number = self.create_proudction_lot_number_old(prduction_date, group, cycle)
@@ -1462,16 +1443,14 @@ class Stock(Stock):
             else:
                 msg = "You must specify a Cut Day or a Cut Week"
                 self.LKFException(msg)
-=======
             prduction_date = datetime.strptime(f'{year}{day:03}','%Y%j')
             adjust_lot_by = product.get(self.f['adjust_lot_by'], 'week')
-            print('adjust_lot_by',adjust_lot_by)
             if adjust_lot_by == 'week':
+                prduction_date = datetime.strptime(f'{year}{week:02}0','%Y%j%w')
                 lot_number = self.create_proudction_lot_number_by_cutday(prduction_date, group, cycle)
             else:
+                prduction_date = datetime.strptime(f'{year}{day:03}','%Y%j')
                 lot_number = self.create_proudction_lot_number_by_cutday(prduction_date, group, cycle)
-            print('lot_number',lot_number)
->>>>>>> 690d5bfe9b217e0909c10e5ff6da8a7a97485956
             product[self.f['product_lot']] = lot_number
             adjust_qty = product.get(self.f['inv_adjust_grp_qty'],0)
             adjust_in = product.get(self.f['inv_adjust_grp_in'], 0)
