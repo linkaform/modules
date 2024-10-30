@@ -1,0 +1,1069 @@
+<?xml version='1.0' encoding='utf-8'?>
+<lkf>
+    <templates>[]</templates>
+    <confirmation>
+        <message>¡Su información fue capturada!</message>
+        <button_message>Mandar respuestas</button_message>
+        <redirect_url>default</redirect_url>
+    </confirmation>
+    <description />
+    <_rev>1050-865a0980d63c2d08e62642da09250cdf</_rev>
+    <updated_at>2022-09-12T23:33:56.001621+00:00Z</updated_at>
+    <sync>
+        <element_request>{}</element_request>
+        <input_parameters>[]</input_parameters>
+    </sync>
+    <filters>
+        <ChileTodas>
+            <amp_and>
+                <item>
+                    <num_631fccdd844ed53c7d989718>
+                        <amp_eq>Chile</amp_eq>
+                    </num_631fccdd844ed53c7d989718>
+                </item>
+            </amp_and>
+        </ChileTodas>
+        <client_10975__slash__0b3f4af2f3e438c4d01df9843a2c9ee3>None</client_10975__slash__0b3f4af2f3e438c4d01df9843a2c9ee3>
+        <client_10975__slash__MexicoAIFA>None</client_10975__slash__MexicoAIFA>
+        <client_10975__slash__544ab6e15d167d7fb9c096f024063695>None</client_10975__slash__544ab6e15d167d7fb9c096f024063695>
+        <ChileSoloBakeryAire>
+            <amp_and>
+                <item>
+                    <num_631fccdd844ed53c7d989718>
+                        <amp_eq>Chile</amp_eq>
+                    </num_631fccdd844ed53c7d989718>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>BAKERY AIRE</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </ChileSoloBakeryAire>
+        <client_10975__slash__78d7392c64586253438372b6c33db42c>None</client_10975__slash__78d7392c64586253438372b6c33db42c>
+        <client_10975__slash__e243074405ff647f7ee4d32686ce98db>None</client_10975__slash__e243074405ff647f7ee4d32686ce98db>
+        <CostaRicaMultiplazaEscazu>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Multiplaza Escazú Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </CostaRicaMultiplazaEscazu>
+        <CALIDADeINNOVACION>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Recorridos CALIDAD E INNOVACIÓN</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </CALIDADeINNOVACION>
+        <client_10975__slash__beaa15d7109ad113d8df11a5444c0508>None</client_10975__slash__beaa15d7109ad113d8df11a5444c0508>
+        <client_10975__slash__1f3bc4d2eca10453a39a11579074a524>None</client_10975__slash__1f3bc4d2eca10453a39a11579074a524>
+        <CostaRicaJacoBakery>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Jaco Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </CostaRicaJacoBakery>
+        <client_10975__slash__f3a4f62a29e6be0c00d0dbe458a5c78a>None</client_10975__slash__f3a4f62a29e6be0c00d0dbe458a5c78a>
+        <client_10975__slash__02bd16d71fe20018d7836df9998a1d8a>None</client_10975__slash__02bd16d71fe20018d7836df9998a1d8a>
+        <client_10975__slash__65944f012eadf83e541744fb85cd53a7>None</client_10975__slash__65944f012eadf83e541744fb85cd53a7>
+        <client_10975__slash__92ba388d4fad9e32cb93ea6f3dd1a10f>None</client_10975__slash__92ba388d4fad9e32cb93ea6f3dd1a10f>
+        <client_10975__slash__826374d6d955b21c0b6b76e57e09d035>None</client_10975__slash__826374d6d955b21c0b6b76e57e09d035>
+        <client_10975__slash__b33cf546a19733465db0085bd8fe30f6>None</client_10975__slash__b33cf546a19733465db0085bd8fe30f6>
+        <client_10975__slash__RegionAeropuertoSantiago>None</client_10975__slash__RegionAeropuertoSantiago>
+        <client_10975__slash__c63856ff6158a8b0991dbb19ef5cce6a>None</client_10975__slash__c63856ff6158a8b0991dbb19ef5cce6a>
+        <client_10975__slash__ae3685ea236e8bcb2b76dfefc35a52be>None</client_10975__slash__ae3685ea236e8bcb2b76dfefc35a52be>
+        <client_10975__slash__c2ce5e84937b1531a7c92ed4bf4f8eb6>None</client_10975__slash__c2ce5e84937b1531a7c92ed4bf4f8eb6>
+        <client_10975__slash__4193ec5b04042f99121465c434e64a79>None</client_10975__slash__4193ec5b04042f99121465c434e64a79>
+        <client_10975__slash__2fa345fb5cd408f5f7dd886bf7565454>None</client_10975__slash__2fa345fb5cd408f5f7dd886bf7565454>
+        <client_10975__slash__CostaRicaMultiplazaEscazu>None</client_10975__slash__CostaRicaMultiplazaEscazu>
+        <client_10975__slash__f17b52ee16ab20750084e9f40fb5ae2c>None</client_10975__slash__f17b52ee16ab20750084e9f40fb5ae2c>
+        <client_10975__slash__55c7a764a599d43f9d6f510ba34a2da4>None</client_10975__slash__55c7a764a599d43f9d6f510ba34a2da4>
+        <client_10975__slash__9416ed6bf8b8e9bf963fde967fc245e9>None</client_10975__slash__9416ed6bf8b8e9bf963fde967fc245e9>
+        <client_10975__slash__8fff6fddcb547a3cbc7c4275f07d3c8e>None</client_10975__slash__8fff6fddcb547a3cbc7c4275f07d3c8e>
+        <client_10975__slash__9c39b0281485df3082668fd7b792dba7>None</client_10975__slash__9c39b0281485df3082668fd7b792dba7>
+        <ChileBakeryCCP>
+            <amp_and>
+                <item>
+                    <num_631fccdd844ed53c7d989718>
+                        <amp_eq>Chile</amp_eq>
+                    </num_631fccdd844ed53c7d989718>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>BAKERY CCP</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </ChileBakeryCCP>
+        <client_10975__slash__CostaRicaCPKAtoSjo>None</client_10975__slash__CostaRicaCPKAtoSjo>
+        <client_10975__slash__1854bf4b7cf59dc799e648cd422125b1>None</client_10975__slash__1854bf4b7cf59dc799e648cd422125b1>
+        <ChileSoloBAkeryWow>
+            <amp_and>
+                <item>
+                    <num_631fccdd844ed53c7d989718>
+                        <amp_eq>Chile</amp_eq>
+                    </num_631fccdd844ed53c7d989718>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>BAKERY WOW</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </ChileSoloBAkeryWow>
+        <client_10975__slash__475fb07c5c774c7b01de576532c7193a>None</client_10975__slash__475fb07c5c774c7b01de576532c7193a>
+        <client_10975__slash__CostaRicaMultiplazaCurridabat>None</client_10975__slash__CostaRicaMultiplazaCurridabat>
+        <client_10975__slash__2f54cf3f425646569bbef97019879a24>None</client_10975__slash__2f54cf3f425646569bbef97019879a24>
+        <client_10975__slash__aafaa33ac6a28e58f511aa0a959a310b>None</client_10975__slash__aafaa33ac6a28e58f511aa0a959a310b>
+        <client_10975__slash__5bde73579789a56e90664e372329a047>None</client_10975__slash__5bde73579789a56e90664e372329a047>
+        <AeropuertoLIRAB>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Aeropuerto LIR A&amp;B</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </AeropuertoLIRAB>
+        <client_10975__slash__0c5770781435f806f31565b38bc99527>None</client_10975__slash__0c5770781435f806f31565b38bc99527>
+        <CostaRicaAtoSjoAndCpkAtoSjo>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bar Imperial</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery Food Court</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bar Imperial P20</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery P20</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Toro Bar Food Court</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery P8</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery TO GO</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>CPK ATO SJO</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Avocato Food Court</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </CostaRicaAtoSjoAndCpkAtoSjo>
+        <RegionAeropuertoSantiago>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>BAKERY WOW</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>BAKERY AIRE</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>BARTOLOMÉ</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>CPK</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>TORO SCL</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>CREPERIA</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </RegionAeropuertoSantiago>
+        <client_10975__slash__74b7375edeebf13fc006c1604d47288e>None</client_10975__slash__74b7375edeebf13fc006c1604d47288e>
+        <client_10975__slash__89a8509f69443467c56395d6d33ecb66>None</client_10975__slash__89a8509f69443467c56395d6d33ecb66>
+        <client_10975__slash__4d9cf957ae4ddb36de740324018e74e2>None</client_10975__slash__4d9cf957ae4ddb36de740324018e74e2>
+        <client_10975__slash__6b076813694437875b4e31c8edbc6b99>None</client_10975__slash__6b076813694437875b4e31c8edbc6b99>
+        <AeropuertoSJOAB>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Aeropuerto SJO A&amp;B</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </AeropuertoSJOAB>
+        <client_10975__slash__59b94be5cf26e119c27b650a240980aa>None</client_10975__slash__59b94be5cf26e119c27b650a240980aa>
+        <ChileSantiago>
+            <amp_and>
+                <item>
+                    <num_631fccdd844ed53c7d989718>
+                        <amp_eq>Chile</amp_eq>
+                    </num_631fccdd844ed53c7d989718>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>BAKERY WOW</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>BAKERY AIRE</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>CPK</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>TORO SCL</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>CREPERIA</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>BARTOLOMÉ</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </ChileSantiago>
+        <client_10975__slash__93102c075c88feeaccfd7eca8e9f0ff3>None</client_10975__slash__93102c075c88feeaccfd7eca8e9f0ff3>
+        <client_10975__slash__aa1d2c8227f7e640743807741b7314f3>None</client_10975__slash__aa1d2c8227f7e640743807741b7314f3>
+        <client_10975__slash__238650ff6c96cc5eefe52dad3bfefbe0>None</client_10975__slash__238650ff6c96cc5eefe52dad3bfefbe0>
+        <client_10975__slash__d1ea838ea7493b50b31e960d1d690407>None</client_10975__slash__d1ea838ea7493b50b31e960d1d690407>
+        <client_10975__slash__92ed920cf879dfe6afe3e764a3395192>None</client_10975__slash__92ed920cf879dfe6afe3e764a3395192>
+        <client_10975__slash__CostaRicaJacoBakery>None</client_10975__slash__CostaRicaJacoBakery>
+        <LiberiaRestaurantes>
+            <amp_and>
+                <item>
+                    <num_631fccdd844ed53c7d989718>
+                        <amp_eq>Costa Rica</amp_eq>
+                    </num_631fccdd844ed53c7d989718>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO Liberia Bar Imperial</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO Liberia Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </LiberiaRestaurantes>
+        <CostaRicaPlantaATOSJO>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Planta ATO SJO</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </CostaRicaPlantaATOSJO>
+        <client_10975__slash__910f84c9188bee91bfab65f6d7f69b5c>None</client_10975__slash__910f84c9188bee91bfab65f6d7f69b5c>
+        <client_10975__slash__ChileTodas>None</client_10975__slash__ChileTodas>
+        <client_10975__slash__352ea5c2615e8e8275e1c833569d570f>None</client_10975__slash__352ea5c2615e8e8275e1c833569d570f>
+        <CostaRicaMarinaFlamingo>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Marina Flamingo Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </CostaRicaMarinaFlamingo>
+        <LocalidadesChile>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>BAKERY WOW</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>BAKERY AIRE</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>BARTOLOMÉ</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>CPK</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </LocalidadesChile>
+        <client_10975__slash__f28da3c1a2632d85c7ed48db1ca4ed1d>None</client_10975__slash__f28da3c1a2632d85c7ed48db1ca4ed1d>
+        <client_10975__slash__SoloPlantaAtoSjo>None</client_10975__slash__SoloPlantaAtoSjo>
+        <client_10975__slash__744e234e4fe8d69ce53820cb50998e3a>None</client_10975__slash__744e234e4fe8d69ce53820cb50998e3a>
+        <client_10975__slash__CostaRicaPlantaATOSJO>None</client_10975__slash__CostaRicaPlantaATOSJO>
+        <MexicoAICM>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Bakery AICM</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </MexicoAICM>
+        <client_10975__slash__8da6c73fe8508ba19b508cfbd8b01feb>None</client_10975__slash__8da6c73fe8508ba19b508cfbd8b01feb>
+        <client_10975__slash__8436deab50c2f8ac7b3a0b890783b291>None</client_10975__slash__8436deab50c2f8ac7b3a0b890783b291>
+        <client_10975__slash__1cfc847bacf52ecbcafa3625a1e1374b>None</client_10975__slash__1cfc847bacf52ecbcafa3625a1e1374b>
+        <client_10975__slash__361f111f764c415529a96a9c70e9797a>None</client_10975__slash__361f111f764c415529a96a9c70e9797a>
+        <client_10975__slash__51f1c8660fc66215ef72f77c6fc4bf32>None</client_10975__slash__51f1c8660fc66215ef72f77c6fc4bf32>
+        <CostaRicaMultiplazaCurridabat>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Multiplaza Curridabat Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </CostaRicaMultiplazaCurridabat>
+        <client_10975__slash__02b741ad9bb8c8d0d0d4544fff9dfb45>None</client_10975__slash__02b741ad9bb8c8d0d0d4544fff9dfb45>
+        <client_10975__slash__467e262db1c9381b36c4515e8a08df36>None</client_10975__slash__467e262db1c9381b36c4515e8a08df36>
+        <CostaRicaAtoSjo>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery P8</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery P20</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bar Imperial</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery TO GO</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Toro Bar Food Court</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery Food Court</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bar Imperial P20</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Avocato Food Court</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bar Imperial</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>CPK ATO SJO</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery FC</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery FC</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery P08</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery ToGo</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </CostaRicaAtoSjo>
+        <client_10975__slash__fc4cf758b7f0b2e428ff37c3bec74f3f>None</client_10975__slash__fc4cf758b7f0b2e428ff37c3bec74f3f>
+        <CostaRicaCPKAtoSjo>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>CPK ATO SJO</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </CostaRicaCPKAtoSjo>
+        <client_10975__slash__8532d456bf7a2ef88403258e004d649c>None</client_10975__slash__8532d456bf7a2ef88403258e004d649c>
+        <client_10975__slash__03d6d9d73d96b82bad16b7528774d599>None</client_10975__slash__03d6d9d73d96b82bad16b7528774d599>
+        <client_10975__slash__6dfa6f20245b3652afbda6588198c05e>None</client_10975__slash__6dfa6f20245b3652afbda6588198c05e>
+        <client_10975__slash__9f59f6019a3b79824c9da33f947deb71>None</client_10975__slash__9f59f6019a3b79824c9da33f947deb71>
+        <ToGoCostaRica>
+            <amp_and>
+                <item>
+                    <num_631fccdd844ed53c7d989718>
+                        <amp_eq>Costa Rica</amp_eq>
+                    </num_631fccdd844ed53c7d989718>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO Liberia Bakery ToGo</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Avocato Food Court</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery ToGo</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Toro ToGo</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>CPK ATO SJO ToGo</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </ToGoCostaRica>
+        <CostaRicaHerediaComedor>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Heredia Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Comedor Corteza</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </CostaRicaHerediaComedor>
+        <client_10975__slash__8fd2b361eab31a5244de4d77cf3473c9>None</client_10975__slash__8fd2b361eab31a5244de4d77cf3473c9>
+        <client_10975__slash__a87930a703780cc1b700d53f3457c6ce>None</client_10975__slash__a87930a703780cc1b700d53f3457c6ce>
+        <ChileSoloCPK>
+            <amp_and>
+                <item>
+                    <num_631fccdd844ed53c7d989718>
+                        <amp_eq>Chile</amp_eq>
+                    </num_631fccdd844ed53c7d989718>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>CPK</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </ChileSoloCPK>
+        <client_10975__slash__833b989815221fd5e236658b8449c491>None</client_10975__slash__833b989815221fd5e236658b8449c491>
+        <client_10975__slash__CostaRicaAtoSjo>None</client_10975__slash__CostaRicaAtoSjo>
+        <client_10975__slash__CostaRicaHerediaComedor>None</client_10975__slash__CostaRicaHerediaComedor>
+        <client_10975__slash__8114e6901774342f999c8baa5b6ff293>None</client_10975__slash__8114e6901774342f999c8baa5b6ff293>
+        <ChileIQQ>
+            <amp_and>
+                <item>
+                    <num_631fccdd844ed53c7d989718>
+                        <amp_eq>Chile</amp_eq>
+                    </num_631fccdd844ed53c7d989718>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>TORO IQQ</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </ChileIQQ>
+        <client_10975__slash__0acd31c846dd0b445ed15881f4f02b3d>None</client_10975__slash__0acd31c846dd0b445ed15881f4f02b3d>
+        <client_10975__slash__86ce95cc4239f07f23fbb7db5fe84f7a>None</client_10975__slash__86ce95cc4239f07f23fbb7db5fe84f7a>
+        <client_10975__slash__2c1ef423843ad11ec1a5c274d1101abe>None</client_10975__slash__2c1ef423843ad11ec1a5c274d1101abe>
+        <client_10975__slash__a95187658f7e5dfc6bcc8f5f08c5973a>None</client_10975__slash__a95187658f7e5dfc6bcc8f5f08c5973a>
+        <client_10975__slash__0f963dea69fd80be6de32a9691fdde56>None</client_10975__slash__0f963dea69fd80be6de32a9691fdde56>
+        <client_10975__slash__3818840d24513c2d9579fc44090aa2b6>None</client_10975__slash__3818840d24513c2d9579fc44090aa2b6>
+        <client_10975__slash__CostaRicaAtoSjoAndCpkAtoSjo>None</client_10975__slash__CostaRicaAtoSjoAndCpkAtoSjo>
+        <client_10975__slash__a0b73847ce2dfb5848731eb2244c3ca5>None</client_10975__slash__a0b73847ce2dfb5848731eb2244c3ca5>
+        <client_10975__slash__0fc3324475233a6fc4afd5b11718b0ca>None</client_10975__slash__0fc3324475233a6fc4afd5b11718b0ca>
+        <client_10975__slash__75f9ff1309d0c0b92ca289d7f7369cd3>None</client_10975__slash__75f9ff1309d0c0b92ca289d7f7369cd3>
+        <client_10975__slash__b3b4298740a5ef175be70efd264ef18a>None</client_10975__slash__b3b4298740a5ef175be70efd264ef18a>
+        <client_10975__slash__CostaRicaAtoSjoAndAtoLiberiaCristel>None</client_10975__slash__CostaRicaAtoSjoAndAtoLiberiaCristel>
+        <client_10975__slash__47073daf93107b1f6af3f438484ad15d>None</client_10975__slash__47073daf93107b1f6af3f438484ad15d>
+        <RestaurantesCostaRica>
+            <amp_and>
+                <item>
+                    <num_631fccdd844ed53c7d989718>
+                        <amp_eq>Costa Rica</amp_eq>
+                    </num_631fccdd844ed53c7d989718>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO Liberia Bar Imperial</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO Liberia Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bar Imperial</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>CPK ATO SJO</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Toro Bar Food Court</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </RestaurantesCostaRica>
+        <MexicoAICMAIFA>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Bakery AIFA</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Bakery AICM</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </MexicoAICMAIFA>
+        <client_10975__slash__05273849450b6ae9761c6980687a2e08>None</client_10975__slash__05273849450b6ae9761c6980687a2e08>
+        <AEROPUERTOSJOAB>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Aeropuerto SJO A&amp;B</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </AEROPUERTOSJOAB>
+        <client_10975__slash__c49989ba01145724c7000f1a0458df15>None</client_10975__slash__c49989ba01145724c7000f1a0458df15>
+        <CostaRicaMultiplazaEscazuCPK>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Multiplaza Escazú CPK</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </CostaRicaMultiplazaEscazuCPK>
+        <client_10975__slash__7d66e1cbe51929e6522674d6a30e2a56>None</client_10975__slash__7d66e1cbe51929e6522674d6a30e2a56>
+        <client_10975__slash__2c3b6696cf23590a1ee6a79e5c8b1b29>None</client_10975__slash__2c3b6696cf23590a1ee6a79e5c8b1b29>
+        <ChileBakeryPUQArenas>
+            <amp_and>
+                <item>
+                    <num_631fccdd844ed53c7d989718>
+                        <amp_eq>Chile</amp_eq>
+                    </num_631fccdd844ed53c7d989718>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>BAKERY PUQ</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </ChileBakeryPUQArenas>
+        <AyBCostaRica>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO Liberia Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO Liberia Bar Imperial</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Avocato Food Court</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bar Imperial</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Toro Bar Food Court</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>CPK ATO SJO</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Marina Flamingo Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Multiplaza Escazú CPK</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Planta ATO SJO</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery Food Court</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery P08</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery P20</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery ToGo</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </AyBCostaRica>
+        <client_10975__slash__CostaRicaTodas>None</client_10975__slash__CostaRicaTodas>
+        <SoloPlantaAtoSjo>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Planta ATO SJO</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </SoloPlantaAtoSjo>
+        <client_10975__slash__CostaRicaClinicaBiblica>None</client_10975__slash__CostaRicaClinicaBiblica>
+        <SJORestaurantes>
+            <amp_and>
+                <item>
+                    <num_631fccdd844ed53c7d989718>
+                        <amp_eq>Costa Rica</amp_eq>
+                    </num_631fccdd844ed53c7d989718>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bar Imperial</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>CPK ATO SJO</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Toro Bar Food Court</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </SJORestaurantes>
+        <pruebasDemo>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO Liberia Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery P8</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </pruebasDemo>
+        <client_10975__slash__b313260fc248977e5acf0c654f887057>None</client_10975__slash__b313260fc248977e5acf0c654f887057>
+        <CostaRicaAtoLiberia>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO Liberia Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO Liberia Bar Imperial</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Marina Flamingo Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </CostaRicaAtoLiberia>
+        <client_10975__slash__2680a679fa8b5d295c19b4c9848f8940>None</client_10975__slash__2680a679fa8b5d295c19b4c9848f8940>
+        <client_10975__slash__b32a8b5d8ca6e9e85035815f4ec63c2c>None</client_10975__slash__b32a8b5d8ca6e9e85035815f4ec63c2c>
+        <MexicoAIFA>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Bakery AIFA</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </MexicoAIFA>
+        <client_10975__slash__8a31984729c2c26a64e71437ef99353c>None</client_10975__slash__8a31984729c2c26a64e71437ef99353c>
+        <client_10975__slash__CostaRicaAtoLiberia>None</client_10975__slash__CostaRicaAtoLiberia>
+        <client_10975__slash__77e717826afeea820b463f431ca1ef40>None</client_10975__slash__77e717826afeea820b463f431ca1ef40>
+        <client_10975__slash__f24442af90d3efa1656fd54f1ac3739a>None</client_10975__slash__f24442af90d3efa1656fd54f1ac3739a>
+        <client_10975__slash__LocalidadesChile>None</client_10975__slash__LocalidadesChile>
+        <PeruBakery>
+            <amp_and>
+                <item>
+                    <num_631fccdd844ed53c7d989718>
+                        <amp_eq>Perú</amp_eq>
+                    </num_631fccdd844ed53c7d989718>
+                </item>
+            </amp_and>
+        </PeruBakery>
+        <client_10975__slash__9c987d07066ebeacc1b59d641249f536>None</client_10975__slash__9c987d07066ebeacc1b59d641249f536>
+        <CostaRicaAtoSjoAndAtoLiberiaCristel>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bar Imperial</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery Food Court</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bar Imperial P20</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery P20</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Toro Bar Food Court</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery P8</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery TO GO</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO Liberia Bar Imperial</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO Liberia Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>CPK ATO SJO</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Avocato Food Court</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>ATO SJO Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </CostaRicaAtoSjoAndAtoLiberiaCristel>
+        <client_10975__slash__4d746ee7c4edbd711bb89f3e83e7b60a>None</client_10975__slash__4d746ee7c4edbd711bb89f3e83e7b60a>
+        <CostaRicaClinicaBliblicaAndCurridabatVeronica>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Clínica Bíblica Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Clínica Bíblica Bakery Torre Omega</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Clínica Bíblica Toro</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Multiplaza Curridabat Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </CostaRicaClinicaBliblicaAndCurridabatVeronica>
+        <client_10975__slash__f6a7c20a4f3a8d2afd4c97d29564fb50>None</client_10975__slash__f6a7c20a4f3a8d2afd4c97d29564fb50>
+        <client_10975__slash__976c87a1fee61f56fdd59ccafa1a2a21>None</client_10975__slash__976c87a1fee61f56fdd59ccafa1a2a21>
+        <client_10975__slash__CostaRicaMarinaFlamingo>None</client_10975__slash__CostaRicaMarinaFlamingo>
+        <CostaRicaClinicaBiblica>
+            <amp_and>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Clínica Bíblica Bakery</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Clínica Bíblica Toro</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>Clínica Bíblica Bakery Torre Omega</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </CostaRicaClinicaBiblica>
+        <client_10975__slash__bc5d2da2fd58350f9f281d1d1521da1c>None</client_10975__slash__bc5d2da2fd58350f9f281d1d1521da1c>
+        <ChileSoloBartolome>
+            <amp_and>
+                <item>
+                    <num_631fccdd844ed53c7d989718>
+                        <amp_eq>Chile</amp_eq>
+                    </num_631fccdd844ed53c7d989718>
+                </item>
+                <item>
+                    <num_631fc1e48d9fe191da0c3daf>
+                        <amp_eq>BARTOLOMÉ</amp_eq>
+                    </num_631fc1e48d9fe191da0c3daf>
+                </item>
+            </amp_and>
+        </ChileSoloBartolome>
+        <client_10975__slash__384de27db64f8272ed41923d3ca53917>None</client_10975__slash__384de27db64f8272ed41923d3ca53917>
+        <client_10975__slash__MexicoAICMAIFA>None</client_10975__slash__MexicoAICMAIFA>
+        <CostaRicaTodas>
+            <amp_and>
+                <item>
+                    <num_631fccdd844ed53c7d989718>
+                        <amp_eq>Costa Rica</amp_eq>
+                    </num_631fccdd844ed53c7d989718>
+                </item>
+            </amp_and>
+        </CostaRicaTodas>
+        <client_10975__slash__MexicoAICM>None</client_10975__slash__MexicoAICM>
+        <client_10975__slash__df5ebc5472d45904b258c7aef4dc8dbe>None</client_10975__slash__df5ebc5472d45904b258c7aef4dc8dbe>
+        <client_10975__slash__cae5712408ca79efb4cc44f813de658b>None</client_10975__slash__cae5712408ca79efb4cc44f813de658b>
+    </filters>
+    <name>Localidades</name>
+    <edit_public_records>False</edit_public_records>
+    <created_at>2022-09-12T23:33:56.001621+00:00Z</created_at>
+    <advanced_options>
+        <active>True</active>
+        <folio>
+            <manual>False</manual>
+            <required>False</required>
+            <config>False</config>
+        </folio>
+    </advanced_options>
+    <catalog_pages>
+        <item>
+            <page_fields>
+                <item>
+                    <field_type>catalog</field_type>
+                    <catalog_fields>[]</catalog_fields>
+                    <required>False</required>
+                    <field_id>{{ catalog.paises_Morpho.obj_id }}</field_id>
+                    <label>Pais</label>
+                    <catalog>
+                        <catalog_fields>[]</catalog_fields>
+                        <view_fields>
+                            <item>631fccdd844ed53c7d989718</item>
+                        </view_fields>
+                        <view_index>0</view_index>
+                        <couch_id>{{ catalog.paises_Morpho.obj_id }}</couch_id>
+                        <catalog_field_id>None</catalog_field_id>
+                        <catalog_id>{{ catalog.paises_Morpho.id }}</catalog_id>
+                        <filters>None</filters>
+                        <name>{{ catalog.paises_Morpho.name }}</name>
+                    </catalog>
+                    <key>False</key>
+                    <properties>{}</properties>
+                </item>
+                <item>
+                    <field_type>catalog-select</field_type>
+                    <properties>{}</properties>
+                    <field_id>631fccdd844ed53c7d989718</field_id>
+                    <required>False</required>
+                    <fav>True</fav>
+                    <label>Pais</label>
+                    <catalog>
+                        <catalog_fields>[]</catalog_fields>
+                        <last>False</last>
+                        <view_fields>[]</view_fields>
+                        <field_type>text</field_type>
+                        <view_index>1</view_index>
+                        <catalog_field_id>{{ catalog.paises_Morpho.obj_id }}</catalog_field_id>
+                        <catalog_id>{{ catalog.paises_Morpho.id }}</catalog_id>
+                        <filters>None</filters>
+                    </catalog>
+                    <options>[]</options>
+                </item>
+                <item>
+                    <field_type>text</field_type>
+                    <properties>
+                        <send_email>False</send_email>
+                        <size>complete</size>
+                        <custom>None</custom>
+                    </properties>
+                    <key>False</key>
+                    <catalog_fields>[]</catalog_fields>
+                    <field_id>631fc1e48d9fe191da0c3daf</field_id>
+                    <required>False</required>
+                    <fav>True</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
+                    <label>Localidad</label>
+                    <catalog>{}</catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
+                    <options>[]</options>
+                    <related_catalog>None</related_catalog>
+                </item>
+                <item>
+                    <field_type>text</field_type>
+                    <properties>
+                        <send_email>False</send_email>
+                        <size>complete</size>
+                        <custom>None</custom>
+                    </properties>
+                    <key>False</key>
+                    <catalog_fields>[]</catalog_fields>
+                    <field_id>65ce8c5518d356151f1f8ccf</field_id>
+                    <required>False</required>
+                    <fav>True</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
+                    <label>Tienda</label>
+                    <catalog>{}</catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
+                    <options>[]</options>
+                    <related_catalog>None</related_catalog>
+                </item>
+            </page_fields>
+            <page_description>None</page_description>
+            <page_name>Datos</page_name>
+        </item>
+    </catalog_pages>
+    <sync_last_update>None</sync_last_update>
+    <_id>631fc1e38d9fe191da0c3dad</_id>
+    <public>False</public>
+    <catalog_id>89487</catalog_id>
+</lkf>
