@@ -142,3 +142,55 @@ class Stock(Stock):
                     move_line[self.f['inv_adjust_grp_status']] = 'error'
                     move_line[self.f['inv_adjust_grp_comments']] = f'Status Code: {status_code}, Error: {error}'
         return True
+
+
+    #######
+    def do_scrap(self):
+        answers = self.answers
+        stock = self.get_stock_info_from_catalog_inventory()
+        scrap_qty = answers.get(self.f['inv_scrap_qty'], 0)
+        cuarentin_qty = answers.get(self.f['inv_cuarentin_qty'], 0)
+        if scrap_qty or cuarentin_qty:
+            move_qty = scrap_qty + cuarentin_qty
+            self.validate_move_qty(stock['product_code'], stock['sku'], stock['lot_number'], stock['warehouse'], stock['warehouse_location'], move_qty, date_to=None)
+            self.cache_set({
+                        '_id': f"{stock['product_code']}_{stock['sku']}_{stock['lot_number']}_{stock['warehouse']}_{stock['warehouse_location']}",
+                        'scrapped':scrap_qty,
+                        'cuarentin':cuarentin_qty,
+                        'lot_number':stock['lot_number'],
+                        'product_code':stock['product_code'],
+                        'sku':stock['sku'],
+                        'warehouse': stock['warehouse'],
+                        'warehouse_location': stock['warehouse_location'],
+                        'record_id': self.record_id
+                        })
+        res = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=stock['folio'] )
+        return res.get(stock['folio'],{}) 
+
+    def get_stock_info_from_catalog_wl(self, answers={}, data={}, search_key=None):
+        print('---eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-------')
+        if not answers:
+            answers = self.answers
+        res = {}
+        if not search_key:
+            search_key = self.WH.WAREHOUSE_LOCATION_OBJ_ID
+        wh_info = answers.get(search_key, {})
+        if not wh_info:
+            data = self.get_stock_info_from_catalog_wl(answers=self.answers, data=data, search_key=self.STOCK_INVENTORY_OBJ_ID)
+        res['warehouse'] = data.get('warehouse',wh_info.get(self.f['warehouse']))
+        res['warehouse_location'] = data.get('warehouse_location', wh_info.get(self.f['warehouse_location']))
+        return res
+
+    def get_stock_info_from_catalog_wld(self, answers={}, data={},  search_key=None):
+        print('oooooooooooooooooooooooooooooooooooooooooooooooooooo')
+        if not answers:
+            answers = self.answers
+        res = {}
+        if not search_key:
+            search_key = self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID
+        wh_info = answers.get(search_key, {})
+        if not wh_info:
+            data = self.get_stock_info_from_catalog_wld(answers=self.answers, data=data, search_key=self.STOCK_INVENTORY_OBJ_ID)
+        res['warehouse_dest'] = data.get('warehouse_dest',wh_info.get(self.f['warehouse_dest']))
+        res['warehouse_location_dest'] = data.get('warehouse_location_dest',wh_info.get(self.f['warehouse_location_dest']))
+        return res
