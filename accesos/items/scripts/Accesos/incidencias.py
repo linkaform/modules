@@ -3,7 +3,7 @@ import sys, simplejson
 from linkaform_api import settings
 from account_settings import *
 
-from app import Accesos
+from accesos_utils import Accesos
 
 class Accesos(Accesos):
     pass
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     })
     location = data.get("location","")
     area = data.get("area","")
-    prioridad = data.get("prioridad","")
+    prioridades = data.get("prioridades",[])
     folio = data.get("folio")
     #-FUNCTIONS
     #option = 'new_incidence';
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     if option == 'nueva_incidencia':
         response = acceso_obj.create_incidence(data_incidence)
     elif option == 'get_incidences':
-        response = acceso_obj.get_list_incidences(location, area, prioridad= prioridad)
+        response = acceso_obj.get_list_incidences(location, area, prioridades= prioridades)
     elif option == 'update_incidence':
         response = acceso_obj.update_incidence(data_incidence_update, folio)
     elif option == 'delete_incidence':

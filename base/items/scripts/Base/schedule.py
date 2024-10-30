@@ -33,8 +33,6 @@ class Schedule(Schedule):
         return ans
 
 
-
-
 if __name__ == "__main__":
     # print(sys.argv)
     schedule_obj = Schedule(settings, sys_argv=sys.argv, use_api=True)

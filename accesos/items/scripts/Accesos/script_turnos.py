@@ -3,7 +3,7 @@ import sys, simplejson
 from linkaform_api import settings
 from account_settings import *
 
-from app import Accesos
+from accesos_utils import Accesos
 
 class Accesos(Accesos):
     pass
@@ -31,7 +31,10 @@ if __name__ == "__main__":
     vehiculo = data.get('vehiculo',"")
     visita_a = data.get('visita_a',"")
     gafete_id = data.get('gafete_id',"")
-
+    data_msj=data.get("data_msj", {})
+    status_visita=data.get("status_visita", "")
+    inActive= data.get("inActive", "")
+    prioridades = data.get("prioridades",[])
     #-FUNCTIONS
     print('option', option)
     if option == 'load_shift':
@@ -40,7 +43,7 @@ if __name__ == "__main__":
     elif option == 'assets_access_pass':
         response = acceso_obj.assets_access_pass(location)
     elif option == 'list_bitacora':
-        response = acceso_obj.get_list_bitacora(location,  area)
+        response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades)
     elif option == 'get_user_booths':
         response = acceso_obj.get_user_booths_availability()
     elif option == 'get_boot_guards' or option == 'guardias_de_apoyo':
@@ -61,8 +64,7 @@ if __name__ == "__main__":
         response = acceso_obj.search_access_pass(qr_code=qr_code, location=location)
     elif option == 'lista_pases':
         # used
-        response = acceso_obj.get_lista_pase(location=location)
-        #acceso_obj.HttpResponse({"data": response}, indent=4)
+        response = acceso_obj.get_lista_pase(location=location, inActive=inActive)
     elif option == 'do_out':
         # used
         response = acceso_obj.do_out(qr_code, location, area, gafete_id)
@@ -89,6 +91,8 @@ if __name__ == "__main__":
         response = acceso_obj.visita_a(location)
     elif option == 'visita_a_detail':
         response = acceso_obj.visita_a_detail(location, visita_a)
+    elif option == 'enviar_msj':
+        response = acceso_obj.create_enviar_msj(data_msj)
     else :
         response = {"msg": "Empty"}
     print('================ END RETURN =================')
