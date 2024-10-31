@@ -9,6 +9,10 @@ from lkf_addons.addons.base.app import CargaUniversal
 # from lkf_addons.addons.jit.app import JIT
 from jit_utils import JIT
 
+
+
+wh_dict_loc = {'ALM GUADALAJARA':'CEDIS GUADALAJARA'}
+
 class CargaUniversal(CargaUniversal):
 
 
@@ -257,6 +261,10 @@ class CargaUniversal(CargaUniversal):
             list_cols_for_upload = list( pos_field_dict.keys() )
             for p, record in enumerate(records):
                 print("========================================== >> Procesando renglon:",p)
+                # if step == 'carga_stock':
+
+                #     record[1] = wh_dict_loc[record[1]] if wh_dict_loc.get(record[1]) else record[1]
+                # print('record', record)
                 if p in subgrupo_errors:
                     error_records.append(record+['',])
                     continue
@@ -305,6 +313,7 @@ class CargaUniversal(CargaUniversal):
                     if proceso:
                         resultado[proceso] += 1
             print('***************dict_records_to_multi update=',dict_records_to_multi['update'])
+            print('***************dict_records_to_multi update=',dict_records_to_multi['create'])
             #print('***************dict_records_copy=',dict_records_copy)
             #dict_sets_in_row = {}
             if dict_records_to_multi['create']:
@@ -411,6 +420,7 @@ class CargaUniversal(CargaUniversal):
                 row = []
                 warehouse_id = x.pop(0)
                 warehouse_name = x.pop(0)
+                warehouse_name = wh_dict_loc[warehouse_name] if wh_dict_loc.get(warehouse_name) else warehouse_name
                 sku = x.pop(0)
                 demand = x.pop(0)
                 inv = x.pop(0)
@@ -437,13 +447,12 @@ if __name__ == '__main__':
     class_obj = CargaUniversal(settings=settings, sys_argv=sys.argv, use_api=True)
     class_obj.console_run()
     class_obj.load('Stock', **class_obj.kwargs)
-    class_obj.load('JIT', **class_obj.kwargs)
-    step = class_obj.data.get('step')
     jit_obj = JIT(settings, sys_argv=sys.argv, use_api=True)
+    step = class_obj.data.get('step')
     
     if step == 'demanda':
         
-        from_id = class_obj.JIT.DEMANDA_UTIMOS_12_MES
+        from_id = jit_obj.DEMANDA_UTIMOS_12_MES
         header = [
             'fecha',
             'almacen:_warehouse_name',
@@ -454,7 +463,7 @@ if __name__ == '__main__':
             'demanda_ultimos_12_meses',]
 
         estatus = 'demanda_cargada'
-        borrar = class_obj.answers.get(class_obj.f.get('borrar_historial'))
+        borrar = class_obj.answers.get(jit_obj.f.get('borrar_historial'))
         if borrar == 'si':
             jit_obj.borrar_historial()
         

@@ -255,8 +255,6 @@ class CargaUniversal(CargaUniversal):
             dict_records_copy = {'create': [], 'update': {}}
             list_cols_for_upload = list( pos_field_dict.keys() )
             for p, record in enumerate(records):
-                if p > 2:
-                    continue
                 print("=========================================== >> Procesando renglon:",p)
                 if p in subgrupo_errors:
                     error_records.append(record+['',])
