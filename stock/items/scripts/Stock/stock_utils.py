@@ -10,7 +10,6 @@ today = date.today()
 year_week = int(today.strftime('%Y%W'))
 
 
-
 class Stock(Stock):
 
     # _inherit = 'employee'
@@ -142,3 +141,5 @@ class Stock(Stock):
                     move_line[self.f['inv_adjust_grp_status']] = 'error'
                     move_line[self.f['inv_adjust_grp_comments']] = f'Status Code: {status_code}, Error: {error}'
         return True
+
+
