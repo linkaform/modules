@@ -161,6 +161,7 @@ def get_product_field(product_code, pfield='product_family'):
                 '61ef32bcdf0ec2ba73dec33d': {"$eq": product_code},
                 } ,
             },
+        
         "limit": 1,
         "skip": 0
             }
@@ -219,15 +220,15 @@ if __name__ == "__main__":
     product_line = data.get('product_line', '')
 
     warehouse_cedis = 'CEDIS GUADALAJARA'
-    warehouse_cedis = 'ALM GUADALAJARA'
+    
     
     if option == 'get_report':
         products = gett_product_by_type(product_type=product_family, product_line=product_line)
         product_dict = {x['product_code']:x for x in products}
         #product_code = list(product_dict.keys())
         #print('///////////product dict', product_dict)
-        #product_code = list(product_dict.keys())
-        product_code = ['750200301040']
+        product_code = list(product_dict.keys())
+        #product_code = ['750200301040']
         #print('///////PRODUCT CODES', product_code)
         procurment = get_procurments(product_code=product_code)
         
@@ -243,6 +244,8 @@ if __name__ == "__main__":
         for item in procurment:
             code = item['product_code']
             warehouse = item['warehouse'].lower().replace(' ','_')
+            print('WAREHOUSE NAME', warehouse)
+            
             actuals = stock_cedis_dict.get(code, 0)
             product_name = product_dict[code]['product_name']
             product_category = product_dict[code]['product_category']
@@ -276,9 +279,11 @@ if __name__ == "__main__":
         for x in res_first:
             code = x['product_code']
             warehouse = x['warehouse'].lower().replace(' ','_')
+            print('warehouse', warehouse)
+            
             if stock_dict.get(code):
                 stock_dict[code][f'stock_max_{warehouse}'] = x['stock_maximum']
-                stock_dict[code][f'p_stock_max_{warehouse}'] = round((stock_dict[code][f'actuals_{warehouse}'] / x[f'stock_maximum']) * 100, 2)
+                stock_dict[code][f'p_stock_max_{warehouse}'] = round((stock_dict[code].get(f'actuals_{warehouse}', 0) / x[f'stock_maximum']) * 100, 2)
                     
         stock_list = list(stock_dict.values())
         
@@ -325,10 +330,9 @@ if __name__ == "__main__":
                 print('almacen 2', stock_for_warehouse_two)
 
 
-
-        # script_obj.HttpResponse({
-        #     "stockInfo": stock_list,
-        # })
+        script_obj.HttpResponse({
+            "stockInfo": stock_list,
+        })
 
     elif option == 'get_catalog':
         warehouse_types_catalog = warehouse_obj.get_all_stock_warehouse()
