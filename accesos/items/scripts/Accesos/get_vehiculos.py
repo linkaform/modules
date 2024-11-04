@@ -18,16 +18,18 @@ if __name__ == "__main__":
     data = acceso_obj.data.get('data',{})
     marca = data.get('marca',"")
     tipo = data.get('tipo',"")
-
+    option = data.get("option","")
     #-FUNCTIONS
-    if tipo and marca:
-        response = acceso_obj.vehiculo_modelo(tipo, marca)
-    elif tipo:
-        response = acceso_obj.vehiculo_marca(tipo)
-    else:
-        print('va por data...')
-        response = acceso_obj.vehiculo_tipo()
-    print('===============dddd END RETURN =================')
-    print(simplejson.dumps(response, indent=3))
+    if option == 'catalago_vehiculo':
+        if tipo and marca:
+            response = acceso_obj.vehiculo_modelo(tipo, marca)
+        elif tipo:
+            response = acceso_obj.vehiculo_marca(tipo)
+        else:
+            response = acceso_obj.vehiculo_tipo()
+    elif option == 'catalago_estados':
+        response = acceso_obj.catalogo_estados()
+    else :
+        response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
 
