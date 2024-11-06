@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson
+import os
 from linkaform_api import settings
 from account_settings import *
-
+from datetime import datetime
+#from linkaform_api.lkf_object import LKFBaseObject
 
 from lkf_addons.addons.base.app import CargaUniversal
 # from lkf_addons.addons.stock.app import Stock
@@ -14,8 +16,8 @@ from jit_utils import JIT
 wh_dict_loc = {'ALM GUADALAJARA':'CEDIS GUADALAJARA'}
 
 class CargaUniversal(CargaUniversal):
-
-
+    
+    
     def carga_doctos_headers(self, form_id_to_load=None, read_excel_from=None, own_header=[]):
         if self.record_id:
             self.update_status_record('procesando')
@@ -241,150 +243,409 @@ class CargaUniversal(CargaUniversal):
 
             metadata = None
             return records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records
+        
 
+    # def convert_datetime_to_string(self, date_value):
+    #     '''
+    #     Convierte un objeto datetime a una cadena en formato ISO 8601.
+    #     '''
+    #     if isinstance(date_value, datetime):
+    #         # Si el valor es un objeto datetime, lo convertimos a formato ISO 8601
+    #         return date_value.isoformat()
+    #     elif isinstance(date_value, str):
+    #         # Si ya es una cadena, retornamos la cadena tal cual
+    #         return date_value
+    #     return None  # En caso de que el valor no sea ni string ni datetime, retorna None.
+
+
+    def get_fields_for_answers(self):
+        
+        now = datetime.now()
+        
+        fields = {}
+        fields['user_id'] = self.user['user_id']
+        fields['user_name'] = self.user['username']
+        fields['assets'] = {
+            "template_conf" : None,
+            "followers" : [ 
+                {
+                    "asset_id" : 16102,
+                    "email" : "linkaform@industriasmiller.com",
+                    "name" : "Industrias MIller",
+                    "username" : None,
+                    "rtype" : "user",
+                    "rules" : None
+                }
+            ],
+            "supervisors" : [],
+            "performers" : [],
+            "groups" : []
+        },
+        fields['created_at'] = now.isoformat()
+        fields['updated_at'] = now.isoformat()
+        fields['editable'] = True
+        fields['start_timestamp'] = 1730843497.972
+        fields['end_timestamp'] = 1730843554.625
+        fields['start_date'] = now.isoformat()
+        fields['end_date'] = now.isoformat()
+        fields['duration'] = 56
+        fields['created_by_id'] = self.user['user_id']
+        fields['created_by_name'] = self.user['username']
+        fields['created_by_email'] = "linkaform@industriasmiller.com"
+        fields['timezone'] = "America/Monterrey"
+        fields['tz_offset'] = 360
+        fields['other_versions'] = []
+        #fields['voucher_id'] = ''        
+    
+        return fields
+    
+    
     def carga_doctos_records(self, records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records):
-            self.field_id_error_records = '5e32fbb498849f475cfbdca3'
-            metadata_form = self.lkf_api.get_metadata(form_id=id_forma_seleccionada )
-            # Necesito un diccionario que agrupe los registros que se crearán y los que están en un grupo repetitivo y pertenecen a uno principal
-            file_records = [i for i in pos_field_dict if pos_field_dict[i]['field_type'] in ('file','images')]
-            print("++++ file_records",file_records)
-            # Agrego información de la carga
-            metadata_form.update({'properties': {"device_properties":{"system": "SCRIPT","process":"Carga Universal", "accion":'CREA Y ACTUALIZA REGISTROS DE CUALQUIER FORMA', "folio carga":self.current_record['folio'], "archive":"carga_documentos_a_forma.py"}}})
-            metadata = None
-            print("***** Empezando con la carga de documentos *****")
-            resultado = {'creados':0,'error':0,'actualizados':0, 'no_update':0}
-            answers = {}
-            total_rows = len(records)
-            subgrupo_errors = []
-            dict_records_to_multi = {'create': [], 'update': []}
-            dict_records_copy = {'create': [], 'update': {}}
-            list_cols_for_upload = list( pos_field_dict.keys() )
-            for p, record in enumerate(records):
-                print("========================================== >> Procesando renglon:",p)
-                # if step == 'carga_stock':
+        self.field_id_error_records = '5e32fbb498849f475cfbdca3'
+        metadata_form = self.lkf_api.get_metadata(form_id=id_forma_seleccionada)
+        
+        answer_fields = self.get_fields_for_answers()
+        # print('///ANSWER FIELDS', answer_fields)
+        # print(stop)
+    
+        # Necesito un diccionario que agrupe los registros que se crearán y los que están en un grupo repetitivo y pertenecen a uno principal
+        file_records = [i for i in pos_field_dict if pos_field_dict[i]['field_type'] in ('file','images')]
+        print("++++ file_records",file_records)
+        # Agrego información de la carga
+        metadata_form.update({'properties': {"device_properties":{"system": "SCRIPT","process":"Carga Universal", "accion":'CREA Y ACTUALIZA REGISTROS DE CUALQUIER FORMA', "folio carga":self.current_record['folio'], "archive":"carga_documentos_a_forma.py"}}})
+        metadata = None
+        print("***** Empezando con la carga de documentos *****")
+        resultado = {'creados':0,'error':0,'actualizados':0, 'no_update':0}
+        answers = {}
+        total_rows = len(records)
+        subgrupo_errors = []
+        dict_records_to_multi = {'create': [], 'update': []}
+        dict_records_copy = {'create': [], 'update': {}}
+        list_cols_for_upload = list( pos_field_dict.keys() )
+        for p, record in enumerate(records):
+            print("========================================== >> Procesando renglon:",p)
+            # if step == 'carga_stock':
 
-                #     record[1] = wh_dict_loc[record[1]] if wh_dict_loc.get(record[1]) else record[1]
-                # print('record', record)
-                if p in subgrupo_errors:
-                    error_records.append(record+['',])
-                    continue
-                # Recorro la lista de campos de tipo documento para determinar si el contenido en esa posición está dentro del zip de carga
-                no_en_zip = [record[i] for i in file_records if record[i] and record[i] not in files_dir]
-                new_record = [record[i] for i in self.not_groups if record[i] and i in list_cols_for_upload]
-                if new_record and p != 0:
-                    if metadata.get('answers',{}):
-                        proceso = self.crea_actualiza_record(metadata, self.existing_records, error_records, records, sets_in_row, dict_records_to_multi, dict_records_copy, self.ids_fields_no_update)
-                        if proceso:
-                            resultado[proceso] += 1
-                    answers = {}
-                if new_record:
-                    sets_in_row = {p: group_records[p]}
-                if no_en_zip:
-                    docs_no_found = ''
-                    docs_no_found += ', '.join([str(a) for a in no_en_zip if a])
-                    error_records.append(record+['Los documentos %s no se encontraron en el Zip'%(docs_no_found),])
-                    resultado['error'] += 1
-                    if new_record:
-                        subgrupo_errors = group_records[p]
-                        metadata = metadata_form.copy()
-                        metadata.update({'answers': {}})
-                    continue
-
-                answers = self.procesa_row(pos_field_dict, record, files_dir, nueva_ruta, id_forma_seleccionada, answers, p, dict_catalogs)
-                print('answers', answers)
-                if new_record:
-                    if self.folio_manual and not record[0]:
-                        error_records.append(record+['La forma tiene configurado el folio manual por lo que el registro requiere un número de Folio'])
-                        resultado['error'] += 1
-                        subgrupo_errors = group_records[p]
-                        continue
-                    metadata = metadata_form.copy()
-                    metadata.update({'answers': answers})
-                    if self.folio_manual or (self.header_dict.get('folio') and self.header_dict['folio'] == 0):
-                        metadata.update({'folio':str(record[0])})
-                if p == total_rows-1:
-                    if metadata == None:
-                        metadata = metadata_form.copy()
-                        metadata.update({'answers': answers})
-                        sets_in_row = {
-                            0: list(group_records.keys())
-                        }
+            #     record[1] = wh_dict_loc[record[1]] if wh_dict_loc.get(record[1]) else record[1]
+            # print('record', record)
+            if p in subgrupo_errors:
+                error_records.append(record+['',])
+                continue
+            # Recorro la lista de campos de tipo documento para determinar si el contenido en esa posición está dentro del zip de carga
+            no_en_zip = [record[i] for i in file_records if record[i] and record[i] not in files_dir]
+            new_record = [record[i] for i in self.not_groups if record[i] and i in list_cols_for_upload]
+            if new_record and p != 0:
+                if metadata.get('answers',{}):
                     proceso = self.crea_actualiza_record(metadata, self.existing_records, error_records, records, sets_in_row, dict_records_to_multi, dict_records_copy, self.ids_fields_no_update)
                     if proceso:
                         resultado[proceso] += 1
-            print('***************dict_records_to_multi update=',dict_records_to_multi['update'])
-            print('***************dict_records_to_multi update=',dict_records_to_multi['create'])
-            #print('***************dict_records_copy=',dict_records_copy)
-            #dict_sets_in_row = {}
-            if dict_records_to_multi['create']:
-                dict_sets_in_row = {x: list_create['sets_in_row'] for x, list_create in enumerate(dict_records_to_multi['create'])}
-                response_multi_post = self.lkf_api.post_forms_answers_list(dict_records_to_multi['create'])
-                print('===== response_multi_post:', response_multi_post)
-                for x, dict_res in enumerate(response_multi_post):
-                    sets_in_row = dict_sets_in_row[x]
-                    res_status = dict_res.get('status_code', 300)
-                    if res_status < 300:
-                        resultado['creados'] += 1
-                    else:
-                        resultado['error'] += 1
-                        msg_error_sistema = self.arregla_msg_error_sistema(dict_res)
-                        for g in sets_in_row:
-                            s = sets_in_row[g]
-                            error_records.append(dict_records_copy['create'][g]+[msg_error_sistema,])
-                            for dentro_grupo in s:
-                                error_records.append(dict_records_copy['create'][dentro_grupo]+['',])
-            if dict_records_to_multi['update']:
-                #dict_sets_in_row = {x: list_create['sets_in_row'] for x, list_create in enumerate(dict_records_to_multi['update'])}
-                response_bulk_patch = self.lkf_api.bulk_patch(dict_records_to_multi['update'], id_forma_seleccionada, threading=True)
-                print('===== response_bulk_patch=',response_bulk_patch)
-                for f in response_bulk_patch:
-                    dict_res = response_bulk_patch[ f ]
-                    sets_in_row = dict_records_copy['update'][f]
-                    res_status = dict_res.get('status_code', 300)
-                    if res_status < 300:
-                        resultado['actualizados'] += 1
-                    else:
-                        resultado['error'] += 1
-                        msg_error_sistema = self.arregla_msg_error_sistema(dict_res)
-                        for g in sets_in_row:
-                            s = sets_in_row[g]
-                            error_records.append(records[g]+[msg_error_sistema,])
-                            for dentro_grupo in s:
-                                error_records.append(records[dentro_grupo]+['',])
-            try:
-                if files_dir:
-                    # Elimino todos los archivos después de que ya los procesé
-                    for file_cargado in files_dir:
-                        os.remove(os.path.join(nueva_ruta, file_cargado))
-                    #os.remove(nueva_ruta+file)
-                    shutil.rmtree(nueva_ruta)
-            except Exception as e:
-                print("********************* exception borrado",e)
-                return False
-            if not resultado['error']:
-                if self.current_record['answers'].get(self.field_id_error_records):
-                    sin_file_error = self.current_record['answers'].pop(self.field_id_error_records)
-                if not resultado['creados'] and not resultado['actualizados']:
-                    return self.update_status_record('error', msg_comentarios='Registros Creados: %s, Actualizados: %s, No actualizados por información igual: %s'%(str(resultado['creados']), str(resultado['actualizados']), str(resultado['no_update'])))
-                else:
-                    return self.update_status_record('carga_terminada', msg_comentarios='Registros Creados: %s, Actualizados: %s, No actualizados por información igual: %s'%(str(resultado['creados']), str(resultado['actualizados']), str(resultado['no_update'])))
-            else:
-                if error_records:
-                    if self.record_id:
-                        self.current_record['answers'].update( self.lkf_api.make_excel_file(self.header + ['error',], error_records, self.current_record['form_id'], self.field_id_error_records) )
-                    else:
-                        error_file = self.lkf_api.make_excel_file(self.header + ['error',], error_records, None, self.field_id_error_records, is_tmp=True)
-                        dict_respuesta = {
-                            'error': 'Registros Creados: {}, Actualizados: {}, Erroneos: {}, No actualizados por información igual: {}'.format( resultado['creados'], resultado['actualizados'], resultado['error'], resultado['no_update'] )
-                        }
-                        dict_respuesta.update(error_file)
-                        return dict_respuesta
-                return self.update_status_record('error', msg_comentarios='Registros Creados: %s, Actualizados: %s, Erroneos: %s, No actualizados por información igual: %s'%(str(resultado['creados']), str(resultado['actualizados']), str(resultado['error']), str(resultado['no_update'])))
-            return True
-        # except Exception as e:
-        #     print("------------------- error:",e)
-        #     return self.update_status_record(current_record, record_id, 'error', msg_comentarios='Ocurrió un error inesperado, favor de contactar a soporte')
+                answers = {}
+            if new_record:
+                sets_in_row = {p: group_records[p]}
+            if no_en_zip:
+                docs_no_found = ''
+                docs_no_found += ', '.join([str(a) for a in no_en_zip if a])
+                error_records.append(record+['Los documentos %s no se encontraron en el Zip'%(docs_no_found),])
+                resultado['error'] += 1
+                if new_record:
+                    subgrupo_errors = group_records[p]
+                    metadata = metadata_form.copy()
+                    metadata.update({'answers': {}})
+                continue
 
+            answers = self.procesa_row(pos_field_dict, record, files_dir, nueva_ruta, id_forma_seleccionada, answers, p, dict_catalogs)
+            print('EXAMPLE ANSWERS!!!', answers)
+            if new_record:
+                if self.folio_manual and not record[0]:
+                    error_records.append(record+['La forma tiene configurado el folio manual por lo que el registro requiere un número de Folio'])
+                    resultado['error'] += 1
+                    subgrupo_errors = group_records[p]
+                    continue
+                metadata = metadata_form.copy()
+                metadata.update({'answers': answers})
+                
+                metadata.update({
+                    "user_id": answer_fields.get('user_id', ''),
+                    "user_name": answer_fields.get('user_name', ''),
+                    "assets": answer_fields.get('assets', {}),
+                    "created_at": answer_fields.get('created_at', ''),
+                    "updated_at": answer_fields.get('updated_at', ''),
+                    "editable": answer_fields.get('editable', True),
+                    "start_timestamp": answer_fields.get('start_timestamp', 0),
+                    "end_timestamp": answer_fields.get('end_timestamp', 0),
+                    "start_date": answer_fields.get('start_date', ''),
+                    "end_date": answer_fields.get('end_date', ''),
+                    "duration": answer_fields.get('duration', 0),
+                    "created_by_id": answer_fields.get('created_by_id', ''),
+                    "created_by_name": answer_fields.get('created_by_name', ''),
+                    "created_by_email": answer_fields.get('created_by_email', ''),
+                    "timezone": answer_fields.get('timezone', ''),
+                    "tz_offset": answer_fields.get('tz_offset', 0),
+                    "other_versions": answer_fields.get('other_versions', []),
+                    "voucher_id": answer_fields.get('voucher_id', '')
+                })
+                
+                if self.folio_manual or (self.header_dict.get('folio') and self.header_dict['folio'] == 0):
+                    metadata.update({'folio':str(record[0])})
+            if p == total_rows-1:
+                if metadata == None:
+                    metadata = metadata_form.copy()
+                    metadata.update({'answers': answers})
+                    sets_in_row = {
+                        0: list(group_records.keys())
+                    }
+                proceso = self.crea_actualiza_record(metadata, self.existing_records, error_records, records, sets_in_row, dict_records_to_multi, dict_records_copy, self.ids_fields_no_update)
+                if proceso:
+                    resultado[proceso] += 1
+                
+        for item in dict_records_to_multi['create']:            
+            item.pop("sets_in_row")
+            print('///ITEM', simplejson.dumps(item, indent=3))
+            res = self.cr.insert_one(item)
+            print('///RESULT', res)
+            
+            # res = self.cr.insert_many(dict_records_to_multi['create'])
+            # print('RESULTADO', res)
+            
+        #print('***************dict_records_copy=',dict_records_copy)
+        #dict_sets_in_row = {}
+        # if dict_records_to_multi['create']:
+        #     dict_sets_in_row = {x: list_create['sets_in_row'] for x, list_create in enumerate(dict_records_to_multi['create'])}
+        #     response_multi_post = self.lkf_api.post_forms_answers_list(dict_records_to_multi['create'])
+        #     #print('===== response_multi_post:', response_multi_post)
+        #     for x, dict_res in enumerate(response_multi_post):
+        #         sets_in_row = dict_sets_in_row[x]
+        #         res_status = dict_res.get('status_code', 300)
+        #         if res_status < 300:
+        #             resultado['creados'] += 1
+        #         else:
+        #             resultado['error'] += 1
+        #             msg_error_sistema = self.arregla_msg_error_sistema(dict_res)
+        #             for g in sets_in_row:
+        #                 s = sets_in_row[g]
+        #                 error_records.append(dict_records_copy['create'][g]+[msg_error_sistema,])
+        #                 for dentro_grupo in s:
+        #                     error_records.append(dict_records_copy['create'][dentro_grupo]+['',])
+        # if dict_records_to_multi['update']:
+        #     #dict_sets_in_row = {x: list_create['sets_in_row'] for x, list_create in enumerate(dict_records_to_multi['update'])}
+        #     response_bulk_patch = self.lkf_api.bulk_patch(dict_records_to_multi['update'], id_forma_seleccionada, threading=True)
+        #     print('===== response_bulk_patch=',response_bulk_patch)
+        #     for f in response_bulk_patch:
+        #         dict_res = response_bulk_patch[ f ]
+        #         sets_in_row = dict_records_copy['update'][f]
+        #         res_status = dict_res.get('status_code', 300)
+        #         if res_status < 300:
+        #             resultado['actualizados'] += 1
+        #         else:
+        #             resultado['error'] += 1
+        #             msg_error_sistema = self.arregla_msg_error_sistema(dict_res)
+        #             for g in sets_in_row:
+        #                 s = sets_in_row[g]
+        #                 error_records.append(records[g]+[msg_error_sistema,])
+        #                 for dentro_grupo in s:
+        #                     error_records.append(records[dentro_grupo]+['',])
+        try:
+            if files_dir:
+                # Elimino todos los archivos después de que ya los procesé
+                for file_cargado in files_dir:
+                    os.remove(os.path.join(nueva_ruta, file_cargado))
+                #os.remove(nueva_ruta+file)
+                #shutil.rmtree(nueva_ruta)
+        except Exception as e:
+            print("********************* exception borrado",e)
+            return False
+        if not resultado['error']:
+            if self.current_record['answers'].get(self.field_id_error_records):
+                sin_file_error = self.current_record['answers'].pop(self.field_id_error_records)
+            if not resultado['creados'] and not resultado['actualizados']:
+                return self.update_status_record('error', msg_comentarios='Registros Creados: %s, Actualizados: %s, No actualizados por información igual: %s'%(str(resultado['creados']), str(resultado['actualizados']), str(resultado['no_update'])))
+            else:
+                return self.update_status_record('carga_terminada', msg_comentarios='Registros Creados: %s, Actualizados: %s, No actualizados por información igual: %s'%(str(resultado['creados']), str(resultado['actualizados']), str(resultado['no_update'])))
+        else:
+            if error_records:
+                if self.record_id:
+                    self.current_record['answers'].update( self.lkf_api.make_excel_file(self.header + ['error',], error_records, self.current_record['form_id'], self.field_id_error_records) )
+                else:
+                    error_file = self.lkf_api.make_excel_file(self.header + ['error',], error_records, None, self.field_id_error_records, is_tmp=True)
+                    dict_respuesta = {
+                        'error': 'Registros Creados: {}, Actualizados: {}, Erroneos: {}, No actualizados por información igual: {}'.format( resultado['creados'], resultado['actualizados'], resultado['error'], resultado['no_update'] )
+                    }
+                    dict_respuesta.update(error_file)
+                    return dict_respuesta
+            return self.update_status_record('error', msg_comentarios='Registros Creados: %s, Actualizados: %s, Erroneos: %s, No actualizados por información igual: %s'%(str(resultado['creados']), str(resultado['actualizados']), str(resultado['error']), str(resultado['no_update'])))
+
+       
+    def procesa_row(self, pos_field_dict, record, files_dir, nueva_ruta, id_forma_seleccionada, answers, p, dict_catalogs):
+        print("entraaaa ")
+        #print(stop)
+        error = []
+        grupo_repetitivo = {}
+        fields_to_find_catalog = {}
+        for pos in pos_field_dict:
+            field = pos_field_dict[pos]
+            #print('---------- field label = {} default_value = {}'.format(field['label'], field.get('default_value')))
+            if not record[pos] and field.get('default_value'):
+                record[pos] = field['default_value']
+            if record[pos] or record[pos] == 0:
+                if field['field_type'] in ('images','file'):
+                    res_upload_docto = self.upload_docto(nueva_ruta, record[pos], id_forma_seleccionada, field['field_id'])
+                    if res_upload_docto.get('error'):
+                        error.append('Ocurrió un error al cargar el documento %s'%(str(record[pos])))
+                    else:
+                        if field['field_type'] == 'images':
+                            field_add = {field['field_id']: [res_upload_docto]}
+                        else:
+                            field_add = {field['field_id']: res_upload_docto}
+                        if field['group']:
+                            group_id = field.get('group').get('group_id')
+                            if not grupo_repetitivo.get(group_id):
+                                grupo_repetitivo.update({group_id: {}})
+                            grupo_repetitivo[group_id].update(field_add)
+                        else:
+                            answers.update(field_add)
+                elif field['field_type'] == 'catalog-select':
+                    catalog_field_id = field.get('catalog',{}).get('catalog_field_id','')
+                    if not fields_to_find_catalog.get(catalog_field_id):
+                        fields_to_find_catalog.update({catalog_field_id:[]})
+                    fields_to_find_catalog[catalog_field_id].append({field['field_id']: {'$eq': record[pos]}})
+                else:
+                    if field['field_type'] == "date":
+                        try:
+                            record[pos] = datetime.strptime(record[pos], "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d")
+                        except Exception:
+                            error.append(f'Formato de fecha incorrecto: {field["label"]}')
+                    elif field['field_type'] == "datetime":
+                        try:
+                            record[pos] = record[pos].strftime("%Y-%m-%d %H:%M:%S")
+                        except Exception:
+                            error.append(f'Formato de fecha y hora incorrecto: {field["label"]}')
+                    elif field['field_type'] == "time":
+                        try:
+                            record[pos] = record[pos].strftime("%H:%M:%S")
+                        except Exception:
+                            error.append(f'Formato de hora incorrecto: {field["label"]}')
+                    elif field['field_type'] == "email":
+                        email_validate = re.match(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)", record[pos])
+                        if not email_validate:
+                            error.append('La estructura del email no es correcta: '+field['label'])
+                    elif field['field_type'] == "checkbox":
+                        optsXls = [opCheck.lower().strip().replace(' ', '_') for opCheck in str(record[pos]).split(',')]
+                        optsAcepted = [ option['value'] for option in field['options'] ]
+                        esta_en_opciones = True
+                        for opxls in optsXls:
+                            if opxls not in optsAcepted:
+                                esta_en_opciones = False
+                                break
+                        if esta_en_opciones:
+                            str_opts = ''
+                            str_opts += ', '.join([a for a in optsXls if a])
+                            record[pos] = str_opts
+                        else:
+                            error.append('Alguna de las opciones no esta dentro de los valores definidos: '+field['label'])
+                    elif field['field_type'] in ["radio","select"]:
+                        record_value = record[pos].lower().replace(' ' ,'_')
+                        esta_en_opciones = False
+                        for option in field['options']:
+                            if record_value == option['value']:
+                                esta_en_opciones = True
+                                break
+                        if esta_en_opciones:
+                            record[pos] = record_value
+                        else:
+                            error.append('La opcion no esta dentro de los valores definidos: '+field['label'])
+                    elif field['field_type'] in ["text", "textarea", "description"]:
+                        #if isinstance(record[pos], types.UnicodeType):
+                        try:
+                            record[pos] = record[pos].decode('utf-8')
+                        except:
+                            pass
+                    elif field['field_type'] == "integer":
+                        try:
+                            record[pos] = int(record[pos])
+                        except:
+                            error.append('No es posible convertir una cadena a entero: '+field['label'])
+                    elif field['field_type'] == "decimal":
+                        try:
+                            record[pos] = float(record[pos])
+                        except:
+                            error.append('No es posible convertir una cadena a decimal: '+field['label'])
+                    # if isinstance(pos, types.IntType):
+                    #     if isinstance(record[pos], types.UnicodeType):
+                    #         record[pos] = record[pos].decode('utf-8')
+                    if field['group']:
+                        group_id = field.get('group').get('group_id')
+                        if not grupo_repetitivo.get(group_id):
+                            grupo_repetitivo.update({group_id: {}})
+                        grupo_repetitivo[group_id].update(self.lkf_api.make_infosync_json(record[pos], field, best_effort=True))
+                    else:
+                        answers.update(self.lkf_api.make_infosync_json(record[pos], field, best_effort=True))
+        if fields_to_find_catalog:
+            for id_cat in dict_catalogs:
+                cont_cat = dict_catalogs[id_cat]
+                filter_catalog = fields_to_find_catalog.get(id_cat,[])
+                filter_in_catalog = cont_cat.get('catalog',{}).get('filters',{})
+                if filter_in_catalog:
+                    #print("----- filter_in_catalog:",filter_in_catalog)
+                    filter_catalog.extend(filter_in_catalog['$and'])
+                if filter_catalog:
+                    catalog_id = cont_cat.get('catalog',{}).get('catalog_id','')
+                    #print("+++++ filter_catalog:",filter_catalog)
+                    #row_catalog = cat_utils.get_row_by_selector(catalog_id, {'$and':filter_catalog})
+                    mango_query = {"selector":
+                        {"answers":
+                            {"$and":filter_catalog}
+                        },
+                        "limit":20,"skip":0}
+                    row_catalog = self.lkf_api.search_catalog( catalog_id, mango_query )
+                    #print("+++++ row_catalog:",row_catalog)
+                    if row_catalog:
+                        catalog_fields = cont_cat.get('catalog_fields',[])
+                        view_fields = cont_cat.get('catalog',{}).get('view_fields',[])
+                        dict_row_catalog = row_catalog[0]
+                        dict_record_catalog_to_save = {}
+                        for id_field_catalog in dict_row_catalog:
+                            content_catalog = dict_row_catalog[id_field_catalog]
+                            if id_field_catalog in view_fields:
+                                dict_record_catalog_to_save.update({id_field_catalog: content_catalog})
+                            elif id_field_catalog in catalog_fields:
+                                if type(content_catalog) == list and content_catalog and type(content_catalog[0]) == dict and content_catalog[0].get('file_url'):
+                                    content_catalog = content_catalog[0]
+                                dict_record_catalog_to_save.update({id_field_catalog: [content_catalog]})
+                        if cont_cat['group']:
+                            group_id = cont_cat.get('group').get('group_id')
+                            if not grupo_repetitivo.get(group_id):
+                                grupo_repetitivo.update({group_id: {}})
+                            grupo_repetitivo[group_id].update({id_cat:dict_record_catalog_to_save})
+                        else:
+                            answers.update({id_cat:dict_record_catalog_to_save})
+                    else:
+                        print('----- No se encontro info en el catalogo con el filtro = ',mango_query)
+                        error.append('No se encontro informacion en el catalogo '+cont_cat['label'])
+        if grupo_repetitivo:
+            for id_g in grupo_repetitivo:
+                cont_g = grupo_repetitivo[id_g]
+                if answers.get(id_g):
+                    answers[id_g].append(cont_g)
+                else:
+                    answers.update({id_g: [cont_g]})
+        if error:
+            #print("---------error:",error)
+            msg_errores_row = ''
+            #msg_errores_row += ', '.join([str(a) for a in error if a])
+            for a in error:
+                if a:
+                    # if isinstance(a, types.UnicodeType):
+                    #     a = a.decode('utf-8')
+                    msg_errores_row += (a+', ')
+            answers.update({'error': 'Registro con errores'})
+            if not answers.get('dict_errors'):
+                answers.update({'dict_errors':{}})
+            answers['dict_errors'].update({p: msg_errores_row})
+            
+        print(f"Respuesta final para el registro {p}:\n ANSWERSSSS {answers}")
+        return answers
+
+    
     def get_record_answers(self, records, form_id):
         # self.load('Stock', **self.kwargs)
         self.load('JIT', **self.kwargs)
@@ -449,7 +710,7 @@ if __name__ == '__main__':
     class_obj.load('Stock', **class_obj.kwargs)
     jit_obj = JIT(settings, sys_argv=sys.argv, use_api=True)
     step = class_obj.data.get('step')
-    
+        
     if step == 'demanda':
         
         from_id = jit_obj.DEMANDA_UTIMOS_12_MES
