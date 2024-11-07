@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson
-import os
+import os, time
 from linkaform_api import settings
 from account_settings import *
 from datetime import datetime
@@ -257,72 +257,29 @@ class CargaUniversal(CargaUniversal):
     #         return date_value
     #     return None  # En caso de que el valor no sea ni string ni datetime, retorna None.
 
-
-    def get_fields_for_answers(self):
-        
-        now = datetime.now()
-        
-        fields = {}
-        fields['user_id'] = self.user['user_id']
-        fields['user_name'] = self.user['username']
-        fields['assets'] = {
-            "template_conf" : None,
-            "followers" : [ 
-                {
-                    "asset_id" : 16102,
-                    "email" : "linkaform@industriasmiller.com",
-                    "name" : "Industrias MIller",
-                    "username" : None,
-                    "rtype" : "user",
-                    "rules" : None
-                }
-            ],
-            "supervisors" : [],
-            "performers" : [],
-            "groups" : []
-        },
-        fields['created_at'] = now.isoformat()
-        fields['updated_at'] = now.isoformat()
-        fields['editable'] = True
-        fields['start_timestamp'] = 1730843497.972
-        fields['end_timestamp'] = 1730843554.625
-        fields['start_date'] = now.isoformat()
-        fields['end_date'] = now.isoformat()
-        fields['duration'] = 56
-        fields['created_by_id'] = self.user['user_id']
-        fields['created_by_name'] = self.user['username']
-        fields['created_by_email'] = "linkaform@industriasmiller.com"
-        fields['timezone'] = "America/Monterrey"
-        fields['tz_offset'] = 360
-        fields['other_versions'] = []
-        #fields['voucher_id'] = ''        
-    
-        return fields
-    
-    
     def carga_doctos_records(self, records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records):
         self.field_id_error_records = '5e32fbb498849f475cfbdca3'
         metadata_form = self.lkf_api.get_metadata(form_id=id_forma_seleccionada)
-        
-        answer_fields = self.get_fields_for_answers()
-        # print('///ANSWER FIELDS', answer_fields)
+        metadata_form.update(self.get_complete_metadata())
         # print(stop)
     
         # Necesito un diccionario que agrupe los registros que se crearán y los que están en un grupo repetitivo y pertenecen a uno principal
         file_records = [i for i in pos_field_dict if pos_field_dict[i]['field_type'] in ('file','images')]
         print("++++ file_records",file_records)
         # Agrego información de la carga
-        metadata_form.update({'properties': {"device_properties":{"system": "SCRIPT","process":"Carga Universal", "accion":'CREA Y ACTUALIZA REGISTROS DE CUALQUIER FORMA', "folio carga":self.current_record['folio'], "archive":"carga_documentos_a_forma.py"}}})
-        metadata = None
+        metadata_form.update({'properties': {"device_properties":{"system": "SCRIPT","process":"Carga Universal", "accion":'CREA Y ACTUALIZA REGISTROS DE CUALQUIER FORMA', "folio carga":self.folio, "archive":"carga_documentos_a_forma.py"}}})
         print("***** Empezando con la carga de documentos *****")
         resultado = {'creados':0,'error':0,'actualizados':0, 'no_update':0}
-        answers = {}
         total_rows = len(records)
         subgrupo_errors = []
         dict_records_to_multi = {'create': [], 'update': []}
-        dict_records_copy = {'create': [], 'update': {}}
         list_cols_for_upload = list( pos_field_dict.keys() )
+        print('len records', len(records))
+        upload_records = []
         for p, record in enumerate(records):
+            metadata = metadata_form.copy()
+            metadata.update({'folio': f"{self.folio}-{p}"})
+            answers = {}
             print("========================================== >> Procesando renglon:",p)
             # if step == 'carga_stock':
 
@@ -331,78 +288,20 @@ class CargaUniversal(CargaUniversal):
             if p in subgrupo_errors:
                 error_records.append(record+['',])
                 continue
-            # Recorro la lista de campos de tipo documento para determinar si el contenido en esa posición está dentro del zip de carga
-            no_en_zip = [record[i] for i in file_records if record[i] and record[i] not in files_dir]
-            new_record = [record[i] for i in self.not_groups if record[i] and i in list_cols_for_upload]
-            if new_record and p != 0:
-                if metadata.get('answers',{}):
-                    proceso = self.crea_actualiza_record(metadata, self.existing_records, error_records, records, sets_in_row, dict_records_to_multi, dict_records_copy, self.ids_fields_no_update)
-                    if proceso:
-                        resultado[proceso] += 1
-                answers = {}
-            if new_record:
-                sets_in_row = {p: group_records[p]}
-            if no_en_zip:
-                docs_no_found = ''
-                docs_no_found += ', '.join([str(a) for a in no_en_zip if a])
-                error_records.append(record+['Los documentos %s no se encontraron en el Zip'%(docs_no_found),])
-                resultado['error'] += 1
-                if new_record:
-                    subgrupo_errors = group_records[p]
-                    metadata = metadata_form.copy()
-                    metadata.update({'answers': {}})
-                continue
+            # proceso = self.crea_actualiza_record(metadata, self.existing_records, error_records, records, sets_in_row, dict_records_to_multi, dict_records_copy, self.ids_fields_no_update)
 
             answers = self.procesa_row(pos_field_dict, record, files_dir, nueva_ruta, id_forma_seleccionada, answers, p, dict_catalogs)
             print('EXAMPLE ANSWERS!!!', answers)
-            if new_record:
-                if self.folio_manual and not record[0]:
-                    error_records.append(record+['La forma tiene configurado el folio manual por lo que el registro requiere un número de Folio'])
-                    resultado['error'] += 1
-                    subgrupo_errors = group_records[p]
-                    continue
-                metadata = metadata_form.copy()
-                metadata.update({'answers': answers})
-                
-                metadata.update({
-                    "user_id": answer_fields.get('user_id', ''),
-                    "user_name": answer_fields.get('user_name', ''),
-                    "assets": answer_fields.get('assets', {}),
-                    "created_at": answer_fields.get('created_at', ''),
-                    "updated_at": answer_fields.get('updated_at', ''),
-                    "editable": answer_fields.get('editable', True),
-                    "start_timestamp": answer_fields.get('start_timestamp', 0),
-                    "end_timestamp": answer_fields.get('end_timestamp', 0),
-                    "start_date": answer_fields.get('start_date', ''),
-                    "end_date": answer_fields.get('end_date', ''),
-                    "duration": answer_fields.get('duration', 0),
-                    "created_by_id": answer_fields.get('created_by_id', ''),
-                    "created_by_name": answer_fields.get('created_by_name', ''),
-                    "created_by_email": answer_fields.get('created_by_email', ''),
-                    "timezone": answer_fields.get('timezone', ''),
-                    "tz_offset": answer_fields.get('tz_offset', 0),
-                    "other_versions": answer_fields.get('other_versions', []),
-                    "voucher_id": answer_fields.get('voucher_id', '')
-                })
-                
-                if self.folio_manual or (self.header_dict.get('folio') and self.header_dict['folio'] == 0):
-                    metadata.update({'folio':str(record[0])})
-            if p == total_rows-1:
-                if metadata == None:
-                    metadata = metadata_form.copy()
-                    metadata.update({'answers': answers})
-                    sets_in_row = {
-                        0: list(group_records.keys())
-                    }
-                proceso = self.crea_actualiza_record(metadata, self.existing_records, error_records, records, sets_in_row, dict_records_to_multi, dict_records_copy, self.ids_fields_no_update)
-                if proceso:
-                    resultado[proceso] += 1
-                
-        for item in dict_records_to_multi['create']:            
-            item.pop("sets_in_row")
-            print('///ITEM', simplejson.dumps(item, indent=3))
+            metadata.update({"answers":answers})
+            upload_records.append(metadata)
+
+
+        for item in upload_records:
+            # print('///ITEM', simplejson.dumps(item, indent=3))
             res = self.cr.insert_one(item)
-            print('///RESULT', res)
+            print('///RESULT', dir(res))
+            print('///RESULT', res.acknowledged)
+            print('///RESULT id ', res.inserted_id)
             
             # res = self.cr.insert_many(dict_records_to_multi['create'])
             # print('RESULTADO', res)
@@ -473,10 +372,9 @@ class CargaUniversal(CargaUniversal):
                     dict_respuesta.update(error_file)
                     return dict_respuesta
             return self.update_status_record('error', msg_comentarios='Registros Creados: %s, Actualizados: %s, Erroneos: %s, No actualizados por información igual: %s'%(str(resultado['creados']), str(resultado['actualizados']), str(resultado['error']), str(resultado['no_update'])))
-
        
     def procesa_row(self, pos_field_dict, record, files_dir, nueva_ruta, id_forma_seleccionada, answers, p, dict_catalogs):
-        print("entraaaa ")
+        print("entraaaa ", record)
         #print(stop)
         error = []
         grupo_repetitivo = {}
@@ -645,6 +543,44 @@ class CargaUniversal(CargaUniversal):
         print(f"Respuesta final para el registro {p}:\n ANSWERSSSS {answers}")
         return answers
 
+    def get_complete_metadata(self):
+        now = datetime.now()
+        fields = {}
+        fields['user_id'] = self.user['user_id']
+        fields['user_name'] = self.user['username']
+        fields['assets'] = {
+            "template_conf" : None,
+            "followers" : [ 
+                {
+                    "asset_id" : self.user['user_id'],
+                    "email" : self.user['email'],
+                    "name" : "Industrias MIller",
+                    "username" : None,
+                    "rtype" : "user",
+                    "rules" : None
+                }
+            ],
+            "supervisors" : [],
+            "performers" : [],
+            "groups" : []
+        },
+        fields['created_at'] = now
+        fields['updated_at'] = now
+        fields['editable'] = True
+        fields['start_timestamp'] = time.time()
+        fields['end_timestamp'] = time.time()
+        fields['start_date'] = now
+        fields['end_date'] = now
+        fields['duration'] = 0
+        fields['created_by_id'] = self.user['user_id']
+        fields['created_by_name'] = self.user['username']
+        fields['created_by_email'] = "linkaform@industriasmiller.com"
+        fields['timezone'] = "America/Monterrey"
+        fields['tz_offset'] = -360
+        fields['other_versions'] = []
+        fields['voucher_id'] = '672409493680d9f01f30961f'        
+    
+        return fields
     
     def get_record_answers(self, records, form_id):
         # self.load('Stock', **self.kwargs)
@@ -706,7 +642,7 @@ class CargaUniversal(CargaUniversal):
 
 if __name__ == '__main__':
     class_obj = CargaUniversal(settings=settings, sys_argv=sys.argv, use_api=True)
-    class_obj.console_run()
+    # class_obj.console_run()
     class_obj.load('Stock', **class_obj.kwargs)
     jit_obj = JIT(settings, sys_argv=sys.argv, use_api=True)
     step = class_obj.data.get('step')
