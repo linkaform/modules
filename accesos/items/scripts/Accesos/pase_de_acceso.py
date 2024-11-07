@@ -15,12 +15,15 @@ if __name__ == "__main__":
     data = acceso_obj.data.get('data',{})
     option = data.get("option",'')
     location = data.get("location",'')
+    folio = data.get("folio",'')
     access_pass = data.get("access_pass",{})
     if option == 'assets_access_pass':
         # used
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
     elif option == 'create_access_pass' or option == 'crear_pase':
-        response = acceso_obj.create_access_pass(location, access_pass)
+        response = acceso_obj.create_access_pass(location, access_pass) 
+    elif option == 'update_pass':
+        response = acceso_obj.update_pass(access_pass,folio)
     elif option == 'area_by_location':
         response = acceso_obj.catalago_area_location(location)
     else :
