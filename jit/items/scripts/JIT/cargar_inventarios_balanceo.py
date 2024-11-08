@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import sys, simplejson
+import sys, simplejson, re
 import os, time
 from linkaform_api import settings
 from account_settings import *
@@ -10,6 +10,7 @@ from lkf_addons.addons.base.app import CargaUniversal
 # from lkf_addons.addons.stock.app import Stock
 # from lkf_addons.addons.jit.app import JIT
 from jit_utils import JIT
+from bson import ObjectId
 
 
 
@@ -245,86 +246,76 @@ class CargaUniversal(CargaUniversal):
             return records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records
         
 
-    # def convert_datetime_to_string(self, date_value):
-    #     '''
-    #     Convierte un objeto datetime a una cadena en formato ISO 8601.
-    #     '''
-    #     if isinstance(date_value, datetime):
-    #         # Si el valor es un objeto datetime, lo convertimos a formato ISO 8601
-    #         return date_value.isoformat()
-    #     elif isinstance(date_value, str):
-    #         # Si ya es una cadena, retornamos la cadena tal cual
-    #         return date_value
-    #     return None  # En caso de que el valor no sea ni string ni datetime, retorna None.
-
     def carga_doctos_records(self, records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records):
+        
+        #   Se utiliza para el registro de errores
         self.field_id_error_records = '5e32fbb498849f475cfbdca3'
+        
+        #   Obtiene una info de un formulario en específico que viene de metadata
         metadata_form = self.lkf_api.get_metadata(form_id=id_forma_seleccionada)
+        
+        #   Complementa la información del formulario con ayuda del método get_complete_metadata
         metadata_form.update(self.get_complete_metadata())
-        # print(stop)
-    
+        
         # Necesito un diccionario que agrupe los registros que se crearán y los que están en un grupo repetitivo y pertenecen a uno principal
         file_records = [i for i in pos_field_dict if pos_field_dict[i]['field_type'] in ('file','images')]
-        print("++++ file_records",file_records)
-        # Agrego información de la carga
+        
+        # Agrego información de la carga, se vuelve a actualizar metadata_form, agregando el campo properties
         metadata_form.update({'properties': {"device_properties":{"system": "SCRIPT","process":"Carga Universal", "accion":'CREA Y ACTUALIZA REGISTROS DE CUALQUIER FORMA', "folio carga":self.folio, "archive":"carga_documentos_a_forma.py"}}})
-        print("***** Empezando con la carga de documentos *****")
+        
+        #   Se crea un dic en el que se almacenan los registros creados, errores, actualizados y no actualizados
         resultado = {'creados':0,'error':0,'actualizados':0, 'no_update':0}
-        total_rows = len(records)
+        total_rows = len(records)   #   Longitud total de registros del diccionario "resultado"
+        
+        #   Manejo del subgrupo de errores
         subgrupo_errors = []
-        dict_records_to_multi = {'create': [], 'update': []}
-        list_cols_for_upload = list( pos_field_dict.keys() )
-        print('len records', len(records))
-        upload_records = []
+        
+        #   Se crea el diccionario donde se almacenaran los registros creados o actualizados
+        dict_records_copy = {'create': [], 'update': {}}
+        upload_records = [] #   aquí se almacenan los registros procesados y listos para cargar
+        
+        #   Se recorre el numero de registros, se asigna un folio y se agrega a metada_form
         for p, record in enumerate(records):
-            metadata = metadata_form.copy()
+            metadata = metadata_form.copy() #   copia de metafa_form
             metadata.update({'folio': f"{self.folio}-{p}"})
             answers = {}
-            print("========================================== >> Procesando renglon:",p)
-            # if step == 'carga_stock':
-
-            #     record[1] = wh_dict_loc[record[1]] if wh_dict_loc.get(record[1]) else record[1]
-            # print('record', record)
+            
             if p in subgrupo_errors:
                 error_records.append(record+['',])
                 continue
-            # proceso = self.crea_actualiza_record(metadata, self.existing_records, error_records, records, sets_in_row, dict_records_to_multi, dict_records_copy, self.ids_fields_no_update)
+            #proceso = self.crea_actualiza_record(metadata, self.existing_records, error_records, records, sets_in_row, dict_records_to_multi, dict_records_copy, self.ids_fields_no_update)
 
+            #   Se manda a llamar procesa_row para obtener los datos, se actualiza metada agregando el diccionario answers con todos los valores
             answers = self.procesa_row(pos_field_dict, record, files_dir, nueva_ruta, id_forma_seleccionada, answers, p, dict_catalogs)
-            print('EXAMPLE ANSWERS!!!', answers)
             metadata.update({"answers":answers})
             upload_records.append(metadata)
 
-
-        for item in upload_records:
-            # print('///ITEM', simplejson.dumps(item, indent=3))
-            res = self.cr.insert_one(item)
-            print('///RESULT', dir(res))
-            print('///RESULT', res.acknowledged)
-            print('///RESULT id ', res.inserted_id)
+        #   Inserta el documento completo a mongodb
+        res = self.cr.insert_many(upload_records)
+        
+        if upload_records:
+            print('///UPLOAD_RECORDS', upload_records)
+            print('///IDDDD', id_forma_seleccionada)
+            response_bulk_patch = self.lkf_api.bulk_patch(upload_records, id_forma_seleccionada, threading=True)
+            print('===== response_bulk_patch=', response_bulk_patch)
+            for bulk in response_bulk_patch:
+                print('///BULK_PATCH', bulk)
             
-            # res = self.cr.insert_many(dict_records_to_multi['create'])
-            # print('RESULTADO', res)
-            
-        #print('***************dict_records_copy=',dict_records_copy)
-        #dict_sets_in_row = {}
-        # if dict_records_to_multi['create']:
-        #     dict_sets_in_row = {x: list_create['sets_in_row'] for x, list_create in enumerate(dict_records_to_multi['create'])}
-        #     response_multi_post = self.lkf_api.post_forms_answers_list(dict_records_to_multi['create'])
-        #     #print('===== response_multi_post:', response_multi_post)
-        #     for x, dict_res in enumerate(response_multi_post):
-        #         sets_in_row = dict_sets_in_row[x]
-        #         res_status = dict_res.get('status_code', 300)
-        #         if res_status < 300:
-        #             resultado['creados'] += 1
-        #         else:
-        #             resultado['error'] += 1
-        #             msg_error_sistema = self.arregla_msg_error_sistema(dict_res)
-        #             for g in sets_in_row:
-        #                 s = sets_in_row[g]
-        #                 error_records.append(dict_records_copy['create'][g]+[msg_error_sistema,])
-        #                 for dentro_grupo in s:
-        #                     error_records.append(dict_records_copy['create'][dentro_grupo]+['',])
+        
+            # for x, dict_res in enumerate(response_multi_post):
+            #     sets_in_row = dict_sets_in_row[x]
+            #     res_status = dict_res.get('status_code', 300)
+            #     if res_status < 300:
+            #         resultado['creados'] += 1   
+            #     else:
+            #         resultado['error'] += 1
+            #         msg_error_sistema = self.arregla_msg_error_sistema(dict_res)
+            #         for g in sets_in_row:
+            #             s = sets_in_row[g]
+            #             error_records.append(dict_records_copy['create'][g]+[msg_error_sistema,])
+            #             for dentro_grupo in s:
+            #                 error_records.append(dict_records_copy['create'][dentro_grupo]+['',])
+                            
         # if dict_records_to_multi['update']:
         #     #dict_sets_in_row = {x: list_create['sets_in_row'] for x, list_create in enumerate(dict_records_to_multi['update'])}
         #     response_bulk_patch = self.lkf_api.bulk_patch(dict_records_to_multi['update'], id_forma_seleccionada, threading=True)
@@ -343,6 +334,7 @@ class CargaUniversal(CargaUniversal):
         #                 error_records.append(records[g]+[msg_error_sistema,])
         #                 for dentro_grupo in s:
         #                     error_records.append(records[dentro_grupo]+['',])
+        
         try:
             if files_dir:
                 # Elimino todos los archivos después de que ya los procesé
@@ -372,6 +364,7 @@ class CargaUniversal(CargaUniversal):
                     dict_respuesta.update(error_file)
                     return dict_respuesta
             return self.update_status_record('error', msg_comentarios='Registros Creados: %s, Actualizados: %s, Erroneos: %s, No actualizados por información igual: %s'%(str(resultado['creados']), str(resultado['actualizados']), str(resultado['error']), str(resultado['no_update'])))
+       
        
     def procesa_row(self, pos_field_dict, record, files_dir, nueva_ruta, id_forma_seleccionada, answers, p, dict_catalogs):
         print("entraaaa ", record)
@@ -409,19 +402,25 @@ class CargaUniversal(CargaUniversal):
                 else:
                     if field['field_type'] == "date":
                         try:
-                            record[pos] = datetime.strptime(record[pos], "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d")
-                        except Exception:
-                            error.append(f'Formato de fecha incorrecto: {field["label"]}')
+                            record[pos] = record[pos].strftime("%Y-%m-%d")
+                        except:
+                            try:
+                                if not re.match(r"(\d{4}-\d{2}-\d{2})", record[pos]):
+                                    error.append('Formato de fecha incorrecto: '+field['label'])
+                            except:
+                                error.append('Formato de fecha incorrecto: '+field['label'])
                     elif field['field_type'] == "datetime":
                         try:
                             record[pos] = record[pos].strftime("%Y-%m-%d %H:%M:%S")
-                        except Exception:
-                            error.append(f'Formato de fecha y hora incorrecto: {field["label"]}')
+                        except:
+                            if not re.match(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})", record[pos]):
+                                error.append('Formato de fecha y hora incorrecto: '+field['label'])
                     elif field['field_type'] == "time":
                         try:
                             record[pos] = record[pos].strftime("%H:%M:%S")
-                        except Exception:
-                            error.append(f'Formato de hora incorrecto: {field["label"]}')
+                        except:
+                            if not re.match(r"(\d{2}:\d{2}:\d{2})", record[pos]):
+                                error.append('Formato de hora incorrecto: '+field['label'])
                     elif field['field_type'] == "email":
                         email_validate = re.match(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)", record[pos])
                         if not email_validate:
@@ -543,8 +542,12 @@ class CargaUniversal(CargaUniversal):
         print(f"Respuesta final para el registro {p}:\n ANSWERSSSS {answers}")
         return answers
 
+
     def get_complete_metadata(self):
+        
         now = datetime.now()
+        format_date = int(now.timestamp())  # Converting to timestamp
+        
         fields = {}
         fields['user_id'] = self.user['user_id']
         fields['user_name'] = self.user['username']
@@ -563,7 +566,7 @@ class CargaUniversal(CargaUniversal):
             "supervisors" : [],
             "performers" : [],
             "groups" : []
-        },
+        }
         fields['created_at'] = now
         fields['updated_at'] = now
         fields['editable'] = True
@@ -578,7 +581,7 @@ class CargaUniversal(CargaUniversal):
         fields['timezone'] = "America/Monterrey"
         fields['tz_offset'] = -360
         fields['other_versions'] = []
-        fields['voucher_id'] = '672409493680d9f01f30961f'        
+        fields['voucher_id'] = ObjectId('672409493680d9f01f30961f')        
     
         return fields
     
@@ -646,6 +649,7 @@ if __name__ == '__main__':
     class_obj.load('Stock', **class_obj.kwargs)
     jit_obj = JIT(settings, sys_argv=sys.argv, use_api=True)
     step = class_obj.data.get('step')
+    #step = 'carga_stock'
         
     if step == 'demanda':
         
@@ -679,7 +683,7 @@ if __name__ == '__main__':
             '',
             '',
             'actual_inventory:_actual_qty', 
-            ]
+        ]
         estatus = 'stock_actualizado'
 
     #print('header', header)
