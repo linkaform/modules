@@ -658,6 +658,7 @@ if __name__ == '__main__':
     step = 'carga_stock'
     # for step in ['demanda']:
     #for step in [ 'carga_stock']:
+    estatus = 'demanda_cargada'
     for step in ['demanda', 'carga_stock']:
         if step == 'demanda':
             
@@ -671,7 +672,6 @@ if __name__ == '__main__':
                 '', 
                 'demanda_ultimos_12_meses',]
 
-            estatus = 'demanda_cargada'
             borrar = class_obj.answers.get(jit_obj.f.get('borrar_historial'))
             if borrar == 'si':
                 jit_obj.borrar_historial()
@@ -702,7 +702,6 @@ if __name__ == '__main__':
             ]
             records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records = class_obj.carga_doctos_headers(own_header=header,form_id_to_load=from_id)
             new_ids = class_obj.carga_doctos_records(records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records )
-            estatus = 'stock_actualizado'
         elif step == 'carga_adjust_stock':
             from_id = class_obj.Stock.STOCK_INVENTORY_ADJUSTMENT_ID
             header = [
@@ -718,7 +717,6 @@ if __name__ == '__main__':
                 '',
                 'actual_inventory:_actual_qty', 
             ]
-            estatus = 'stock_actualizado'
 
         #print('header', header)
     res = class_obj.update_status_record(estatus)
