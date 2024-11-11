@@ -202,6 +202,7 @@ def get_catalog_product_field(id_field):
 
 if __name__ == "__main__":
     script_obj = base.LKF_Base(settings, sys_argv=sys.argv, use_api=True)
+    script_obj.console_run()
     report_obj = Reports(settings, sys_argv=sys.argv, use_api=True)
     prod_obj = Product(settings, sys_argv=sys.argv, use_api=True)
     stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
@@ -276,14 +277,20 @@ if __name__ == "__main__":
             if stock_dict.get(code):
                 stock_dict[code][f'actuals_{warehouse}'] = x['actuals']
         
+        print('stock_dict=', stock_dict)
         for x in res_first:
             code = x['product_code']
             warehouse = x['warehouse'].lower().replace(' ','_')
             print('warehouse', warehouse)
             
             if stock_dict.get(code):
+                print('code', code)
+                print('stock_dict[code]', stock_dict[code])
                 stock_dict[code][f'stock_max_{warehouse}'] = x['stock_maximum']
-                stock_dict[code][f'p_stock_max_{warehouse}'] = round((stock_dict[code].get(f'actuals_{warehouse}', 0) / x[f'stock_maximum']) * 100, 2)
+                if x[f'stock_maximum'] == 0:
+                    stock_dict[code][f'p_stock_max_{warehouse}'] = 0
+                else:
+                    stock_dict[code][f'p_stock_max_{warehouse}'] = round((stock_dict[code].get(f'actuals_{warehouse}', 0) / x[f'stock_maximum']) * 100, 2)
                     
         stock_list = list(stock_dict.values())
         
