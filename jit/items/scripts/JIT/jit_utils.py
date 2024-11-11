@@ -26,6 +26,7 @@ class JIT(JIT, Stock):
             self.STOCK_INVENTORY_ADJUSTMENT_ID,
             self.FORM_INVENTORY_ID,
             self.PROCURMENT,
+            self.FORM_INVENTORY_ID,
         ]
         self.cr.delete_many({'form_id':{'$in':forms}}) #    or _delete
         

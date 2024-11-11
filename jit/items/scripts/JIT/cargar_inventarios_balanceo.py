@@ -18,7 +18,11 @@ wh_dict_loc = {'ALM GUADALAJARA':'CEDIS GUADALAJARA'}
 
 class CargaUniversal(CargaUniversal):
     
-    
+
+    def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False, **kwargs):
+        super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
+        self.carga_catalogs = {}
+
     def carga_doctos_headers(self, form_id_to_load=None, read_excel_from=None, own_header=[]):
         if self.record_id:
             self.update_status_record('procesando')
@@ -75,7 +79,6 @@ class CargaUniversal(CargaUniversal):
             #print("+++ files_dir:",files_dir)
             # self.header_dict contiene un diccionario con las cabeceras del xls y su posición, por ejemplo {cabecera1: 0}, los espacios se reemplazan por _
             self.header_dict = self.make_header_dict(self.header)
-            print("------- header_dict=",self.header_dict)
             # Valido que si el folio es manual venga una columna Folio en la primera columna del excel
             if self.folio_manual and (not self.header_dict.get('folio') or self.header_dict['folio'] > 0):
                 return self.update_status_record('error', msg_comentarios='La forma tiene configurado el Folio manual y el archivo de carga no cuenta con la columna Folio')
@@ -83,7 +86,6 @@ class CargaUniversal(CargaUniversal):
             self.existing_records = {}
             if self.header_dict.get('folio') and self.header_dict['folio'] == 0:
                 folios = [self.strip_special_characters(rec[0]) for rec in records if rec[0]]
-                self.existing_records = self.get_records_existentes(id_forma_seleccionada, folios)
                 #print("---------- self.existing_records:",self.existing_records)
             #print("++++ self.header_dict:",self.header_dict)
             # pos_field_dict contiene un diccionario con la posición del campo dentro de los registros del excel
@@ -91,7 +93,7 @@ class CargaUniversal(CargaUniversal):
                 if f['label'].lower() != 'folio'
                 and f['field_type'] not in ('catalog','catalog-select','catalog-detail')
                 and f['label'].lower().replace(' ','_') in self.header_dict.keys()}
-            # print( 'pos_field_dict=',pos_field_dict)
+
 
             self.ids_fields_no_update = [f['field_id'] for f in info_fields if f.get('label', '').lower().replace(' ','_') in self.fields_no_update]
             #print 'self.ids_fields_no_update=',self.ids_fields_no_update
@@ -106,6 +108,7 @@ class CargaUniversal(CargaUniversal):
             dict_grupos = {f['field_id']:f['label'].lower().replace(' ','_') for f in info_fields if f['groups_fields']}
             #print("+++++ dict_grupos:",dict_grupos)
             #print("+++++ dict_catalogs:",dict_catalogs)
+
             for idc in dict_catalogs:
                 ccat = dict_catalogs[idc]
                 filters = ccat.get('catalog',{}).get('filters','')
@@ -119,7 +122,6 @@ class CargaUniversal(CargaUniversal):
                     if dict_filters.get(filters):
                         list_repeated_fields = self.get_repeated_ids_in_filter(dict_filters.get(filters, {}).get('$and', []))
                         if list_repeated_fields:
-                            print('list_repeated_fields =====',list_repeated_fields)
                             new_and = []
                             fields_or = {}
                             #dict_filters[filters]['$and'].append({'6205f73281bb36a6f1500000': {'$eq': 'Test01'}})
@@ -131,10 +133,8 @@ class CargaUniversal(CargaUniversal):
                                     fields_or[rr_idfield]['$or'].append(rr[rr_idfield])
                                 else:
                                     new_and.append(rr)
-                            print('........... fields_or=',fields_or)
                             for fff in fields_or:
                                 new_and.append({fff: fields_or[fff]})
-                            print('........... new_and=',new_and)
                             ccat['catalog']['filters'] = {'$and':new_and}
             #print("----- dict_catalogs con filtro:", dict_catalogs)
             # Reviso si existen grupos repetitivos en el archivo de carga
@@ -245,7 +245,6 @@ class CargaUniversal(CargaUniversal):
             metadata = None
             return records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records
         
-
     def carga_doctos_records(self, records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records):
         
         #   Se utiliza para el registro de errores
@@ -266,7 +265,6 @@ class CargaUniversal(CargaUniversal):
         #   Se crea un dic en el que se almacenan los registros creados, errores, actualizados y no actualizados
         resultado = {'creados':0,'error':0,'actualizados':0, 'no_update':0}
         total_rows = len(records)   #   Longitud total de registros del diccionario "resultado"
-        
         #   Manejo del subgrupo de errores
         subgrupo_errors = []
         
@@ -275,9 +273,14 @@ class CargaUniversal(CargaUniversal):
         upload_records = [] #   aquí se almacenan los registros procesados y listos para cargar
         
         #   Se recorre el numero de registros, se asigna un folio y se agrega a metada_form
+        today_date = datetime.today()
+        for_folio = f'{today_date.month}{today_date.day}{today_date.second}'
         for p, record in enumerate(records):
+            # if p > 2:
+            #     continue
+            # print('record=', record)
             metadata = metadata_form.copy() #   copia de metafa_form
-            metadata.update({'folio': f"{self.folio}-{p}"})
+            metadata.update({'folio': f"{self.folio}-{id_forma_seleccionada}-{for_folio}-{p}"})
             answers = {}
             
             if p in subgrupo_errors:
@@ -286,54 +289,31 @@ class CargaUniversal(CargaUniversal):
             #proceso = self.crea_actualiza_record(metadata, self.existing_records, error_records, records, sets_in_row, dict_records_to_multi, dict_records_copy, self.ids_fields_no_update)
 
             #   Se manda a llamar procesa_row para obtener los datos, se actualiza metada agregando el diccionario answers con todos los valores
-            answers = self.procesa_row(pos_field_dict, record, files_dir, nueva_ruta, id_forma_seleccionada, answers, p, dict_catalogs)
+            # answers = self.procesa_row(pos_field_dict, record, files_dir, nueva_ruta, id_forma_seleccionada, answers, p, dict_catalogs)
+            answers = self.merge_ans( record, pos_field_dict)
             metadata.update({"answers":answers})
             upload_records.append(metadata)
 
         #   Inserta el documento completo a mongodb
-        res = self.cr.insert_many(upload_records)
-        
+        ids = []
         if upload_records:
-            print('///UPLOAD_RECORDS', upload_records)
-            print('///IDDDD', id_forma_seleccionada)
-            response_bulk_patch = self.lkf_api.bulk_patch(upload_records, id_forma_seleccionada, threading=True)
-            print('===== response_bulk_patch=', response_bulk_patch)
-            for bulk in response_bulk_patch:
-                print('///BULK_PATCH', bulk)
+            res = self.cr.insert_many(upload_records)
+            try:
+                inserted_ids = res.inserted_ids
+                ids = [str(ids) for ids in inserted_ids]
+            except:
+                print('no econtro ids')
+        return ids
+
+        # if upload_records:
+        #     print('///UPLOAD_RECORDS', upload_records)
+        #     print('///IDDDD', id_forma_seleccionada)
+        #     response_bulk_patch = self.lkf_api.bulk_patch(upload_records, id_forma_seleccionada, threading=True)
+        #     print('===== response_bulk_patch=', response_bulk_patch)
+        #     for bulk in response_bulk_patch:
+        #         print('///BULK_PATCH', bulk)
             
-        
-            # for x, dict_res in enumerate(response_multi_post):
-            #     sets_in_row = dict_sets_in_row[x]
-            #     res_status = dict_res.get('status_code', 300)
-            #     if res_status < 300:
-            #         resultado['creados'] += 1   
-            #     else:
-            #         resultado['error'] += 1
-            #         msg_error_sistema = self.arregla_msg_error_sistema(dict_res)
-            #         for g in sets_in_row:
-            #             s = sets_in_row[g]
-            #             error_records.append(dict_records_copy['create'][g]+[msg_error_sistema,])
-            #             for dentro_grupo in s:
-            #                 error_records.append(dict_records_copy['create'][dentro_grupo]+['',])
-                            
-        # if dict_records_to_multi['update']:
-        #     #dict_sets_in_row = {x: list_create['sets_in_row'] for x, list_create in enumerate(dict_records_to_multi['update'])}
-        #     response_bulk_patch = self.lkf_api.bulk_patch(dict_records_to_multi['update'], id_forma_seleccionada, threading=True)
-        #     print('===== response_bulk_patch=',response_bulk_patch)
-        #     for f in response_bulk_patch:
-        #         dict_res = response_bulk_patch[ f ]
-        #         sets_in_row = dict_records_copy['update'][f]
-        #         res_status = dict_res.get('status_code', 300)
-        #         if res_status < 300:
-        #             resultado['actualizados'] += 1
-        #         else:
-        #             resultado['error'] += 1
-        #             msg_error_sistema = self.arregla_msg_error_sistema(dict_res)
-        #             for g in sets_in_row:
-        #                 s = sets_in_row[g]
-        #                 error_records.append(records[g]+[msg_error_sistema,])
-        #                 for dentro_grupo in s:
-        #                     error_records.append(records[dentro_grupo]+['',])
+        #         error_records.append(records[dentro_grupo]+['',])
         
         try:
             if files_dir:
@@ -365,7 +345,6 @@ class CargaUniversal(CargaUniversal):
                     return dict_respuesta
             return self.update_status_record('error', msg_comentarios='Registros Creados: %s, Actualizados: %s, Erroneos: %s, No actualizados por información igual: %s'%(str(resultado['creados']), str(resultado['actualizados']), str(resultado['error']), str(resultado['no_update'])))
        
-       
     def procesa_row(self, pos_field_dict, record, files_dir, nueva_ruta, id_forma_seleccionada, answers, p, dict_catalogs):
         print("entraaaa ", record)
         #print(stop)
@@ -373,6 +352,7 @@ class CargaUniversal(CargaUniversal):
         grupo_repetitivo = {}
         fields_to_find_catalog = {}
         for pos in pos_field_dict:
+            print('pos', pos)
             field = pos_field_dict[pos]
             #print('---------- field label = {} default_value = {}'.format(field['label'], field.get('default_value')))
             if not record[pos] and field.get('default_value'):
@@ -542,7 +522,6 @@ class CargaUniversal(CargaUniversal):
         print(f"Respuesta final para el registro {p}:\n ANSWERSSSS {answers}")
         return answers
 
-
     def get_complete_metadata(self):
         
         now = datetime.now()
@@ -615,7 +594,7 @@ class CargaUniversal(CargaUniversal):
                 row.insert(5,'') 
                 row.insert(6,demand) 
                 new_records.append(row)
-        elif form_id == self.Stock.STOCK_INVENTORY_ADJUSTMENT_ID:#123136:
+        elif form_id == self.Stock.FORM_INVENTORY_ID:#123136:
             for x in records[:]:
                 row = []
                 warehouse_id = x.pop(0)
@@ -624,23 +603,49 @@ class CargaUniversal(CargaUniversal):
                 sku = x.pop(0)
                 demand = x.pop(0)
                 inv = x.pop(0)
+                name = x.pop(0)
+                familia = x.pop(0)
+                linea = x.pop(0)
                 row.insert(0,'2024-10-01 12:00:00')
                 row.insert(1,'todo')
                 row.insert(2,warehouse_name) 
                 row.insert(3,wh_dict[warehouse_name]) 
                 row.insert(4,sku)
                 row.insert(5,sku)
-                row.insert(6,'lote1') 
-                row.insert(7,'todo') 
-                row.insert(8,'') 
+                row.insert(6,name) 
+                row.insert(7,familia) 
+                row.insert(8,linea) 
                 row.insert(9,'') 
                 row.insert(10,inv) 
                 new_records.append(row)
-                print('row=',row)
         return new_records
     
-    # def db_options(self):
-    #     print(dir(self.cr))
+    def merge_ans(self, rec, pos_field_dict):
+        answers = {}
+        for idx, field_data in pos_field_dict.items():
+            data = rec[idx]
+            answers.update(self.set_ans(field_data, data, answers=answers))
+        return answers
+
+    def set_ans(self, field_data, data, answers={}):
+        res = {}
+        f_id = field_data.get('field_id')
+        catalog = field_data.get('catalog')
+        if catalog:
+            catalog_id = field_data['catalog'].get('catalog_field_id')
+            if catalog_id:
+                res[catalog_id] = answers.get(catalog_id,{})
+                res[catalog_id][f_id] = data
+        else:
+            res[f_id] = data
+        answers.update(res)
+        return answers
+
+
+
+
+
+
 
 
 if __name__ == '__main__':
@@ -650,44 +655,71 @@ if __name__ == '__main__':
     jit_obj = JIT(settings, sys_argv=sys.argv, use_api=True)
     step = class_obj.data.get('step')
     #step = 'carga_stock'
-        
-    if step == 'demanda':
-        
-        from_id = jit_obj.DEMANDA_UTIMOS_12_MES
-        header = [
-            'fecha',
-            'almacen:_warehouse_name',
-            'unidad_de_medida:_unidad_de_medida', 
-            'producto:_product_code', 
-            'producto:_sku',
-            '', 
-            'demanda_ultimos_12_meses',]
+    step = 'carga_stock'
+    # for step in ['demanda']:
+    #for step in [ 'carga_stock']:
+    for step in ['demanda', 'carga_stock']:
+        if step == 'demanda':
+            
+            from_id = jit_obj.DEMANDA_UTIMOS_12_MES
+            header = [
+                'fecha',
+                'almacen:_warehouse_name',
+                'unidad_de_medida:_unidad_de_medida', 
+                'producto:_product_code', 
+                'producto:_sku',
+                '', 
+                'demanda_ultimos_12_meses',]
 
-        estatus = 'demanda_cargada'
-        borrar = class_obj.answers.get(jit_obj.f.get('borrar_historial'))
-        if borrar == 'si':
-            jit_obj.borrar_historial()
-        
-        #    print()
-    elif step == 'carga_stock':
-        from_id = class_obj.Stock.STOCK_INVENTORY_ADJUSTMENT_ID
-        header = [
-            'fecha',
-            'status',
-            'warehouse_location:_warehouse_name',
-            'warehouse_location:_location',
-            'actual_inventory:_product:_product_code', 
-            'actual_inventory:_product:_sku', 
-            'actual_inventory:_numero_de_lote', 
-            'actual_inventory:_adjust_status', 
-            '',
-            '',
-            'actual_inventory:_actual_qty', 
-        ]
-        estatus = 'stock_actualizado'
+            estatus = 'demanda_cargada'
+            borrar = class_obj.answers.get(jit_obj.f.get('borrar_historial'))
+            if borrar == 'si':
+                jit_obj.borrar_historial()
+            
+            records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records = class_obj.carga_doctos_headers(own_header=header,form_id_to_load=from_id)
+            new_ids = class_obj.carga_doctos_records(records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records )
+            res = class_obj.lkf_api.patch_multi_record(
+                answers={'673261f0f652eb86b4204906':'a'}, 
+                form_id=jit_obj.DEMANDA_UTIMOS_12_MES, 
+                record_id=new_ids,
+                threading=True,
+                )
+            #    print()
+        elif step == 'carga_stock':
+            from_id = class_obj.Stock.FORM_INVENTORY_ID
+            header = [
+                'fecha',
+                'status',
+                'warehouse:_warehouse_name',
+                'warehouse:_location',
+                'product_sku:_product_code',
+                'product_sku:_sku',
+                'product_sku:_nombre_de_producto',
+                'product_sku:_type',
+                'product_sku:_categoria',
+                '',
+                'unidades_actuales',
+            ]
+            records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records = class_obj.carga_doctos_headers(own_header=header,form_id_to_load=from_id)
+            new_ids = class_obj.carga_doctos_records(records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records )
+            estatus = 'stock_actualizado'
+        elif step == 'carga_adjust_stock':
+            from_id = class_obj.Stock.STOCK_INVENTORY_ADJUSTMENT_ID
+            header = [
+                'fecha',
+                'status',
+                'warehouse_location:_warehouse_name',
+                'warehouse_location:_location',
+                'actual_inventory:_product:_product_code', 
+                'actual_inventory:_product:_sku', 
+                'actual_inventory:_numero_de_lote', 
+                'actual_inventory:_adjust_status', 
+                '',
+                '',
+                'actual_inventory:_actual_qty', 
+            ]
+            estatus = 'stock_actualizado'
 
-    #print('header', header)
-    records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records = class_obj.carga_doctos_headers(own_header=header,form_id_to_load=from_id)
-    resp_cu = class_obj.carga_doctos_records(records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records )
+        #print('header', header)
     res = class_obj.update_status_record(estatus)
 
