@@ -31,6 +31,8 @@ if __name__ == "__main__":
         response = acceso_obj.update_pass(access_pass,folio)
     elif option == 'area_by_location':
         response = acceso_obj.catalago_area_location(location)
+    elif option == 'area_by_location_salidas':
+        response = acceso_obj.catalago_area_location_salidas(location)
     elif option == 'enviar_msj':
         response = acceso_obj.create_enviar_msj_pase(data_msj=data_msj, data_cel_msj=data_cel_msj, folio=folio)
     else :
