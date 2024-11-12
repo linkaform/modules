@@ -596,28 +596,32 @@ class CargaUniversal(CargaUniversal):
                 new_records.append(row)
         elif form_id == self.Stock.FORM_INVENTORY_ID:#123136:
             for x in records[:]:
-                row = []
-                warehouse_id = x.pop(0)
-                warehouse_name = x.pop(0)
-                warehouse_name = wh_dict_loc[warehouse_name] if wh_dict_loc.get(warehouse_name) else warehouse_name
-                sku = x.pop(0)
-                demand = x.pop(0)
-                inv = x.pop(0)
-                name = x.pop(0)
-                familia = x.pop(0)
-                linea = x.pop(0)
-                row.insert(0,'2024-10-01 12:00:00')
-                row.insert(1,'todo')
-                row.insert(2,warehouse_name) 
-                row.insert(3,wh_dict[warehouse_name]) 
-                row.insert(4,sku)
-                row.insert(5,sku)
-                row.insert(6,name) 
-                row.insert(7,familia) 
-                row.insert(8,linea) 
-                row.insert(9,'') 
-                row.insert(10,inv) 
-                new_records.append(row)
+                try:
+                    row = []
+                    warehouse_id = x.pop(0)
+                    warehouse_name = x.pop(0)
+                    print('warehouse_name',warehouse_name)
+                    warehouse_name = wh_dict_loc[warehouse_name] if wh_dict_loc.get(warehouse_name) else warehouse_name
+                    sku = x.pop(0)
+                    demand = x.pop(0)
+                    inv = x.pop(0)
+                    name = x.pop(0)
+                    familia = x.pop(0)
+                    linea = x.pop(0)
+                    row.insert(0,'2024-10-01 12:00:00')
+                    row.insert(1,'todo')
+                    row.insert(2,warehouse_name) 
+                    row.insert(3,wh_dict[warehouse_name]) 
+                    row.insert(4,sku)
+                    row.insert(5,sku)
+                    row.insert(6,name) 
+                    row.insert(7,familia) 
+                    row.insert(8,linea) 
+                    row.insert(9,'') 
+                    row.insert(10,inv) 
+                    new_records.append(row)
+                except:
+                    print('Row with data NOT found', x)
         return new_records
     
     def merge_ans(self, rec, pos_field_dict):
@@ -643,14 +647,9 @@ class CargaUniversal(CargaUniversal):
 
 
 
-
-
-
-
-
 if __name__ == '__main__':
     class_obj = CargaUniversal(settings=settings, sys_argv=sys.argv, use_api=True)
-    # class_obj.console_run()
+    class_obj.console_run()
     class_obj.load('Stock', **class_obj.kwargs)
     jit_obj = JIT(settings, sys_argv=sys.argv, use_api=True)
     step = class_obj.data.get('step')
