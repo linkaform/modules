@@ -6,12 +6,23 @@ from account_settings import *
 from oracle import Oracle
 
 class Oracle(Oracle):
-    pass
 
-    def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False):
-        super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
+    def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False, **kwargs):
+        print('kwtsss111111', kwargs)
+        # super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
+        super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
+        print('99999', self.kwargs)
+
+        self.class_cr = self.get_db_cr('Oracle')
         #use self.lkm.catalog_id() to get catalog id
         self.name =  __class__.__name__
+        self.load('Employee', **self.kwargs)
+        self.Employee.f.update({
+            'worker_code':'670f585bf844ff7bc357b1dc',
+            'worker_code':'670f585bf844ff7bc357b1dc',
+            
+            })
+        self.f.update(self.Employee.f)
         self.settings = settings
         self.etl_values = {
             'A':'Activo',
@@ -41,6 +52,21 @@ class Oracle(Oracle):
                     'TELEFONO1': self.f['phone'],
                     'TELEFONO2': self.f['phone2'],
                     'TIPO_CONTACTO': self.f['address_type'],
+                }
+            },
+            'LINK_EMPLEADOS_2':{
+                'catalog_id': self.Employee.EMPLEADOS_JEFES_DIRECTOS_ID,
+                'schema':{
+                    'DEPARTAMENTO': self.f['worker_department'],
+                    'CONTACTOID': self.f['worker_code_jefes'],
+                    'EMAIL': self.f['email'],
+                    'ESTADO_EMPLEADO': self.f['address_status'],
+                    'GENERO': self.f['genero_jefes'],
+                    'PUESTO': self.f['worker_position'],
+                    'RAZON_SOCIAL': self.f['worker_name_jefes'],
+                    'TELEFONO1': self.f['telefono1'],
+                    'DIRECCION_CAT': self.f['address_name'],
+                    'PICUTRE': self.f['picture_jefes'],
                 }
             },
             'LINK_CLIENTES':{
@@ -256,7 +282,7 @@ if __name__ == "__main__":
         views = list(module_obj.views.keys())
         module_obj.equipos = []
         module_obj.equipos_row = []
-        equipos_schema:{
+        equipos_schema ={
                     'VEHICULO_TALID': '_id',
                     'DESCRIPCION': module_obj.f['worker_position'],
                     }
