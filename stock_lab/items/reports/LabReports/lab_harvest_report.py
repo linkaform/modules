@@ -15,6 +15,7 @@ from account_settings import *
 
 from stock_report import Reports
 
+
 table_data = []
 plants = {}
 WEEKS = []
@@ -92,7 +93,7 @@ def arrange_info(data, stage, recipes3={}, recipes4={}):
     return res
 
 
-def get_report(report_obj, product_code, stage='S3'):
+def get_report(report_obj, product_code=None, stage='S3'):
     global plants, WEEKS
     res, all_codes = report_obj.query_get_stock(product_code, stage)
     greenhouse_stock, all_codes = report_obj.query_greenhouse_stock(product_code, all_codes)
@@ -102,13 +103,25 @@ def get_report(report_obj, product_code, stage='S3'):
     res = arrange_info(res, stage, recipesS3, recipesS4)
     return res
 
+
+def create_tableau_collection():
+    new_collection = report_obj.net.get_collections(collection='Tableau', create=True)
+    if new_collection:
+        print('Collection was created')
+        
+        
+def insert_tableau_data(report_obj, data):
+    get_tableau = report_obj.net.get_collections(collection='Tableau')
+    insert_data = get_tableau.insert_many(data)
+    if insert_data:
+        print('Data was inserted')
+
+    
 if __name__ == '__main__':
     report_obj = Reports(settings, sys_argv=sys.argv, use_api=True)
     report_obj.console_run()
-    #getFilters
     data = report_obj.data.get("data", {})
     product_code = data.get("product_code")
-    # product_code = 'LAGTW'
     response = get_report(report_obj, product_code)
     sys.stdout.write(simplejson.dumps(
         {"firstElement":{
