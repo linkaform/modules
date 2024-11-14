@@ -22,6 +22,11 @@ if __name__ == "__main__":
     access_pass = data.get("access_pass",{})
     data_msj=data.get("data_msj", {})
     data_cel_msj=data.get("data_cel_msj", {})
+    user_id= data.get("user_id")
+    marca = data.get('marca',"")
+    tipo = data.get('tipo',"")
+    option = data.get("option","")
+    qr_code=data.get("qr_code")
 
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
@@ -29,12 +34,23 @@ if __name__ == "__main__":
         response = acceso_obj.create_access_pass(location, access_pass) 
     elif option == 'update_pass':
         response = acceso_obj.update_pass(access_pass,folio)
-    elif option == 'area_by_location':
-        response = acceso_obj.catalago_area_location(location)
-    elif option == 'area_by_location_salidas':
-        response = acceso_obj.catalago_area_location_salidas(location)
+    elif option == 'catalogos_pase':
+        response = acceso_obj.catalagos_pase(user_id, location)
+    elif option == 'catalogos_pase_no_jwt':
+        response = acceso_obj.catalagos_pase_no_jwt(qr_code)
     elif option == 'enviar_msj':
         response = acceso_obj.create_enviar_msj_pase(data_msj=data_msj, data_cel_msj=data_cel_msj, folio=folio)
+    elif option == 'catalago_vehiculo':
+        if tipo and marca:
+            response = acceso_obj.vehiculo_modelo(tipo, marca)
+        elif tipo:
+            response = acceso_obj.vehiculo_marca(tipo)
+        else:
+            response = acceso_obj.vehiculo_tipo()
+    elif option == 'catalago_estados':
+        response = acceso_obj.catalogo_estados()
+    elif option == 'get_pass':
+        response = acceso_obj.get_pass_custom(qr_code)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
