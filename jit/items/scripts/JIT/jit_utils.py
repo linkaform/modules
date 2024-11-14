@@ -64,7 +64,14 @@ class JIT(JIT, Stock):
     def get_rutas_transpaso(self):
         all_prod = self.Product.get_product_catalog()
         res = {}
-        res = { p.get(self.Product.f['product_code']): p.get(self.Product.f['sku_percontainer']) for p in all_prod}
+        self.product_data = {}
+        for p in all_prod:
+            res[ p.get(self.Product.f['product_code'])] =  p.get(self.Product.f['sku_percontainer'])
+            self.product_data.update({sku:{
+                'linea':p.get(self.Product.f['linea'])
+                'familia':p.get(self.Product.f['product_category'])
+                }})
+        res = { p.get(self.Product.f['product_code']): p.get(self.Product.f['sku_percontainer']) for p in self.all_prod}
         return res
 
 
