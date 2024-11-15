@@ -21,7 +21,7 @@ class Stock(Stock):
         """
         Se revisa en el catalogo de productos que exista el codigo y sku para obtener la informacion en los readonly
         """
-        records_catalog = stock_obj.lkf_api.search_catalog( stock_obj.SKU_ID )
+        records_catalog = self.lkf_api.search_catalog( self.Product.SKU_ID )
         dict_skus = {}
         for r in records_catalog:
             productCode = r.get( self.f['product_code'] )
@@ -38,22 +38,22 @@ class Stock(Stock):
 
     def read_xls_file(self):
 
-        # header, records = stock_obj.read_file( file_url_xls )
+        # header, records = self.read_file( file_url_xls )
         data_xls = self.read_xls( self.mf['xls_file'] )
         if not data_xls:
             return False
         header = data_xls.get('header')
         records = data_xls.get('records')
-        header_dict = stock_obj.make_header_dict(header)
+        header_dict = self.make_header_dict(header)
         
         """
         # Se revisa que el excel tenga todas las columnas que se requieren para el proceso
         """
         cols_required = ['codigo_de_producto', 'sku', 'cantidad']
-        cols_not_found = stock_obj.check_keys_and_missing(cols_required, header_dict)
+        cols_not_found = self.check_keys_and_missing(cols_required, header_dict)
         if cols_not_found:
             cols_not_found = [ c.replace('_', ' ').title() for c in cols_not_found ]
-            self.LKFException( f'Se requieren las columnas: {stock_obj.list_to_str(cols_not_found)}' )
+            self.LKFException( f'Se requieren las columnas: {self.list_to_str(cols_not_found)}' )
 
         """
         # Se revisan los renglones del excel para verificar que los codigos y skus existan en el catalogo
@@ -95,13 +95,13 @@ class Stock(Stock):
             })
             
             sets_to_products.append({
-                self.SKU_OBJ_ID: info_product,
+                self.Product.SKU_OBJ_ID: info_product,
                 self.f['lot_number'] : "LotePCI001",
                 self.f['inv_adjust_grp_status'] : "todo",
                 self.f['move_group_qty'] : cantidad,
             })
         if error_rows:
-            self.LKFException( stock_obj.list_to_str(error_rows) )
+            self.LKFException( self.list_to_str(error_rows) )
         if self.answers.get( self.f['move_group'] ):
             self.answers[ self.f['move_group'] ] += sets_to_products
         else:
@@ -109,28 +109,28 @@ class Stock(Stock):
 
     def read_xls_onts(self):
 
-        # header, records = stock_obj.read_file( file_url_xls )
+        # header, records = self.read_file( file_url_xls )
         data_xls = self.read_xls( self.mf['xls_onts'] )
         if not data_xls:
             return False
         header = data_xls.get('header')
         records = data_xls.get('records')
-        header_dict = stock_obj.make_header_dict(header)
+        header_dict = self.make_header_dict(header)
         
         """
         # Se revisa que el excel tenga todas las columnas que se requieren para el proceso
         """
         cols_required = ['serie_ont']
-        cols_not_found = stock_obj.check_keys_and_missing(cols_required, header_dict)
+        cols_not_found = self.check_keys_and_missing(cols_required, header_dict)
         if cols_not_found:
             cols_not_found = [ c.replace('_', ' ').title() for c in cols_not_found ]
-            self.LKFException( f'Se requieren las columnas: {stock_obj.list_to_str(cols_not_found)}' )
+            self.LKFException( f'Se requieren las columnas: {self.list_to_str(cols_not_found)}' )
 
         pos_serie = header_dict.get('serie_ont')
         error_rows = []
         move_group = self.answers.get( self.f['move_group'], [] )
         if move_group:
-            capture_num_serie = stock_obj.unlist( move_group[0].get( self.SKU_OBJ_ID, {} ).get( self.mf['capture_num_serie'] ) ) == 'Si'
+            capture_num_serie = self.unlist( move_group[0].get( self.Product.SKU_OBJ_ID, {} ).get( self.mf['capture_num_serie'] ) ) == 'Si'
             cantidad_solicitada = move_group[0].get( self.f['move_group_qty'], 0 )
             if capture_num_serie and cantidad_solicitada:
                 if cantidad_solicitada != len( records ):
@@ -150,7 +150,7 @@ class Stock(Stock):
                         self.mf['num_serie'] : num_serie
                     })
                 if series_repeated:
-                    self.LKFException( 'Se encontraron series repetidas en el excel: {}'.format( stock_obj.list_to_str(series_repeated) ) )
+                    self.LKFException( 'Se encontraron series repetidas en el excel: {}'.format( self.list_to_str(series_repeated) ) )
                 self.answers[ self.mf['series_group'] ] = sets_to_series
 
     def read_series_ONTs(self):
@@ -166,11 +166,11 @@ class Stock(Stock):
         move_group = self.answers.get( self.f['move_group'], [] )[:]
         for idx, set_product in enumerate(move_group):
 
-            capture_num_serie = set_product.get( self.SKU_OBJ_ID, {} ).get( self.mf['capture_num_serie'] )
+            capture_num_serie = set_product.get( self.Product.SKU_OBJ_ID, {} ).get( self.mf['capture_num_serie'] )
             if capture_num_serie and type(capture_num_serie[0]) == list:
-                set_product[ self.SKU_OBJ_ID ][ self.mf['capture_num_serie'] ] = [ stock_obj.unlist(capture_num_serie) ]
+                set_product[ self.Product.SKU_OBJ_ID ][ self.mf['capture_num_serie'] ] = [ self.unlist(capture_num_serie) ]
 
-            capture_num_serie = stock_obj.unlist( set_product.get( self.SKU_OBJ_ID, {} ).get( self.mf['capture_num_serie'] ) ) == 'Si'
+            capture_num_serie = self.unlist( set_product.get( self.Product.SKU_OBJ_ID, {} ).get( self.mf['capture_num_serie'] ) ) == 'Si'
             cantidad_solicitada = set_product.get( self.f['move_group_qty'], 0 )
             if capture_num_serie and cantidad_solicitada:
                 if cantidad_solicitada != len( self.answers.get( self.mf['series_group'], [] ) ):
@@ -190,7 +190,7 @@ class Stock(Stock):
                     self.answers[ self.f['move_group'] ].insert( idx, row_set )
         
         if series_repeated:
-            self.LKFException( stock_obj.list_to_str( [f'Codigo {i[1]} esta repetido en el Set {i[0]}' for i in series_repeated] ) )
+            self.LKFException( self.list_to_str( [f'Codigo {i[1]} esta repetido en el Set {i[0]}' for i in series_repeated] ) )
         self.answers[self.mf['series_group']] = []
         return True
 

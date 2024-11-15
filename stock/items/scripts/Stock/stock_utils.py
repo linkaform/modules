@@ -7,7 +7,6 @@ from copy import deepcopy
 from lkf_addons.addons.stock.app import Stock
 from lkf_addons.addons.stock.report import Reports
 
-
 today = date.today()
 year_week = int(today.strftime('%Y%W'))
 
@@ -15,8 +14,9 @@ year_week = int(today.strftime('%Y%W'))
 class Stock(Stock, Reports):
 
     # _inherit = 'employee'
-    def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False):
+    def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False, **kwargs):
         print('stock utils.....')
+        self.load(module='JIT', **kwargs)
         super().__init__(settings, folio_solicitud=folio_solicitud, sys_argv=sys_argv, use_api=use_api)
 
 
@@ -38,7 +38,7 @@ class Stock(Stock, Reports):
         }
 
     def explote_kit(self, bom_lines, warehouse=None, location=None):
-        bom_res = super().explote_kit(bom_lines, warehouse, location)
+        bom_res = super().JIT.explote_kit(bom_lines, warehouse, location)
         add_row = 0
         rows_added = 0
         for idx, row in enumerate(bom_res):
