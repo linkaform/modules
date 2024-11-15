@@ -39,7 +39,9 @@ if __name__ == "__main__":
     elif option == 'catalogos_pase_no_jwt':
         response = acceso_obj.catalagos_pase_no_jwt(qr_code)
     elif option == 'enviar_msj':
-        response = acceso_obj.create_enviar_msj_pase(data_msj=data_msj, data_cel_msj=data_cel_msj, folio=folio)
+        response = acceso_obj.create_enviar_msj_pase(data_cel_msj=data_cel_msj, folio=folio)
+    elif option == 'enviar_correo':
+        response = acceso_obj.create_enviar_correo(data_msj=data_msj, folio=folio)
     elif option == 'catalago_vehiculo':
         if tipo and marca:
             response = acceso_obj.vehiculo_modelo(tipo, marca)
