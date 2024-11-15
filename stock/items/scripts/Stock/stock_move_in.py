@@ -31,8 +31,8 @@ class Stock(Stock):
             if not productCode or not productSku:
                 continue
             dict_skus[ f'{productCode}_{productSku}' ] = {
-                self.f['product_name']: [productName,],
-                self.mf['product_material']: productTipoMaterial if type(productTipoMaterial) == list else [productTipoMaterial,],
+                self.f['product_name']: [self.unlist(productName)],
+                self.mf['product_material']: productTipoMaterial if type(productTipoMaterial) == list else [productTipoMaterial] ,
             }
         return dict_skus
 

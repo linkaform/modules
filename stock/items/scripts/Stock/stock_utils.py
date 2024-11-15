@@ -5,19 +5,18 @@ from datetime import datetime, timedelta, date
 from copy import deepcopy
 
 from lkf_addons.addons.stock.app import Stock
-from lkf_addons.addons.stock.report import Reports
 
 today = date.today()
 year_week = int(today.strftime('%Y%W'))
 
 
-class Stock(Stock, Reports):
+class Stock(Stock):
 
     # _inherit = 'employee'
+
     def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False, **kwargs):
-        print('stock utils.....')
-        self.load(module='JIT', **kwargs)
         super().__init__(settings, folio_solicitud=folio_solicitud, sys_argv=sys_argv, use_api=use_api)
+        self.load('JIT', **self.kwargs)
 
 
         # La relacion entre la forma de inventario y el catalogo utilizado para el inventario
@@ -37,8 +36,38 @@ class Stock(Stock, Reports):
             'capture_num_serie': '66c75e0c0810217b0b5593ca'
         }
 
+
+    # def get_product_sku(self, all_codes):
+    #     #migrara a branch de magnolia
+    #     all_sku = []
+    #     for sku, product_code in all_codes.items():
+    #         if sku not in all_sku:
+    #             all_sku.append(sku.upper())
+    #     skus = {}
+    #     mango_query = self.product_sku_query(all_sku)
+    #     print('SKU_ID =',self.Product.SKU_ID)
+    #     print('mango_query =',mango_query)
+    #     sku_finds = self.lkf_api.search_catalog(self.Product.SKU_ID, mango_query)
+    #     for this_sku in sku_finds:
+    #             product_code = this_sku.get(self.f['product_code'])
+    #             skus[product_code] = skus.get(product_code, {})
+    #             skus[product_code].update({
+    #                 'sku':this_sku.get(self.f['sku']),
+    #                 'product_name':this_sku.get(self.f['product_name']),
+    #                 'product_category':this_sku.get(self.f['product_category']),
+    #                 'product_type':this_sku.get(self.f['product_type']),
+    #                 'product_department':this_sku.get(self.f['product_department']),
+    #                 'sku_color':this_sku.get(self.f['sku_color']),
+    #                 'sku_image':this_sku.get(self.f['sku_image'],),
+    #                 'sku_note':this_sku.get(self.f['sku_note'],),
+    #                 'sku_package':this_sku.get(self.f['reicpe_container'],),
+    #                 'sku_per_package':this_sku.get(self.f['reicpe_per_container'],),
+    #                 'sku_size' : this_sku.get(self.f['sku_size']),
+    #                 'sku_source' : this_sku.get(self.f['sku_source']),
+    #                 })
+ 
     def explote_kit(self, bom_lines, warehouse=None, location=None):
-        bom_res = super().JIT.explote_kit(bom_lines, warehouse, location)
+        bom_res = self.JIT.explote_kit(bom_lines, warehouse, location)
         add_row = 0
         rows_added = 0
         for idx, row in enumerate(bom_res):
@@ -120,7 +149,7 @@ class Stock(Stock, Reports):
                 print('moves', moves)
                 answers = self.stock_inventory_model(moves, skus[moves['product_code']], labels=True)
                 answers.update({
-                    self.WAREHOUSE_LOCATION_OBJ_ID:{
+                    self.WH.WAREHOUSE_LOCATION_OBJ_ID:{
                     self.f['warehouse']:warehouse_to,
                     self.f['warehouse_location']:location_to},
                     self.f['product_lot']:moves['product_lot']
