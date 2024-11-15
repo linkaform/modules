@@ -32,7 +32,7 @@ class Stock(Stock):
                 continue
             dict_skus[ f'{productCode}_{productSku}' ] = {
                 self.f['product_name']: [productName,],
-                self.mf['product_material']: [productTipoMaterial,],
+                self.mf['product_material']: productTipoMaterial if type(productTipoMaterial) == list else [productTipoMaterial,],
             }
         return dict_skus
 
