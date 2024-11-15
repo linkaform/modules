@@ -229,7 +229,7 @@ if __name__ == "__main__":
         #product_code = list(product_dict.keys())
         #print('///////////product dict', product_dict)
         product_code = list(product_dict.keys())
-        #product_code = ['750200301040']
+        #product_code = ['750200301061']
         #print('///////PRODUCT CODES', product_code)
         procurment = get_procurments(product_code=product_code)
         
@@ -268,7 +268,7 @@ if __name__ == "__main__":
                 }
             )
     
-            stock_dict[code].update({f'stock_to_move_{warehouse}': item['procurment_qty']})
+            stock_dict[code].update({f'stock_to_move_{warehouse}': round(item['procurment_qty'], 2)})
             stock_dict[code]['stock_final'] -= item['procurment_qty']
             
         for x in product_stock:
@@ -293,48 +293,48 @@ if __name__ == "__main__":
                     stock_dict[code][f'p_stock_max_{warehouse}'] = round((stock_dict[code].get(f'actuals_{warehouse}', 0) / x[f'stock_maximum']) * 100, 2)
                     
         stock_list = list(stock_dict.values())
-        
-        percentage_values = [40, 30, 70]
+                
+        # percentage_values = [40, 30, 70]
 
-        for items in stock_list:
-            maximum_stock_mty = 435
-            stock_max_alm_gdl = 170
-            #stock_max_alm_merida = items['stock_max_alm_merida']
-            initial_stock_cedis = 150
+        # for items in stock_list:
+        #     maximum_stock_mty = 435
+        #     stock_max_alm_gdl = 170
+        #     #stock_max_alm_merida = items['stock_max_alm_merida']
+        #     initial_stock_cedis = 150
             
-            for value in items:
-                if value.startswith('p_stock_max_') and items[value] < 100:
-                    pass
-                    # percentage_values.append(round(items[value]))
+        #     for value in items:
+        #         if value.startswith('p_stock_max_') and items[value] < 100:
+        #             pass
+        #             # percentage_values.append(round(items[value]))
             
-            sorted_values = sorted(percentage_values)
+        #     sorted_values = sorted(percentage_values)
             
-            # Calcular diferencias de porcentaje
-            percentage_differences = []
-            for i in range(1, len(sorted_values)):
-                difference = sorted_values[i] - sorted_values[i - 1]
-                percentage_differences.append(difference)
+        #     # Calcular diferencias de porcentaje
+        #     percentage_differences = []
+        #     for i in range(1, len(sorted_values)):
+        #         difference = sorted_values[i] - sorted_values[i - 1]
+        #         percentage_differences.append(difference)
             
-            #   Crear un diccionario para almacenar los resultados
-            if len(percentage_differences) >= 2:
-                first_diference = percentage_differences[0]
-                second_diference = percentage_differences[1]
+        #     #   Crear un diccionario para almacenar los resultados
+        #     if len(percentage_differences) >= 2:
+        #         first_diference = percentage_differences[0]
+        #         second_diference = percentage_differences[1]
                                 
-                # Calculos para primer almacen
-                percentage_of_pieces_warehouse_one = math.floor((maximum_stock_mty * first_diference) / 100)
-                total_stock_cedis = initial_stock_cedis - percentage_of_pieces_warehouse_one
+        #         # Calculos para primer almacen
+        #         percentage_of_pieces_warehouse_one = math.floor((maximum_stock_mty * first_diference) / 100)
+        #         total_stock_cedis = initial_stock_cedis - percentage_of_pieces_warehouse_one
                 
-                # Calculos para segundo almacen
-                second_warehouse = math.floor((stock_max_alm_gdl * second_diference) / 100)
-                first_warehouse = math.floor((maximum_stock_mty * second_diference) / 100)
+        #         # Calculos para segundo almacen
+        #         second_warehouse = math.floor((stock_max_alm_gdl * second_diference) / 100)
+        #         first_warehouse = math.floor((maximum_stock_mty * second_diference) / 100)
                 
-                total_relation = first_warehouse + second_warehouse
+        #         total_relation = first_warehouse + second_warehouse
                 
-                stock_for_warehouse_two = round(second_warehouse * total_stock_cedis / total_relation)
-                stock_for_warehouse_one = math.ceil(stock_for_warehouse_two * first_warehouse / second_warehouse)
+        #         stock_for_warehouse_two = round(second_warehouse * total_stock_cedis / total_relation)
+        #         stock_for_warehouse_one = math.ceil(stock_for_warehouse_two * first_warehouse / second_warehouse)
                 
-                print('almacen 1', stock_for_warehouse_one)
-                print('almacen 2', stock_for_warehouse_two)
+        #         print('almacen 1', stock_for_warehouse_one)
+        #         print('almacen 2', stock_for_warehouse_two)
 
 
         script_obj.HttpResponse({

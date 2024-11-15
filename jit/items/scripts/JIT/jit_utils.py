@@ -8,9 +8,10 @@ from lkf_addons.addons.jit.app import JIT
 from lkf_addons.addons.stock.app import Stock
 
 
+
+
 today = date.today()
 year_week = int(today.strftime('%Y%W'))
-
 
 
 class JIT(JIT, Stock):
@@ -67,10 +68,10 @@ class JIT(JIT, Stock):
         self.product_data = {}
         for p in all_prod:
             res[ p.get(self.Product.f['product_code'])] =  p.get(self.Product.f['sku_percontainer'])
-            self.product_data.update({sku:{
-                'linea':p.get(self.Product.f['linea'])
-                'familia':p.get(self.Product.f['product_category'])
-                }})
+            # self.product_data.update({sku:{
+            #     'linea':p.get(self.Product.f['linea'])
+            #     'familia':p.get(self.Product.f['product_category'])
+            #     }})
         res = { p.get(self.Product.f['product_code']): p.get(self.Product.f['sku_percontainer']) for p in self.all_prod}
         return res
 
@@ -125,7 +126,8 @@ class JIT(JIT, Stock):
             warehouse = rule.get('warehouse')
             product_by_warehouse[warehouse] = product_by_warehouse.get(warehouse,[])
             location = rule.get('warehouse_location')
-            product_stock = self.Stock.get_product_stock(product_code, sku=sku,  warehouse=warehouse, location=location)
+            #product_stock = self.Stock.get_product_stock(product_code, sku=sku,  warehouse=warehouse, location=location)
+            product_stock = Stock.get_products_inventory(self, product_code, warehouse, location, status='active')
             #product_stock = {'actuals':0}
             order_qty = self.exec_reorder_rules(rule, product_stock)
             if order_qty:
