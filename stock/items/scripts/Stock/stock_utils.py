@@ -180,10 +180,10 @@ class Stock(Stock):
         #pci
         move_lines = self.answers[self.f['move_group']]
         print('-----------------------------answers', move_lines)
-        warehouse = self.answers[self.WAREHOUSE_LOCATION_OBJ_ID][self.f['warehouse']]
-        location = self.answers[self.WAREHOUSE_LOCATION_OBJ_ID][self.f['warehouse_location']]
-        warehouse_to = self.answers[self.WAREHOUSE_LOCATION_DEST_OBJ_ID][self.f['warehouse_dest']]
-        location_to = self.answers[self.WAREHOUSE_LOCATION_DEST_OBJ_ID][self.f['warehouse_location_dest']]
+        warehouse = self.answers[self.WH.WAREHOUSE_LOCATION_OBJ_ID][self.f['warehouse']]
+        location = self.answers[self.WH.WAREHOUSE_LOCATION_OBJ_ID][self.f['warehouse_location']]
+        warehouse_to = self.answers[self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID][self.f['warehouse_dest']]
+        location_to = self.answers[self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID][self.f['warehouse_location_dest']]
         # Información original del Inventory Flow
         status_code = 0
         move_locations = []
@@ -270,7 +270,7 @@ class Stock(Stock):
             print('setting cache form...', move_vals_from)
             self.cache_set(move_vals_from)
             new_lot = stock.get('record',{}).get('answers',{})
-            warehouse_ans = self.swap_location_dest(self.answers[self.WAREHOUSE_LOCATION_DEST_OBJ_ID])
+            warehouse_ans = self.swap_location_dest(self.answers[self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID])
             new_lot.update(warehouse_ans)
             new_records_data.append(self.create_inventory_flow(answers=new_lot))
         
@@ -371,33 +371,33 @@ class Stock(Stock):
         # print('lot_number', lot_number)
         if move_type =='in':
             if warehouse:
-                match_query.update({f"answers.{self.WAREHOUSE_LOCATION_DEST_OBJ_ID}.{self.f['warehouse_dest']}":warehouse})
+                match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID}.{self.f['warehouse_dest']}":warehouse})
             if location:
-                match_query.update({f"answers.{self.WAREHOUSE_LOCATION_DEST_OBJ_ID}.{self.f['warehouse_location_dest']}":location})        
+                match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID}.{self.f['warehouse_location_dest']}":location})        
         if move_type =='out':
             if warehouse:
-                match_query.update({f"answers.{self.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse']}":warehouse})
+                match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse']}":warehouse})
             if location:
-                match_query.update({f"answers.{self.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse_location']}":location})
+                match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse_location']}":location})
        
         if product_code:
             p_code_query = {"$or":[
                 {f"answers.{self.f['move_group']}.{self.STOCK_INVENTORY_OBJ_ID}.{self.f['product_code']}":product_code},
-                {f"answers.{self.f['move_group']}.{self.SKU_OBJ_ID}.{self.f['product_code']}":product_code}
+                {f"answers.{self.f['move_group']}.{self.Product.SKU_OBJ_ID}.{self.f['product_code']}":product_code}
             ]
             }
             unwind_stage.append({'$match': p_code_query })
         if sku:
             sku_query = {"$or":[
                 {f"answers.{self.f['move_group']}.{self.STOCK_INVENTORY_OBJ_ID}.{self.f['sku']}":sku},
-                {f"answers.{self.f['move_group']}.{self.SKU_OBJ_ID}.{self.f['sku']}":sku}
+                {f"answers.{self.f['move_group']}.{self.Product.SKU_OBJ_ID}.{self.f['sku']}":sku}
             ]
             }
             unwind_stage.append({'$match': sku_query })
         if lot_number:
             lot_number_query = {"$or":[
                 {f"answers.{self.f['move_group']}.{self.STOCK_INVENTORY_OBJ_ID}.{self.f['lot_number']}":lot_number},
-                {f"answers.{self.f['move_group']}.{self.SKU_OBJ_ID}.{self.f['lot_number']}":lot_number},
+                {f"answers.{self.f['move_group']}.{self.Product.SKU_OBJ_ID}.{self.f['lot_number']}":lot_number},
                 {f"answers.{self.f['move_group']}.{self.f['lot_number']}":lot_number}
             ]
             }
@@ -410,7 +410,7 @@ class Stock(Stock):
                 {'_id': 1,
                     'product_code':{"$ifNull":[
                         f"$answers.{self.f['move_group']}.{self.CATALOG_INVENTORY_OBJ_ID}.{self.f['product_code']}",
-                        f"$answers.{self.f['move_group']}.{self.SKU_OBJ_ID}.{self.f['product_code']}",
+                        f"$answers.{self.f['move_group']}.{self.Product.SKU_OBJ_ID}.{self.f['product_code']}",
                     ] } ,
                     'total': f"$answers.{self.f['move_group']}.{self.f['move_group_qty']}",
                     }

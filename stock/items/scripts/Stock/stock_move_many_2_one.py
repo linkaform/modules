@@ -40,7 +40,7 @@ class Stock(Stock):
             "limit":10000,
             "skip":0
         }
-        records_catalog = stock_obj.lkf_api.search_catalog( stock_obj.STOCK_INVENTORY_ID, mango_query )
+        records_catalog = self.lkf_api.search_catalog( self.STOCK_INVENTORY_ID, mango_query )
         dict_skus = {}
         for r in records_catalog:
             productCode = r.get( self.f['product_code'] )
@@ -75,32 +75,32 @@ class Stock(Stock):
         if self.folio: 
             if self.current_record.get('other_versions'):
                 # print('entra al other_versions')
-                prev_version = stock_obj.get_prev_version(self.current_record['other_versions'], select_columns=[ 'answers.{}'.format( self.mf['xls_file'] ) ])
+                prev_version = self.get_prev_version(self.current_record['other_versions'], select_columns=[ 'answers.{}'.format( self.mf['xls_file'] ) ])
             else:
                 print('Ya tiene folio pero aun no hay mas versiones... revisando el current_record en la BD')
-                prev_version = stock_obj.get_record_from_db(self.form_id, self.folio, select_columns=[ 'answers.{}'.format( self.mf['xls_file'] ) ])
+                prev_version = self.get_record_from_db(self.form_id, self.folio, select_columns=[ 'answers.{}'.format( self.mf['xls_file'] ) ])
             print('prev_version=',prev_version)
             if prev_version.get('answers', {}).get( self.mf['xls_file'] ):
                 print( 'ya hay un excel previamente cargado... se ignora en esta ejecucion =',prev_version.get('answers', {}).get( self.mf['xls_file'] ) )
                 return False
 
-        header, records = stock_obj.read_file( file_url_xls )
-        header_dict = stock_obj.make_header_dict(header)
+        header, records = self.read_file( file_url_xls )
+        header_dict = self.make_header_dict(header)
 
         """
         # Se revisa que el excel tenga todas las columnas que se requieren para el proceso
         """
         cols_required = ['codigo_de_producto', 'sku', 'cantidad']
-        cols_not_found = stock_obj.check_keys_and_missing(cols_required, header_dict)
+        cols_not_found = self.check_keys_and_missing(cols_required, header_dict)
         if cols_not_found:
             cols_not_found = [ c.replace('_', ' ').title() for c in cols_not_found ]
-            self.show_error_app( self.mf['xls_file'], 'Excel de carga masiva', f'Se requieren las columnas: {stock_obj.list_to_str(cols_not_found)}' )
+            self.show_error_app( self.mf['xls_file'], 'Excel de carga masiva', f'Se requieren las columnas: {self.list_to_str(cols_not_found)}' )
 
         """
         Se obtiene la lista de productos que tiene el Warehouse Origen
         """
-        warehouse_name = self.answers.get( self.WAREHOUSE_LOCATION_OBJ_ID, {} ).get( self.f['warehouse'], '' )
-        warehouse_location = self.answers.get( self.WAREHOUSE_LOCATION_OBJ_ID, {} ).get( self.f['warehouse_location'], '' )
+        warehouse_name = self.answers.get( self.WH.WAREHOUSE_LOCATION_OBJ_ID, {} ).get( self.f['warehouse'], '' )
+        warehouse_location = self.answers.get( self.WH.WAREHOUSE_LOCATION_OBJ_ID, {} ).get( self.f['warehouse_location'], '' )
         dict_products_inventory = self.get_inventory_records(warehouse_name, warehouse_location)
         # print(simplejson.dumps(dict_products_inventory, indent=4))
 
@@ -149,7 +149,7 @@ class Stock(Stock):
                 self.f['move_group_qty'] : cantidad,
             })
         if error_rows:
-            self.show_error_app( self.mf['xls_file'], 'Excel de carga masiva', stock_obj.list_to_str(error_rows) )
+            self.show_error_app( self.mf['xls_file'], 'Excel de carga masiva', self.list_to_str(error_rows) )
         if self.answers.get( self.f['move_group'] ):
             self.answers[ self.f['move_group'] ] += sets_to_products
         else:
@@ -162,11 +162,11 @@ class Stock(Stock):
         for prod_sku, cant_solicitada in dict_totales_move.items():
             p = prod_sku.split('_')[0]
             s = prod_sku.split('_')[1]
-            cant_disponible = stock_obj.unlist( dict_products_inventory.get( prod_sku, {} ).get( self.f['actuals'], 0 ) )
+            cant_disponible = self.unlist( dict_products_inventory.get( prod_sku, {} ).get( self.f['actuals'], 0 ) )
             if cant_solicitada > cant_disponible:
                 error_cantidades.append( f'Producto: {p} SKU: {s} la cantidad solicitada {cant_solicitada} es mayor a la cantidad disponible {cant_disponible}' )
         if error_cantidades:
-            self.show_error_app( self.mf['xls_file'], 'Excel de carga masiva', stock_obj.list_to_str(error_cantidades) )
+            self.show_error_app( self.mf['xls_file'], 'Excel de carga masiva', self.list_to_str(error_cantidades) )
 
         # self.show_error_app( 'folio', 'Folio', 'En Pruebas!' )
 
@@ -176,19 +176,19 @@ class Stock(Stock):
             return False
         header = data_xls.get('header')
         records = data_xls.get('records')
-        header_dict = stock_obj.make_header_dict(header)
+        header_dict = self.make_header_dict(header)
         """
         # Se revisa que el excel tenga todas las columnas que se requieren para el proceso
         """
         cols_required = ['serie_ont']
-        cols_not_found = stock_obj.check_keys_and_missing(cols_required, header_dict)
+        cols_not_found = self.check_keys_and_missing(cols_required, header_dict)
         if cols_not_found:
             cols_not_found = [ c.replace('_', ' ').title() for c in cols_not_found ]
-            self.LKFException( f'Se requieren las columnas: {stock_obj.list_to_str(cols_not_found)}' )
+            self.LKFException( f'Se requieren las columnas: {self.list_to_str(cols_not_found)}' )
 
         pos_serie = header_dict.get('serie_ont')
-        warehouse_name = self.answers.get( self.WAREHOUSE_LOCATION_OBJ_ID, {} ).get( self.f['warehouse'], '' )
-        warehouse_location = self.answers.get( self.WAREHOUSE_LOCATION_OBJ_ID, {} ).get( self.f['warehouse_location'], '' )
+        warehouse_name = self.answers.get( self.WH.WAREHOUSE_LOCATION_OBJ_ID, {} ).get( self.f['warehouse'], '' )
+        warehouse_location = self.answers.get( self.WH.WAREHOUSE_LOCATION_OBJ_ID, {} ).get( self.f['warehouse_location'], '' )
 
         """
         mango_query = {"selector":{"answers": {"$and":[ 
@@ -279,7 +279,7 @@ class Stock(Stock):
 
     def share_filter_and_forms_to_connection(self):
         # Warehouse Name del Destination
-        connection_name = self.answers.get(self.WAREHOUSE_LOCATION_DEST_OBJ_ID, {}).get( self.f['warehouse_dest'] )
+        connection_name = self.answers.get(self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID, {}).get( self.f['warehouse_dest'] )
         # Buscar la lista de contratistas para filtrar por nombre. Voy a necesitar su ID y correo
         all_connections = self.lkf_api.get_all_connections()
         connections = { c.get('first_name'): {'id': c.get('id'), 'email': c.get('username')} for c in all_connections }
@@ -290,20 +290,20 @@ class Stock(Stock):
             # Filtro para Warehouse Location
             query_to_filter = { "$and": [ {self.f['warehouse']: {'$eq': connection_name}} ] }
             filter_name = connection_name.replace(' ', '')
-            res_filter = self.lkf_api.create_filter(self.WAREHOUSE_LOCATION_ID, filter_name, query_to_filter)
+            res_filter = self.lkf_api.create_filter(self.WH.WAREHOUSE_LOCATION_ID, filter_name, query_to_filter)
             print("== res_filter=",res_filter)
             # Si el filtro se crea correctamente se lo debo compartir al contratista
             if res_filter.get('status_code', 0) == 201:
-                res_share_catalog_location = self.share_filter( filter_name, uri_user, self.WAREHOUSE_LOCATION_ID )
+                res_share_catalog_location = self.share_filter( filter_name, uri_user, self.WH.WAREHOUSE_LOCATION_ID )
                 print('res_share_catalog_location =',res_share_catalog_location)
 
             # Filtro para Warehouse Location Destination
             query_to_filter = { "$and": [ {self.f['warehouse_dest']: {'$eq': connection_name}} ] }
             filter_name += 'Destination'
-            res_filter = self.lkf_api.create_filter(self.WAREHOUSE_LOCATION_DEST_ID, filter_name, query_to_filter)
+            res_filter = self.lkf_api.create_filter(self.WH.WAREHOUSE_LOCATION_DEST_ID, filter_name, query_to_filter)
             print("== res_filter=",res_filter)
             if res_filter.get('status_code', 0) == 201:
-                res_share_catalog_location_dest = self.share_filter( filter_name, uri_user, self.WAREHOUSE_LOCATION_DEST_ID )
+                res_share_catalog_location_dest = self.share_filter( filter_name, uri_user, self.WH.WAREHOUSE_LOCATION_DEST_ID )
                 print('res_share_catalog_location_dest =',res_share_catalog_location_dest)
 
             # Se comparte la carpeta de las formas de Stock

@@ -30,9 +30,12 @@ class Stock(Stock):
             productTipoMaterial = r.get( self.mf['product_material'] )
             if not productCode or not productSku:
                 continue
+            TipoMaterial = [self.unlist(productTipoMaterial)] if type(productTipoMaterial) == list else [productTipoMaterial]
+            # if TipoMaterial and type(TipoMaterial[0]) == list:
+            #     TipoMaterial = TipoMaterial[0]
             dict_skus[ f'{productCode}_{productSku}' ] = {
                 self.f['product_name']: [self.unlist(productName)],
-                self.mf['product_material']: productTipoMaterial if type(productTipoMaterial) == list else [productTipoMaterial] ,
+                self.mf['product_material']: TipoMaterial,
             }
         return dict_skus
 
@@ -165,6 +168,12 @@ class Stock(Stock):
         """
         move_group = self.answers.get( self.f['move_group'], [] )[:]
         for idx, set_product in enumerate(move_group):
+
+
+            productTipoMaterial = set_product.get( self.mf['product_material'] )
+            TipoMaterial = [self.unlist(productTipoMaterial)] if type(productTipoMaterial) == list else [productTipoMaterial]
+
+            set_product[self.mf['product_material']] = TipoMaterial
 
             capture_num_serie = set_product.get( self.Product.SKU_OBJ_ID, {} ).get( self.mf['capture_num_serie'] )
             if capture_num_serie and type(capture_num_serie[0]) == list:
