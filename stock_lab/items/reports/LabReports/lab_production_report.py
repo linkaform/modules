@@ -43,7 +43,7 @@ class Reports(Reports):
             if len(prod_id) > 0:
                 d['prod_id'] = str(prod_id[0])
         grouped_res = self.query_get_production(plant_code, date_from, date_to, stage, group_by="code")
-        #print('grouped_res', grouped_res)
+        print('grouped_res', grouped_res)
         grouped_week = self.query_get_production(plant_code, date_from, date_to, stage, group_by="work_week")
         grouped_cut_day = self.query_get_production(plant_code, date_from, date_to, stage, group_by="cut_day")
         xx, all_codes, weeks = self.query_get_production(plant_code, date_from, date_to, stage, group_by="get_weeks")
@@ -78,7 +78,6 @@ class Reports(Reports):
         for row in grouped_res:
             pcode = row.get('plant_code')
             stage = row.get('stage')
-            print('stage=',stage)
             PRODUCED += row.get('eaches',0)
             year_week = int('{}{:02d}'.format(row.get('cut_year'), row.get('cut_week')))
             row.update({'year_week':year_week})
@@ -86,10 +85,21 @@ class Reports(Reports):
             if planned_dict.get(stage,{}).get(pcode,{}).get(year_week):
                 req_variance =  row.get('eaches',0) - planned_dict[stage][pcode][year_week]
                 row.update({'required':planned_dict[stage][pcode][year_week], 'req_variance':req_variance})
-            if work_orders.get(pcode,{}).get(stage,{}).get(year_week):
-                wk_total = work_orders[pcode][stage][year_week]
+            wk_stage = int(stage[-1])
+            wo_year_week = int(year_week)
+            print('==================================')
+            print('pcode=', pcode)
+            print('stage=', stage)
+            print('wo_year_week=', wo_year_week)
+            print('work_orders_PCODE=', work_orders.get(pcode,{}))
+            print('work_orders_PCODE STAGE=', work_orders.get(pcode,{}).get(wk_stage,{}))
+            print('work_orders_PCODE wo_year_week=', work_orders.get(pcode,{}).get(wk_stage,{}).get(wo_year_week))
+            # print('work_ordersALL=', work_orders)
+            if work_orders.get(pcode,{}).get(wk_stage,{}).get(wo_year_week):
+                wk_total = work_orders[pcode][wk_stage][wo_year_week]
                 variance =  wk_total - row.get('eaches',0)
                 row.update({'work_order':wk_total,'variance':variance})
+        print(d)
         return detail , grouped_res, grouped_week, grouped_cut_day
 
     def query_get_production(self, plant_code, date_from, date_to, stage=None, group_by=False):
@@ -146,8 +156,8 @@ class Reports(Reports):
                     'eaches': '$eaches',
                     'order_status': f"$prod.answers.{self.f['production_left_overs']}",
                     'record_id': '$prod._id',
-                    'work_order_week': {'$sum':f"$prod.answers.{self.f['production_week']}"},
-                    'work_order': f"$prod.answers.{self.f['production_requier_containers']}",
+                    'work_order_week': f"$prod.answers.{self.f['production_week']}",
+                    'work_order': {'$sum':f"$prod.answers.{self.f['production_requier_containers']}"},
                 }
             },
             {'$project':
@@ -165,9 +175,9 @@ class Reports(Reports):
                     'team': '$team',
                     'produced': '$produced',
                     'eaches': '$eaches',
-                    'work_order_week': '$work_order_week',
+                    'work_order_week': {'$last':'$work_order_week'},
                     'work_order': '$work_order',
-                    # 'variance': {'$subtract':['$produced','$work_order']}
+                    'variance': {'$subtract':['$produced','$work_order']}
                 }
             },
             {'$sort': {'plant_code': 1, 'cut_year': 1, 'cut_week':1}}
@@ -320,7 +330,7 @@ class Reports(Reports):
             },
             {'$sort': {'cut_week': 1}}
             ]
-    #    print('query=',simplejson.dumps(query))
+        # print('query=',simplejson.dumps(query,indent=3))
         res = self.cr.aggregate(query)
         result = []
         all_codes = []
@@ -336,10 +346,12 @@ class Reports(Reports):
                     r['order_status'] = r['order_status'][0].replace('_',' ').title()
                 else:
                     r['order_status'] = ""
-                if r.get('work_order') and len('work_order') > 0:
-                    r['work_order'] = r['work_order'][0]
-                else:
-                    r['work_order'] =0
+                # print('work', r)
+                # print('work', r['work_order'])
+                # if r.get('work_order') and len('work_order') > 0:
+                #     r['work_order'] = r['work_order'][0]
+                # else:
+                #     r['work_order'] =0
                 r['variance'] =  int(r.get('produced',0)) - int(r.get('work_order',0))
                 result.append(r)
 
@@ -597,8 +609,9 @@ class Reports(Reports):
 
     def query_get_work_orders(self, all_codes, year_weeks):
         year_weeks.sort()
-
-        if year_weeks[0]!=False:
+        print('year_week', year_weeks)
+        if year_weeks[0]:
+            print('aquii', year_weeks[0])
             from_year = int(str(year_weeks[0])[:4])
             to_year =   int(str(year_weeks[-1])[:4])
             from_week = int(str(year_weeks[0])[-2:])
@@ -611,18 +624,38 @@ class Reports(Reports):
 
         match_query = {
             "deleted_at":{"$exists":False},
-            "form_id":self.PRODUCTION_FORM_ID,
-            f"answers.{self.SKU_OBJ_ID}.{self.f['product_code']}": {"$in": all_codes},
-            "$or":
-                [{f"answers.{self.f['production_year']}": {"$gte": from_year,"$lte": to_year }},
-                {f"answers.{self.f['production_year']}": {"$gte": str(from_year),"$lte": str(to_year) }},
-            ],
-            "$or":
-                [{f"answers.self.f['production_week']": {"$gte": from_week,"$lte": to_week }},
-                {f"answers.self.f['production_week']": {"$gte": str(from_week),"$lte": str(to_week) }},
-            ],
-            }
-        query= [{'$match': match_query },
+            "form_id":self.PRODUCTION_FORM_ID}
+        if all_codes:
+            match_query.update({f"answers.{self.SKU_OBJ_ID}.{self.f['product_code']}": {"$in": all_codes}})
+        if from_year and to_year:
+            match_query.update({"$or":
+                            [
+                            {"$and":[
+                                {f"answers.{self.f['production_year']}": {"$gte": from_year,"$lte": to_year }},
+                                {"$or":[
+                                    {f"answers.{self.f['production_week']}": {"$gte": from_week,"$lte": to_week }},
+                                    {f"answers.{self.f['production_week']}": {"$gte": str(from_week),"$lte": str(to_week) }}
+                                ]}
+                                ]
+                            },
+                            {"$and":[
+                               {f"answers.{self.f['production_year']}": {"$gte": str(from_year),"$lte": str(to_year) }},
+                               {"$or":[
+                                    {f"answers.{self.f['production_week']}": {"$gte": from_week,"$lte": to_week }},
+                                    {f"answers.{self.f['production_week']}": {"$gte": str(from_week),"$lte": str(to_week) }}
+                                ]}
+                               ]
+                               }
+                        ]})
+        # if from_week and to_week:
+        #     if match_query.get('$or'):
+        #         match_query['$or'].append([
+        #         {f"answers.{self.f['production_week']}": {"$gte": str(from_week),"$lte": str(to_week) }},
+        #     ])
+        #     else:
+        #         match_query.update({"$or":
+                    # })
+        query = [{'$match': match_query },
             {'$project':
                 {   '_id': 0,
                     'plant_code': f"$answers.{self.SKU_OBJ_ID}.{self.f['product_code']}",
@@ -630,7 +663,7 @@ class Reports(Reports):
                     'week': f"$answers.{self.f['production_week']}",
                     'stage': f"$answers.{self.SKU_OBJ_ID}.{self.f['reicpe_stage']}",
                     'per_container': f"$answers.{self.SKU_OBJ_ID}.{self.f['reicpe_per_container']}",
-                    'containers': "$answers.{self.f['production_requier_containers']}"}
+                    'containers': f"$answers.{self.f['production_requier_containers']}"}
                     },
             {'$group':
                 {'_id':
@@ -655,7 +688,7 @@ class Reports(Reports):
             },
             {'$sort': {'plant_code': 1, }}
             ]
-
+        print('match_query=', simplejson.dumps(query, indent=3))
         res = self.cr.aggregate(query)
         result = {}
         for row in res:
