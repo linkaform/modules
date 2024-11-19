@@ -21,7 +21,7 @@ plants = {}
 WEEKS = []
 
 
-def arrange_info(data, stage, recipes3={}, recipes4={}):
+def arrange_info(data, stage, recipes3={}, recipes4={}, report_obj=None):
     col = 'forcast'
     global plants, WEEKS
     today = date.today()
@@ -100,7 +100,7 @@ def get_report(report_obj, product_code=None, stage='S3'):
     recipesS3 = report_obj.get_product_recipe(all_codes, stage=[4])
     recipesS4 = report_obj.get_product_recipe(all_codes, stage=[4, "Ln72"])
     res += greenhouse_stock
-    res = arrange_info(res, stage, recipesS3, recipesS4)
+    res = arrange_info(res, stage, recipesS3, recipesS4, report_obj)
     return res
 
 
