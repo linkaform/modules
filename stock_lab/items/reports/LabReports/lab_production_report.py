@@ -43,7 +43,6 @@ class Reports(Reports):
             if len(prod_id) > 0:
                 d['prod_id'] = str(prod_id[0])
         grouped_res = self.query_get_production(plant_code, date_from, date_to, stage, group_by="code")
-        print('grouped_res', grouped_res)
         grouped_week = self.query_get_production(plant_code, date_from, date_to, stage, group_by="work_week")
         grouped_cut_day = self.query_get_production(plant_code, date_from, date_to, stage, group_by="cut_day")
         xx, all_codes, weeks = self.query_get_production(plant_code, date_from, date_to, stage, group_by="get_weeks")
@@ -70,36 +69,41 @@ class Reports(Reports):
             year_week = week.get('year_week')
             ### Asi queda la info {2:{'LNAFP':{202235:14900},3:{'LNAFP':{202235:100} }}
             planned_dict[s] = planned_dict.get(s, {})
-            planned_dict[s][pcode] = planned_dict[s].get(pcode, {})
-            if year_week:
-                if not planned_dict[s][pcode].get(year_week):
-                        planned_dict[s][pcode][year_week] = total
+            planned_dict[s][pcode] = planned_dict[s].get(pcode, 0)
+            planned_dict[s][pcode]  += total
+            # if year_week:
+            #     if not planned_dict[s][pcode].get(year_week):
+            #             planned_dict[s][pcode][year_week] = total
 
         for row in grouped_res:
             pcode = row.get('plant_code')
             stage = row.get('stage')
             PRODUCED += row.get('eaches',0)
-            year_week = int('{}{:02d}'.format(row.get('cut_year'), row.get('cut_week')))
-            row.update({'year_week':year_week})
+            # year_week = int('{}{:02d}'.format(row.get('cut_year'), row.get('cut_week')))
+            # row.update({'year_week':year_week})
 
-            if planned_dict.get(stage,{}).get(pcode,{}).get(year_week):
-                req_variance =  row.get('eaches',0) - planned_dict[stage][pcode][year_week]
-                row.update({'required':planned_dict[stage][pcode][year_week], 'req_variance':req_variance})
+
+            # if planned_dict.get(stage,{}).get(pcode,{}).get(year_week):
+            # print('stage', stage)
+            # print('planned_dict', planned_dict)
+            # print('planned_dict stage', planned_dict[stage])
+            if planned_dict.get(stage,{}).get(pcode,{}):
+                # req_variance =  row.get('eaches',0) - planned_dict[stage][pcode][year_week]
+                req_variance =  row.get('eaches',0) - planned_dict[stage][pcode]
+                row.update({'required':planned_dict[stage][pcode], 'req_variance':req_variance})
             wk_stage = int(stage[-1])
-            wo_year_week = int(year_week)
-            print('==================================')
-            print('pcode=', pcode)
-            print('stage=', stage)
-            print('wo_year_week=', wo_year_week)
-            print('work_orders_PCODE=', work_orders.get(pcode,{}))
-            print('work_orders_PCODE STAGE=', work_orders.get(pcode,{}).get(wk_stage,{}))
-            print('work_orders_PCODE wo_year_week=', work_orders.get(pcode,{}).get(wk_stage,{}).get(wo_year_week))
+            # wo_year_week = int(year_week)
+            # print('==================================')
+            # print('pcode=', pcode)
+            # print('stage=', stage)
+            # print('wo_year_week=', wo_year_week)
             # print('work_ordersALL=', work_orders)
-            if work_orders.get(pcode,{}).get(wk_stage,{}).get(wo_year_week):
-                wk_total = work_orders[pcode][wk_stage][wo_year_week]
+            # if work_orders.get(pcode,{}).get(wk_stage,{}).get(wo_year_week):
+            if work_orders.get(pcode,{}).get(wk_stage,{}):
+                # wk_total = work_orders[pcode][wk_stage]
+                wk_total = sum(work_orders[pcode][wk_stage].values())
                 variance =  wk_total - row.get('eaches',0)
                 row.update({'work_order':wk_total,'variance':variance})
-        print(d)
         return detail , grouped_res, grouped_week, grouped_cut_day
 
     def query_get_production(self, plant_code, date_from, date_to, stage=None, group_by=False):
@@ -226,8 +230,8 @@ class Reports(Reports):
                     '_id':
                     {
                         'plant_code': '$plant_code',
-                        'cut_year': '$cut_year',
-                        'cut_week': '$cut_week',
+                        # 'cut_year': '$cut_year',
+                        # 'cut_week': '$cut_week',
                         'stage': '$stage',
                       },
                     'produced': {'$sum': '$produced'},
@@ -239,8 +243,8 @@ class Reports(Reports):
                     '_id': 0,
                     'plant_code': '$_id.plant_code',
                     'stage': '$_id.stage',
-                    'cut_year': '$_id.cut_year',
-                    'cut_week': '$_id.cut_week',
+                    # 'cut_year': '$_id.cut_year',
+                    # 'cut_week': '$_id.cut_week',
                     'produced': '$produced',
                     'eaches': '$eaches',
                 }
@@ -330,7 +334,6 @@ class Reports(Reports):
             },
             {'$sort': {'cut_week': 1}}
             ]
-        # print('query=',simplejson.dumps(query,indent=3))
         res = self.cr.aggregate(query)
         result = []
         all_codes = []
@@ -554,7 +557,7 @@ class Reports(Reports):
                     'plant_code': f"$answers.{self.PRODUCT_OBJ_ID}.{self.f['product_code']}",
                     'year_week': f"$answers.{self.f['prod_plan_S3_requier_yearweek']}",
                     'stage': stage,
-                    'eaches': "$answers.{self.f['prod_plan_require_S3']}"}
+                    'eaches': f"$answers.{self.f['prod_plan_require_S3']}"}
                     }
                 ]
         if only_qty == True:
@@ -594,7 +597,6 @@ class Reports(Reports):
                 {'$sort': {'plant_code': 1, 'year_week': 1}}
                 ]
         res = self.cr.aggregate(query)
-        #print('query_planned , query=', simplejson.dumps(query))
         result = []
         if only_qty:
             total = 0
@@ -609,9 +611,8 @@ class Reports(Reports):
 
     def query_get_work_orders(self, all_codes, year_weeks):
         year_weeks.sort()
-        print('year_week', year_weeks)
+        # print('year_week', year_weeks)
         if year_weeks[0]:
-            print('aquii', year_weeks[0])
             from_year = int(str(year_weeks[0])[:4])
             to_year =   int(str(year_weeks[-1])[:4])
             from_week = int(str(year_weeks[0])[-2:])
@@ -688,7 +689,6 @@ class Reports(Reports):
             },
             {'$sort': {'plant_code': 1, }}
             ]
-        print('match_query=', simplejson.dumps(query, indent=3))
         res = self.cr.aggregate(query)
         result = {}
         for row in res:
@@ -745,7 +745,7 @@ if __name__ == "__main__":
         # response = get_requires(plant_code)
         # query_report_second(date_from, date_to )
         # query_report_fourth(date_from, date_to )
-        print('REQUIRED=',REQUIRED)
+        # print('REQUIRED=',REQUIRED)
         if not test:
             sys.stdout.write(simplejson.dumps(
                 {
