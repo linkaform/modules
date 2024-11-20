@@ -195,7 +195,7 @@ class Oracle(Oracle):
                     'ESTATUS': self.f['estatus'],
                     'ESTADO': self.f['estado'],
                     },
-                }
+                },
             }
 
         self.aux_view = {
@@ -247,7 +247,7 @@ class Oracle(Oracle):
         db_updated_at = self.class_cr.distinct("updated_at", query)
         db_updated_at.sort()
         if db_updated_at:
-            db_updated_at = db_updated_at[0]
+            db_updated_at = db_updated_at[-1]
         return db_ids, db_updated_at
 
     def get_record_id_to_sync(self, query):
@@ -357,7 +357,12 @@ class Oracle(Oracle):
                     status_code = res['status_code']
                     if status_code in (200,201,202,204):
                         sync_data['"updated_at"'] = time.time()
-                        self.update(query, sync_data, upsert=True)
+                        print('query=', query)
+                        print('sync_data=', sync_data)
+                        sres = self.update(query, sync_data, upsert=True)
+                        print('acknowledged', sres.acknowledged)
+                        print('upserted_id', sres.upserted_id)
+                        print('sres', dir(sres))
                         # self.create(sync_data)
                 else:
                     self.post_catalog(db_name, item_id, rec, sync_data)
@@ -365,22 +370,22 @@ class Oracle(Oracle):
                 res = self.post_catalog(db_name, item_id, rec, db_sync=True)
 
     def post_catalog(self, db_name, item_id, rec, sync_data={}, db_sync=False):
-            res = self.lkf_api.post_catalog_answers(rec)
-            res_data = res.get('json',{})
-            status_code = res['status_code']
-            if status_code in (200,201,202,204):
-                sync_data['"updated_at"'] = time.time()
-                sync_data['item_id'] = res_data['catalog_id'] if res_data.get('catalog_id') else item_id
-                sync_data['item_type'] = 'catalog'
-                sync_data['db_name'] = db_name
-                if db_sync:
-                    query = {'db_name':db_name}
-                    res = self.update(query, sync_data, upsert=True)
-                else:
-                    sync_data['lkf_id'] = res_data['id']
-                    # print('Creating', sync_data)
-                    res = self.create(sync_data)
-            return res
+        res = self.lkf_api.post_catalog_answers(rec)
+        res_data = res.get('json',{})
+        status_code = res['status_code']
+        if status_code in (200,201,202,204):
+            sync_data['"updated_at"'] = time.time()
+            sync_data['item_id'] = res_data['catalog_id'] if res_data.get('catalog_id') else item_id
+            sync_data['item_type'] = 'catalog'
+            sync_data['db_name'] = db_name
+            if db_sync:
+                query = {'db_name':db_name}
+                res = self.update(query, sync_data, upsert=True)
+            else:
+                sync_data['lkf_id'] = res_data['id']
+                # print('Creating', sync_data)
+                res = self.create(sync_data)
+        return res
 
 
 
@@ -412,6 +417,7 @@ if __name__ == "__main__":
                 # last_update_date
                 update = False
                 query = None
+                print('last_update', last_update)
                 if last_update:
                     update = True
                     date_time = datetime.datetime.fromtimestamp(last_update)
@@ -421,7 +427,10 @@ if __name__ == "__main__":
 
                 header, response = module_obj.sync_db_catalog(db_name=v, query=query)
                 # schema = getattr(module_obj, v, "Attribute not found")
+                print('-----------------------------------------------------------')
+                print('query=', query)
                 print('v',v)
+                print('response=', response)
                 if v == 'LINK_EMPLEADOS':
                     #Carga primero los Contactos
                     view = module_obj.schema_dict[v]
