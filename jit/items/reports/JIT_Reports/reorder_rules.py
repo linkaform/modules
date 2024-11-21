@@ -87,7 +87,6 @@ def gett_products_inventory(product_code, warehouse, location=None, status='acti
         res = script_obj.format_cr(script_obj.cr.aggregate(query))
         return res
 
-
 def get_report_filters(filters=[], product_code_aux=None):
     mango_query = {
         "selector": {
@@ -116,23 +115,26 @@ def get_procurments(warehouse=None, location=None, product_code=None, sku=None, 
     match_query ={ 
             'form_id': procurment_obj.PROCURMENT,  
             'deleted_at' : {'$exists':False},
-            f'answers.{procurment_obj.mf["procurment_status"]}': status,
+            f'answers.{procurment_obj.mf["jit_procurment_status"]}': status,
         }
-    if product_code:
-        match_query.update({
-            f"answers.{procurment_obj.Product.SKU_OBJ_ID}.{procurment_obj.f['product_code']}": {'$in': product_code}
-            })
+    # if product_code:
+    #     match_query.update({
+    #         f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['product_code']}": {'$in': product_code}
+    #         })
+        
+    match_query.update({
+            f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['product_code']}": '750200301040'})
     if sku:
         match_query.update({
-            f"answers.{procurment_obj.Product.SKU_OBJ_ID}.{procurment_obj.f['sku']}":sku
+            f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['sku']}":sku
             })
     if warehouse:
         match_query.update({
-            f"answers.{procurment_obj.WH.WAREHOUSE_LOCATION_OBJ_ID}.{procurment_obj.WH.f['warehouse']}":warehouse
+            f"answers.{warehouse_obj.WAREHOUSE_LOCATION_OBJ_ID}.{warehouse_obj.f['warehouse']}":warehouse
             })
     if location:
         match_query.update({
-            f"answers.{procurment_obj.WH.WAREHOUSE_LOCATION_OBJ_ID}.{procurment_obj.WH.f['warehouse_location']}":location
+            f"answers.{warehouse_obj.WAREHOUSE_LOCATION_OBJ_ID}.{warehouse_obj.f['warehouse_location']}":location
             })
     query = [
         {'$match': match_query},
@@ -142,11 +144,11 @@ def get_procurments(warehouse=None, location=None, product_code=None, sku=None, 
                 'date_schedule':f'$answers.{procurment_obj.mf["procurment_schedule_date"]}',
                 'procurment_method':f'$answers.{procurment_obj.mf["procurment_method"]}',
                 'procurment_qty':f'$answers.{procurment_obj.mf["procurment_qty"]}',
-                'product_code':f'$answers.{procurment_obj.Product.SKU_OBJ_ID}.{procurment_obj.f["product_code"]}',
-                'sku':f'$answers.{procurment_obj.Product.SKU_OBJ_ID}.{procurment_obj.f["sku"]}',
+                'product_code':f'$answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f["product_code"]}',
+                'sku':f'$answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f["sku"]}',
                 'uom':f'$answers.{procurment_obj.UOM_OBJ_ID}.{procurment_obj.f["uom"]}',
-                'warehouse':f'$answers.{procurment_obj.WH.WAREHOUSE_LOCATION_OBJ_ID}.{procurment_obj.WH.f["warehouse"]}',
-                'warehouse_location':f'$answers.{procurment_obj.WH.WAREHOUSE_LOCATION_OBJ_ID}.{procurment_obj.WH.f["warehouse_location"]}',
+                'warehouse':f'$answers.{warehouse_obj.WAREHOUSE_LOCATION_OBJ_ID}.{warehouse_obj.f["warehouse"]}',
+                'warehouse_location':f'$answers.{warehouse_obj.WAREHOUSE_LOCATION_OBJ_ID}.{warehouse_obj.f["warehouse_location"]}',
         }}]
     return procurment_obj.format_cr(procurment_obj.cr.aggregate(query))
 
@@ -200,6 +202,54 @@ def get_catalog_product_field(id_field):
     return res_format
 
 
+def proporciales(percentage_values):
+
+    for items in stock_list:
+        maximum_stock_mty = 435
+        stock_max_alm_gdl = 170
+        #stock_max_alm_merida = items['stock_max_alm_merida']
+        initial_stock_cedis = 150
+        
+        for value in items:
+            if value.startswith('p_stock_max_') and items[value] < 100:
+                pass
+                # percentage_values.append(round(items[value]))
+        
+        sorted_values = sorted(percentage_values)
+        
+        # Calcular diferencias de porcentaje
+        percentage_differences = []
+        for i in range(1, len(sorted_values)):
+            difference = sorted_values[i] - sorted_values[i - 1]
+            percentage_differences.append(difference)
+        
+        #   Crear un diccionario para almacenar los resultados
+        if len(percentage_differences) >= 2:
+            first_diference = percentage_differences[0]
+            second_diference = percentage_differences[1]
+                            
+            # Calculos para primer almacen
+            percentage_of_pieces_warehouse_one = math.floor((maximum_stock_mty * first_diference) / 100)
+            total_stock_cedis = initial_stock_cedis - percentage_of_pieces_warehouse_one
+            
+            # Calculos para segundo almacen
+            second_warehouse = math.floor((stock_max_alm_gdl * second_diference) / 100)
+            first_warehouse = math.floor((maximum_stock_mty * second_diference) / 100)
+            
+            total_relation = first_warehouse + second_warehouse
+            
+            stock_for_warehouse_two = round(second_warehouse * total_stock_cedis / total_relation)
+            stock_for_warehouse_one = math.ceil(stock_for_warehouse_two * first_warehouse / second_warehouse)
+            
+            print('almacen 1', stock_for_warehouse_one)
+            print('almacen 2', stock_for_warehouse_two)
+
+
+def get_max_stock(data):
+    res = {x['warehouse'].lower().replace(' ','_'):x['stock_maximum'] for x in data}
+    return res
+
+
 if __name__ == "__main__":
     script_obj = base.LKF_Base(settings, sys_argv=sys.argv, use_api=True)
     script_obj.console_run()
@@ -245,8 +295,6 @@ if __name__ == "__main__":
         for item in procurment:
             code = item['product_code']
             warehouse = item['warehouse'].lower().replace(' ','_')
-            print('WAREHOUSE NAME', warehouse)
-            
             actuals = stock_cedis_dict.get(code, 0)
             product_name = product_dict[code]['product_name']
             product_category = product_dict[code]['product_category']
@@ -269,7 +317,7 @@ if __name__ == "__main__":
             )
     
             stock_dict[code].update({f'stock_to_move_{warehouse}': round(item['procurment_qty'], 2)})
-            stock_dict[code]['stock_final'] -= item['procurment_qty']
+            stock_dict[code]['stock_final'] = round(stock_dict[code]['stock_final'] - item['procurment_qty'],2)
             
         for x in product_stock:
             code = x['product_code']
@@ -279,19 +327,35 @@ if __name__ == "__main__":
         
         print('stock_dict=', stock_dict)
         for x in res_first:
+            print('x=',x)
             code = x['product_code']
             warehouse = x['warehouse'].lower().replace(' ','_')
-            print('warehouse', warehouse)
-            
             if stock_dict.get(code):
+                stock_dict[code]['rules'] = stock_dict[code].get('rules',[])
+                stock_dict[code]['rules'].append(x)
                 print('code', code)
                 print('stock_dict[code]', stock_dict[code])
+                print('stock_dict[code]', stock_dict[code])
+                print('acutals or warehouse', stock_dict[code].get(f'actuals_{warehouse}', 0 ))
+                print('stock mask',  x[f'stock_maximum'])
                 stock_dict[code][f'stock_max_{warehouse}'] = x['stock_maximum']
                 if x[f'stock_maximum'] == 0:
                     stock_dict[code][f'p_stock_max_{warehouse}'] = 0
                 else:
                     stock_dict[code][f'p_stock_max_{warehouse}'] = round((stock_dict[code].get(f'actuals_{warehouse}', 0) / x[f'stock_maximum']) * 100, 2)
-                    
+                print('procde llenado', stock_dict[code][f'p_stock_max_{warehouse}'])
+        #buscar negaviso
+        for pcode, rec in stock_dict.items():
+            print('rec=', rec)
+            stock_final = rec['stock_final']
+            print('stock_final=', stock_final)
+            if stock_final < 0 :
+                p_stock_max = [v for k,v in rec.items() if 'p_stock_max_' in k]
+                print('que p_stock_max',p_stock_max)
+                alm_max_stock = get_max_stock(rec['rules'])
+                print(' alm_max_stock',alm_max_stock)
+                print('que pedo',d)
+
         stock_list = list(stock_dict.values())
                 
         # percentage_values = [40, 30, 70]
