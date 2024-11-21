@@ -15,8 +15,9 @@ class Stock(Stock):
 
     # _inherit = 'employee'
 
-    def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False):
+    def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False, **kwargs):
         super().__init__(settings, folio_solicitud=folio_solicitud, sys_argv=sys_argv, use_api=use_api)
+        self.load('JIT', **self.kwargs)
 
 
         # La relacion entre la forma de inventario y el catalogo utilizado para el inventario
@@ -40,9 +41,9 @@ class Stock(Stock):
                 all_sku.append(sku.upper())
         skus = {}
         mango_query = self.product_sku_query(all_sku)
-        print('SKU_ID =',self.SKU_ID)
+        print('SKU_ID =',self.Product.SKU_ID)
         print('mango_query =',mango_query)
-        sku_finds = self.lkf_api.search_catalog(self.SKU_ID, mango_query)
+        sku_finds = self.lkf_api.search_catalog(self.Product.SKU_ID, mango_query)
         for this_sku in sku_finds:
                 product_code = this_sku.get(self.f['product_code'])
                 skus[product_code] = skus.get(product_code, {})
@@ -62,7 +63,7 @@ class Stock(Stock):
                     })
  
     def explote_kit(self, bom_lines, warehouse=None, location=None):
-        bom_res = super().explote_kit(bom_lines, warehouse, location)
+        bom_res = self.JIT.explote_kit(bom_lines, warehouse, location)
         add_row = 0
         rows_added = 0
         for idx, row in enumerate(bom_res):
@@ -88,8 +89,6 @@ class Stock(Stock):
         location_to = self.answer_label['warehouse_location_dest']
         # move_lines = self.answer_label['move_group']
         move_lines = self.explote_kit(self.answer_label['move_group'], warehouse=warehouse, location=location )
-        print('move lines EXPLOE', move_lines)
-        print('move lines EXPLOE', revisar_bien)
         # Información original del Inventory Flow
         status_code = 0
         move_locations = []
