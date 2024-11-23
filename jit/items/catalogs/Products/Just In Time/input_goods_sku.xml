@@ -7,8 +7,8 @@
         <button_message>Mandar respuestas</button_message>
     </confirmation>
     <description />
-    <_rev>16-c2518459a4ec120e4d0cd8d48d253916</_rev>
-    <updated_at>2024-09-10T04:24:15.805127+00:00Z</updated_at>
+    <_rev>8-ac5bd7b999d53402c13a0d867997144d</_rev>
+    <updated_at>2024-10-29T05:00:16.936844+00:00Z</updated_at>
     <sync>
         <element_request>{}</element_request>
         <input_parameters>[]</input_parameters>
@@ -16,7 +16,7 @@
     <filters>{}</filters>
     <name>Input Goods SKU</name>
     <edit_public_records>False</edit_public_records>
-    <created_at>2024-09-10T04:24:15.805127+00:00Z</created_at>
+    <created_at>2024-10-29T05:00:16.936844+00:00Z</created_at>
     <advanced_options>
         <active>True</active>
         <folio>
@@ -78,7 +78,7 @@
                         <view_index>1</view_index>
                         <catalog_field_id>{{ catalog.input_goods_products.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.input_goods_products.id }}</catalog_id>
-                        <filters />
+                        <filters>None</filters>
                     </catalog>
                     <options>[]</options>
                 </item>
@@ -96,7 +96,7 @@
                         <view_index>2</view_index>
                         <catalog_field_id>{{ catalog.input_goods_products.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.input_goods_products.id }}</catalog_id>
-                        <filters />
+                        <filters>None</filters>
                     </catalog>
                     <options>[]</options>
                 </item>
@@ -114,7 +114,7 @@
                         <view_index>3</view_index>
                         <catalog_field_id>{{ catalog.input_goods_products.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.input_goods_products.id }}</catalog_id>
-                        <filters />
+                        <filters>None</filters>
                     </catalog>
                     <options>[]</options>
                 </item>
@@ -131,7 +131,7 @@
                         <view_index>0</view_index>
                         <catalog_field_id>{{ catalog.input_goods_products.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.input_goods_products.id }}</catalog_id>
-                        <filters />
+                        <filters>None</filters>
                     </catalog>
                     <options>[]</options>
                 </item>
@@ -148,7 +148,7 @@
                         <view_index>0</view_index>
                         <catalog_field_id>{{ catalog.input_goods_products.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.input_goods_products.id }}</catalog_id>
-                        <filters />
+                        <filters>None</filters>
                     </catalog>
                     <options>[]</options>
                 </item>
@@ -165,7 +165,7 @@
                         <view_index>0</view_index>
                         <catalog_field_id>{{ catalog.input_goods_products.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.input_goods_products.id }}</catalog_id>
-                        <filters />
+                        <filters>None</filters>
                     </catalog>
                     <options>[]</options>
                 </item>
@@ -452,7 +452,7 @@
         </item>
     </catalog_pages>
     <sync_last_update>None</sync_last_update>
-    <_id>66dfc9efddaf958ea75871e5</_id>
+    <_id>67206be05b289d5828774e20</_id>
     <public>False</public>
-    <catalog_id>123145</catalog_id>
+    <catalog_id>125229</catalog_id>
 </lkf>

@@ -14,7 +14,7 @@
         <message>Your info was successfully captured!</message>
         <redirect_url>default</redirect_url>
     </confirmation>
-    <created_at>1725943112.0</created_at>
+    <created_at>1730179359.0</created_at>
     <description />
     <edit_public_records>False</edit_public_records>
     <edit_registers>True</edit_registers>
@@ -131,7 +131,6 @@
                         <item>61ef32bcdf0ec2ba73dec33e</item>
                         <item>65dec64a3199f9a040829244</item>
                         <item>61ef32bcdf0ec2ba73dec33d</item>
-                        <item>65dec64a3199f9a040829243</item>
                     </catalog_fields>
                     <catalog_relation>None</catalog_relation>
                     <default>False</default>
@@ -1378,7 +1377,7 @@
                     <grading_criteria>{}</grading_criteria>
                     <group>None</group>
                     <groups_fields>
-                        <item>66dfc9efddaf958ea75871e5</item>
+                        <item>67206be05b289d5828774e20</item>
                         <item>71ef32bcdf0ec2ba73dec33d</item>
                         <item>75dec64a3199f9a040829243</item>
                         <item>71ef32bcdf0ec2ba73dec33e</item>
@@ -1689,7 +1688,7 @@
                         <catalog_field_id>{{ catalog.input_goods_sku.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.input_goods_sku.id }}</catalog_id>
                         <field_type>text</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -2139,7 +2138,7 @@
     </notification>
     <process_ids>[]</process_ids>
     <public>False</public>
-    <resource_uri>/api/infosync/form/123151/</resource_uri>
+    <resource_uri>/api/infosync/form/125241/</resource_uri>
     <send_on_foreground>False</send_on_foreground>
     <start_event_id>None</start_event_id>
     <template_conf>
@@ -2160,5 +2159,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1726117324.0</updated_at>
+    <updated_at>1730957628.0</updated_at>
 </lkf>

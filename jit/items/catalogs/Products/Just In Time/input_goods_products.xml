@@ -7,8 +7,8 @@
         <redirect_url>default</redirect_url>
     </confirmation>
     <description />
-    <_rev>14-cc090465d466990b5f6269e8ce80d2b5</_rev>
-    <updated_at>2024-09-10T04:24:15.024914+00:00Z</updated_at>
+    <_rev>7-ae509c74977eb2989b8a9b94dfaf731d</_rev>
+    <updated_at>2024-10-29T05:00:16.084496+00:00Z</updated_at>
     <sync>
         <element_request>{}</element_request>
         <input_parameters>[]</input_parameters>
@@ -16,7 +16,7 @@
     <filters>{}</filters>
     <name>Input Goods Products</name>
     <edit_public_records>False</edit_public_records>
-    <created_at>2024-09-10T04:24:15.024914+00:00Z</created_at>
+    <created_at>2024-10-29T05:00:16.084496+00:00Z</created_at>
     <advanced_options>
         <active>True</active>
         <folio>
@@ -25,6 +25,10 @@
             <config>False</config>
         </folio>
     </advanced_options>
+    <catalog_id>125228</catalog_id>
+    <sync_last_update>None</sync_last_update>
+    <_id>67206be040cc2b991db6b85d</_id>
+    <public>False</public>
     <catalog_pages>
         <item>
             <page_fields>
@@ -703,8 +707,4 @@
             <page_name>Product Info</page_name>
         </item>
     </catalog_pages>
-    <sync_last_update>None</sync_last_update>
-    <_id>66dfc9efddaf958ea75871e3</_id>
-    <public>False</public>
-    <catalog_id>123144</catalog_id>
 </lkf>

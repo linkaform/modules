@@ -68,18 +68,13 @@ class JIT(JIT):
                  # res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.DEMANDA_PLAN, folios=[folio,], threading=False )
 
    def do_allocation(self, orders, source_document):
-        print('************** allocating orders...')
-        print('====orders=', orders)
+        print('************** allocating orders ************* ')
         for product_code, product_sku in orders.items():
-            print('====product_code=', product_code)
-            print('====product_sku=', product_sku)
             for sku, orders_by_sku in product_sku.items():
-                print('====sku=', sku)
                 # self.allocate_location(product_code, sku, orders_by_sku)
-                self.allocate_warehouse(orders_by_sku.get('warehouse',[]))
+                self.allocate_warehouse(orders_by_sku.get('warehouse',[]), source_document='demand')
 
    def do_update_procurments(self):
-      print('do update procurments')
       procs_by_folio = {}
       folios = []
       for p in self.procurments:
@@ -92,17 +87,12 @@ class JIT(JIT):
          folios.append(p['folio'])
          procs_by_folio[p['folio']] = self._lables_to_ids(p)
       # self.procurments = procs
-      print('>>>>>>> asi van')
-      print('self.pf', self.procurments)
       # folios = ['146220-9908','146218-9908']
-      print('self.pfolisf', folios)
       record_ids = self.get_record_by_folios(folios=folios, form_id=self.PROCURMENT)
-      print('self.record_ids', record_ids)
-      print('self.procs_by_folio', procs_by_folio)
       for record_data in record_ids:
          folio = record_data['folio']
          record_data['answers'].update(procs_by_folio[folio])
-      res = self.lkf_api.patch_record_list(record_data)
+         res = self.lkf_api.patch_record_list(record_data)
    
    def get_open_allocations(self, product_code, sku, warehouse=None, location=None, client=None, **kwargs):
         kwargs.update( {
@@ -213,6 +203,7 @@ class JIT(JIT):
      qty_allocated = sum(item.get('allocation_qty', 0) for item in order.get('alloctaion_group',[]))
      qty_needs =  order.get('qty',0) - qty_allocated
      allocated_on =[]
+     print('FOLIO=',order['folio'])
      print('qty_allocated=',qty_allocated)
      print('qty_needs=',qty_needs)
      for proc in self.procurments:
@@ -378,7 +369,6 @@ class JIT(JIT):
      group_stage = {}
      match_query ={ 
               'form_id': self.DEMANDA_PLAN,  
-              'folio': '146499-9908',  
               'deleted_at' : {'$exists':False},
           }
      project_stage = {
@@ -476,7 +466,6 @@ class JIT(JIT):
      group_stage = {}
      match_query ={ 
               'form_id': self.PROCURMENT,  
-              'folio': '146219-9908',  
               'deleted_at' : {'$exists':False},
           }
      project_stage = {
@@ -523,7 +512,7 @@ class JIT(JIT):
 
      #Produccion
 
-     order_needs = self.get_demand_needs(product_code=None, sku=None, warehouse=None, location=None, client=None, **kwargs)
+     order_needs = self.get_demand_needs(product_code=product_code, sku=sku, warehouse=warehouse, location=location, client=client, **kwargs)
      can_not = []
      can = []
 
@@ -533,6 +522,9 @@ class JIT(JIT):
      #hay que actualizar los procurments asi como las orders
      self.do_allocation(orders, source_document='demand')
      self.do_update_procurments()
+
+     order_needs = self.get_demand_needs(product_code=product_code, sku=sku, warehouse=warehouse, location=location, client=client, **kwargs)
+     print('orders2=', orders)
      #hay que crear un muevo procurment.... para llenar todos los espacios... 
      #hay que crer para el mas antiguo un procurment.. y luego buscar para los otros
      #and so and dos....

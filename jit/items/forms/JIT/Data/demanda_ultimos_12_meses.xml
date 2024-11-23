@@ -14,7 +14,7 @@
         <message>¡Su información fue capturada!</message>
         <redirect_url>default</redirect_url>
     </confirmation>
-    <created_at>1726773510.0</created_at>
+    <created_at>1730179235.0</created_at>
     <description />
     <edit_public_records>False</edit_public_records>
     <edit_registers>True</edit_registers>
@@ -289,7 +289,6 @@
                     <catalog_fields>
                         <item>61ef32bcdf0ec2ba73dec33e</item>
                         <item>61ef32bcdf0ec2ba73dec33d</item>
-                        <item>65dec64a3199f9a040829243</item>
                     </catalog_fields>
                     <catalog_relation>None</catalog_relation>
                     <default>False</default>
@@ -726,7 +725,7 @@
                         <catalog_field_id>None</catalog_field_id>
                         <catalog_id>{{ catalog.unidad_de_medida.id }}</catalog_id>
                         <field_type>None</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -806,7 +805,7 @@
                         <catalog_field_id>{{ catalog.unidad_de_medida.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.unidad_de_medida.id }}</catalog_id>
                         <field_type>text</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -892,7 +891,7 @@
     </notification>
     <process_ids>[]</process_ids>
     <public>False</public>
-    <resource_uri>/api/infosync/form/123344/</resource_uri>
+    <resource_uri>/api/infosync/form/125237/</resource_uri>
     <send_on_foreground>False</send_on_foreground>
     <start_event_id>None</start_event_id>
     <template_conf>
@@ -913,5 +912,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1726855799.0</updated_at>
+    <updated_at>1730957616.0</updated_at>
 </lkf>
