@@ -15,7 +15,7 @@ from lkf_addons.addons.stock.app import Stock
 from itertools import zip_longest
 
 
-class Reorder_Rules:
+class Reports(Reports):
 
     def get_product_by_type(self, product_type, product_line=""):
         product_field = None
@@ -119,7 +119,11 @@ class Reorder_Rules:
         return list_response
 
         
-    def get_catalog_product_field(id_field):
+    def get_catalog_product_field(self, id_field):
+        print('aaaaaaaaaaaaaaaaaaaaaaaa1111111111111111111111111111aaaaaaaaaaaaaaaaaaaaaaaaaaaaqui')
+        query = {"form_id":123150, 'deleted_at':{'$exists':False}}
+        db_ids = self.cr.distinct("answers.66dfc4d9a306e1ac7f6cd02c.61ef32bcdf0ec2ba73dec342", query)
+        print('db_ids', db_ids)
         match_query = { 
             'deleted_at':{"$exists":False},
         }
@@ -388,7 +392,7 @@ class Reorder_Rules:
         
         
 if __name__ == "__main__":
-    reorder_obj = Reorder_Rules()
+    reorder_obj = Reports(settings, sys_argv=sys.argv, use_api=True)
     script_obj = base.LKF_Base(settings, sys_argv=sys.argv, use_api=True)
     script_obj.console_run()
     prod_obj = Product(settings, sys_argv=sys.argv, use_api=True)
@@ -396,9 +400,7 @@ if __name__ == "__main__":
     procurment_obj = JIT(settings, sys_argv=sys.argv, use_api=True)
     warehouse_obj = Warehouse(settings, sys_argv=sys.argv, use_api=True)
 
-    report_obj = Reports(settings, sys_argv=sys.argv, use_api=True)
-    report_obj.console_run()
-    data = report_obj.data
+    data = reorder_obj.data
     data = data.get('data',[])
     option = data.get('option','get_report')
     product_family = data.get('product_family', 'TUBOS')
@@ -414,7 +416,9 @@ if __name__ == "__main__":
 
     elif option == 'get_catalog':
         warehouse_types_catalog = warehouse_obj.get_all_stock_warehouse()
+        #product_type = reorder_obj.get_catalog_product_field()
         product_type = reorder_obj.get_catalog_product_field(id_field='61ef32bcdf0ec2ba73dec343')
+        
         
         script_obj.HttpResponse({
             "dataCatalogWarehouse": warehouse_types_catalog,
