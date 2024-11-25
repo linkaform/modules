@@ -53,7 +53,7 @@ class Reports(Reports):
                 })
             
         # match_query.update({
-        #         f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['product_code']}": '750200301040'})
+        #     f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['product_code']}": '750200301045'})
         if sku:
             match_query.update({
                 f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['sku']}":sku
@@ -120,23 +120,28 @@ class Reports(Reports):
 
         
     def get_catalog_product_field(self, id_field):
-        print('aaaaaaaaaaaaaaaaaaaaaaaa1111111111111111111111111111aaaaaaaaaaaaaaaaaaaaaaaaaaaaqui')
         query = {"form_id":123150, 'deleted_at':{'$exists':False}}
-        db_ids = self.cr.distinct("answers.66dfc4d9a306e1ac7f6cd02c.61ef32bcdf0ec2ba73dec342", query)
-        print('db_ids', db_ids)
+
+        # Obtener los ids distintos y filtrar los None
+        db_ids = [item for item in self.cr.distinct("answers.66dfc4d9a306e1ac7f6cd02c.61ef32bcdf0ec2ba73dec343", query) if item is not None]
+        
         match_query = { 
             'deleted_at':{"$exists":False},
         }
 
-        mango_query = {"selector":
-            {"answers":
-                {"$and":[match_query]}
+        mango_query = {
+            "selector": {
+                "answers": {
+                    "$and": [match_query]
+                }
             },
-            "limit":10000,
-            "skip":0
+            "limit": 10000,
+            "skip": 0
         }
-        res = script_obj.lkf_api.search_catalog( 123105, mango_query)
+        
+        res = script_obj.lkf_api.search_catalog(123105, mango_query)
         res_format = reorder_obj.format_catalog_product(res, id_field)
+        
         return res_format
     
     
@@ -156,7 +161,7 @@ class Reports(Reports):
         stock_cedis = stock_obj.get_products_inventory(product_code=product_code, warehouse=warehouse_cedis)
         stock_cedis_dict = {x['product_code']:x['actuals'] for x in stock_cedis}
         
-        res_first = report_obj.reorder_rules_warehouse(product_code=product_code)
+        res_first = reorder_obj.reorder_rules_warehouse(product_code=product_code)
         
         stock_dict = {}
             
@@ -192,8 +197,11 @@ class Reports(Reports):
             code = x['product_code']
             warehouse = x['warehouse'].lower().replace(' ','_')
             if stock_dict.get(code):
+                if 'cedis' in warehouse:
+                    warehouse = warehouse.replace('cedis', 'alm')
+                    #stock_dict[code][f'actuals_alm{warehouse}'] = x['actuals']
                 stock_dict[code][f'actuals_{warehouse}'] = x['actuals']
-            
+                    
         for x in res_first:
             code = x['product_code']
             warehouse = x['warehouse'].lower().replace(' ','_')
@@ -385,10 +393,8 @@ class Reports(Reports):
                 if stock_key in product:
                     product[stock_key] = round(value['traspaso'], 2)  # Actualizamos el valor con el traspaso redondeado a 2 decimales
 
-        print(simplejson.dumps(stock_list_response, indent=4))
+        #print(simplejson.dumps(stock_list_response, indent=4))
         return stock_list_response    
-        
-        
         
         
 if __name__ == "__main__":
@@ -403,20 +409,22 @@ if __name__ == "__main__":
     data = reorder_obj.data
     data = data.get('data',[])
     option = data.get('option','get_report')
+    #option = 'get_report'
     product_family = data.get('product_family', 'TUBOS')
     product_line = data.get('product_line', '')
     warehouse_info = data.get('warehouse', '')
     warehouse_cedis = 'CEDIS GUADALAJARA'
 
     if option == 'get_report':
-        reorder_obj.warehouse_transfer_update()
-        # script_obj.HttpResponse({
-        #     "stockInfo": reorder_obj.warehouse_transfer_update(),
-        # })
+        #reorder_obj.warehouses_by_percentage()
+        #reorder_obj.warehouse_transfer_update()
+        #reorder_obj.generate_report_info()
+        script_obj.HttpResponse({
+            "stockInfo": reorder_obj.warehouse_transfer_update(),
+        })
 
     elif option == 'get_catalog':
         warehouse_types_catalog = warehouse_obj.get_all_stock_warehouse()
-        #product_type = reorder_obj.get_catalog_product_field()
         product_type = reorder_obj.get_catalog_product_field(id_field='61ef32bcdf0ec2ba73dec343')
         
         
@@ -433,7 +441,3 @@ if __name__ == "__main__":
         script_obj.HttpResponse({
             "product_line": products_categorys,
         })
-        
-        
-        
-        
