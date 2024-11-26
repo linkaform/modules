@@ -55,7 +55,7 @@ if __name__ == "__main__":
     elif option == 'get_pass':
         response = acceso_obj.get_pass_custom(qr_code)
     elif option == 'get_my_pases':
-        response = acceso_obj.get_my_pases(tab_status)
+        response = acceso_obj.get_my_pases(tab_status=tab_status)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
