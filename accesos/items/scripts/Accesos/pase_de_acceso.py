@@ -27,6 +27,7 @@ if __name__ == "__main__":
     tipo = data.get('tipo',"")
     option = data.get("option","")
     qr_code=data.get("qr_code")
+    tab_status=data.get("tab_status")
 
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
@@ -53,6 +54,8 @@ if __name__ == "__main__":
         response = acceso_obj.catalogo_estados()
     elif option == 'get_pass':
         response = acceso_obj.get_pass_custom(qr_code)
+    elif option == 'get_my_pases':
+        response = acceso_obj.get_my_pases(tab_status)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
