@@ -42,6 +42,7 @@ class Reports(Reports):
     
     
     def get_procurments(self, warehouse=None, location=None, product_code=None, sku=None, status='programmed', group_by=False):
+        #product_code = ["750200301045", "750200301170"]
         match_query ={ 
                 'form_id': procurment_obj.PROCURMENT,  
                 'deleted_at' : {'$exists':False},
@@ -53,7 +54,7 @@ class Reports(Reports):
                 })
             
         # match_query.update({
-        #     f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['product_code']}": '750200301045'})
+        #     f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['product_code']}": "750200301045"})
         if sku:
             match_query.update({
                 f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['sku']}":sku
@@ -80,6 +81,7 @@ class Reports(Reports):
                     'warehouse':f'$answers.{warehouse_obj.WAREHOUSE_LOCATION_OBJ_ID}.{warehouse_obj.f["warehouse"]}',
                     'warehouse_location':f'$answers.{warehouse_obj.WAREHOUSE_LOCATION_OBJ_ID}.{warehouse_obj.f["warehouse_location"]}',
             }}]
+       
         return procurment_obj.format_cr(procurment_obj.cr.aggregate(query))
 
 
@@ -152,77 +154,76 @@ class Reports(Reports):
     
     def generate_report_info(self):
         products = reorder_obj.get_product_by_type(product_type=product_family, product_line=product_line)
-        product_dict = {x['product_code']:x for x in products}
+        product_dict = {x['product_code']: x for x in products}
         product_code = list(product_dict.keys())
-                
+                    
         procurment = reorder_obj.get_procurments(product_code=product_code)
-        
+
         product_stock = stock_obj.get_products_inventory(product_code=product_code, warehouse=warehouse_info)
         stock_cedis = stock_obj.get_products_inventory(product_code=product_code, warehouse=warehouse_cedis)
-        stock_cedis_dict = {x['product_code']:x['actuals'] for x in stock_cedis}
-        
+        stock_cedis_dict = {x['product_code']: x['actuals'] for x in stock_cedis}
+                    
         res_first = reorder_obj.reorder_rules_warehouse(product_code=product_code)
-        
+                    
         stock_dict = {}
-            
+
         for item in procurment:
             code = item['product_code']
-            warehouse = item['warehouse'].lower().replace(' ','_')
+            warehouse = item['warehouse'].lower().replace(' ', '_')
             actuals = stock_cedis_dict.get(code, 0)
             product_name = product_dict[code]['product_name']
             product_category = product_dict[code]['product_category']
             product_type = product_dict[code]['product_type']
-            
 
-            stock_dict[code] = stock_dict.get(code,
-                {
-                    'sku': item['sku'],
-                    'desc_producto': product_name,
-                    'line': product_category,
-                    'familia': product_type,
-                    'stock_mty': 0,
-                    'stock_gdl': 0,
-                    'stock_max': 0,
-                    'stock_merida': 0,
-                    'actuals': actuals, #   proviene de stock_cedis_dict
-                    'percentage_stock_max': 0,
-                    'stock_final': actuals,
-                }
-            )
-        
-            stock_dict[code].update({f'stock_to_move_{warehouse}': round(item['procurment_qty'], 2)})
-            stock_dict[code]['stock_final'] = round(stock_dict[code]['stock_final'] - item['procurment_qty'],2)
-                
+            # Inicializa el producto en el diccionario de stock si no existe
+            stock_dict[code] = stock_dict.get(code, {
+                'sku': item['sku'],
+                'desc_producto': product_name,
+                'line': product_category,
+                'familia': product_type,
+                'stock_mty': 0,
+                'stock_gdl': 0,
+                'stock_max': 0,
+                'stock_merida': 0,
+                'actuals': actuals,  # proviene de stock_cedis_dict
+                'percentage_stock_max': 0,
+                'stock_final': actuals,  # Inicializamos stock_final con los actuales
+            })
+
+            # Actualiza stock_to_move, asegurándose de no exceder el stock disponible
+            available_stock = stock_dict[code].get(f'actuals_{warehouse}', 0)
+            stock_to_move = min(item['procurment_qty'], available_stock)
+            stock_dict[code].update({f'stock_to_move_{warehouse}': round(stock_to_move, 2)})
+
+            # Verificación para evitar que stock_final sea negativo
+            if stock_dict[code]['stock_final'] >= item['procurment_qty']:
+                # Si hay suficiente stock para el traspaso
+                stock_dict[code]['stock_final'] = round(stock_dict[code]['stock_final'] - item['procurment_qty'], 2)
+            else:
+                # Si no hay suficiente stock, se ajusta a 0
+                stock_dict[code]['stock_final'] = 0
+
+        # Ahora actualiza la información de los productos en el stock de los almacenes
         for x in product_stock:
             code = x['product_code']
-            warehouse = x['warehouse'].lower().replace(' ','_')
+            warehouse = x['warehouse'].lower().replace(' ', '_')
             if stock_dict.get(code):
                 if 'cedis' in warehouse:
                     warehouse = warehouse.replace('cedis', 'alm')
-                    #stock_dict[code][f'actuals_alm{warehouse}'] = x['actuals']
                 stock_dict[code][f'actuals_{warehouse}'] = x['actuals']
-                    
+
+        # Actualiza las reglas de stock máximo para cada producto
         for x in res_first:
             code = x['product_code']
-            warehouse = x['warehouse'].lower().replace(' ','_')
+            warehouse = x['warehouse'].lower().replace(' ', '_')
             if stock_dict.get(code):
-                # stock_dict[code]['rules'] = stock_dict[code].get('rules',[])
-                # stock_dict[code]['rules'].append(x)
                 stock_dict[code][f'stock_max_{warehouse}'] = x['stock_maximum']
-                if x[f'stock_maximum'] == 0:
+                if x['stock_maximum'] == 0:
                     stock_dict[code][f'p_stock_max_{warehouse}'] = 0
                 else:
-                    stock_dict[code][f'p_stock_max_{warehouse}'] = round((stock_dict[code].get(f'actuals_{warehouse}', 0) / x[f'stock_maximum']) * 100, 2)
-        
-        #buscar negativo
-        # for pcode, rec in stock_dict.items():
-        #     stock_final = rec['stock_final']
-        #     if stock_final < 0 :
-        #         p_stock_max = [v for k,v in rec.items() if 'p_stock_max_' in k]
-        #         alm_max_stock = reorder_obj.get_max_stock(rec['rules'])
-                    
+                    stock_dict[code][f'p_stock_max_{warehouse}'] = round((stock_dict[code].get(f'actuals_{warehouse}', 0) / x['stock_maximum']) * 100, 2)
+
         stock_list = list(stock_dict.values())
-        #print('STOCK_LIST', simplejson.dumps(stock_list, indent=4))
         return stock_list
     
     
@@ -233,8 +234,9 @@ class Reports(Reports):
         warehouse_keys = [key.split('stock_max_alm_')[-1] for key in stock_list[0].keys() if 'stock_max_alm_' in key]
 
         for product in stock_list:
+            #print('///', product)
             sku = product['sku']
-            data[sku] = {}
+            data[sku] = {'actuals': product.get("actuals", 0)}
             # print('PROD', data)
             # Iterar sobre los almacenes extraídos dinámicamente
             for warehouse_key in warehouse_keys:
@@ -270,106 +272,51 @@ class Reports(Reports):
         stock_warehouse = data[idx]
         stock_max = stock_warehouse['stock_max']
         return stock_max
-    
-    
-    # def warehouses_by_percentage_two(self, warehouses_by_percentage_dict, percentage_list):
-    #     stock_max = reorder_obj.get_stock_data(warehouses_by_percentage_dict, percentage_list[1])
-    #     stock_qty = reorder_obj.piezas_porcentaje(stock_max, .01)
-    #     stock_cedis -= stock_qty
-    #     if stock_cedis <= 0:
-    #         pass
-    #     warehouses_by_percentage_dict[percentage_list[1]]['traspaso'] += stock_qty
-    #     return warehouses_by_percentage_dict
-        
-    
-    # def warehouses_by_percentage_three(self, warehouses_by_percentage_dict, percentage_list):
-    #     stock_max = reorder_obj.get_stock_data(warehouses_by_percentage_dict, percentage_list[2])
-    #     stock_qty = reorder_obj.piezas_porcentaje(stock_max, .01)
-    #     stock_cedis -= stock_qty
-    #     if stock_cedis <= 0:
-    #         pass
-    #     warehouses_by_percentage_dict[percentage_list[1]]['traspaso'] += stock_qty
-    #     return warehouses_by_percentage_dict
         
     
     def warehouses_by_percentage(self):
         stock_list = reorder_obj.generate_report_info()  # Obtén la información del stock
-        actuals = sum(product['actuals'] for product in stock_list)  # Suma los 'actuals' de todos los productos
         data = reorder_obj.build_data_from_report(stock_list)  # Genera los datos del informe
-        percentage_list = []  # Lista para almacenar los porcentajes
-        warehouses_by_percentage_dict = {}  # Diccionario para almacenar los datos de los almacenes por porcentaje
+
+        traspaso_por_product = {}
 
         # Itera sobre los productos
         for key, value in data.items():
+            warehouses_by_percentage_dict = {}  # Diccionario para almacenar los datos de los almacenes por porcentaje
+            stock_cedis = value['actuals']  # El stock total disponible para mover
+
             # Itera sobre los almacenes de cada producto
             for warehouse_key, warehouse_data in value.items():
-                if 'porce' in warehouse_data:
+                if isinstance(warehouse_data, dict) and 'porce' in warehouse_data:
                     porce = warehouse_data['porce']
-                    percentage_list.append(porce)  # Agrega el porcentaje a la lista
                     warehouses_by_percentage_dict[porce] = warehouse_data  # Almacena la información del almacén en el diccionario
 
-        percentage_list.sort()  # Ordena la lista de porcentajes
-        stock_cedis = actuals  # Inicializa la cantidad de stock en CEDIS
+            percentage_list = sorted(warehouses_by_percentage_dict.keys())  # Ordena los porcentajes
 
-        # Ahora realiza las operaciones de acuerdo a los porcentajes
-        for idx, f in enumerate(percentage_list):
-            if (idx + 1) >= len(percentage_list):
-                diff = round(f - 100)  # Calcula la diferencia al 100%
-                stock_max = reorder_obj.get_stock_data(warehouses_by_percentage_dict, percentage_list[0])
-                stock_qty = reorder_obj.piezas_porcentaje(stock_max, .01)
-                stock_cedis -= stock_qty
-                if stock_cedis <= 0:
-                    break
-                warehouses_by_percentage_dict[percentage_list[0]]['traspaso'] += stock_qty
+            # Realiza los cálculos de traspaso para cada almacén
+            for idx, f in enumerate(percentage_list):
+                stock_warehouse = warehouses_by_percentage_dict[f]
+                porce = stock_warehouse['porce']
+                actuals = stock_warehouse['actuals']
 
-                # Realiza la misma operación para el siguiente almacén
-                stock_max = reorder_obj.get_stock_data(warehouses_by_percentage_dict, percentage_list[1])
-                stock_qty = reorder_obj.piezas_porcentaje(stock_max, .01)
-                stock_cedis -= stock_qty
-                if stock_cedis <= 0:
-                    break
-                warehouses_by_percentage_dict[percentage_list[1]]['traspaso'] += stock_qty
+                # Verificar si el porcentaje es cero para evitar la división por cero
+                if porce == 0:
+                    traspaso = 0
+                else:
+                    # Cálculo del traspaso
+                    traspaso = (100 * actuals / porce) - actuals
 
-                # Y lo mismo para el siguiente almacén
-                stock_max = reorder_obj.get_stock_data(warehouses_by_percentage_dict, percentage_list[2])
-                stock_qty = reorder_obj.piezas_porcentaje(stock_max, .01)
-                stock_cedis -= stock_qty
-                if stock_cedis <= 0:
-                    break
-                warehouses_by_percentage_dict[percentage_list[1]]['traspaso'] += stock_qty
-                continue
+                # Evitar traspasos negativos
+                if traspaso < 0:
+                    traspaso = 0
 
-            stock_warehouse = warehouses_by_percentage_dict[f]
-            diff = round(percentage_list[idx + 1] - percentage_list[idx])
-            diff_percentage = diff / 100
+                warehouses_by_percentage_dict[f]['traspaso'] = traspaso
 
-            if idx == 1:
-                for r in range(diff):
-                    stock_max = reorder_obj.get_stock_data(warehouses_by_percentage_dict, percentage_list[0])
-                    stock_qty = reorder_obj.piezas_porcentaje(stock_max, .01)
-                    stock_cedis -= stock_qty
-                    if stock_cedis <= 0:
-                        break
-                    warehouses_by_percentage_dict[percentage_list[0]]['traspaso'] += stock_qty
-
-                    stock_max = reorder_obj.get_stock_data(warehouses_by_percentage_dict, percentage_list[1])
-                    stock_qty = reorder_obj.piezas_porcentaje(stock_max, .01)
-                    stock_cedis -= stock_qty
-                    if stock_cedis <= 0:
-                        break
-                    warehouses_by_percentage_dict[percentage_list[1]]['traspaso'] += stock_qty
-            else:
-                stock_max = stock_warehouse['stock_max']
-                stock_qty = reorder_obj.piezas_porcentaje(stock_max, diff_percentage)
-                stock_cedis -= stock_qty
-                if stock_cedis <= 0:
-                    warehouses_by_percentage_dict[percentage_list[0]]['traspaso'] += stock_cedis
-                    break
-                warehouses_by_percentage_dict[percentage_list[0]]['traspaso'] += stock_qty
-
-        #print('almacenes_por_porcentaje', simplejson.dumps(warehouses_by_percentage_dict, indent=4))
-        return warehouses_by_percentage_dict
-        
+            # Aquí se guarda el traspaso por producto de forma única
+            traspaso_por_product[key] = warehouses_by_percentage_dict
+            
+        return traspaso_por_product
+            
         
     def piezas_porcentaje(self, stock_max, porcentaje):
         piezas = porcentaje * stock_max / 100 *100
@@ -377,24 +324,47 @@ class Reports(Reports):
     
     
     def warehouse_transfer_update(self):
-        stock_list_response = reorder_obj.generate_report_info()
-        warehouse_percentage_response = reorder_obj.warehouses_by_percentage()
-       
-        # Iteramos sobre cada producto en stock_list_response
-        for product in stock_list_response:
-            # Iteramos sobre los almacenes en warehouse_percentage_response
-            for key, value in warehouse_percentage_response.items():
-                almacen = value['almacen']  # Obtenemos el nombre del almacén (por ejemplo, "guadalajara")
+        stock_list_response = reorder_obj.generate_report_info()  # Lista de productos
+        warehouse_percentage_response = reorder_obj.warehouses_by_percentage()  # Respuesta con almacenes y traspasos
+        
+        # Iteramos sobre cada producto en warehouse_percentage_response
+        for sku, warehouses in warehouse_percentage_response.items():
+            # Buscamos el producto correspondiente en stock_list_response por SKU
+            product = next((p for p in stock_list_response if p['sku'] == sku), None)
+            
+            if product:  # Si encontramos el producto correspondiente
+                total_traspaso = 0  # Variable para acumular los traspasos del producto
 
-                # Formamos el nombre de la clave de stock_to_move dinámicamente
-                stock_key = f"stock_to_move_alm_{almacen}"
+                # Iteramos sobre los almacenes y traspasos del producto
+                for percentage_key, percentage_value in warehouses.items():
+                    if 'almacen' in percentage_value:
+                        almacen = percentage_value['almacen']  # Nombre del almacén
+                        traspaso = percentage_value['traspaso']  # Valor del traspaso
 
-                # Verificamos si la clave de stock_to_move para este almacén existe en el producto
-                if stock_key in product:
-                    product[stock_key] = round(value['traspaso'], 2)  # Actualizamos el valor con el traspaso redondeado a 2 decimales
+                        # Creamos la clave correspondiente para el almacén en el producto
+                        stock_key = f"stock_to_move_alm_{almacen}"
+                        
+                        if traspaso > product['actuals']:
+                            traspaso = 0
 
+                        # Verificamos si la clave del almacén existe en el producto y la actualizamos
+                        if stock_key in product:
+                            product[stock_key] = round(traspaso, 2)  # Actualizamos el valor redondeado a 2 decimales
+                            total_traspaso += traspaso  # Acumulamos el traspaso
+
+                # Después de calcular los traspasos, actualizamos el stock_final
+                if 'actuals' in product:  # Verificamos si 'actuals' existe en el producto
+                    stock_final = round(product['actuals'] - total_traspaso, 2)
+
+                    # Si el stock_final es negativo, lo establecemos en 0
+                    if stock_final < 0:
+                        stock_final = round(product['actuals'])
+                        
+                    product['stock_final'] = stock_final  # Asignamos el valor final al producto
+
+        # Imprimimos el resultado final para verificar los cambios
         #print(simplejson.dumps(stock_list_response, indent=4))
-        return stock_list_response    
+        return stock_list_response
         
         
 if __name__ == "__main__":
@@ -416,9 +386,7 @@ if __name__ == "__main__":
     warehouse_cedis = 'CEDIS GUADALAJARA'
 
     if option == 'get_report':
-        #reorder_obj.warehouses_by_percentage()
         #reorder_obj.warehouse_transfer_update()
-        #reorder_obj.generate_report_info()
         script_obj.HttpResponse({
             "stockInfo": reorder_obj.warehouse_transfer_update(),
         })
