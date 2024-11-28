@@ -206,12 +206,15 @@ class Reports(Reports):
         # Ahora actualiza la información de los productos en el stock de los almacenes
         for x in product_stock:
             code = x['product_code']
-            warehouse = x['warehouse'].lower().replace(' ', '_')
+            warehouse = x['warehouse'].lower().replace(' ', '_')          
             if stock_dict.get(code):
                 if 'cedis' in warehouse:
                     warehouse = warehouse.replace('cedis', 'alm')
-                stock_dict[code][f'actuals_{warehouse}'] = x['actuals']
-
+                elif warehouse == 'alm_guadalajara':
+                    stock_dict[code]['actuals_alm_guadalajara'] = 0
+                else:
+                    stock_dict[code][f'actuals_{warehouse}'] = x['actuals']
+                
         # Actualiza las reglas de stock máximo para cada producto
         for x in res_first:
             code = x['product_code']
@@ -298,6 +301,7 @@ class Reports(Reports):
                 stock_warehouse = warehouses_by_percentage_dict[f]
                 porce = stock_warehouse['porce']
                 actuals = stock_warehouse['actuals']
+                warehouse = stock_warehouse['almacen']
 
                 # Verificar si el porcentaje es cero para evitar la división por cero
                 if porce == 0:
@@ -321,7 +325,7 @@ class Reports(Reports):
     def piezas_porcentaje(self, stock_max, porcentaje):
         piezas = porcentaje * stock_max / 100 *100
         return piezas
-    
+        
     
     def warehouse_transfer_update(self):
         stock_list_response = reorder_obj.generate_report_info()  # Lista de productos
@@ -340,7 +344,7 @@ class Reports(Reports):
                     if 'almacen' in percentage_value:
                         almacen = percentage_value['almacen']  # Nombre del almacén
                         traspaso = percentage_value['traspaso']  # Valor del traspaso
-
+                        
                         # Creamos la clave correspondiente para el almacén en el producto
                         stock_key = f"stock_to_move_alm_{almacen}"
                         
@@ -351,18 +355,41 @@ class Reports(Reports):
                         if stock_key in product:
                             product[stock_key] = round(traspaso, 2)  # Actualizamos el valor redondeado a 2 decimales
                             total_traspaso += traspaso  # Acumulamos el traspaso
-
+                        
                 # Después de calcular los traspasos, actualizamos el stock_final
                 if 'actuals' in product:  # Verificamos si 'actuals' existe en el producto
                     stock_final = round(product['actuals'] - total_traspaso, 2)
-
+                    
                     # Si el stock_final es negativo, lo establecemos en 0
                     if stock_final < 0:
                         stock_final = round(product['actuals'])
                         
                     product['stock_final'] = stock_final  # Asignamos el valor final al producto
-
-        # Imprimimos el resultado final para verificar los cambios
+                    
+                if 'actuals_alm_guadalajara' not in product:
+                    product['actuals_alm_guadalajara'] = 0
+                    
+        return stock_list_response
+    
+    
+    def get_total_p_max_gdl(self):
+        stock_list_response = reorder_obj.warehouse_transfer_update()
+        for p in stock_list_response:
+            actuals = p['actuals']
+            before_stock_final = p['stock_final']
+            mty_transfer = p.get('stock_to_move_alm_monterrey', 0)
+            merida_transfer = p.get('stock_to_move_alm_merida', 0)
+            stock_max_alm_guadalajara = p.get('stock_max_alm_guadalajara', 0)
+            gdl_transfer = round(before_stock_final - mty_transfer - merida_transfer, 2)
+            p['stock_to_move_alm_guadalajara'] = gdl_transfer
+            
+            if p['stock_to_move_alm_guadalajara'] != 0 and stock_max_alm_guadalajara != 0:
+                total_p_max_gdl = round((gdl_transfer / stock_max_alm_guadalajara)*100,2)
+                p['p_stock_max_alm_guadalajara'] = total_p_max_gdl
+                
+                after_stock_final = round(actuals - mty_transfer - gdl_transfer - merida_transfer, 2)
+                p['stock_final'] = after_stock_final
+                
         #print(simplejson.dumps(stock_list_response, indent=4))
         return stock_list_response
         
@@ -379,17 +406,17 @@ if __name__ == "__main__":
     data = reorder_obj.data
     data = data.get('data',[])
     option = data.get('option','get_report')
-    #option = 'get_report'
+    option = 'get_report'
     product_family = data.get('product_family', 'TUBOS')
     product_line = data.get('product_line', '')
     warehouse_info = data.get('warehouse', '')
     warehouse_cedis = 'CEDIS GUADALAJARA'
 
     if option == 'get_report':
-        #reorder_obj.warehouse_transfer_update()
-        script_obj.HttpResponse({
-            "stockInfo": reorder_obj.warehouse_transfer_update(),
-        })
+        reorder_obj.get_total_p_max_gdl()
+        # script_obj.HttpResponse({
+        #     "stockInfo": reorder_obj.warehouse_transfer_update(),
+        # })
 
     elif option == 'get_catalog':
         warehouse_types_catalog = warehouse_obj.get_all_stock_warehouse()
