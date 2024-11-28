@@ -380,14 +380,15 @@ class Reports(Reports):
             mty_transfer = p.get('stock_to_move_alm_monterrey', 0)
             merida_transfer = p.get('stock_to_move_alm_merida', 0)
             stock_max_alm_guadalajara = p.get('stock_max_alm_guadalajara', 0)
-            gdl_transfer = round(before_stock_final - mty_transfer - merida_transfer, 2)
-            p['stock_to_move_alm_guadalajara'] = gdl_transfer
+                        
+            if before_stock_final > stock_max_alm_guadalajara:
+                p['stock_to_move_alm_guadalajara'] = stock_max_alm_guadalajara
             
-            if p['stock_to_move_alm_guadalajara'] != 0 and stock_max_alm_guadalajara != 0:
-                total_p_max_gdl = round((gdl_transfer / stock_max_alm_guadalajara)*100,2)
-                p['p_stock_max_alm_guadalajara'] = total_p_max_gdl
-                
-                after_stock_final = round(actuals - mty_transfer - gdl_transfer - merida_transfer, 2)
+                if p['stock_to_move_alm_guadalajara'] != 0 and stock_max_alm_guadalajara != 0:
+                    total_p_max_gdl = round((stock_max_alm_guadalajara / before_stock_final)*100,2)
+                    p['p_stock_max_alm_guadalajara'] = total_p_max_gdl
+                                    
+                after_stock_final = round(actuals - mty_transfer - stock_max_alm_guadalajara - merida_transfer, 2)
                 p['stock_final'] = after_stock_final
                 
         #print(simplejson.dumps(stock_list_response, indent=4))
@@ -406,17 +407,17 @@ if __name__ == "__main__":
     data = reorder_obj.data
     data = data.get('data',[])
     option = data.get('option','get_report')
-    option = 'get_report'
+    #option = 'get_report'
     product_family = data.get('product_family', 'TUBOS')
     product_line = data.get('product_line', '')
     warehouse_info = data.get('warehouse', '')
     warehouse_cedis = 'CEDIS GUADALAJARA'
 
     if option == 'get_report':
-        reorder_obj.get_total_p_max_gdl()
-        # script_obj.HttpResponse({
-        #     "stockInfo": reorder_obj.warehouse_transfer_update(),
-        # })
+        #reorder_obj.get_total_p_max_gdl()
+        script_obj.HttpResponse({
+            "stockInfo": reorder_obj.get_total_p_max_gdl(),
+        })
 
     elif option == 'get_catalog':
         warehouse_types_catalog = warehouse_obj.get_all_stock_warehouse()
