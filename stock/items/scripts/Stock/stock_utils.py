@@ -21,6 +21,9 @@ class Stock(Stock):
 
         # La relacion entre la forma de inventario y el catalogo utilizado para el inventario
         # por default simpre dejar los mismos nombres
+        print('FORM_INVENTORY_ID',self.FORM_INVENTORY_ID)
+        print('CATALOG_INVENTORY_ID',self.CATALOG_INVENTORY_ID)
+        print('FORM_CATALOG_DIR',self.CATALOG_INVENTORY_ID)
         self.FORM_CATALOG_DIR = {
             self.FORM_INVENTORY_ID:self.CATALOG_INVENTORY_ID,
             }
@@ -157,6 +160,8 @@ class Stock(Stock):
                     )
                 metadata['answers'] = answers
                
+                print('answers',answers)
+                print('answers',answersd)
                 print('cache_data',cache_data)
                 self.cache_set(cache_data)
                 create_resp = self.lkf_api.post_forms_answers(metadata)
