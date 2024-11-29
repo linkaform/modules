@@ -56,6 +56,8 @@ if __name__ == "__main__":
         response = acceso_obj.get_pass_custom(qr_code)
     elif option == 'get_my_pases':
         response = acceso_obj.get_my_pases(tab_status=tab_status)
+    elif option == 'get_pdf':
+        response = acceso_obj.get_pdf(qr_code)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
