@@ -72,7 +72,7 @@ class JIT(JIT, Stock):
             #     'linea':p.get(self.Product.f['linea'])
             #     'familia':p.get(self.Product.f['product_category'])
             #     }})
-        res = { p.get(self.Product.f['product_code']): p.get(self.Product.f['sku_percontainer']) for p in self.all_prod}
+        res = { p.get(self.Product.f['product_code']): p.get(self.Product.f['sku_percontainer']) for p in all_prod}
         return res
 
 
