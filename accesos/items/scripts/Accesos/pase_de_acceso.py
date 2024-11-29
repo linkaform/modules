@@ -28,11 +28,16 @@ if __name__ == "__main__":
     option = data.get("option","")
     qr_code=data.get("qr_code")
     tab_status=data.get("tab_status")
+    pre_sms = data.get("enviar_pre_sms",{})
 
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
     elif option == 'create_access_pass' or option == 'crear_pase':
-        response = acceso_obj.create_access_pass(location, access_pass) 
+        response = acceso_obj.create_access_pass(location, access_pass)
+        folio_msj = response.get('json', {}).get('id', '')
+        
+        if pre_sms:
+            pre_sms_response = acceso_obj.create_enviar_msj_pase(data_cel_msj=pre_sms, folio=folio_msj)
     elif option == 'update_pass':
         response = acceso_obj.update_pass(access_pass,folio)
     elif option == 'catalogos_pase':
