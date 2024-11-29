@@ -206,7 +206,8 @@ class Reports(Reports):
         # Ahora actualiza la información de los productos en el stock de los almacenes
         for x in product_stock:
             code = x['product_code']
-            warehouse = x['warehouse'].lower().replace(' ', '_')          
+            warehouse = x['warehouse'].lower().replace(' ', '_')
+            #print('WH', code, warehouse, x['actuals'])
             if stock_dict.get(code):
                 if 'cedis' in warehouse:
                     warehouse = warehouse.replace('cedis', 'alm')
@@ -227,6 +228,7 @@ class Reports(Reports):
                     stock_dict[code][f'p_stock_max_{warehouse}'] = round((stock_dict[code].get(f'actuals_{warehouse}', 0) / x['stock_maximum']) * 100, 2)
 
         stock_list = list(stock_dict.values())
+        #print('STOCK_LIST', simplejson.dumps(stock_list, indent=4))
         return stock_list
     
     
@@ -275,8 +277,13 @@ class Reports(Reports):
         stock_warehouse = data[idx]
         stock_max = stock_warehouse['stock_max']
         return stock_max
-        
     
+    
+    def piezas_porcentaje(self, stock_max, porcentaje):
+        piezas = porcentaje * stock_max / 100 *100
+        return piezas
+    
+        
     def warehouses_by_percentage(self):
         stock_list = reorder_obj.generate_report_info()  # Obtén la información del stock
         data = reorder_obj.build_data_from_report(stock_list)  # Genera los datos del informe
@@ -321,11 +328,6 @@ class Reports(Reports):
             
         return traspaso_por_product
             
-        
-    def piezas_porcentaje(self, stock_max, porcentaje):
-        piezas = porcentaje * stock_max / 100 *100
-        return piezas
-        
     
     def warehouse_transfer_update(self):
         stock_list_response = reorder_obj.generate_report_info()  # Lista de productos
@@ -369,6 +371,7 @@ class Reports(Reports):
                 if 'actuals_alm_guadalajara' not in product:
                     product['actuals_alm_guadalajara'] = 0
                     
+        #print(simplejson.dumps(stock_list_response, indent=4))            
         return stock_list_response
     
     
@@ -380,17 +383,29 @@ class Reports(Reports):
             mty_transfer = p.get('stock_to_move_alm_monterrey', 0)
             merida_transfer = p.get('stock_to_move_alm_merida', 0)
             stock_max_alm_guadalajara = p.get('stock_max_alm_guadalajara', 0)
-                        
-            if before_stock_final > stock_max_alm_guadalajara:
-                p['stock_to_move_alm_guadalajara'] = stock_max_alm_guadalajara
             
-                if p['stock_to_move_alm_guadalajara'] != 0 and stock_max_alm_guadalajara != 0:
-                    total_p_max_gdl = round((stock_max_alm_guadalajara / before_stock_final)*100,2)
-                    p['p_stock_max_alm_guadalajara'] = total_p_max_gdl
-                                    
-                after_stock_final = round(actuals - mty_transfer - stock_max_alm_guadalajara - merida_transfer, 2)
-                p['stock_final'] = after_stock_final
+            if p['actuals_alm_guadalajara'] == 0:
+                if before_stock_final > stock_max_alm_guadalajara:
+                    p['stock_to_move_alm_guadalajara'] = stock_max_alm_guadalajara
                 
+                    if p['stock_to_move_alm_guadalajara'] != 0:
+                        total_p_max_gdl = 0
+                        # total_p_max_gdl = round((stock_max_alm_guadalajara / before_stock_final)*100,2)
+                        p['p_stock_max_alm_guadalajara'] = total_p_max_gdl
+                                        
+                    after_stock_final_one = round(actuals - mty_transfer - stock_max_alm_guadalajara - merida_transfer, 2)
+                    p['stock_final'] = after_stock_final_one
+            
+            else:
+                total_p_max_gdl = round((p['actuals_alm_guadalajara'] / before_stock_final) * 100, 2)
+                p['p_stock_max_alm_guadalajara'] = total_p_max_gdl
+                
+                transfer_gdl = round((100 * p['actuals_alm_guadalajara'] / p['p_stock_max_alm_guadalajara']) - p['actuals_alm_guadalajara'], 2)
+                p['stock_to_move_alm_guadalajara'] = transfer_gdl
+            
+                after_stock_final_two = round(actuals - mty_transfer - p['stock_to_move_alm_guadalajara'] - merida_transfer, 2)
+                p['stock_final'] = after_stock_final_two
+            
         #print(simplejson.dumps(stock_list_response, indent=4))
         return stock_list_response
         
