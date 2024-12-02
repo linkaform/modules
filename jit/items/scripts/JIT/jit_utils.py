@@ -119,7 +119,6 @@ class JIT(JIT, Stock):
         product_by_warehouse = {}
         product_codes = [r['product_code'] for r in  product_rules if r.get('product_code')]
         self.ROUTE_RULES = self.get_rutas_transpaso()
-        print('product_rules',product_rules )
         for rule in product_rules:
             product_code = rule.get('product_code')
             sku = rule.get('sku')
@@ -129,6 +128,13 @@ class JIT(JIT, Stock):
             #product_stock = self.Stock.get_product_stock(product_code, sku=sku,  warehouse=warehouse, location=location)
             product_stock = Stock.get_products_inventory(self, product_code, warehouse, location, status='active')
             #product_stock = {'actuals':0}
+            print('product_code', product_code)
+            print('rule', rule)
+            if isinstance(product_stock, list) and len(product_stock):
+                product_stock = product_stock[0]
+            else:
+                product_stock = {}
+            print('product_stock', product_stock)
             order_qty = self.exec_reorder_rules(rule, product_stock)
             if order_qty:
                 print('order qty', order_qty)
