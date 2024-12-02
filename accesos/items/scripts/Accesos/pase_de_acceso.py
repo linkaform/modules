@@ -29,7 +29,7 @@ if __name__ == "__main__":
     qr_code=data.get("qr_code")
     tab_status=data.get("tab_status")
     pre_sms = data.get("enviar_pre_sms",{})
-
+    
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
     elif option == 'create_access_pass' or option == 'crear_pase':
