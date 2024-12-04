@@ -36,7 +36,7 @@
                 <item>
                     <catalog_id>None</catalog_id>
                     <field_id>65e1169689c0e0790f8843f1</field_id>
-                    <group_id>6442e4537775ce64ef72dd69</group_id>
+                    <group_id>None</group_id>
                     <id>65e1169689c0e0790f8843f1</id>
                     <label>Cantidad Solicitada</label>
                     <type>integer</type>
@@ -44,10 +44,18 @@
                 <item>
                     <catalog_id>None</catalog_id>
                     <field_id>ffff00000000000000000001</field_id>
-                    <group_id>6442e4537775ce64ef72dd69</group_id>
+                    <group_id>None</group_id>
                     <id>ffff00000000000000000001</id>
                     <label>Folio Stock Destino</label>
                     <type>text</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>66e0cd760cc8e3fb75f23803</field_id>
+                    <group_id>None</group_id>
+                    <id>66e0cd760cc8e3fb75f23803</id>
+                    <label>Excel ERRORES de carga ONTs</label>
+                    <type>files</type>
                 </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>
