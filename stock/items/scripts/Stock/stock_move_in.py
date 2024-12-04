@@ -13,11 +13,13 @@ from pymongo.read_concern import ReadConcern
 from pymongo.write_concern import WriteConcern
 from pymongo.read_preferences import ReadPreference
 
+
 class Stock(Stock):
 
     def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
 
+        self.all_sku = []
         self.mf.update({
             'product_material': '66b10b87a1d4483b5369f409',
             'series_group':'66c75ca499596663582eed59',
@@ -25,7 +27,8 @@ class Stock(Stock):
         })
         self.prev_version = {}
         # self.max_sets = 5000
-        self.max_sets = 5
+        self.max_sets = 2500
+        self.sku_finds = []
 
     def get_skus_records(self):
         """
@@ -49,35 +52,8 @@ class Stock(Stock):
             }
         return dict_skus
 
-    def xls_header_record(self, xls_file):
-        data_xls = self.read_xls( xls_file)
-        if data_xls:
-            header = data_xls.get('header')
-            records = data_xls.get('records')
-            records =  [item for item in records if not (isinstance(item, list) and all(elem == '' for elem in item))]
-            return header, records 
-        else:
-            return None, None
-
-
-    def read_xls_file(self):
-        header, records = self.xls_header_record( self.mf['xls_file'])
-        print('header', header)
-        if not header:
-            self.LKFException( f'No se encontro archivo excel de carga' ) 
-        if 'Serie ONT' in header:
-            self.proceso_onts = True
-            return self.carga_onts(header, records)
-        else:
-            self.proceso_onts = False
-            return self.carga_materiales(header, records)
-
     def carga_materiales(self, header, records):
         header_dict = self.make_header_dict(header)
-        print('xls_file', self.mf['xls_file'])
-        print('xls_onts', self.mf['xls_onts'])
-        print('header', header)
-        print('records', records)
         """
         # Se revisa que el excel tenga todas las columnas que se requieren para el proceso
         """
@@ -92,7 +68,6 @@ class Stock(Stock):
         """
         dict_products_skus = self.get_skus_records()
 
-        print('++ records =',records)
         pos_codigo = header_dict.get('codigo_de_producto')
         pos_sku = header_dict.get('sku')
         pos_cantidad = header_dict.get('cantidad')
@@ -140,22 +115,6 @@ class Stock(Stock):
             self.answers[ self.f['move_group'] ] = sets_to_products
         return True, True
 
-    def carga_onts(self, header, records):
-        header_dict = self.make_header_dict(header)
-        
-        """
-        # Se revisa que el excel tenga todas las columnas que se requieren para el proceso
-        """
-        cols_required = ['serie_ont']
-        cols_not_found = self.check_keys_and_missing(cols_required, header_dict)
-        if cols_not_found:
-            cols_not_found = [ c.replace('_', ' ').title() for c in cols_not_found ]
-            self.LKFException( f'Se requieren las columnas: {self.list_to_str(cols_not_found)}' )
-
-        #for testin only 20 records 
-        # records = records[0:20]
-        return header_dict, records
-
     def do_groups(self, header, records):
         pos_serie = header.get('serie_ont')
         error_rows = []
@@ -170,7 +129,10 @@ class Stock(Stock):
             groups = [onts[i:i + self.max_sets] for i in range(0, len(onts), self.max_sets) ]
             print('records=', len(groups))
         else:
-            self.LKFException( 'Favor de indicar el numero de producto y sku a procesar en la carga de ONTS' )
+
+            self.LKFException( '', dict_error= {
+                        "msg": 'Favor de indicar el numero de producto y sku a procesar en la carga de ONTS'} 
+                )
         return groups
 
     def create_records(self, groups):
@@ -201,11 +163,15 @@ class Stock(Stock):
                 if not num_serie:
                     continue
                 if num_serie in series_unique:
-                    self.LKFException( 'Se encontraron series repetidas en el excel: {}'.format( num_serie ) )
+                    self.LKFException( '', dict_error= {
+                        f"{self.f['lot_number']}": {
+                        "msg": ['Se encontraron series repetidas en el excel: {}'.format( num_serie )], 
+                        "label": "Serie Repetida", "error": []}}
+                        )
                 series_unique.append(num_serie)
                 row_set = deepcopy(base_row_set)
                 row_set[self.f['lot_number']] = num_serie
-                # print('num_serie=',num_serie)
+
                 folio_serie_record.append({'folio':new_folio, 'ont_serie':num_serie})
                 if idx == 0:
                     self.current_record['folio'] = new_folio
@@ -213,8 +179,8 @@ class Stock(Stock):
                 else:
                     new_record['answers'][self.f['move_group']].append(row_set)
             # print('new_recordew', simplejson.dumps(new_record, indent=3))
-            print('nuevo stock..... nueva recepcion')
-            self.ejecutar_transaccion(new_record, folio_serie_record )
+            if new_record:
+                self.ejecutar_transaccion(new_record, folio_serie_record )
         return True
 
     def get_enviroment(self):
@@ -230,8 +196,8 @@ class Stock(Stock):
         if self.get_enviroment() == 'prod':
             with self.client.start_session() as session:
                 # Define el bloque de transacción
+                #HACE TRANSACCIONES ACIDAS
                 def write_records(sess):
-                    print('sess', sess)
                     if new_record.get('answers'):
                         self.records_cr.insert_one(new_record, session=sess)
                         self.direct_move_in(new_record)
@@ -249,17 +215,28 @@ class Stock(Stock):
                     print(f"Error durante la transacción: {e}")
         else:
             try:
-                #HACE TRANSACCIONES ACIDAS
                 if folio_serie_record:
                     res = self.ont_cr.insert_many(folio_serie_record)
+            except Exception as e:
+                self.LKFException( '', dict_error= {
+                        f"Error": {
+                        "msg": [f'Error en la creacion de las onts. '], 
+                        "label": "Serie Repetida", "error": []}}
+                        )
+            try:
                 if new_record.get('answers'):
                     res = self.records_cr.insert_one(new_record)
                     self.direct_move_in(new_record)
                     print('ids2', res.inserted_id)
             except Exception as e:
+                print('error: ', e)
                 series = [s['ont_serie'] for s in folio_serie_record]
-                res = self.ont_cr.delete_many({'folio':123, 'ont_serie':{'$in':series}})
-                self.LKFException( 'INTENTA NUEVAMENTE: Se encontraron series repetidas en el excel: {}'.format( e ) )
+                res = self.ont_cr.delete_many({'ont_serie':{'$in':series}})
+                self.LKFException( '', dict_error= {
+                        f"{self.f['lot_number']}": {
+                        "msg": [f'INTENTA NUEVAMENTE:  Se encontraron series repetidas en el excel. '], 
+                        "label": "Serie Repetida", "error": []}}
+                        )
 
     def read_series_ONTs(self):
         """
@@ -355,8 +332,8 @@ class Stock(Stock):
         location = self.answer_label['warehouse_location']
         warehouse_to = self.answer_label['warehouse_dest']
         location_to = self.answer_label['warehouse_location_dest']
-        print('answers', self.answer_label['move_group'] )
         move_lines = self.answer_label['move_group'] 
+        move_lines = answers['move_group'] 
         # Información original del Inventory Flow
         status_code = 0
         move_locations = []
@@ -366,6 +343,7 @@ class Stock(Stock):
         new_records_data = []
         skus = self.get_group_skus(move_lines)
         metadata = self.lkf_api.get_metadata(self.FORM_INVENTORY_ID)
+
         metadata.update(self.get_complete_metadata())
         new_stock_records = []
         folio = new_record['folio']
@@ -373,7 +351,6 @@ class Stock(Stock):
             this_metadata = deepcopy(metadata)
             this_metadata['folio'] = f'{folio}-{idx}'
             move_line = self.answers[self.f['move_group']][idx]
-            # print('move_line', move_line)
             answers = self.stock_inventory_model(moves, skus[moves['product_code']], labels=True)
             answers.update({
                 self.WH.WAREHOUSE_LOCATION_OBJ_ID:{
@@ -383,7 +360,7 @@ class Stock(Stock):
                     },
                 )
             this_metadata['answers'] = answers
-           
+
             new_stock_records.append(this_metadata)
             # self.cache_set(cache_data)
             # create_resp = self.lkf_api.post_forms_answers(metadata)
@@ -401,7 +378,6 @@ class Stock(Stock):
             #     error = create_resp.get('json',{}).get('error', 'Unkown error')
             #     move_line[self.f['inv_adjust_grp_status']] = 'error'
             #     move_line[self.f['inv_adjust_grp_comments']] = f'Status Code: {status_code}, Error: {error}'
-        # print('new_stock=',new_stock_records)
         if new_stock_records:
             res = self.cr.insert_many(new_stock_records)
             self.cache_set({
@@ -411,14 +387,46 @@ class Stock(Stock):
                             })
         return res.inserted_ids
 
+
+    def get_product_sku(self, all_codes):
+        search_sku = []
+        for sku, product_code in all_codes.items():
+            if sku not in self.all_sku:
+                self.all_sku.append(sku.upper())
+                search_sku.append(sku.upper())
+        skus = {}
+
+        if search_sku:
+            mango_query = self.product_sku_query(search_sku)
+            sku_finds = self.lkf_api.search_catalog(self.Product.SKU_ID, mango_query)
+            self.sku_finds += sku_finds
+        else:
+            sku_finds = self.sku_finds
+        for this_sku in sku_finds:
+                product_code = this_sku.get(self.f['product_code'])
+                skus[product_code] = skus.get(product_code, {})
+                skus[product_code].update({
+                    'sku':this_sku.get(self.f['sku']),
+                    'product_name':this_sku.get(self.f['product_name']),
+                    'product_category':this_sku.get(self.f['product_category']),
+                    'product_type':this_sku.get(self.f['product_type']),
+                    'product_department':this_sku.get(self.f['product_department']),
+                    'sku_color':this_sku.get(self.f['sku_color']),
+                    'sku_image':this_sku.get(self.f['sku_image'],),
+                    'sku_note':this_sku.get(self.f['sku_note'],),
+                    'sku_package':this_sku.get(self.f['sku_package'],),
+                    'sku_per_package':this_sku.get(self.f['reicpe_per_container'],),
+                    'sku_size' : this_sku.get(self.f['sku_size']),
+                    'sku_source' : this_sku.get(self.f['sku_source']),
+                    })
+        return skus
+
     def set_mongo_connections(self):
         self.client = self.get_mongo_client()
         dbname = 'infosync_answers_client_{}'.format(self.account_id)
         db = self.client[dbname]
         self.records_cr = db["form_answer"]
         self.ont_cr = db["serie_onts"]
-        # self.records_cr = self.get_db_cr(collection='form_answers')
-        # self.ont_cr = self.get_db_cr(collection ='serie_onts')
         return True
        
 
@@ -432,8 +440,6 @@ if __name__ == '__main__':
     if stock_obj.proceso_onts:
         groups = stock_obj.do_groups(header, records)
         stock_obj.create_records(groups)
-
-
     # stock_obj.read_series_ONTs()
     #se tiene que mover el direct move in despues de la injeccion de datos
     stock_obj.current_record['answers'] = stock_obj.answers
