@@ -9,7 +9,6 @@ from lkf_addons.addons.stock.app import Stock
 today = date.today()
 year_week = int(today.strftime('%Y%W'))
 
-
 class Stock(Stock):
 
     # _inherit = 'employee'
@@ -39,6 +38,91 @@ class Stock(Stock):
             'capture_num_serie': '66c75e0c0810217b0b5593ca'
         }
 
+
+    def carga_materiales(self, header, records):
+        header_dict = self.make_header_dict(header)
+        print('xls_file', self.mf['xls_file'])
+        print('xls_onts', self.mf['xls_onts'])
+        print('header', header)
+        print('records', records)
+        """
+        # Se revisa que el excel tenga todas las columnas que se requieren para el proceso
+        """
+        cols_required = ['codigo_de_producto', 'sku', 'cantidad']
+        cols_not_found = self.check_keys_and_missing(cols_required, header_dict)
+        if cols_not_found:
+            cols_not_found = [ c.replace('_', ' ').title() for c in cols_not_found ]
+            self.LKFException( f'Se requieren las columnas: {self.list_to_str(cols_not_found)}' )
+
+        """
+        # Se revisan los renglones del excel para verificar que los codigos y skus existan en el catalogo
+        """
+        dict_products_skus = self.get_skus_records()
+
+        print('++ dict_products_skus =',dict_products_skusd)
+        print('++ records =',records)
+        pos_codigo = header_dict.get('codigo_de_producto')
+        pos_sku = header_dict.get('sku')
+        pos_cantidad = header_dict.get('cantidad')
+
+        """
+        Se procesan los renglones del excel para armar los sets del grupo repetitivo
+        se evalua que los codigos y skus de los productos existan en el catálogo, si alguno no existe se marca error
+        """
+        error_rows = []
+        sets_to_products = []
+        for pos_row, rec in enumerate(records):
+            num_row = pos_row + 2
+            product_code = rec[pos_codigo]
+            sku = rec[pos_sku]
+            cantidad = rec[pos_cantidad]
+            if not product_code and not sku and not cantidad:
+                continue
+            if not product_code or not sku:
+                error_rows.append(f'RENGLON {num_row}: Debe indicar el código del producto y el sku')
+                continue
+            if not cantidad:
+                error_rows.append(f'RENGLON {num_row}: Debe indicar una cantidad')
+                continue
+            info_product = dict_products_skus.get( f'{product_code}_{sku}' )
+            if not info_product:
+                error_rows.append(f'RENGLON {num_row}: No se encontro el codigo {product_code} con el sku {sku}')
+                continue
+            info_product.update({
+                self.f['prod_qty_per_container'] : [],
+                self.f['product_code'] : str(product_code),
+                self.f['sku'] : str(sku),
+            })
+            
+            sets_to_products.append({
+                self.Product.SKU_OBJ_ID: info_product,
+                self.f['lot_number'] : "LotePCI001",
+                self.f['inv_adjust_grp_status'] : "todo",
+                self.f['move_group_qty'] : cantidad,
+            })
+        if error_rows:
+            self.LKFException( self.list_to_str(error_rows) )
+        if self.answers.get( self.f['move_group'] ):
+            self.answers[ self.f['move_group'] ] += sets_to_products
+        else:
+            self.answers[ self.f['move_group'] ] = sets_to_products
+        return True, True
+
+    def carga_onts(self, header, records):
+        header_dict = self.make_header_dict(header)
+        
+        """
+        # Se revisa que el excel tenga todas las columnas que se requieren para el proceso
+        """
+        cols_required = ['serie_ont']
+        cols_not_found = self.check_keys_and_missing(cols_required, header_dict)
+        if cols_not_found:
+            cols_not_found = [ c.replace('_', ' ').title() for c in cols_not_found ]
+            self.LKFException( f'Se requieren las columnas: {self.list_to_str(cols_not_found)}' )
+
+        #for testin only 20 records 
+        # records = records[0:20]
+        return header_dict, records
 
     # def get_product_sku(self, all_codes):
     #     #migrara a branch de magnolia
@@ -160,9 +244,6 @@ class Stock(Stock):
                     )
                 metadata['answers'] = answers
                
-                print('answers',answers)
-                print('answers',answersd)
-                print('cache_data',cache_data)
                 self.cache_set(cache_data)
                 create_resp = self.lkf_api.post_forms_answers(metadata)
                 print('response_sistema',create_resp)
@@ -184,7 +265,6 @@ class Stock(Stock):
     def move_one_many_one(self):
         #pci
         move_lines = self.answers[self.f['move_group']]
-        print('-----------------------------answers', move_lines)
         warehouse = self.answers[self.WH.WAREHOUSE_LOCATION_OBJ_ID][self.f['warehouse']]
         location = self.answers[self.WH.WAREHOUSE_LOCATION_OBJ_ID][self.f['warehouse_location']]
         warehouse_to = self.answers[self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID][self.f['warehouse_dest']]
@@ -197,7 +277,6 @@ class Stock(Stock):
         data_from = {'warehouse':warehouse, 'warehouse_location':location}
         new_records_data = []
         connection_to_assign = self.answers.pop('id_user_to_assign', None)
-        print('connection_to_assign =',connection_to_assign)
         for moves in move_lines:
             info_product = moves.get(self.STOCK_INVENTORY_OBJ_ID, {})
             # product_code = info_product.get(self.f['product_code'])
@@ -244,9 +323,9 @@ class Stock(Stock):
                 self.LKFException(msg_error_app)
             # Información que modifica el usuario
             move_qty = moves.get(self.f['move_group_qty'],0)
-            print('move_qty', move_qty)
             moves[self.f['inv_move_qty']] = move_qty
-            self.validate_move_qty(product_code, sku, lot_number,  warehouse, location, move_qty)
+            self.folio = stock['folio']
+            self.validate_move_qty(product_code, sku, lot_number,  warehouse, location, move_qty, **{'cache.folio_from':{'$ne':stock['folio']}})
             
             move_vals_from = {'_id': f"{product_code}_{sku}_{lot_number}_{warehouse}_{location}",
                         'move_out':move_qty,
@@ -270,9 +349,7 @@ class Stock(Stock):
                 'move_qty':move_qty
             })
             # lots_in[set_location] = lots_in.get(set_location, move_vals_to) 
-            print('setting cache to...', move_vals_to)
             self.cache_set(move_vals_to)
-            print('setting cache form...', move_vals_from)
             self.cache_set(move_vals_from)
             new_lot = stock.get('record',{}).get('answers',{})
             warehouse_ans = self.swap_location_dest(self.answers[self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID])
@@ -288,13 +365,11 @@ class Stock(Stock):
                 create_new_records.append(record['new_record'])
             else:
                 print('YA EXISTE... record ya se actualizco usando cache', record)
-        print('create_new_records=',create_new_records)
         print('TODO mover status a lineas de registro')
         res_create = self.lkf_api.post_forms_answers_list(create_new_records)
         #updates records from where stock was moved
         res = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=folios)
         res ={}
-        print('res_create', res_create)
         if connection_to_assign:
             for stock_inv_created in res_create:
                 new_record = '/api/infosync/form_answer/' + stock_inv_created['json']['id'] +'/'
@@ -305,6 +380,28 @@ class Stock(Stock):
         """
         #res = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=folios)
         return True
+
+    def xls_header_record(self, xls_file):
+        data_xls = self.read_xls(xls_file)
+        if data_xls:
+            header = data_xls.get('header')
+            records = data_xls.get('records')
+            records =  [item for item in records if not (isinstance(item, list) and all(elem == '' for elem in item))]
+            return header, records 
+        else:
+            return None, None
+
+    def read_xls_file(self):
+        header, records = self.xls_header_record( self.mf['xls_file'])
+        if not header:
+            self.LKFException( f'No se encontro archivo excel de carga' ) 
+        if 'Serie ONT' in header:
+            self.proceso_onts = True
+            return self.carga_onts(header, records)
+
+        else:
+            self.proceso_onts = False
+            return self.carga_materiales(header, records)
 
     def read_xls(self, id_field_xls):
         file_url_xls = self.answers.get( id_field_xls )
@@ -452,3 +549,43 @@ class Stock(Stock):
         if product_code:
             result = result.get(product_code,0)
         return result 
+
+
+    ##test
+
+    def get_stock_info_from_catalog_inventory(self, answers={}, data={}, **kwargs):
+        if not answers:
+            answers = self.answers
+        res = deepcopy(data)
+        res.update(self.get_stock_info_form_answer(answers=answers, data=res))
+        if not res.get('folio'):
+            kwargs['require'] = kwargs.get('require',[])
+            kwargs['require'].append('folio')
+        print('res-', res)
+        if kwargs.get('require') or kwargs.get('get_record'):
+            record = self.get_invtory_record_by_product(
+                self.FORM_INVENTORY_ID,
+                res['product_code'],  
+                res['sku'],  
+                res['lot_number'] ,
+                res['warehouse'],
+                res['warehouse_location'])
+            res['record'] = record
+            print('kwargs=', kwargs)
+            print('record=',record )
+            for key in kwargs['require']:
+                if not record:
+                    msg = "******************** Something went wrong, we couldn't find a record for: *********************** \n"
+                    msg += f"Product Code {res['product_code']} / SKU: {res['sku']} \n"
+                    msg += f"Warehouse: {res['warehouse']} / Location: {res['warehouse_location']} \n"
+                    msg += f"Numero de Lote: {res['lot_number']} "
+                    error = {
+                        f"{self.CATALOG_INVENTORY_OBJ_ID}": {
+                        "msg": [msg], 
+                        "label": "Producto NO encontrado", "error": []}}
+                    self.LKFException( '', dict_error=error )
+                if record.get(key):
+                    res[key] = record.get(key)
+                else:
+                    res[key] = self.search_4_key(record, key)
+        return res
