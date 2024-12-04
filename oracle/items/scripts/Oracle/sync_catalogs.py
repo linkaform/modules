@@ -17,6 +17,10 @@ class Oracle(Oracle):
         self.load('Employee', **self.kwargs)
         self.load(module='activo_fijo', module_class='Vehiculo', import_as='Vehiculo', **self.kwargs)
 
+        self.VEHICULOS_CAT = self.lkm.catalog_id('vehiculos')
+        self.VEHICULOS_CAT_ID = self.VEHICULOS_CAT.get('id')
+        self.VEHICULOS_CAT_OBJ_ID = self.VEHICULOS_CAT.get('obj_id')
+
         self.Employee.f.update({
             'worker_code':'670f585bf844ff7bc357b1dc',
             'worker_code_jefes':'673438f3d63c642de27e388d',
@@ -24,7 +28,9 @@ class Oracle(Oracle):
             })
 
         self.Vehiculo.f.update({
+            'fecha_ultimo_km':'6675ae21a97a1aa2bf03e90a',
             'oracle_id':'6734cb449fd5b7ffaa99bc47',
+            'ultimo_km':'6675ae21a97a1aa2bf03e909',
             })
         self.f.update(self.Employee.f)
         self.f.update(self.Vehiculo.f)
@@ -36,6 +42,9 @@ class Oracle(Oracle):
             'M':'Femenino',
             'D':'Disponible',
             'ND':'NoDisponible',
+            1:'Activo',
+            0:'Baja',
+            -1:'Baja',
         }
 
         self.db_id_fields = {
@@ -195,6 +204,19 @@ class Oracle(Oracle):
                     'ESTATUS': self.f['estatus'],
                     'ESTADO': self.f['estado'],
                     },
+                 },
+            'LINK_VEHICULOS':{
+                'catalog_id': self.VEHICULOS_CAT_ID,
+                'schema':{
+                    'ACTIVO_FIJOID': self.f['oracle_id'],
+                    'PLACA': self.f['placas'],
+                    'MARCA': self.f['marca'],
+                    'MODELO': self.f['modelo'],
+                    'ULTIMO_KILOMETRAJE': self.f['ultimo_km'],
+                    'FECHA_ULTIMO_KILOMETRAJE': self.f['fecha_ultimo_km'],
+                    'EMPELADO_RESPONSABLE': self.f['worker_name'],
+                    'ESTADO': self.f['estatus_vehiculo'],
+                    },
                 },
             }
 
@@ -235,6 +257,8 @@ class Oracle(Oracle):
             if schema.get(key) and value:
                 if type(value) in (str, int, float) and self.etl_values.get(value):
                     translated_dict[schema[key]] = self.etl_values[value]
+                elif isinstance(value, datetime.datetime):
+                    value = str(value)
                 else:
                     translated_dict[schema[key]] = value
         translated_dict.update(self.find_db_id(data))
@@ -269,6 +293,7 @@ class Oracle(Oracle):
         departamento_puesto = {}
         eq = self.views[v]
         for row in response:
+            print('v=',v)
             if v == 'LINK_EQUIPOS':
                 row['CATEGORIA'] = [row['EQUIPO'],]
                 row['NOMBRE'] = str(row['VEHICULO_TALID'])
@@ -303,10 +328,13 @@ class Oracle(Oracle):
             usr = {}
 
             usr.update(metadata_catalog)
+            print('row=',row)
             usr['answers'] = self.api_etl(row, schema, catalog_id)
+            print('answers=',usr['answers'])
             usr['_id'] = usr['answers'].get('_id')
             usr['sync_data'] = usr['answers'].pop('sync_data') if usr['answers'].get('sync_data') else {}
-            usr['sync_data']['oracle_id'] = self.get_oracle_id(row)
+            if usr.get('sync_data'):
+                usr['sync_data']['oracle_id'] = self.get_oracle_id(row)
             # print('row', row.get('GENERO'))
             data.append(usr)
 
@@ -357,17 +385,15 @@ class Oracle(Oracle):
                     status_code = res['status_code']
                     if status_code in (200,201,202,204):
                         sync_data['"updated_at"'] = time.time()
-                        print('query=', query)
-                        print('sync_data=', sync_data)
                         sres = self.update(query, sync_data, upsert=True)
-                        print('acknowledged', sres.acknowledged)
-                        print('upserted_id', sres.upserted_id)
-                        print('sres', dir(sres))
                         # self.create(sync_data)
                 else:
                     self.post_catalog(db_name, item_id, rec, sync_data)
+                    print('re3s=',res)
             else:
+                print('rec=', rec)
                 res = self.post_catalog(db_name, item_id, rec, db_sync=True)
+                print('reds=',res)
 
     def post_catalog(self, db_name, item_id, rec, sync_data={}, db_sync=False):
         res = self.lkf_api.post_catalog_answers(rec)
@@ -383,8 +409,9 @@ class Oracle(Oracle):
                 res = self.update(query, sync_data, upsert=True)
             else:
                 sync_data['lkf_id'] = res_data['id']
-                # print('Creating', sync_data)
+                print('Creating', sync_data)
                 res = self.create(sync_data)
+                print('res=',res)
         return res
 
 
@@ -418,6 +445,7 @@ if __name__ == "__main__":
                 update = False
                 query = None
                 print('last_update', last_update)
+                last_update = False
                 if last_update:
                     update = True
                     date_time = datetime.datetime.fromtimestamp(last_update)
