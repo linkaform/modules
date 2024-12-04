@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson
+from copy import deepcopy
 
 from stock_utils import Stock
-
 from account_settings import *
 
 class Stock(Stock):
@@ -15,6 +15,37 @@ class Stock(Stock):
             'xls_file': '66c797955cfca4851db2c3b8',
 
         })
+
+    def create_records(self, header, records):
+        move_group = self.answers.get( self.f['move_group'], [] )
+        has_ont = 'serie_ont' in list(header.keys())
+        if not move_group and has_ont:
+            self.LKFException('Para cargar ONTs debes de indicar solo 1 producto. Haciendo refereincas al SKU de la ONT')
+
+        base_row_set = deepcopy(move_group[0])
+        self.answers[self.f['move_group']] = []
+        base_row_set[self.f['move_group_qty']] = 1
+        series_unique = []
+        for num_serie in records:
+            # num_serie = row[ pos_serie ]
+            num_serie = self.unlist(num_serie)
+            num_serie = self.strip_special_characters(num_serie)
+            if not num_serie:
+                continue
+            if num_serie in series_unique:
+                self.LKFException( '', dict_error= {
+                    f"{self.f['lot_number']}": {
+                    "msg": ['Se encontraron series repetidas en el excel: {}'.format( num_serie )], 
+                    "label": "Serie Repetida", "error": []}}
+                    )
+
+            series_unique.append(num_serie)
+            row_set = deepcopy(base_row_set)
+            row_set[self.CATALOG_INVENTORY_OBJ_ID][self.f['lot_number']] = num_serie
+            # print('num_serie=',num_serie)
+            self.answers[self.f['move_group']].append(row_set)
+            # print('new_recordew', simplejson.dumps(new_record, indent=3))
+        return True
 
     def load_onts(self):
         self.read_xls_onts()
@@ -57,7 +88,7 @@ class Stock(Stock):
             }
         return dict_skus
 
-    def read_xls_file(self):
+    # def read_xls_file(self):
 
         file_url_xls = self.answers.get( self.mf['xls_file'] )
         if not file_url_xls:
@@ -170,96 +201,96 @@ class Stock(Stock):
 
         # self.show_error_app( 'folio', 'Folio', 'En Pruebas!' )
 
-    def read_xls_onts(self):
-        data_xls = self.read_xls( self.mf['xls_file'] )
-        if not data_xls:
-            return False
-        header = data_xls.get('header')
-        records = data_xls.get('records')
-        header_dict = self.make_header_dict(header)
-        """
-        # Se revisa que el excel tenga todas las columnas que se requieren para el proceso
-        """
-        cols_required = ['serie_ont']
-        cols_not_found = self.check_keys_and_missing(cols_required, header_dict)
-        if cols_not_found:
-            cols_not_found = [ c.replace('_', ' ').title() for c in cols_not_found ]
-            self.LKFException( f'Se requieren las columnas: {self.list_to_str(cols_not_found)}' )
+    # def read_xls_onts(self):
+    #     data_xls = self.read_xls( self.mf['xls_file'] )
+    #     if not data_xls:
+    #         return False
+    #     header = data_xls.get('header')
+    #     records = data_xls.get('records')
+    #     header_dict = self.make_header_dict(header)
+    #     """
+    #     # Se revisa que el excel tenga todas las columnas que se requieren para el proceso
+    #     """
+    #     cols_required = ['serie_ont']
+    #     cols_not_found = self.check_keys_and_missing(cols_required, header_dict)
+    #     if cols_not_found:
+    #         cols_not_found = [ c.replace('_', ' ').title() for c in cols_not_found ]
+    #         self.LKFException( f'Se requieren las columnas: {self.list_to_str(cols_not_found)}' )
 
-        pos_serie = header_dict.get('serie_ont')
-        warehouse_name = self.answers.get( self.WH.WAREHOUSE_LOCATION_OBJ_ID, {} ).get( self.f['warehouse'], '' )
-        warehouse_location = self.answers.get( self.WH.WAREHOUSE_LOCATION_OBJ_ID, {} ).get( self.f['warehouse_location'], '' )
+    #     pos_serie = header_dict.get('serie_ont')
+    #     warehouse_name = self.answers.get( self.WH.WAREHOUSE_LOCATION_OBJ_ID, {} ).get( self.f['warehouse'], '' )
+    #     warehouse_location = self.answers.get( self.WH.WAREHOUSE_LOCATION_OBJ_ID, {} ).get( self.f['warehouse_location'], '' )
 
-        """
-        mango_query = {"selector":{"answers": {"$and":[ 
-            {"6442e4831198daf81456f274":{"$eq":"Almacen Distribuidor"}},
-            {"65ac6fbc070b93e656bd7fbe":{"$eq":"PCI Guadalajara"}},
-            {"620a9ee0a449b98114f61d77":{"$in": ["HWTC82C3D9AF","HWTC82D990AF","HWTC82CA9123"]}}
-        ]}},
-        "limit":20000,"skip":0}
-        """
-        list_onts = [ r[ pos_serie ] for r in records if r[pos_serie] ]
-        if not list_onts:
-            return False
-        mango_query = {"selector":{"answers": {"$and":[ 
-            {self.f['warehouse']: {"$eq": warehouse_name}},
-            {self.f['warehouse_location']: {"$eq": warehouse_location}},
-            {self.f['lot_number']: {"$in": list_onts}}
-        ]}},
-        "limit":20000,"skip":0}
-        records_inventory = self.lkf_api.search_catalog( self.STOCK_INVENTORY_ID, mango_query )
-        if not records_inventory:
-            self.show_error_app(self.mf['xls_onts'], 'Excel de carga ONTs', 'No se encontró ninguna ONT')
+    #     """
+    #     mango_query = {"selector":{"answers": {"$and":[ 
+    #         {"6442e4831198daf81456f274":{"$eq":"Almacen Distribuidor"}},
+    #         {"65ac6fbc070b93e656bd7fbe":{"$eq":"PCI Guadalajara"}},
+    #         {"620a9ee0a449b98114f61d77":{"$in": ["HWTC82C3D9AF","HWTC82D990AF","HWTC82CA9123"]}}
+    #     ]}},
+    #     "limit":20000,"skip":0}
+    #     """
+    #     list_onts = [ r[ pos_serie ] for r in records if r[pos_serie] ]
+    #     if not list_onts:
+    #         return False
+    #     mango_query = {"selector":{"answers": {"$and":[ 
+    #         {self.f['warehouse']: {"$eq": warehouse_name}},
+    #         {self.f['warehouse_location']: {"$eq": warehouse_location}},
+    #         {self.f['lot_number']: {"$in": list_onts}}
+    #     ]}},
+    #     "limit":20000,"skip":0}
+    #     records_inventory = self.lkf_api.search_catalog( self.STOCK_INVENTORY_ID, mango_query )
+    #     if not records_inventory:
+    #         self.show_error_app(self.mf['xls_onts'], 'Excel de carga ONTs', 'No se encontró ninguna ONT')
 
-        """
-        Se preparan los sets para el grupo repetitivo de productos
-        """
-        sets = []
-        not_found = []
-        for record_inv in records_inventory:
-            cap_serie = record_inv.get( self.mf['capture_num_serie'] )
-            if type(cap_serie) == str:
-                cap_serie = [cap_serie,]
-            num_serie_found = record_inv.get( self.f['lot_number'] )
-            actuals = record_inv.get( self.f['actuals'] )
-            product_code = record_inv.get( self.f['product_code'] )
-            sku = record_inv.get( self.f['sku'] )
+    #     """
+    #     Se preparan los sets para el grupo repetitivo de productos
+    #     """
+    #     sets = []
+    #     not_found = []
+    #     for record_inv in records_inventory:
+    #         cap_serie = record_inv.get( self.mf['capture_num_serie'] )
+    #         if type(cap_serie) == str:
+    #             cap_serie = [cap_serie,]
+    #         num_serie_found = record_inv.get( self.f['lot_number'] )
+    #         actuals = record_inv.get( self.f['actuals'] )
+    #         product_code = record_inv.get( self.f['product_code'] )
+    #         sku = record_inv.get( self.f['sku'] )
             
-            try:
-                is_valid = self.validate_move_qty(product_code, sku, num_serie_found, warehouse_name, warehouse_location, 1)
-            except:
-                is_valid = False
-                not_found.append([num_serie_found, f'No existe disponibilidad en el almacen de esta ONT: {num_serie_found}'])
-                list_onts.remove( num_serie_found )
+    #         try:
+    #             is_valid = self.validate_move_qty(product_code, sku, num_serie_found, warehouse_name, warehouse_location, 1)
+    #         except:
+    #             is_valid = False
+    #             not_found.append([num_serie_found, f'No existe disponibilidad en el almacen de esta ONT: {num_serie_found}'])
+    #             list_onts.remove( num_serie_found )
 
-            if is_valid:
-                set_line = {
-                 self.CATALOG_INVENTORY_OBJ_ID: {
-                    self.f['product_code']: product_code,
-                    self.f['sku']: sku,
-                    self.f['lot_number']: num_serie_found,
-                    self.f['product_name']: [record_inv.get( self.f['product_name'] ),],
-                    self.f['actuals']: [record_inv.get( self.f['actuals'] ),],
-                    self.f['product_type']: [record_inv.get( self.f['product_type'] ),],
-                    self.mf['capture_num_serie']: cap_serie,
-                },
-                 self.f['move_qty_requested']: 1,
-                 self.f['move_group_qty']: 1,
-                }
-                if num_serie_found in list_onts:
-                    list_onts.remove( num_serie_found )
-                sets.append(set_line)
+    #         if is_valid:
+    #             set_line = {
+    #              self.CATALOG_INVENTORY_OBJ_ID: {
+    #                 self.f['product_code']: product_code,
+    #                 self.f['sku']: sku,
+    #                 self.f['lot_number']: num_serie_found,
+    #                 self.f['product_name']: [record_inv.get( self.f['product_name'] ),],
+    #                 self.f['actuals']: [record_inv.get( self.f['actuals'] ),],
+    #                 self.f['product_type']: [record_inv.get( self.f['product_type'] ),],
+    #                 self.mf['capture_num_serie']: cap_serie,
+    #             },
+    #              self.f['move_qty_requested']: 1,
+    #              self.f['move_group_qty']: 1,
+    #             }
+    #             if num_serie_found in list_onts:
+    #                 list_onts.remove( num_serie_found )
+    #             sets.append(set_line)
 
 
-        if sets:
-            self.answers[self.f['move_group']] = sets
-        if list_onts or not_found:
-            for ont in list_onts:
-                not_found.append([ont, f'No se encontró ONT: {ont} en el Inventario'])
+    #     if sets:
+    #         self.answers[self.f['move_group']] = sets
+    #     if list_onts or not_found:
+    #         for ont in list_onts:
+    #             not_found.append([ont, f'No se encontró ONT: {ont} en el Inventario'])
 
-            not_valid_xls = self.lkf_api.make_excel_file(['Serie ONT', 'Error',], not_found, self.current_record['form_id'], self.mf['error_onts'])
-            if not_valid_xls:
-                self.answers.update({self.mf['error_onts']:[ not_valid_xls[self.mf['error_onts']], ]})
+    #         not_valid_xls = self.lkf_api.make_excel_file(['Serie ONT', 'Error',], not_found, self.current_record['form_id'], self.mf['error_onts'])
+    #         if not_valid_xls:
+    #             self.answers.update({self.mf['error_onts']:[ not_valid_xls[self.mf['error_onts']], ]})
 
     def share_filter(self, filter_name, uri_user, CATALOG_ID_SHARE):
         catalog_share = f"/api/infosync/get_catalogs/{CATALOG_ID_SHARE}/"
@@ -311,18 +342,35 @@ class Stock(Stock):
             res_share_folder_forms = self.share_item(uri_user, folder_share, "can_share_item")
             print('== res_share_folder_forms=',res_share_folder_forms)
 
-
+    def validate_move_qty(self, product_code, sku, lot_number, warehouse, location, move_qty, date_to=None, **kwargs):
+        inv = self.get_product_stock(product_code, sku=sku,lot_number=lot_number, warehouse=warehouse, location=location,  
+                date_to=date_to, **kwargs)
 
 
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
     stock_obj.console_run()
     status = stock_obj.answers[stock_obj.f['inv_adjust_status']]
-    if status == 'cargar_onts':
-        stock_obj.load_onts()
-    else:
-        stock_obj.read_xls_file()
-    stock_obj.share_filter_and_forms_to_connection()
+    print('status', status)
+    # if status == 'cargar_onts':
+    #     stock_obj.load_onts()
+    # else:
+    #     stock_obj.read_xls_file()
+    try:
+        header, records = stock_obj.read_xls_file()
+        print('header1', header)
+        print('records', records)
+        print('answ3rs', stock_obj.answers)
+    except:
+        print('no hay excel')
+        header = None
+        records = None
+    if header:
+        if not records:
+            stock_obj.LKFException('El archivo cargado no contiene datos, favor de revisar')
+        stock_obj.create_records(header, records)
+    # print('answ3rs', stock_obj.answers)
+    #stock_obj.share_filter_and_forms_to_connection()
     response = stock_obj.move_one_many_one()
     stock_obj.answers[stock_obj.f['inv_adjust_status']] =  'done'
 
