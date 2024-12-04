@@ -389,11 +389,8 @@ class Oracle(Oracle):
                         # self.create(sync_data)
                 else:
                     self.post_catalog(db_name, item_id, rec, sync_data)
-                    print('re3s=',res)
             else:
-                print('rec=', rec)
                 res = self.post_catalog(db_name, item_id, rec, db_sync=True)
-                print('reds=',res)
 
     def post_catalog(self, db_name, item_id, rec, sync_data={}, db_sync=False):
         res = self.lkf_api.post_catalog_answers(rec)
@@ -409,9 +406,7 @@ class Oracle(Oracle):
                 res = self.update(query, sync_data, upsert=True)
             else:
                 sync_data['lkf_id'] = res_data['id']
-                print('Creating', sync_data)
                 res = self.create(sync_data)
-                print('res=',res)
         return res
 
 
@@ -445,7 +440,6 @@ if __name__ == "__main__":
                 update = False
                 query = None
                 print('last_update', last_update)
-                last_update = False
                 if last_update:
                     update = True
                     date_time = datetime.datetime.fromtimestamp(last_update)
