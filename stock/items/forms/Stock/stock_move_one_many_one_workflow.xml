@@ -70,20 +70,6 @@
                             </trigger_field>
                             <value>to_do</value>
                         </item>
-                        <item>
-                            <condition>in=</condition>
-                            <form_id>None</form_id>
-                            <other_value>None</other_value>
-                            <prefix>answer</prefix>
-                            <trigger_field>
-                                <catalog>{}</catalog>
-                                <field_id>6442e4537775ce64ef72dd6a</field_id>
-                                <group>{}</group>
-                                <label>Status</label>
-                                <type>select</type>
-                            </trigger_field>
-                            <value>cargar_onts</value>
-                        </item>
                     </triggers>
                 </wf_fields>
             </rules>
