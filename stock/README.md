@@ -22,9 +22,51 @@ Se crea collecion llamada `serie_onts`
 Para crear el indice correr
 
 ```
-db.series.createIndex(
+db.serie_onts.createIndex(
   { ont_serie: 1 },
   { unique: true, name: "ont_serie_unique_index" }
 )
 
+```
+ejemplo
+
+
+```
+linkaform_replica:PRIMARY> db.serie_onts.createIndex(
+...   { ont_serie: 1 },
+...   { unique: true, name: "ont_serie_unique_index" }
+... )
+{
+	"numIndexesBefore" : 1,
+	"numIndexesAfter" : 2,
+	"createdCollectionAutomatically" : false,
+	"commitQuorum" : "votingMembers",
+	"ok" : 1,
+	"$clusterTime" : {
+		"clusterTime" : Timestamp(1733378763, 1),
+		"signature" : {
+			"hash" : BinData(0,"oOUGLK6XXtnQamCEQC4o1/RcnMs="),
+			"keyId" : NumberLong("7378766531926163472")
+		}
+	},
+	"operationTime" : Timestamp(1733378763, 1)
+}
+linkaform_replica:PRIMARY> db.serie_onts.getIndexes()
+[
+	{
+		"v" : 2,
+		"key" : {
+			"_id" : 1
+		},
+		"name" : "_id_"
+	},
+	{
+		"v" : 2,
+		"key" : {
+			"ont_serie" : 1
+		},
+		"name" : "ont_serie_unique_index",
+		"unique" : true
+	}
+]
 ```
