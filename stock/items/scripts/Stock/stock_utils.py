@@ -41,10 +41,6 @@ class Stock(Stock):
 
     def carga_materiales(self, header, records):
         header_dict = self.make_header_dict(header)
-        print('xls_file', self.mf['xls_file'])
-        print('xls_onts', self.mf['xls_onts'])
-        print('header', header)
-        print('records', records)
         """
         # Se revisa que el excel tenga todas las columnas que se requieren para el proceso
         """
@@ -59,11 +55,13 @@ class Stock(Stock):
         """
         dict_products_skus = self.get_skus_records()
 
-        print('++ dict_products_skus =',dict_products_skusd)
-        print('++ records =',records)
+        # print('++ dict_products_skus =',dict_products_skus)
         pos_codigo = header_dict.get('codigo_de_producto')
         pos_sku = header_dict.get('sku')
         pos_cantidad = header_dict.get('cantidad')
+
+
+
 
         """
         Se procesan los renglones del excel para armar los sets del grupo repetitivo
@@ -92,11 +90,11 @@ class Stock(Stock):
                 self.f['prod_qty_per_container'] : [],
                 self.f['product_code'] : str(product_code),
                 self.f['sku'] : str(sku),
+                self.f['lot_number']: 'LotePCI001',
             })
             
             sets_to_products.append({
-                self.Product.SKU_OBJ_ID: info_product,
-                self.f['lot_number'] : "LotePCI001",
+                self.CATALOG_INVENTORY_OBJ_ID: info_product,
                 self.f['inv_adjust_grp_status'] : "todo",
                 self.f['move_group_qty'] : cantidad,
             })
@@ -106,7 +104,7 @@ class Stock(Stock):
             self.answers[ self.f['move_group'] ] += sets_to_products
         else:
             self.answers[ self.f['move_group'] ] = sets_to_products
-        return True, True
+        return header_dict, records
 
     def carga_onts(self, header, records):
         header_dict = self.make_header_dict(header)
@@ -165,6 +163,28 @@ class Stock(Stock):
                 add_row += 1
             
         return bom_res
+
+    def get_skus_records(self):
+        """
+        Se revisa en el catalogo de productos que exista el codigo y sku para obtener la informacion en los readonly
+        """
+        records_catalog = self.lkf_api.search_catalog( self.Product.SKU_ID )
+        dict_skus = {}
+        for r in records_catalog:
+            productCode = r.get( self.f['product_code'] )
+            productSku = r.get( self.f['sku'] )
+            productName = r.get( self.f['product_name'] )
+            productTipoMaterial = r.get( self.mf['product_material'] )
+            if not productCode or not productSku:
+                continue
+            TipoMaterial = [self.unlist(productTipoMaterial)] if type(productTipoMaterial) == list else [productTipoMaterial]
+            # if TipoMaterial and type(TipoMaterial[0]) == list:
+            #     TipoMaterial = TipoMaterial[0]
+            dict_skus[ f'{productCode}_{productSku}' ] = {
+                self.f['product_name']: [self.unlist(productName)],
+                self.mf['product_material']: TipoMaterial,
+            }
+        return dict_skus
 
     def move_in(self):
         #solo se usa en pci y en pruebas de exposion de materiales
@@ -415,7 +435,7 @@ class Stock(Stock):
                     # print('entra al other_versions')
                     self.prev_version = self.get_prev_version(self.current_record['other_versions'], select_columns=[ 'answers.{}'.format(self.mf['xls_file']), 'answers.{}'.format(self.mf['xls_onts']) ])
                 else:
-                    print('Ya tiene folio pero aun no hay mas versiones... revisando el current_record en la BD')
+                    print('1Ya tiene folio pero aun no hay mas versiones... revisando el current_record en la BD')
                     self.prev_version = self.get_record_from_db(self.form_id, self.folio, select_columns=[ 'answers.{}'.format(self.mf['xls_file']), 'answers.{}'.format(self.mf['xls_onts']) ])
                 print('prev_version=',self.prev_version)
         elif self.prev_version.get('answers', {}).get( id_field_xls ):
