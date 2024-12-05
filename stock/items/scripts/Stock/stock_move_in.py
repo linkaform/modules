@@ -52,6 +52,20 @@ class Stock(Stock):
             }
         return dict_skus
 
+    def get_record_folio(self, folio):
+        records = self.cr.find({'form_id':self.STOCK_IN_ONE_MANY_ONE, 'folio':{'$regex': f"^{folio}"} },{'folio':1})
+        max_folio = 1
+        for r in records:
+            tfolio = r.get('folio','')
+            folio_list = tfolio.split('-')
+            try:
+                idx_folio = int(folio_list[1])
+                if idx_folio > max_folio:
+                    max_folio = idx_folio
+            except:
+                print('folio not found')
+        return max_folio + 1
+
     def carga_materiales(self, header, records):
         header_dict = self.make_header_dict(header)
         """
@@ -181,6 +195,9 @@ class Stock(Stock):
             # print('new_recordew', simplejson.dumps(new_record, indent=3))
             if new_record:
                 self.ejecutar_transaccion(new_record, folio_serie_record )
+            else:
+                self.ejecutar_transaccion({}, folio_serie_record )
+
         return True
 
     def get_enviroment(self):
@@ -220,7 +237,7 @@ class Stock(Stock):
             except Exception as e:
                 self.LKFException( '', dict_error= {
                         f"Error": {
-                        "msg": [f'Error en la creacion de las onts. '], 
+                        "msg": [f'Error en la creacion de las onts. Existen Series previamente Cargadas '], 
                         "label": "Serie Repetida", "error": []}}
                         )
             try:
@@ -387,7 +404,6 @@ class Stock(Stock):
                             })
         return res.inserted_ids
 
-
     def get_product_sku(self, all_codes):
         search_sku = []
         for sku, product_code in all_codes.items():
@@ -430,11 +446,22 @@ class Stock(Stock):
         return True
        
 
+
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
     stock_obj.console_run()
-    stock_obj.folio = str(int(time.time()))
+    folio = None
+    if not hasattr(stock_obj,'folio'):
+        folio = stock_obj.folio
+    if not folio:
+        today = stock_obj.get_today_format()
+        folio = datetime.strftime(today, '%y%m%d')
+        next_folio = stock_obj.get_record_folio(folio)
+        folio = f"REC{folio}-{next_folio}"
 
+
+    stock_obj.folio = folio
+    stock_obj.current_record['folio'] = folio
     stock_obj.set_mongo_connections()
     header, records = stock_obj.read_xls_file()
     if stock_obj.proceso_onts:
@@ -446,6 +473,8 @@ if __name__ == '__main__':
     response = stock_obj.direct_move_in(stock_obj.current_record)
     print('TODO: revisar si un create no estuvo bien y ponerlo en error o algo')
     stock_obj.answers[stock_obj.f['inv_adjust_status']] =  'done'
+    print('stock_obj',stock_obj.current_record['folio'])
+    print('formid',stock_obj.form_id)
     sys.stdout.write(simplejson.dumps({
         'status': 101,
         'replace_ans': stock_obj.answers,
