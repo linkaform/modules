@@ -193,7 +193,16 @@ class Stock(Stock):
                     if new_record.get('answers'):
                         self.records_cr.insert_one(new_record, session=sess)
                         self.direct_move_in(new_record)
-                    self.ont_cr.insert_many(folio_serie_record, session=sess)
+                    try:
+                        self.ont_cr.insert_many(folio_serie_record, session=sess)
+                    except Exception as e:
+                        print(f"Error durante la transacción: {e}")
+                        self.LKFException( '', dict_error= {
+                            f"Error": {
+                            "msg": [f'Error en la creacion de las onts. Existen Series previamente Cargadas. {e}'], 
+                            "label": "Serie Repetida", "error": []}}
+                            )
+            
                 try:
                     # Comienza la transacción
                     session.with_transaction(
@@ -203,8 +212,13 @@ class Stock(Stock):
                         read_preference=ReadPreference.PRIMARY  
                     )
                     print("Transacción completada exitosamente.")
-                except (ConnectionFailure, OperationFailure) as e:
-                    print(f"Error durante la transacción: {e}")
+                except (ConnectionFailure, OperationFailure)  as e:
+                    print(f"Error conexion: {e}")
+                    self.LKFException( '', dict_error= {
+                        f"Error": {
+                        "msg": [f'Error en la conexion. {e}'], 
+                        "label": "Serie Repetida", "error": []}}
+                        )
         else:
             try:
                 if folio_serie_record:

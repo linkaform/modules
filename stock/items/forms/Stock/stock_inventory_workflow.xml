@@ -51,7 +51,7 @@
                     <deleted>True</deleted>
                     <edited>True</edited>
                     <run_multiple_times>True</run_multiple_times>
-                    <runtime>before</runtime>
+                    <runtime>after</runtime>
                 </record>
                 <wf_fields>
                     <operator>all</operator>
