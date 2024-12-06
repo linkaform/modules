@@ -30,104 +30,7 @@ class Stock(Stock):
         self.max_sets = 2500
         self.sku_finds = []
 
-    def get_skus_records(self):
-        """
-        Se revisa en el catalogo de productos que exista el codigo y sku para obtener la informacion en los readonly
-        """
-        records_catalog = self.lkf_api.search_catalog( self.Product.SKU_ID )
-        dict_skus = {}
-        for r in records_catalog:
-            productCode = r.get( self.f['product_code'] )
-            productSku = r.get( self.f['sku'] )
-            productName = r.get( self.f['product_name'] )
-            productTipoMaterial = r.get( self.mf['product_material'] )
-            if not productCode or not productSku:
-                continue
-            TipoMaterial = [self.unlist(productTipoMaterial)] if type(productTipoMaterial) == list else [productTipoMaterial]
-            # if TipoMaterial and type(TipoMaterial[0]) == list:
-            #     TipoMaterial = TipoMaterial[0]
-            dict_skus[ f'{productCode}_{productSku}' ] = {
-                self.f['product_name']: [self.unlist(productName)],
-                self.mf['product_material']: TipoMaterial,
-            }
-        return dict_skus
 
-    def get_record_folio(self, folio):
-        records = self.cr.find({'form_id':self.STOCK_IN_ONE_MANY_ONE, 'folio':{'$regex': f"^{folio}"} },{'folio':1})
-        max_folio = 1
-        for r in records:
-            tfolio = r.get('folio','')
-            folio_list = tfolio.split('-')
-            try:
-                idx_folio = int(folio_list[1])
-                if idx_folio > max_folio:
-                    max_folio = idx_folio
-            except:
-                print('folio not found')
-        return max_folio + 1
-
-    def carga_materiales(self, header, records):
-        header_dict = self.make_header_dict(header)
-        """
-        # Se revisa que el excel tenga todas las columnas que se requieren para el proceso
-        """
-        cols_required = ['codigo_de_producto', 'sku', 'cantidad']
-        cols_not_found = self.check_keys_and_missing(cols_required, header_dict)
-        if cols_not_found:
-            cols_not_found = [ c.replace('_', ' ').title() for c in cols_not_found ]
-            self.LKFException( f'Se requieren las columnas: {self.list_to_str(cols_not_found)}' )
-
-        """
-        # Se revisan los renglones del excel para verificar que los codigos y skus existan en el catalogo
-        """
-        dict_products_skus = self.get_skus_records()
-
-        pos_codigo = header_dict.get('codigo_de_producto')
-        pos_sku = header_dict.get('sku')
-        pos_cantidad = header_dict.get('cantidad')
-
-        """
-        Se procesan los renglones del excel para armar los sets del grupo repetitivo
-        se evalua que los codigos y skus de los productos existan en el catálogo, si alguno no existe se marca error
-        """
-        error_rows = []
-        sets_to_products = []
-        for pos_row, rec in enumerate(records):
-            num_row = pos_row + 2
-            product_code = rec[pos_codigo]
-            sku = rec[pos_sku]
-            cantidad = rec[pos_cantidad]
-            if not product_code and not sku and not cantidad:
-                continue
-            if not product_code or not sku:
-                error_rows.append(f'RENGLON {num_row}: Debe indicar el código del producto y el sku')
-                continue
-            if not cantidad:
-                error_rows.append(f'RENGLON {num_row}: Debe indicar una cantidad')
-                continue
-            info_product = dict_products_skus.get( f'{product_code}_{sku}' )
-            if not info_product:
-                error_rows.append(f'RENGLON {num_row}: No se encontro el codigo {product_code} con el sku {sku}')
-                continue
-            info_product.update({
-                self.f['prod_qty_per_container'] : [],
-                self.f['product_code'] : str(product_code),
-                self.f['sku'] : str(sku),
-            })
-            
-            sets_to_products.append({
-                self.Product.SKU_OBJ_ID: info_product,
-                self.f['lot_number'] : "LotePCI001",
-                self.f['inv_adjust_grp_status'] : "todo",
-                self.f['move_group_qty'] : cantidad,
-            })
-        if error_rows:
-            self.LKFException( self.list_to_str(error_rows) )
-        if self.answers.get( self.f['move_group'] ):
-            self.answers[ self.f['move_group'] ] += sets_to_products
-        else:
-            self.answers[ self.f['move_group'] ] = sets_to_products
-        return True, True
 
     def do_groups(self, header, records):
         pos_serie = header.get('serie_ont')
@@ -149,6 +52,82 @@ class Stock(Stock):
                 )
         return groups
 
+    def carga_materiales(self, header, records):
+        #ESTA FUNCION ES MUY PARECECIDA A STOCK_MOVE_MAY_2_ONE  SOLO QUE 
+        #CAMBIA EL TIPO DEL DEL CATALGOO DENTRO GRUPO REPETITIVO
+        #En este movimiento se requiere que venga de SKU
+        header_dict = self.make_header_dict(header)
+        """
+        # Se revisa que el excel tenga todas las columnas que se requieren para el proceso
+        """
+        cols_required = ['codigo_de_producto', 'sku', 'cantidad']
+        cols_not_found = self.check_keys_and_missing(cols_required, header_dict)
+        if cols_not_found:
+            cols_not_found = [ c.replace('_', ' ').title() for c in cols_not_found ]
+            self.LKFException( f'Se requieren las columnas: {self.list_to_str(cols_not_found)}' )
+
+        """
+        # Se revisan los renglones del excel para verificar que los codigos y skus existan en el catalogo
+        """
+        dict_products_skus = self.get_skus_records()
+
+        # print('++ dict_products_skus =',dict_products_skus)
+        pos_codigo = header_dict.get('codigo_de_producto')
+        pos_sku = header_dict.get('sku')
+        pos_cantidad = header_dict.get('cantidad')
+
+        """
+        Se procesan los renglones del excel para armar los sets del grupo repetitivo
+        se evalua que los codigos y skus de los productos existan en el catálogo, si alguno no existe se marca error
+        """
+        error_rows = []
+        sets_to_products = []
+        existing_rows = self.answers[ self.f['move_group'] ]
+        existing_sku = [x[self.Product.SKU_OBJ_ID][self.f['sku']] for x in existing_rows if x.get(self.Product.SKU_OBJ_ID,{}).get(self.f['sku'])]
+        for pos_row, rec in enumerate(records):
+            num_row = pos_row + 2
+            product_code = rec[pos_codigo]
+            sku = rec[pos_sku]
+            cantidad = rec[pos_cantidad]
+            if sku in existing_sku:
+                msg = f'SKU {sku}: Repetido o previamente cargado, omitiendo'
+                if self.answers.get(self.f['stock_move_comments']):
+                    self.answers[self.f['stock_move_comments']]  += f' | {msg}'
+                else:
+                    self.answers[self.f['stock_move_comments']] = msg
+                continue
+            if not product_code and not sku and not cantidad:
+                continue
+            if not product_code or not sku:
+                error_rows.append(f'RENGLON {num_row}: Debe indicar el código del producto y el sku')
+                continue
+            if not cantidad:
+                error_rows.append(f'RENGLON {num_row}: Debe indicar una cantidad')
+                continue
+            info_product = dict_products_skus.get( f'{product_code}_{sku}' )
+            if not info_product:
+                error_rows.append(f'RENGLON {num_row}: No se encontro el codigo {product_code} con el sku {sku}')
+                continue
+            info_product.update({
+                self.f['prod_qty_per_container'] : [],
+                self.f['product_code'] : str(product_code),
+                self.f['sku'] : str(sku),
+            })
+            
+            sets_to_products.append({
+                self.Product.SKU_OBJ_ID: info_product,
+                self.f['lot_number']: 'LotePCI001',
+                self.f['inv_adjust_grp_status'] : "todo",
+                self.f['move_group_qty'] : cantidad,
+            })
+        if error_rows:
+            self.LKFException( self.list_to_str(error_rows) )
+        if self.answers.get( self.f['move_group'] ):
+            self.answers[ self.f['move_group'] ] += sets_to_products
+        else:
+            self.answers[ self.f['move_group'] ] = sets_to_products
+        return header_dict, records
+
     def create_records(self, groups):
         move_group = self.answers.get( self.f['move_group'], [] )
         base_row_set = deepcopy(move_group[0])
@@ -159,13 +138,10 @@ class Stock(Stock):
         base_record = deepcopy(self.current_record)
         base_record.update(self.get_complete_metadata())
         base_record['answers'][self.f['move_group']] = []
-        base_record['answers'][self.f['inv_adjust_status']] =  'done'
         base_record["editable"] = False 
         for idx, records in enumerate(groups):
             folio_serie_record = []
             # self.answers[self.f['move_group']] = []
-            print('idx=', idx)
-            # print('records[0]=', records[0])
             new_record = {}
             new_folio = f"{self.folio}-{idx+1}/{total_groups}"
             if idx > 0:
@@ -192,7 +168,6 @@ class Stock(Stock):
                     self.answers[self.f['move_group']].append(row_set)
                 else:
                     new_record['answers'][self.f['move_group']].append(row_set)
-            # print('new_recordew', simplejson.dumps(new_record, indent=3))
             if new_record:
                 self.ejecutar_transaccion(new_record, folio_serie_record )
             else:
@@ -244,7 +219,6 @@ class Stock(Stock):
                 if new_record.get('answers'):
                     res = self.records_cr.insert_one(new_record)
                     self.direct_move_in(new_record)
-                    print('ids2', res.inserted_id)
             except Exception as e:
                 print('error: ', e)
                 series = [s['ont_serie'] for s in folio_serie_record]
@@ -360,49 +334,54 @@ class Stock(Stock):
         new_records_data = []
         skus = self.get_group_skus(move_lines)
         metadata = self.lkf_api.get_metadata(self.FORM_INVENTORY_ID)
-
-        metadata.update(self.get_complete_metadata())
+        if stock_obj.proceso_onts:
+            metadata.update(self.get_complete_metadata())
         new_stock_records = []
         folio = new_record['folio']
         for idx, moves in enumerate(move_lines):
+            status = moves.get('inv_adjust_grp_status')
+            if status == 'done':
+                continue
             this_metadata = deepcopy(metadata)
             this_metadata['folio'] = f'{folio}-{idx}'
             move_line = self.answers[self.f['move_group']][idx]
+            move_line[self.f['inv_adjust_grp_status']] = 'done'
             answers = self.stock_inventory_model(moves, skus[moves['product_code']], labels=True)
             answers.update({
                 self.WH.WAREHOUSE_LOCATION_OBJ_ID:{
                 self.f['warehouse']:warehouse_to,
                 self.f['warehouse_location']:location_to},
-                self.f['product_lot']:moves['product_lot']
+                self.f['product_lot']:moves['product_lot'],
                     },
                 )
             this_metadata['answers'] = answers
 
             new_stock_records.append(this_metadata)
-            # self.cache_set(cache_data)
-            # create_resp = self.lkf_api.post_forms_answers(metadata)
-            # print('response_sistema',create_resp)
-            # try:
-            #     new_inv = self.get_record_by_id(create_resp.get('id'))
-            # except:
-            #     print('no encontro...')
-            # status_code = create_resp.get('status_code',404)
-            # if status_code == 201:
-            #     folio = create_resp.get('json',{}).get('folio','')
-            #     move_line[self.f['inv_adjust_grp_status']] = 'done'
-            #     move_line[self.f['move_dest_folio']] = folio
-            # else:
-            #     error = create_resp.get('json',{}).get('error', 'Unkown error')
-            #     move_line[self.f['inv_adjust_grp_status']] = 'error'
-            #     move_line[self.f['inv_adjust_grp_comments']] = f'Status Code: {status_code}, Error: {error}'
-        if new_stock_records:
-            res = self.cr.insert_many(new_stock_records)
-            self.cache_set({
-                            'cache_type': 'direct_move_in',
-                            'inserted_ids':res.inserted_ids,
-                            'folio':res.inserted_ids,
-                            })
-        return res.inserted_ids
+            if not stock_obj.proceso_onts:
+                create_resp = self.lkf_api.post_forms_answers(this_metadata)
+                try:
+                    new_inv = self.get_record_by_id(create_resp.get('id'))
+                except:
+                    print('no encontro...')
+                status_code = create_resp.get('status_code',404)
+                if status_code == 201:
+                    new_folio = create_resp.get('json',{}).get('folio','')
+                    move_line[self.f['inv_adjust_grp_status']] = 'done'
+                    move_line[self.f['move_dest_folio']] = new_folio
+                else:
+                    error = create_resp.get('json',{}).get('error', 'Unkown error')
+                    move_line[self.f['inv_adjust_grp_status']] = 'error'
+                    move_line[self.f['inv_adjust_grp_comments']] = f'Status Code: {status_code}, Error: {error}'
+        if stock_obj.proceso_onts:
+            if new_stock_records:
+                res = self.cr.insert_many(new_stock_records)
+                self.cache_set({
+                                'cache_type': 'direct_move_in',
+                                'inserted_ids':res.inserted_ids,
+                                'folio':res.inserted_ids,
+                                })
+                return res.inserted_ids
+        return True
 
     def get_product_sku(self, all_codes):
         search_sku = []
@@ -444,20 +423,19 @@ class Stock(Stock):
         self.records_cr = db["form_answer"]
         self.ont_cr = db["serie_onts"]
         return True
-       
 
 
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
     stock_obj.console_run()
     folio = None
-    if not hasattr(stock_obj,'folio'):
+    if hasattr(stock_obj,'folio'):
         folio = stock_obj.folio
     if not folio:
         today = stock_obj.get_today_format()
-        folio = datetime.strftime(today, '%y%m%d')
-        next_folio = stock_obj.get_record_folio(folio)
-        folio = f"REC{folio}-{next_folio}"
+        folio = f"REC{datetime.strftime(today, '%y%m%d')}"
+        next_folio = stock_obj.get_record_folio(stock_obj.STOCK_IN_ONE_MANY_ONE, folio)
+        folio = f"{folio}-{next_folio}"
 
 
     stock_obj.folio = folio
@@ -473,8 +451,6 @@ if __name__ == '__main__':
     response = stock_obj.direct_move_in(stock_obj.current_record)
     print('TODO: revisar si un create no estuvo bien y ponerlo en error o algo')
     stock_obj.answers[stock_obj.f['inv_adjust_status']] =  'done'
-    print('stock_obj',stock_obj.current_record['folio'])
-    print('formid',stock_obj.form_id)
     sys.stdout.write(simplejson.dumps({
         'status': 101,
         'replace_ans': stock_obj.answers,

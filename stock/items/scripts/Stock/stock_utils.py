@@ -20,9 +20,6 @@ class Stock(Stock):
 
         # La relacion entre la forma de inventario y el catalogo utilizado para el inventario
         # por default simpre dejar los mismos nombres
-        print('FORM_INVENTORY_ID',self.FORM_INVENTORY_ID)
-        print('CATALOG_INVENTORY_ID',self.CATALOG_INVENTORY_ID)
-        print('FORM_CATALOG_DIR',self.CATALOG_INVENTORY_ID)
         self.FORM_CATALOG_DIR = {
             self.FORM_INVENTORY_ID:self.CATALOG_INVENTORY_ID,
             }
@@ -38,73 +35,6 @@ class Stock(Stock):
             'capture_num_serie': '66c75e0c0810217b0b5593ca'
         }
 
-
-    def carga_materiales(self, header, records):
-        header_dict = self.make_header_dict(header)
-        """
-        # Se revisa que el excel tenga todas las columnas que se requieren para el proceso
-        """
-        cols_required = ['codigo_de_producto', 'sku', 'cantidad']
-        cols_not_found = self.check_keys_and_missing(cols_required, header_dict)
-        if cols_not_found:
-            cols_not_found = [ c.replace('_', ' ').title() for c in cols_not_found ]
-            self.LKFException( f'Se requieren las columnas: {self.list_to_str(cols_not_found)}' )
-
-        """
-        # Se revisan los renglones del excel para verificar que los codigos y skus existan en el catalogo
-        """
-        dict_products_skus = self.get_skus_records()
-
-        # print('++ dict_products_skus =',dict_products_skus)
-        pos_codigo = header_dict.get('codigo_de_producto')
-        pos_sku = header_dict.get('sku')
-        pos_cantidad = header_dict.get('cantidad')
-
-
-
-
-        """
-        Se procesan los renglones del excel para armar los sets del grupo repetitivo
-        se evalua que los codigos y skus de los productos existan en el catálogo, si alguno no existe se marca error
-        """
-        error_rows = []
-        sets_to_products = []
-        for pos_row, rec in enumerate(records):
-            num_row = pos_row + 2
-            product_code = rec[pos_codigo]
-            sku = rec[pos_sku]
-            cantidad = rec[pos_cantidad]
-            if not product_code and not sku and not cantidad:
-                continue
-            if not product_code or not sku:
-                error_rows.append(f'RENGLON {num_row}: Debe indicar el código del producto y el sku')
-                continue
-            if not cantidad:
-                error_rows.append(f'RENGLON {num_row}: Debe indicar una cantidad')
-                continue
-            info_product = dict_products_skus.get( f'{product_code}_{sku}' )
-            if not info_product:
-                error_rows.append(f'RENGLON {num_row}: No se encontro el codigo {product_code} con el sku {sku}')
-                continue
-            info_product.update({
-                self.f['prod_qty_per_container'] : [],
-                self.f['product_code'] : str(product_code),
-                self.f['sku'] : str(sku),
-                self.f['lot_number']: 'LotePCI001',
-            })
-            
-            sets_to_products.append({
-                self.CATALOG_INVENTORY_OBJ_ID: info_product,
-                self.f['inv_adjust_grp_status'] : "todo",
-                self.f['move_group_qty'] : cantidad,
-            })
-        if error_rows:
-            self.LKFException( self.list_to_str(error_rows) )
-        if self.answers.get( self.f['move_group'] ):
-            self.answers[ self.f['move_group'] ] += sets_to_products
-        else:
-            self.answers[ self.f['move_group'] ] = sets_to_products
-        return header_dict, records
 
     def carga_onts(self, header, records):
         header_dict = self.make_header_dict(header)
@@ -186,6 +116,22 @@ class Stock(Stock):
             }
         return dict_skus
 
+    def get_record_folio(self, form_id, folio):
+        records = self.cr.find({'form_id':form_id, 'folio':{'$regex': f"^{folio}"} },{'folio':1})
+        max_folio = 1
+        for r in records:
+            tfolio = r.get('folio','')
+            folio_list = tfolio.split('-')
+            #try:
+            if True:
+                idx_folio = int(folio_list[1])
+                if idx_folio > max_folio:
+                    max_folio = idx_folio
+            # except:
+            #     print('folio not found')
+        return max_folio + 1
+
+
     def move_in(self):
         #solo se usa en pci y en pruebas de exposion de materiales
         # print('-- -- -- -- -- -- answers=',self.answers)
@@ -193,7 +139,6 @@ class Stock(Stock):
 
         self.answer_label = self._labels()
 
-        print('-----------------------------answers', self.answer_label)
         warehouse = self.answer_label['warehouse']
         location = self.answer_label['warehouse_location']
         warehouse_to = self.answer_label['warehouse_dest']
@@ -205,7 +150,6 @@ class Stock(Stock):
         folios = []
         # lots_in = {}
         data_from = {'warehouse':warehouse, 'warehouse_location':location}
-        print('data_from', data_from)
         new_records_data = []
         skus = self.get_group_skus(move_lines)
         metadata = self.lkf_api.get_metadata(self.FORM_INVENTORY_ID)
@@ -214,14 +158,12 @@ class Stock(Stock):
             if not moves.get('product_lot'):
                 moves['product_lot'] = 'LotePCI001'
                 move_line[self.f['product_lot']] = 'LotePCI001'
-            print('moves', moves)
             if moves.get('bom_name'):
                move_line[self.f['bom_name']] = moves['bom_name']
 
             # product_code = info_product.get(self.f['product_code'])
             # sku = info_product.get(self.f['sku'])
             package = move_line.get(self.f['sku_package'])
-            print('package', package)
             exists = self.product_stock_exists(
                 product_code=moves['product_code'], 
                 sku=moves['sku'], 
@@ -250,10 +192,8 @@ class Stock(Stock):
                     move_line[self.f['move_dest_folio']] = exists['folio']
                     move_line[self.f['inv_adjust_grp_status']] = 'done'
                     move_line[self.f['inv_adjust_grp_comments']] = ""
-                    print('moves', move_line)
 
             else:
-                print('moves', moves)
                 answers = self.stock_inventory_model(moves, skus[moves['product_code']], labels=True)
                 answers.update({
                     self.WH.WAREHOUSE_LOCATION_OBJ_ID:{
@@ -266,7 +206,6 @@ class Stock(Stock):
                
                 self.cache_set(cache_data)
                 create_resp = self.lkf_api.post_forms_answers(metadata)
-                print('response_sistema',create_resp)
                 try:
                     new_inv = self.get_record_by_id(create_resp.get('id'))
                 except:
@@ -282,9 +221,12 @@ class Stock(Stock):
                     move_line[self.f['inv_adjust_grp_comments']] = f'Status Code: {status_code}, Error: {error}'
         return True
 
-    def move_one_many_one(self):
+    def move_one_many_one(self, records=[]):
         #pci
         move_lines = self.answers[self.f['move_group']]
+        if records and self.proceso_onts:
+            move_lines = self.append_onts(records)
+
         warehouse = self.answers[self.WH.WAREHOUSE_LOCATION_OBJ_ID][self.f['warehouse']]
         location = self.answers[self.WH.WAREHOUSE_LOCATION_OBJ_ID][self.f['warehouse_location']]
         warehouse_to = self.answers[self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID][self.f['warehouse_dest']]
@@ -302,7 +244,8 @@ class Stock(Stock):
             # product_code = info_product.get(self.f['product_code'])
             # sku = info_product.get(self.f['sku'])
             # lot_number = info_product.get(self.f['lot_number'])
-            stock = self.get_stock_info_from_catalog_inventory(answers=moves, data=data_from , **{'get_record':True})
+            # stock = self.get_stock_info_from_catalog_inventory(answers=moves, data=data_from , **{'get_record':True})
+            stock = self.get_stock_info_from_catalog_inventory(answers=moves, data=data_from )
             ###################################
             product_code = stock.get('product_code')
             sku = stock.get('sku')
@@ -316,44 +259,36 @@ class Stock(Stock):
             moves[self.f['inv_adjust_grp_status']] = 'done'
             
             set_location = f"{product_code}_{sku}_{lot_number}_{warehouse_to}_{location_to}"
+            msg = None 
             if set_location in move_locations:
                 msg = "You are trying to move the same lot_number: {lot_number} twice from the same location. Please check"
                 msg += f"warehouse: {stock['warehouse']} / Location: {stock['warehouse_location']}"
-                msg_error_app = {
-                    f"{self.f['warehouse_location']}": {
-                        "msg": [msg],
-                        "label": "Please check your selected location",
-                        "error":[]
-      
-                    }
-                }
-                self.LKFException(msg_error_app)
             move_locations.append(set_location)
-            if not stock.get('folio'):
-                msg = "Stock record not found Please check availability for:"
-                msg += f"Product Code: {product_code} / SKU: {sku} / Lot Number: {lot_number}"
+            inv_status = stock.get('record',{}).get('answers',{}).get(self.f['inventory_status'])
+
+            if msg:
                 msg_error_app = {
                     f"{self.f['warehouse_location']}": {
                         "msg": [msg],
                         "label": "Please check your availability to this location",
                         "error":[]
-      
                     }
                 }
-                self.LKFException(msg_error_app)
+                self.LKFException('', dict_error=msg_error_app)
             # Información que modifica el usuario
             move_qty = moves.get(self.f['move_group_qty'],0)
             moves[self.f['inv_move_qty']] = move_qty
-            self.folio = stock['folio']
-            self.validate_move_qty(product_code, sku, lot_number,  warehouse, location, move_qty, **{'cache.folio_from':{'$ne':stock['folio']}})
-            
+            # se debe de user el folio del moviniemto para que no tome en cuenta en el cache el moviemote
+            # self.folio = stock['folio']
+            self.validate_move_qty(product_code, sku, lot_number,  warehouse, location, move_qty, **{'cache.folio_from':{'$ne':self.folio}})
+
             move_vals_from = {'_id': f"{product_code}_{sku}_{lot_number}_{warehouse}_{location}",
                         'move_out':move_qty,
                         'product_code':product_code,
                         'product_lot':lot_number,
                         'warehouse': warehouse,
                         'warehouse_location': location,
-                        'record_id':self.record_id
+                        'record_id': self.record_id
                         }
             if self.folio:
                 move_vals_from.update({'kwargs': {'nin_folio':self.folio }})
@@ -364,7 +299,7 @@ class Stock(Stock):
                 '_id': set_location,
                 'warehouse': warehouse_to,
                 'warehouse_location': location_to,
-                'from_folio':stock['folio'], 
+                'from_folio': self.folio, 
                 'move_in':move_qty,
                 'move_qty':move_qty
             })
@@ -384,7 +319,7 @@ class Stock(Stock):
             if record.get('new_record'):
                 create_new_records.append(record['new_record'])
             else:
-                print('YA EXISTE... record ya se actualizco usando cache', record)
+                print('1YA EXISTE... record ya se actualizco usando cache', record)
         print('TODO mover status a lineas de registro')
         res_create = self.lkf_api.post_forms_answers_list(create_new_records)
         #updates records from where stock was moved
@@ -394,7 +329,6 @@ class Stock(Stock):
             for stock_inv_created in res_create:
                 new_record = '/api/infosync/form_answer/' + stock_inv_created['json']['id'] +'/'
                 response_assign = self.lkf_api.assigne_connection_records( connection_to_assign, [new_record,])
-                print('response_assign =',response_assign)
         """
         Despues de crear el registro de Stock Inventory hay que asignarlo al contratista
         """
@@ -414,11 +348,10 @@ class Stock(Stock):
     def read_xls_file(self):
         header, records = self.xls_header_record( self.mf['xls_file'])
         if not header:
-            self.LKFException( f'No se encontro archivo excel de carga' ) 
+            return None, None
         if 'Serie ONT' in header:
             self.proceso_onts = True
             return self.carga_onts(header, records)
-
         else:
             self.proceso_onts = False
             return self.carga_materiales(header, records)
@@ -465,147 +398,109 @@ class Stock(Stock):
         header, records = self.read_file( file_url_xls )
         return {'header': header, 'records': records}
 
-    def stock_one_many_one(self, move_type, product_code=None, sku=None, lot_number=None, warehouse=None, location=None, date_from=None, date_to=None, status='done', **kwargs):
-        unwind =None
-        if move_type not in ('in','out'):
-            raise('Move type only accepts values "in" or "out" ')
-        match_query = {
-            "deleted_at":{"$exists":False},
-            }
-        match_query.update(self.stock_kwargs_query(**kwargs))
-        query_forms = self.STOCK_ONE_MANY_ONE_FORMS
-        if len(query_forms) > 1:
-            form_query = {"form_id":{"$in":query_forms}}
-        else:
-            form_query = {"form_id":self.STOCK_ONE_MANY_ONE_FORMS[0]}
-        match_query.update(form_query)
-        if date_from or date_to:
-            match_query.update(self.get_date_query(date_from=date_from, date_to=date_to, date_field_id=self.f['grading_date']))
+    # def stock_one_many_one(self, move_type, product_code=None, sku=None, lot_number=None, warehouse=None, location=None, date_from=None, date_to=None, status='done', **kwargs):
+    #     unwind =None
+    #     if move_type not in ('in','out'):
+    #         raise('Move type only accepts values "in" or "out" ')
+    #     match_query = {
+    #         "deleted_at":{"$exists":False},
+    #         }
+    #     match_query.update(self.stock_kwargs_query(**kwargs))
+    #     query_forms = self.STOCK_ONE_MANY_ONE_FORMS
+    #     if len(query_forms) > 1:
+    #         form_query = {"form_id":{"$in":query_forms}}
+    #     else:
+    #         form_query = {"form_id":self.STOCK_ONE_MANY_ONE_FORMS[0]}
+    #     match_query.update(form_query)
+    #     if date_from or date_to:
+    #         match_query.update(self.get_date_query(date_from=date_from, date_to=date_to, date_field_id=self.f['grading_date']))
 
-        unwind = {'$unwind': '$answers.{}'.format(self.f['move_group'])}
-        unwind_query = {}
-        unwind_stage = []
-        # print('move type.............', move_type)
-        # print('warehouse', warehouse)
-        # print('location', location)
-        # print('product_code', product_code)
-        # print('sku', sku)
-        # print('lot_number', lot_number)
-        if move_type =='in':
-            if warehouse:
-                match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID}.{self.f['warehouse_dest']}":warehouse})
-            if location:
-                match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID}.{self.f['warehouse_location_dest']}":location})        
-        if move_type =='out':
-            if warehouse:
-                match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse']}":warehouse})
-            if location:
-                match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse_location']}":location})
+    #     unwind = {'$unwind': '$answers.{}'.format(self.f['move_group'])}
+    #     unwind_query = {}
+    #     unwind_stage = []
+    #     # print('move type.............', move_type)
+    #     # print('warehouse', warehouse)
+    #     # print('location', location)
+    #     # print('product_code', product_code)
+    #     # print('sku', sku)
+    #     # print('lot_number', lot_number)
+    #     if move_type =='in':
+    #         if warehouse:
+    #             match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID}.{self.f['warehouse_dest']}":warehouse})
+    #         if location:
+    #             match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID}.{self.f['warehouse_location_dest']}":location})        
+    #     if move_type =='out':
+    #         if warehouse:
+    #             match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse']}":warehouse})
+    #         if location:
+    #             match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse_location']}":location})
        
-        if product_code:
-            p_code_query = {"$or":[
-                {f"answers.{self.f['move_group']}.{self.STOCK_INVENTORY_OBJ_ID}.{self.f['product_code']}":product_code},
-                {f"answers.{self.f['move_group']}.{self.Product.SKU_OBJ_ID}.{self.f['product_code']}":product_code}
-            ]
-            }
-            unwind_stage.append({'$match': p_code_query })
-        if sku:
-            sku_query = {"$or":[
-                {f"answers.{self.f['move_group']}.{self.STOCK_INVENTORY_OBJ_ID}.{self.f['sku']}":sku},
-                {f"answers.{self.f['move_group']}.{self.Product.SKU_OBJ_ID}.{self.f['sku']}":sku}
-            ]
-            }
-            unwind_stage.append({'$match': sku_query })
-        if lot_number:
-            lot_number_query = {"$or":[
-                {f"answers.{self.f['move_group']}.{self.STOCK_INVENTORY_OBJ_ID}.{self.f['lot_number']}":lot_number},
-                {f"answers.{self.f['move_group']}.{self.Product.SKU_OBJ_ID}.{self.f['lot_number']}":lot_number},
-                {f"answers.{self.f['move_group']}.{self.f['lot_number']}":lot_number}
-            ]
-            }
-            unwind_stage.append({'$match': lot_number_query })
-        if status:
-            match_query.update({f"answers.{self.f['stock_status']}":status})
-        if date_from or date_to:
-            match_query.update(self.get_date_query(date_from=date_from, date_to=date_to, date_field_id=self.f['grading_date']))
-        project = {'$project':
-                {'_id': 1,
-                    'product_code':{"$ifNull":[
-                        f"$answers.{self.f['move_group']}.{self.CATALOG_INVENTORY_OBJ_ID}.{self.f['product_code']}",
-                        f"$answers.{self.f['move_group']}.{self.Product.SKU_OBJ_ID}.{self.f['product_code']}",
-                    ] } ,
-                    'total': f"$answers.{self.f['move_group']}.{self.f['move_group_qty']}",
-                    }
-            }
-        query= [{'$match': match_query }]
-        query.append(unwind)
-        if unwind_query:
-            query.append({'$match': unwind_query })
-        if unwind_stage:
-            query += unwind_stage
-        query.append(project)
-        query += [
-            {'$group':
-                {'_id':
-                    { 'product_code': '$product_code',
-                      },
-                  'total': {'$sum': '$total'},
-                  }
-            },
-            {'$project':
-                {'_id': 0,
-                'product_code': '$_id.product_code',
-                'total': '$total',
-                }
-            },
-            {'$sort': {'product_code': 1}}
-            ]
-        res = self.cr.aggregate(query)
-        result = {}
-        for r in res:
-            pcode = r.get('product_code')
-            result[pcode] = result.get(pcode, 0)        
-            result[pcode] += r.get('total',0)
-        if product_code:
-            result = result.get(product_code,0)
-        return result 
+    #     if product_code:
+    #         p_code_query = {"$or":[
+    #             {f"answers.{self.f['move_group']}.{self.STOCK_INVENTORY_OBJ_ID}.{self.f['product_code']}":product_code},
+    #             {f"answers.{self.f['move_group']}.{self.Product.SKU_OBJ_ID}.{self.f['product_code']}":product_code}
+    #         ]
+    #         }
+    #         unwind_stage.append({'$match': p_code_query })
+    #     if sku:
+    #         sku_query = {"$or":[
+    #             {f"answers.{self.f['move_group']}.{self.STOCK_INVENTORY_OBJ_ID}.{self.f['sku']}":sku},
+    #             {f"answers.{self.f['move_group']}.{self.Product.SKU_OBJ_ID}.{self.f['sku']}":sku}
+    #         ]
+    #         }
+    #         unwind_stage.append({'$match': sku_query })
+    #     if lot_number:
+    #         lot_number_query = {"$or":[
+    #             {f"answers.{self.f['move_group']}.{self.STOCK_INVENTORY_OBJ_ID}.{self.f['lot_number']}":lot_number},
+    #             {f"answers.{self.f['move_group']}.{self.Product.SKU_OBJ_ID}.{self.f['lot_number']}":lot_number},
+    #             {f"answers.{self.f['move_group']}.{self.f['lot_number']}":lot_number}
+    #         ]
+    #         }
+    #         unwind_stage.append({'$match': lot_number_query })
+    #     if status:
+    #         match_query.update({f"answers.{self.f['stock_status']}":status})
+    #     if date_from or date_to:
+    #         match_query.update(self.get_date_query(date_from=date_from, date_to=date_to, date_field_id=self.f['grading_date']))
+    #     project = {'$project':
+    #             {'_id': 1,
+    #                 'product_code':{"$ifNull":[
+    #                     f"$answers.{self.f['move_group']}.{self.CATALOG_INVENTORY_OBJ_ID}.{self.f['product_code']}",
+    #                     f"$answers.{self.f['move_group']}.{self.Product.SKU_OBJ_ID}.{self.f['product_code']}",
+    #                 ] } ,
+    #                 'total': f"$answers.{self.f['move_group']}.{self.f['move_group_qty']}",
+    #                 }
+    #         }
+    #     query= [{'$match': match_query }]
+    #     query.append(unwind)
+    #     if unwind_query:
+    #         query.append({'$match': unwind_query })
+    #     if unwind_stage:
+    #         query += unwind_stage
+    #     query.append(project)
+    #     query += [
+    #         {'$group':
+    #             {'_id':
+    #                 { 'product_code': '$product_code',
+    #                   },
+    #               'total': {'$sum': '$total'},
+    #               }
+    #         },
+    #         {'$project':
+    #             {'_id': 0,
+    #             'product_code': '$_id.product_code',
+    #             'total': '$total',
+    #             }
+    #         },
+    #         {'$sort': {'product_code': 1}}
+    #         ]
+    #     print('2query=', simplejson.dumps(query, indent=3))
+    #     res = self.cr.aggregate(query)
+    #     result = {}
+    #     for r in res:
+    #         pcode = r.get('product_code')
+    #         result[pcode] = result.get(pcode, 0)        
+    #         result[pcode] += r.get('total',0)
+    #     if product_code:
+    #         result = result.get(product_code,0)
+    #     return result 
 
-
-    ##test
-
-    def get_stock_info_from_catalog_inventory(self, answers={}, data={}, **kwargs):
-        if not answers:
-            answers = self.answers
-        res = deepcopy(data)
-        res.update(self.get_stock_info_form_answer(answers=answers, data=res))
-        if not res.get('folio'):
-            kwargs['require'] = kwargs.get('require',[])
-            kwargs['require'].append('folio')
-        print('res-', res)
-        if kwargs.get('require') or kwargs.get('get_record'):
-            record = self.get_invtory_record_by_product(
-                self.FORM_INVENTORY_ID,
-                res['product_code'],  
-                res['sku'],  
-                res['lot_number'] ,
-                res['warehouse'],
-                res['warehouse_location'])
-            res['record'] = record
-            print('kwargs=', kwargs)
-            print('record=',record )
-            for key in kwargs['require']:
-                if not record:
-                    msg = "******************** Something went wrong, we couldn't find a record for: *********************** \n"
-                    msg += f"Product Code {res['product_code']} / SKU: {res['sku']} \n"
-                    msg += f"Warehouse: {res['warehouse']} / Location: {res['warehouse_location']} \n"
-                    msg += f"Numero de Lote: {res['lot_number']} "
-                    error = {
-                        f"{self.CATALOG_INVENTORY_OBJ_ID}": {
-                        "msg": [msg], 
-                        "label": "Producto NO encontrado", "error": []}}
-                    self.LKFException( '', dict_error=error )
-                if record.get(key):
-                    res[key] = record.get(key)
-                else:
-                    res[key] = self.search_4_key(record, key)
-        return res

@@ -17,13 +17,18 @@ class Stock(Stock):
             # product_code = self.answers.get(self.f['product_recipe'], {}).get(self.f['product_code'], '')
         except Exception as e:
             print('**********************************************')
-            self.LKFException('Warehosue and product code are requierd', e)
+            self.LKFException( dict_error= {
+                        "msg": ['Warehosue and product code are requierd']} 
+                )
         a = f'{product_code}_{sku}_{lot_number}_{warehouse}_{location}'
         values = {
                 '_id': a
                 }
+        print('values', values)
+        print('kwargs', kwargs)
         ccache = self.cache_read(values)
         product_stock = self.get_product_stock(product_code, sku=sku, lot_number=lot_number, warehouse=warehouse, location=location, kwargs=kwargs.get('kwargs',{}) )
+        print('product_stock', product_stock)
         per_container = self.answers.get(self.f['per_container'],1)
         self.answers[self.f['product_lot_produced']] = product_stock['production']
         self.answers[self.f['product_lot_move_in']] = product_stock['move_in']
@@ -49,27 +54,20 @@ class Stock(Stock):
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)
     stock_obj.console_run()
-    values = {'_id': 'CP0001_XX01BS_L1_Almacen Norte_Tecnico 1'}
-    ccache = stock_obj.cache_read(values)
-    print('44444444444444reading ccache...', ccache)
-    #stock_obj.merge_stock_records()
-    # print('current_record',current_record)
 
-    # if folio:
-    #     #si ya existe el registro, no cambio el numero de lote
-    #     kwargs['force_lote'] = True
-    # print('answers = ', stock_obj.answers)
-    stock_obj.get_product_info()
-    query = None
-    if stock_obj.record_id:
-        query = {'_id':ObjectId(stock_obj.record_id)}
-    if not query and stock_obj.folio:
-        query = {'folio':stock_obj.folio, 'form_id':stock_obj.form_id }
-    if query:
-        print('no sera aqui..?????')
-        stock_obj.cr.update_one(query, {'$set': {'answers':stock_obj.answers}})
-    print('print va a hacer el update con...', stock_obj.answers)
-    sys.stdout.write(simplejson.dumps({
-        'status': 101,
-        'replace_ans': stock_obj.answers
-    }))
+    if stock_obj.answers:
+        keeping = stock_obj.merge_stock_records()
+        stock_obj.get_product_info()
+        query = None
+        if stock_obj.record_id:
+            query = {'_id':ObjectId(stock_obj.record_id)}
+        if not query and stock_obj.folio:
+            query = {'folio':stock_obj.folio, 'form_id':stock_obj.form_id }
+        if query:
+            print('no sera aqui..?????')
+            stock_obj.cr.update_one(query, {'$set': {'answers':stock_obj.answers}})
+        print('print va a hacer el update con...', stock_obj.answers)
+        sys.stdout.write(simplejson.dumps({
+            'status': 101,
+            'replace_ans': stock_obj.answers
+        }))

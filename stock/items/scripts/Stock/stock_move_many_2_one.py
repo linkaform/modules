@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson
 from copy import deepcopy
+from datetime import datetime
+from bson import ObjectId
 
 from stock_utils import Stock
 from account_settings import *
@@ -19,6 +21,95 @@ class Stock(Stock):
             # 'num_serie': '66c75d1e601ad1dd405593fe',
         })
 
+    def append_onts(self, records):
+        move_group = self.answers.get( self.f['move_group'], [] )
+        base_row_set = deepcopy(move_group[0])
+        base_row_set[self.f['move_group_qty']] = 1
+        self.answers[self.f['move_group']] = []
+        series_unique = []
+        for num_serie in records:
+            print('aqui vamso, hay que iterar y agregar las lineas')
+            num_serie = self.strip_special_characters(self.unlist(num_serie))
+            if not num_serie:
+                continue
+            if num_serie in series_unique:
+                    self.LKFException( '', dict_error= {
+                        f"{self.f['lot_number']}": {
+                        "msg": ['Se encontraron series repetidas en el excel: {}'.format( num_serie )], 
+                        "label": "Serie Repetida", "error": []}}
+                        )
+            series_unique.append(num_serie)
+            row_set = deepcopy(base_row_set)
+            row_set[self.CATALOG_INVENTORY_OBJ_ID][self.f['lot_number']] = num_serie
+            self.answers[self.f['move_group']].append(row_set)
+        return self.answers[self.f['move_group']] 
+
+    def carga_materiales(self, header, records):
+        #ESTA FUNCION ES MUY PARECECIDA A STOCK_MOVE_IN SOLO QUE 
+        #CAMBIA EL TIPO DEL DEL CATALGOO DENTRO GRUPO REPETITIVO
+        #En este movimiento se requiere que venga de stock inventroy
+        header_dict = self.make_header_dict(header)
+        """
+        # Se revisa que el excel tenga todas las columnas que se requieren para el proceso
+        """
+        cols_required = ['codigo_de_producto', 'sku', 'cantidad']
+        cols_not_found = self.check_keys_and_missing(cols_required, header_dict)
+        if cols_not_found:
+            cols_not_found = [ c.replace('_', ' ').title() for c in cols_not_found ]
+            self.LKFException( f'Se requieren las columnas: {self.list_to_str(cols_not_found)}' )
+
+        """
+        # Se revisan los renglones del excel para verificar que los codigos y skus existan en el catalogo
+        """
+        dict_products_skus = self.get_skus_records()
+
+        # print('++ dict_products_skus =',dict_products_skus)
+        pos_codigo = header_dict.get('codigo_de_producto')
+        pos_sku = header_dict.get('sku')
+        pos_cantidad = header_dict.get('cantidad')
+
+        """
+        Se procesan los renglones del excel para armar los sets del grupo repetitivo
+        se evalua que los codigos y skus de los productos existan en el catálogo, si alguno no existe se marca error
+        """
+        error_rows = []
+        sets_to_products = []
+        for pos_row, rec in enumerate(records):
+            num_row = pos_row + 2
+            product_code = rec[pos_codigo]
+            sku = rec[pos_sku]
+            cantidad = rec[pos_cantidad]
+            if not product_code and not sku and not cantidad:
+                continue
+            if not product_code or not sku:
+                error_rows.append(f'RENGLON {num_row}: Debe indicar el código del producto y el sku')
+                continue
+            if not cantidad:
+                error_rows.append(f'RENGLON {num_row}: Debe indicar una cantidad')
+                continue
+            info_product = dict_products_skus.get( f'{product_code}_{sku}' )
+            if not info_product:
+                error_rows.append(f'RENGLON {num_row}: No se encontro el codigo {product_code} con el sku {sku}')
+                continue
+            info_product.update({
+                self.f['prod_qty_per_container'] : [],
+                self.f['product_code'] : str(product_code),
+                self.f['sku'] : str(sku),
+                self.f['lot_number']: 'LotePCI001',
+            })
+            
+            sets_to_products.append({
+                self.CATALOG_INVENTORY_OBJ_ID: info_product,
+                self.f['inv_adjust_grp_status'] : "todo",
+                self.f['move_group_qty'] : cantidad,
+            })
+        if error_rows:
+            self.LKFException( self.list_to_str(error_rows) )
+        if self.answers.get( self.f['move_group'] ):
+            self.answers[ self.f['move_group'] ] += sets_to_products
+        else:
+            self.answers[ self.f['move_group'] ] = sets_to_products
+        return header_dict, records
 
     def load_onts(self):
         self.read_xls_onts()
@@ -114,32 +205,75 @@ class Stock(Stock):
     def validate_move_qty(self, product_code, sku, lot_number, warehouse, location, move_qty, date_to=None, **kwargs):
         inv = self.get_product_stock(product_code, sku=sku,lot_number=lot_number, warehouse=warehouse, location=location,  
                 date_to=date_to, **kwargs)
+        acctual_containers = inv.get('actuals')
+        print('acctual_containers',acctual_containers)
+        if acctual_containers == 0:
+            msg = f"This lot {lot_number} has 0 containers left, if this is NOT the case first do a inventory adjustment"
+            msg_error_app = {
+                    f"{self.f['product_lot_actuals']}": {
+                        "msg": [msg],
+                        "label": "Please check your lot inventory",
+                        "error":[]
+      
+                    }
+                }
+            #TODO set inventory as done
+            self.LKFException( simplejson.dumps( msg_error_app ) )   
 
+        if move_qty > acctual_containers:
+        # if False:
+            #trying to move more containeres that there are...
+            cont_diff = move_qty - acctual_containers
+            msg = f"There actually only {acctual_containers} containers and you are trying to move {move_qty} containers."
+            msg += f"Check this out...! Your are trying to move {cont_diff} more containers than they are. "
+            msg += f"If this is the case, please frist make an inventory adjustment of {cont_diff} "
+            msg += f"On warehouse {warehouse} at location {location} and lot number {lot_number}"
+            msg_error_app = {
+                    f"{self.f['inv_move_qty']}": {
+                        "msg": [msg],
+                        "label": "Please check your Flats to move",
+                        "error":[]
+      
+                    }
+                }
+            self.LKFException( simplejson.dumps( msg_error_app ) )
+        return True
 
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
     stock_obj.console_run()
     status = stock_obj.answers[stock_obj.f['inv_adjust_status']]
-    print('status', status)
+    if hasattr(stock_obj,'folio'):
+        folio = stock_obj.folio
+    if not folio:
+        today = stock_obj.get_today_format()
+        folio = f"SAL{datetime.strftime(today, '%y%m%d')}"
+        next_folio = stock_obj.get_record_folio(stock_obj.STOCK_ONE_MANY_ONE, folio)
+        folio = f"{folio}-{next_folio}"
+
+    if not stock_obj.record_id:
+        stock_obj.record_id = stock_obj.object_id() 
+    stock_obj.folio = folio
     # if status == 'cargar_onts':
     #     stock_obj.load_onts()
     # else:
     #     stock_obj.read_xls_file()
-    try:
-        header, records = stock_obj.read_xls_file()
-    except:
-        print('no hay excel')
-        header = None
-        records = None
+    #try:
+    header, records = stock_obj.read_xls_file()
+    # except:
+    #     print('no hay excel')
+    #     header = None
+    #     records = None
     if header:
         if not records:
             stock_obj.LKFException('El archivo cargado no contiene datos, favor de revisar')
     # print('answ3rs', stock_obj.answers)
     #stock_obj.share_filter_and_forms_to_connection()
-    response = stock_obj.move_one_many_one()
+    response = stock_obj.move_one_many_one(records)
     stock_obj.answers[stock_obj.f['inv_adjust_status']] =  'done'
 
     sys.stdout.write(simplejson.dumps({
         'status': 101,
         'replace_ans': stock_obj.answers,
+        'metadata':{"id":stock_obj.record_id, "folio":stock_obj.folio}
         }))
