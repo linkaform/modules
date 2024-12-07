@@ -35,11 +35,12 @@ if __name__ == "__main__":
     elif option == 'create_access_pass' or option == 'crear_pase':
         response = acceso_obj.create_access_pass(location, access_pass)
         folio_msj = response.get('json', {}).get('id', '')
-        
         if pre_sms:
             pre_sms_response = acceso_obj.create_enviar_msj_pase(data_cel_msj=pre_sms, folio=folio_msj)
     elif option == 'update_pass':
         response = acceso_obj.update_pass(access_pass,folio)
+    elif option == 'update_full_pass':
+        response = acceso_obj.update_full_pass(access_pass,folio, qr_code, location)
     elif option == 'catalogos_pase':
         response = acceso_obj.catalagos_pase(user_id, location)
     elif option == 'catalogos_pase_no_jwt':
