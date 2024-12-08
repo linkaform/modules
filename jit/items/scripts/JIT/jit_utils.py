@@ -87,8 +87,9 @@ class JIT(JIT, Stock):
             location = self.get_warehouse_config('tipo_almacen', 'abastacimiento', 'warehouse_location')
         if not uom:
             uom = config.get('uom')
-        # print('self.ROUTE_RULES.',self.ROUTE_RULES)
-        standar_pack = self.ROUTE_RULES.get(str(product_code),{})
+        print('self.ROUTE_RULES = ',self.ROUTE_RULES)
+        print('product_code=', product_code)
+        standar_pack = self.ROUTE_RULES.get(str(product_code),1)
         answers[self.Product.SKU_OBJ_ID] = {}
         answers[self.Product.SKU_OBJ_ID][self.f['product_code']] = product_code
         answers[self.Product.SKU_OBJ_ID][self.f['sku']] = sku
