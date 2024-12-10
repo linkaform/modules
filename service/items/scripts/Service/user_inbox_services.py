@@ -16,17 +16,15 @@ class Service(Service):
         for user_id, inboxes in user_inbox.items():
             new_inbox = self.get_inbox_by_status(user_id, inboxes, status='new')
             if new_inbox:
-                print('YES the user nas a NEW inbox')
                 inbox_to_delete = [i['key'] for i in new_inbox]
-                print('inbx key', inbox_to_delete)
                 if inbox_to_delete:
                     del_user_inbox[user_id] = inbox_to_delete
-        print('del_user_inbox', del_user_inbox)
         del_res = self.delete_inboxes(del_user_inbox)
-        print('del_res', del_res)
         return del_res
    
     def delete_inboxes(self, inboxes):
+        print('========== DELETE ======')
+        print('inboxes=', inboxes)
         res = self.lkf_api.delete_users_inbox(inboxes, threading=True)
         return res
 
@@ -114,7 +112,8 @@ if __name__ == '__main__':
     service_obj.console_run()
     #current record
     data = service_obj.data.get('data',{})
-    option = data.get("option",'')
+    option = data.get("option", service_obj.data.get('option'))
+    print('option', option)
     if option == 'delete':
         user_inbox = service_obj.delete_all_new_inbox()
         print('catalog user_inbox to delete', user_inbox)
