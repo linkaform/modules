@@ -23,6 +23,7 @@ class Reports(Reports):
         for sku, data in sku_data.items():
             standar_pack = self.ROUTE_RULES.get(str(sku),{})
             sku_warehouses = []
+            print('standar_pack', standar_pack)
             m , almancenes_max = self.send_next_product(data)
             if data['stock_final'] >= 0:
                 for wmax in m:
@@ -36,38 +37,40 @@ class Reports(Reports):
                data['stock_final'] = 0
             while_warning = {}
             while stock_cedis > 0:
-                print('whiel stock _cedis', stock_cedis)
                 m , almancenes_max = self.send_next_product(data)
                 p = self.set_warehouse_tranfer_order(m, almancenes_max)
                 if not p:
                     break
                 for idx, f in enumerate(p):
-                    print('p',p)
                     warehouse = self.warehouse_percentage[f]['almacen']
-                    while_warning[warehouse] = while_warning.get(warehouse,[])
-                    print('while_warning[warehouse]',while_warning[warehouse])
-                    if stock_cedis in while_warning[warehouse]:
-                        stock_cedis = -1
-                    else:
-                        print('appdend')
-                        while_warning[warehouse].append(stock_cedis)
                     if (idx+1) >= len(p):
+                        if len(p) == 1:
+                            print('brake 4888888888888888888888', idx)
+                            stock_cedis = - 1
                         break
                     porce = self.warehouse_percentage[f]['porce']
                     if warehouse not in sku_warehouses:
                         sku_warehouses.append(warehouse)
                     if porce < 100:
                         perc_difference = (p[idx+1] - p[idx])/100
+
                         stock_cedis, stock_qty = self.almancenes_por_porcentaje_set(f, standar_pack, stock_cedis, update_perc=perc_difference)
-                        if stock_cedis <= 0:
+                        if stock_cedis < 0:
                             break
                         sku_data[sku]['stock_final'] = stock_cedis
                         sku_data[sku][warehouse]['traspaso'] += stock_qty
                         new_stock_total = sku_data[sku][warehouse]['traspaso'] + sku_data[sku][warehouse]['actuals']
                         self.update_stock_percentage(f, new_stock_total)
+                        while_warning[warehouse] = while_warning.get(warehouse,[])
+                        if stock_cedis in while_warning.get(warehouse,[]):
+                            stock_cedis = -1
+                        else:
+                            while_warning[warehouse].append(stock_cedis)
+                # print('============== END ================', stock_cedis)
 
             tomove = 0 
             for w in sku_warehouses:
+
                 sku_data[sku][w]['traspaso'] = round(sku_data[sku][w]['traspaso'],2)
                 tomove +=  round(sku_data[sku][w]['traspaso'],2)
             sku_data[sku]['stock_final'] = sku_data[sku]['actuals'] - tomove
@@ -81,28 +84,43 @@ class Reports(Reports):
         if stock_cedis < 0 and stock_qty > standar_pack:
             stock_cedis += stock_qty
             n_stock_cedis, n_stock_qty = self.almancenes_por_porcentaje_set(pos, standar_pack, stock_cedis, update_perc=update_perc/2)
-            if n_stock_qty > n_stock_cedis:
-                if n_stock_cedis > 0:
-                    return n_stock_cedis, n_stock_qty
-                stock_cedis -= stock_qty
-                return stock_cedis, 0
+            return n_stock_cedis, n_stock_qty
+            # if n_stock_qty > n_stock_cedis:
+            #     if n_stock_cedis > 0:
+            #         print('aaaaaaaaaaaaaaa', n_stock_cedis,n_stock_qty )
+            #         return n_stock_cedis, n_stock_qty
+            #     stock_cedis -= stock_qty
+            #     print('vvvvvvvvvvvvvvvvvvv',stock_cedis)
+            #     return stock_cedis, 0
             # else:
+            #     print('else??????/')
             #     # stock_qty = 0
-            #     stock_cedis = -1
+            #     # stock_cedis = -1
         return stock_cedis, stock_qty
 
     def arrage_data(self, stock_list, data):
         res = []
         for row in stock_list:
             sku = row['sku']
+            # if sku == '750200302529':
+            #         print('111row=',row)
             sku_data = data[sku]
             row['stock_final'] =  sku_data['stock_final']
             for key, value in sku_data.items():
                 if not isinstance(value, dict):
                     continue
                 row[f'stock_to_move_alm_{key}'] =  value['traspaso']
+                # if sku == '750200302529':
+                #     print('row=',row)
+                #     print('===========================================')
+                #     print('key=', key)
+                #     print('value=', value)
+                #     print('traspaso=', value['traspaso'])
+                #     print('asi queda...', row[f'stock_to_move_alm_{key}'])
+                #     print('asi queda... row=', row)
                 row.update(self.get_porcentaje_final(row))
                 for w in self.warehouses:
+                    # print('row...',row)
                     row[f'actuals_{w}'] = row.get(f'actuals_{w}',0)
                     row[f'stock_to_move_{w}'] = row.get(f'stock_to_move_{w}',0)
         return stock_list
@@ -112,7 +130,14 @@ class Reports(Reports):
         # Extraer los nombres de los almacenes dinámicamente desde las claves que contienen 'stock_max_alm_'
         # for key in stock_list[0]:
         # print('222stock_list=', simplejson.dumps(stock_list, indent=4))
-        warehouse_keys = [key.split('stock_max_alm_')[-1] for key in stock_list[0].keys() if 'p_stock_max_alm_' in key]
+        warehouse_keys = []
+        for row in stock_list:
+            for key in row:
+                if 'stock_max_alm_' in key:
+                    w = key.split('stock_max_alm_')[-1]
+                    if w not in warehouse_keys:
+                        warehouse_keys.append(w)
+        # warehouse_keys = [key.split('stock_max_alm_')[-1] for key in stock_list[0].keys() if 'p_stock_max_alm_' in key]
         for product in stock_list:
             sku = product['sku']
             data[sku] = {
@@ -195,8 +220,8 @@ class Reports(Reports):
                 f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['product_code']}": {'$in': product_code}
                 })
             
-        # match_query.update({
-        #     f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['product_code']}": "750200301171"})
+        match_query.update({
+            f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['product_code']}": "750200301071"})
         if sku:
             match_query.update({
                 f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['sku']}":sku
@@ -298,10 +323,10 @@ class Reports(Reports):
         stock_dict = {}
 
         for item in procurment:
-            # if item['sku'] != '750200301057':
-            #     continue
             code = item['product_code']
             warehouse = item['warehouse'].lower().replace(' ', '_')
+            # if item['sku'] == '750200302529':
+            # #     continue
             if warehouse not in self.warehouses:
                 self.warehouses.append(warehouse)
             actuals = stock_cedis_dict.get(code, 0)
@@ -321,13 +346,14 @@ class Reports(Reports):
                 'percentage_stock_max': 0,
                 'stock_final': actuals,  # Inicializamos stock_final con los actuales
             })
-
             # Actualiza stock_to_move, asegurándose de no exceder el stock disponible
             available_stock = stock_dict[code].get('stock_final', 0)
             # stock_to_move = min(item['procurment_qty'], available_stock)
             stock_to_move = item['procurment_qty']
             stock_dict[code].update({f'stock_to_move_{warehouse}': round(stock_to_move, 2)})
-
+            # if item['sku'] == '750200302529':
+            # #     continue
+            #     print('stock_dict=', stock_dict[code])
             #vaoms a dejarlo que se vaya a negativo y solo trabajamos con los negativos...
             stock_dict[code]['stock_final'] = round(stock_dict[code]['stock_final'] - stock_to_move, 2)
 
@@ -454,9 +480,10 @@ class Reports(Reports):
             return [{}]
         data = self.build_data_from_report(stock_list)  # Genera los datos del informe
         data = self.almancenes_por_porcentaje(data)
+        # print('daataaa=',data)
         return self.arrage_data(stock_list, data)
         # warehouse_percentage_response = self.warehouses_by_percentage()  # Respuesta con almacenes y traspasos
-        return data
+        # return data
         
                         
         
@@ -480,7 +507,7 @@ if __name__ == "__main__":
     reorder_obj.warehouses = []
 
     if option == 'get_report':
-        #reorder_obj.warehouse_transfer_update(),
+        # reorder_obj.warehouse_transfer_update(),
         script_obj.HttpResponse({
          "stockInfo": reorder_obj.warehouse_transfer_update(),
         })
