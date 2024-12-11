@@ -21,9 +21,11 @@ class Stock(Stock):
 
         # La relacion entre la forma de inventario y el catalogo utilizado para el inventario
         # por default simpre dejar los mismos nombres
-        self.FORM_CATALOG_DIR = {
-            self.FORM_INVENTORY_ID:self.CATALOG_INVENTORY_ID,
-            }
+        print('self.FORM_INVENTORY_ID',self.FORM_INVENTORY_ID)
+        print('self.CATALOG_INVENTORY_ID',self.CATALOG_INVENTORY_ID)
+        # self.FORM_CATALOG_DIR = {
+        #     self.FORM_INVENTORY_ID:self.CATALOG_INVENTORY_ID,
+        #     }
 
         self.f.update({
             'parts_group':'62c5da67f850f35cc2483346',
