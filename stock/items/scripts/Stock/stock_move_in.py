@@ -161,6 +161,7 @@ class Stock(Stock):
                 series_unique.append(num_serie)
                 row_set = deepcopy(base_row_set)
                 row_set[self.f['lot_number']] = num_serie
+                row_set[self.f['inv_adjust_grp_status']] = 'done'
 
                 folio_serie_record.append({'folio':new_folio, 'ont_serie':num_serie})
                 if idx == 0:
@@ -168,6 +169,7 @@ class Stock(Stock):
                     self.answers[self.f['move_group']].append(row_set)
                 else:
                     new_record['answers'][self.f['move_group']].append(row_set)
+                    new_record['answers'][self.f['inv_adjust_status']] = 'done'
             if new_record:
                 self.ejecutar_transaccion(new_record, folio_serie_record )
             else:
@@ -231,6 +233,7 @@ class Stock(Stock):
                         )
             try:
                 if new_record.get('answers'):
+                    # print('mnew record=', simplejson.dumps(new_record, indent=3))
                     res = self.records_cr.insert_one(new_record)
                     self.direct_move_in(new_record)
             except Exception as e:
@@ -354,22 +357,21 @@ class Stock(Stock):
         folio = new_record['folio']
         for idx, moves in enumerate(move_lines):
             status = moves.get('inv_adjust_grp_status')
-            if status == 'done':
+            if status == 'done' and not stock_obj.proceso_onts:
                 continue
             this_metadata = deepcopy(metadata)
             this_metadata['folio'] = f'{folio}-{idx}'
             move_line = self.answers[self.f['move_group']][idx]
-            move_line[self.f['inv_adjust_grp_status']] = 'done'
+
             answers = self.stock_inventory_model(moves, skus[moves['product_code']], labels=True)
             answers.update({
                 self.WH.WAREHOUSE_LOCATION_OBJ_ID:{
                 self.f['warehouse']:warehouse_to,
                 self.f['warehouse_location']:location_to},
                 self.f['product_lot']:moves['product_lot'],
-                    },
+                    }
                 )
             this_metadata['answers'] = answers
-
             new_stock_records.append(this_metadata)
             if not stock_obj.proceso_onts:
                 create_resp = self.lkf_api.post_forms_answers(this_metadata)
