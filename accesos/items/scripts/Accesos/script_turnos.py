@@ -60,6 +60,8 @@ if __name__ == "__main__":
         # used
         response = acceso_obj.do_checkout(checkin_id=checkin_id, \
             location=location, area= area, guards=guards, forzar=forzar, comments=comments)
+    elif option == 'get_user_menu':
+        response = acceso_obj.get_config_accesos()
     elif option == 'search_access_pass':
         # used
         response = acceso_obj.search_access_pass(qr_code=qr_code, location=location)
