@@ -46,6 +46,7 @@ class Service(Service):
         for user_id, inboxes in user_inbox.items():
             new_inbox = self.get_inbox_by_status(user_id, inboxes, status='new')
             if new_inbox:
+                self.inboxes_groups = []
                 self.send_notification(user_id, new_inbox)
 
     def send_notification(self, user, inboxes):
@@ -66,12 +67,12 @@ class Service(Service):
             'mensaje': 'Mensaje Automatico sobre Notificaciones'
         }
         for inbox in inboxes:
-            # print('inbox', simplejson.dumps(inbox, indent=4))
             doc = inbox['doc']
-            folio = doc.get('folio')
+            # print('inbox', simplejson.dumps(doc, indent=4))
             name = doc.get('name')
             name = doc.get('name')
             record_json = doc.get('record_json')
+            folio = record_json.get('folio')
             answers = record_json.get('answers')
             # print('answers==s', answers)
             localidad_cat = answers.get(self.LOCALIDADES_OBJ_ID,{})
