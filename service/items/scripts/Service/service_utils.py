@@ -41,6 +41,17 @@ class Base(base.LKF_Base):
             'inboxes':'67567ea740a55b8a1c487f23'
             })
 
+        self.mf.update({
+            'pais_localidad':'631fccdd844ed53c7d989718',
+            'localidad':'631fc1e48d9fe191da0c3daf',
+            })
+
+
+        self.LOCALIDADES = self.lkm.catalog_id('localidades')
+        self.LOCALIDADES_ID = self.LOCALIDADES.get('id')
+        self.LOCALIDADES_OBJ_ID = self.LOCALIDADES.get('obj_id')
+
+
     def send_email_by_form_answers(self, data):
         #Inherit Function / Heredar Funcion
         '''
