@@ -9,7 +9,7 @@
             <next>15</next>
             <padding_zeros>2</padding_zeros>
             <prefix>%Y%W%j</prefix>
-            <suffix />
+            <suffix>None</suffix>
         </folio>
     </advanced_options>
     <allow_page_navigation>True</allow_page_navigation>
@@ -985,14 +985,7 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>
-                        <item>
-                            <applied>False</applied>
-                            <rule_id>c7625956ef2418</rule_id>
-                            <rule_index>0</rule_index>
-                            <rule_type>disabled</rule_type>
-                        </item>
-                    </affecting_rules>
+                    <affecting_rules>[]</affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
                         <catalog_field_id>{{ catalog.product_recipe.obj_id }}</catalog_field_id>
@@ -2761,6 +2754,7 @@
     <process_ids>[]</process_ids>
     <public>False</public>
     <resource_uri>/api/infosync/form/113823/</resource_uri>
+    <send_on_foreground>False</send_on_foreground>
     <start_event_id>None</start_event_id>
     <template_conf>
         <account_id>None</account_id>
@@ -2780,5 +2774,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1713388686.0</updated_at>
+    <updated_at>1719490479.0</updated_at>
 </lkf>

@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='utf-8'?>
+<lkf>
+    <form_id>{{ form.lab_inventory_out_pull.id }}</form_id>
+    <id>6659f245a255848bfe1c0c08</id>
+    <rules>
+        <item>
+            <conditions>
+                <item>
+                    <condition>not__empty=</condition>
+                    <field>
+                        <catalog_id>65b41448b2f9af986d0d612e</catalog_id>
+                        <field_id>6442e4831198daf81456f274</field_id>
+                        <group_id>6442e4537775ce64ef72dd69</group_id>
+                        <id>6442e4831198daf81456f274</id>
+                        <label>Warehouse Name</label>
+                        <type>catalog-select</type>
+                    </field>
+                    <value> </value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>000000000000000000000111</field_id>
+                    <group_id>None</group_id>
+                    <id>000000000000000000000111</id>
+                    <label>Date</label>
+                    <type>datetime</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Rule 1</name>
+            <operator>and</operator>
+            <rule_id>7bc218310bd405</rule_id>
+            <rule_type>required</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+    </rules>
+</lkf>

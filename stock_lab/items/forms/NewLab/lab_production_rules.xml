@@ -167,19 +167,11 @@
                 </item>
                 <item>
                     <catalog_id>None</catalog_id>
-                    <field_id>61f1fcf8c66d2990c8fc7cc3</field_id>
+                    <field_id>61f1fcf8c66d2990c8fc7cc5</field_id>
                     <group_id>None</group_id>
-                    <id>61f1fcf8c66d2990c8fc7cc3</id>
-                    <label>Conteiners OUT</label>
-                    <type>integer</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>62c6017ff9f71e2a589fb679</field_id>
-                    <group_id>None</group_id>
-                    <id>62c6017ff9f71e2a589fb679</id>
-                    <label>Luch brake</label>
-                    <type>radio</type>
+                    <id>61f1fcf8c66d2990c8fc7cc5</id>
+                    <label>Time In</label>
+                    <type>time</type>
                 </item>
                 <item>
                     <catalog_id>None</catalog_id>
@@ -191,11 +183,11 @@
                 </item>
                 <item>
                     <catalog_id>None</catalog_id>
-                    <field_id>61f1fcf8c66d2990c8fc7cc5</field_id>
+                    <field_id>62c6017ff9f71e2a589fb679</field_id>
                     <group_id>None</group_id>
-                    <id>61f1fcf8c66d2990c8fc7cc5</id>
-                    <label>Time In</label>
-                    <type>time</type>
+                    <id>62c6017ff9f71e2a589fb679</id>
+                    <label>Luch brake</label>
+                    <type>radio</type>
                 </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>

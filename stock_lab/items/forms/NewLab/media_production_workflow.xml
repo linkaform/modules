@@ -12,8 +12,8 @@
                     <configuration>
                         <synched_catalogs>
                             <item>
-                                <couch_id>65b53f562b4d969ff10d634d</couch_id>
-                                <id>113873</id>
+                                <couch_id>{{ catalog.media_lot.obj_id }}</couch_id>
+                                <id>{{ catalog.media_lot.id }}</id>
                                 <name>Media Lot</name>
                             </item>
                         </synched_catalogs>

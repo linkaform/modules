@@ -139,8 +139,8 @@
                     <configuration>
                         <synched_catalogs>
                             <item>
-                                <couch_id>65b41448b2f9af986d0d612e</couch_id>
-                                <id>113816</id>
+                                <couch_id>{{ catalog.lab_inventory.obj_id }}</couch_id>
+                                <id>{{ catalog.lab_inventory.id }}</id>
                                 <name>Lab Inventory</name>
                             </item>
                         </synched_catalogs>
