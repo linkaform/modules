@@ -9,9 +9,6 @@ class Accesos(Accesos):
     pass
     
 if __name__ == "__main__":
-    acceso_obj = Accesos(settings, sys_argv=sys.argv)
-    jwt = acceso_obj.lkf_api.get_jwt(user='seguridad@linkaform.com', api_key='58c62328de6b38d6d039122a9f0f7577f6f70ce2')
-    settings.config['JWT_KEY'] = jwt
     acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
     acceso_obj.console_run()
     #-FILTROS
@@ -29,7 +26,7 @@ if __name__ == "__main__":
     qr_code=data.get("qr_code")
     tab_status=data.get("tab_status")
     pre_sms = data.get("enviar_pre_sms",{})
-    
+    print('option', option)
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
     elif option == 'create_access_pass' or option == 'crear_pase':
@@ -41,8 +38,10 @@ if __name__ == "__main__":
         response = acceso_obj.update_pass(access_pass,folio)
     elif option == 'update_full_pass':
         response = acceso_obj.update_full_pass(access_pass,folio, qr_code, location)
-    elif option == 'catalogos_pase':
-        response = acceso_obj.catalagos_pase(user_id, location)
+    elif option == 'catalogos_pase_area':
+        response = acceso_obj.catalogos_pase_area(location)
+    elif option == 'catalogos_pase_location':
+        response = acceso_obj.catalogos_pase_location()
     elif option == 'catalogos_pase_no_jwt':
         response = acceso_obj.catalagos_pase_no_jwt(qr_code)
     elif option == 'enviar_msj':
