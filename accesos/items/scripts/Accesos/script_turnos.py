@@ -32,6 +32,7 @@ if __name__ == "__main__":
     visita_a = data.get('visita_a',"")
     gafete_id = data.get('gafete_id',"")
     data_msj=data.get("data_msj", {})
+    data_cel_msj=data.get("data_cel_msj", {})
     status_visita=data.get("status_visita", "")
     inActive= data.get("inActive", "")
     prioridades = data.get("prioridades",[])
@@ -59,6 +60,8 @@ if __name__ == "__main__":
         # used
         response = acceso_obj.do_checkout(checkin_id=checkin_id, \
             location=location, area= area, guards=guards, forzar=forzar, comments=comments)
+    elif option == 'get_user_menu':
+        response = acceso_obj.get_config_accesos()
     elif option == 'search_access_pass':
         # used
         response = acceso_obj.search_access_pass(qr_code=qr_code, location=location)
@@ -92,7 +95,7 @@ if __name__ == "__main__":
     elif option == 'visita_a_detail':
         response = acceso_obj.visita_a_detail(location, visita_a)
     elif option == 'enviar_msj':
-        response = acceso_obj.create_enviar_msj(data_msj)
+        response = acceso_obj.create_enviar_msj(data_msj=data_msj, data_cel_msj=data_cel_msj)
     else :
         response = {"msg": "Empty"}
     print('================ END RETURN =================')
