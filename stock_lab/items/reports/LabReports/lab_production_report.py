@@ -35,8 +35,51 @@ def cut_day_to_date(cutday, year=None):
 
 class Reports(Reports):
 
+    def asure_required(self, grouped_res):
+        if self.requierd_s2:
+            pcodes = [x['plant_code'] for x in grouped_res if x['stage'] == 'S2']
+            for pc, req in self.requierd_s2.items():
+                if pc not in pcodes:
+                    grouped_res.append({
+                        'plant_code': pc, 
+                        'stage': 'S2', 
+                        'produced': 0, 
+                        'eaches': 0, 
+                        'required': req, 
+                        'req_variance': req * -1
+                        })
+        if self.requierd_s3:
+            pcodes = [x['plant_code'] for x in grouped_res if x['stage'] == 'S2']
+            for pc, req in self.requierd_s3.items():
+                if pc not in pcodes:
+                    grouped_res.append({
+                        'plant_code': pc, 
+                        'stage': 'S3', 
+                        'produced': 0, 
+                        'eaches': 0, 
+                        'required': req, 
+                        'req_variance': req * -1
+                        })
+        return grouped_res
+
+    def get_requierd(self, stage=None):
+        res = 0
+        if not stage or stage == 'S2':
+            res += sum(list(self.requierd_s2.values()))
+        if not stage or stage == 'S2':
+            res += sum(list(self.requierd_s3.values()))
+        return res
+
     def get_report(self, plant_code, stage, date_from, date_to):
         global REQUIRED, PRODUCED
+        self.requierd_s2 = {}
+        self.requierd_s3 = {}
+        year_week = date_to_week(date_from)
+        year_week_to = date_to_week(date_to)
+        if not stage or stage == 'S2':
+            self.requierd_s2 = self.get_S2_requiers(year_week, year_week_to, plant_code, stage)
+        if not stage or stage == 'S3':
+            self.requierd_s3 = self.get_S3_requiers(year_week, year_week_to, plant_code, stage)
         detail = self.query_get_production(plant_code, date_from, date_to, stage, group_by="work_order")
         for d in detail:
             prod_id = d.get('prod_id',[])
@@ -49,18 +92,14 @@ class Reports(Reports):
         if not weeks:
             weeks =[False,]
             weeks.sort()
-        #print('weeks',weeks)
-        work_orders = self.query_get_work_orders(all_codes, weeks)
-        week_from = int(date_to_week(date_from))
-        week_to = int(date_to_week(date_to))
+        work_orders = self.query_get_work_orders(all_codes, year_week, year_week_to)
         if not stage:
             planned = self.query_planned(plant_code, weeks[0], weeks[-1], stage="S2")
             planned += self.query_planned(plant_code, weeks[0], weeks[-1], stage="S3")
-            REQUIRED = self.query_planned(plant_code, week_from, week_to, stage="S2", only_qty=True)
-            REQUIRED += self.query_planned(plant_code, week_from, week_to, stage="S3", only_qty=True)
+            REQUIRED = self.get_requierd()
         else:
             planned = self.query_planned(plant_code, weeks[0], weeks[-1], stage=stage)
-            REQUIRED = self.query_planned(plant_code, week_from, week_to, stage=stage, only_qty=True)
+            REQUIRED = self.get_requierd(stage)
         planned_dict = {}
         for week in planned:
             s = week.get('stage')
@@ -79,31 +118,22 @@ class Reports(Reports):
             pcode = row.get('plant_code')
             stage = row.get('stage')
             PRODUCED += row.get('eaches',0)
-            # year_week = int('{}{:02d}'.format(row.get('cut_year'), row.get('cut_week')))
-            # row.update({'year_week':year_week})
+            if stage == 'S2':
+                req = self.requierd_s2.get(pcode,0)
+            if stage == 'S3':
+                req = self.requierd_s3.get(pcode,0)
 
+            req_variance =  row.get('eaches',0) - req
+            row.update({'required':req, 'req_variance':req_variance})
 
-            # if planned_dict.get(stage,{}).get(pcode,{}).get(year_week):
-            # print('stage', stage)
-            # print('planned_dict', planned_dict)
-            # print('planned_dict stage', planned_dict[stage])
-            if planned_dict.get(stage,{}).get(pcode,{}):
-                # req_variance =  row.get('eaches',0) - planned_dict[stage][pcode][year_week]
-                req_variance =  row.get('eaches',0) - planned_dict[stage][pcode]
-                row.update({'required':planned_dict[stage][pcode], 'req_variance':req_variance})
             wk_stage = int(stage[-1])
-            # wo_year_week = int(year_week)
-            # print('==================================')
-            # print('pcode=', pcode)
-            # print('stage=', stage)
-            # print('wo_year_week=', wo_year_week)
-            # print('work_ordersALL=', work_orders)
-            # if work_orders.get(pcode,{}).get(wk_stage,{}).get(wo_year_week):
+            print('work_order=', work_orders)
             if work_orders.get(pcode,{}).get(wk_stage,{}):
-                # wk_total = work_orders[pcode][wk_stage]
                 wk_total = sum(work_orders[pcode][wk_stage].values())
                 variance =  wk_total - row.get('eaches',0)
                 row.update({'work_order':wk_total,'variance':variance})
+
+        grouped_res = self.asure_required(grouped_res)
         return detail , grouped_res, grouped_week, grouped_cut_day
 
     def query_get_production(self, plant_code, date_from, date_to, stage=None, group_by=False):
@@ -334,6 +364,8 @@ class Reports(Reports):
             },
             {'$sort': {'cut_week': 1}}
             ]
+        # print('====================================================')
+        # print('query', simplejson.dumps(query, indent=3))
         res = self.cr.aggregate(query)
         result = []
         all_codes = []
@@ -360,12 +392,14 @@ class Reports(Reports):
 
         if group_by == 'get_weeks':
             for r in res:
+                print('r=r',r)
                 if r.get('plant_code') and r.get('plant_code') not in all_codes:
                     all_codes.append(r['plant_code'])
                 year_week = '{}{:02d}'.format(r.get('cut_year'), r.get('cut_week'))
                 if year_week not in all_weeks:
                     all_weeks.append(int(year_week))
                 result.append(r)
+            print('all_codes', all_codes)
             return result, all_codes, all_weeks
 
         if group_by == 'cut_day':
@@ -596,6 +630,8 @@ class Reports(Reports):
                 },
                 {'$sort': {'plant_code': 1, 'year_week': 1}}
                 ]
+        # print('===============================================')
+        # print('query=', simplejson.dumps(query, indent=3))
         res = self.cr.aggregate(query)
         result = []
         if only_qty:
@@ -609,14 +645,14 @@ class Reports(Reports):
                 result.append(r)
         return result
 
-    def query_get_work_orders(self, all_codes, year_weeks):
-        year_weeks.sort()
-        # print('year_week', year_weeks)
-        if year_weeks[0]:
-            from_year = int(str(year_weeks[0])[:4])
-            to_year =   int(str(year_weeks[-1])[:4])
-            from_week = int(str(year_weeks[0])[-2:])
-            to_week =   int(str(year_weeks[-1])[-2:])
+    def query_get_work_orders(self, all_codes, year_week, year_week_to):
+        all_codes = ['LAGBG']
+        if year_week:
+            from_year = int(year_week[:4])
+            from_week = int(year_week[-2:])
+        if year_week_to:
+            to_year =   int(year_week_to[:4])
+            to_week =   int(year_week_to[-2:])
         else:
             from_year = 0
             to_year = 0
@@ -689,9 +725,12 @@ class Reports(Reports):
             },
             {'$sort': {'plant_code': 1, }}
             ]
+        # print('+++++++++++++++++++++++++++')
+        # print('query=', simplejson.dumps(query, indent=2))
         res = self.cr.aggregate(query)
         result = {}
         for row in res:
+
             stage = row.get('stage')
             if stage == 'S2' or stage == 's2':
                 stage = 2
@@ -702,12 +741,122 @@ class Reports(Reports):
             week = int(row.get('week'))
             year_week = int('{}{:02d}'.format(year, week))
             per_container = int(row.get('per_container'))
-            result[pcode] = result.get('plant_code',{})
+            result[pcode] = result.get(pcode,{})
             result[pcode][stage] = result[pcode].get(stage,{})
-            result[pcode][stage] = {
-                year_week:row.get('total',0) * per_container
-                }
+            if result[pcode][stage].get(year_week):
+                result[pcode][stage][year_week] += row.get('total',0) * per_container
+            else:
+                result[pcode][stage].update({
+                    year_week:row.get('total',0) * per_container
+                    })
         return result
+
+    def get_S2_requiers(self, year_week, year_week_to, plant_code=None, stage=None):
+        global req_by_week, cycles
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id":self.PRODUCTION_PLAN,
+            }
+        if plant_code:
+            match_query.update({f"answers.{self.PRODUCT_OBJ_ID}.{self.f['product_code']}":plant_code,})
+        year_match = None
+        if year_week and year_week_to:
+            year_match = {"$match": 
+                {f"answers.{self.f['prod_plan_development_group']}.{self.f['prod_plan_S2_requier_yearweek']}": 
+                    {"$gte":int(year_week) ,"$lte":int(year_week_to) }}}
+        elif year_week and not year_week_to:
+            year_match = {"$match": 
+                {f"answers.{self.f['prod_plan_development_group']}.{self.f['prod_plan_S2_requier_yearweek']}": 
+                    {"$gte":int(year_week)  }}}
+        elif not year_week and year_week_to:
+            year_match = {"$match": 
+                {f"answers.{self.f['prod_plan_development_group']}.{self.f['prod_plan_S2_requier_yearweek']}": 
+                    {"$lte":int(year_week_to) }}}
+        query = [
+            {"$match": match_query },
+            {"$unwind": f"$answers.{self.f['prod_plan_development_group']}"}
+            ]
+        if year_match:
+            query.append(year_match)
+        query += [
+            {"$project":{
+                "_id":1,
+                "plant_code":f"$answers.{self.PRODUCT_OBJ_ID}.{self.f['product_code']}",
+                "req":f"$answers.{self.f['prod_plan_development_group']}.{self.f['prod_plan_require_S2']}",
+            }},
+            {"$group":{
+                "_id":{
+                    "plant_code":"$plant_code",
+                    },
+                "req":{"$sum":"$req"}
+            }},
+            {"$project":{
+                "_id":0,
+                "plant_code":"$_id.plant_code",
+                "req":"$req",
+            }},
+            {"$sort": {"plant_code":1}}
+        ]
+        cr_result = self.cr.aggregate(query)
+        res = {}
+        for x in cr_result:
+            res[x['plant_code']] = x['req']
+        return res
+
+    def get_S3_requiers(self, year_week, year_week_to, plant_code=None, stage=None):
+        global req_by_week, cycles
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id":self.PRODUCTION_PLAN,
+            }
+        if plant_code:
+            match_query.update({f"answers.{self.PRODUCT_OBJ_ID}.{self.f['product_code']}":plant_code,})
+
+        query = [{"$match": match_query },]
+
+        year_match = None
+        if year_week and year_week_to:
+            year_match = {"$match": 
+                {f"answers.{self.f['prod_plan_S3_requier_yearweek']}": 
+                    {"$gte":int(year_week) ,"$lte":int(year_week_to) }}}
+        elif year_week and not year_week_to:
+            year_match = {"$match": 
+                {f"answers.{self.f['prod_plan_S3_requier_yearweek']}": 
+                    {"$gte":int(year_week)  }}}
+        elif not year_week and year_week_to:
+            year_match = {"$match": 
+                {f"answers.{self.f['prod_plan_S3_requier_yearweek']}": 
+                    {"$lte":int(year_week_to) }}}
+        if year_match:
+            query.append(year_match)
+        query += [
+            {"$project":{
+                "_id":1,
+                'folio':"$folio",
+                "plant_code":f"$answers.{self.PRODUCT_OBJ_ID}.{self.f['product_code']}",
+                "year_week":f"$answers.{self.f['prod_plan_S3_requier_yearweek']}",
+                "req":f"$answers.{self.f['prod_plan_require_S3']}",
+            }},
+            {"$group":{
+                "_id":{
+                    "plant_code":"$plant_code",
+                    },
+                "req":{"$sum":"$req"}
+            }},
+            {"$project":{
+                "_id":0,
+                "plant_code":"$_id.plant_code",
+                "req":"$req",
+            }},
+            {"$sort": {"plant_code":1}}
+        ]
+        ## TODO:
+        # 1.- acomodar por ciclos, obtener el cylco dependiendo de la semana de cultivo o la semana de arranque
+        cr_result = self.cr.aggregate(query)
+        res = {}
+        for x in cr_result:
+            res[x['plant_code']] = x['req']
+        return res
 
 
 if __name__ == "__main__":
