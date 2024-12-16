@@ -64,8 +64,6 @@ if __name__ == "__main__":
         response = acceso_obj.get_pdf(qr_code)
     elif option == 'get_user_contacts':
         response = acceso_obj.get_user_contacts()
-        print('response=',response)
-        print(d)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
