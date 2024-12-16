@@ -43,8 +43,9 @@ class Stock(Stock):
         self.WEEKLY_PRODUCTION_PLAN_LAB = self.lkm.form_id('weekly_production_plan_lab','id')
         self.LAB_MOVE_NEW_PRODUCTION = self.lkm.form_id('lab_move_new_production','id')
         self.SCRAP_MULTIPLE_LOCATIONS = self.lkm.form_id('scrap_multiple_locations','id')
+        self.PRODUCTION_PLAN = self.lkm.form_id('production_plan','id')
         #TODO
-        self.PRODUCTION_PLAN = 81420
+        # self.PRODUCTION_PLAN = 81420
 
         # La relacion entre la forma de inventario y el catalogo utilizado para el inventario
         # por default simpre dejar los mismos nombres
@@ -1130,6 +1131,8 @@ class Stock(Stock):
         print('product_code', product_code)
         print('lot_number', lot_number)
         print('warehouse', warehouse)
+        print('date_from', date_from)
+        print('date_to', date_to)
         lot_number = self.validate_value(lot_number)
         warehouse = self.validate_value(warehouse)
         location = self.validate_value(location)
@@ -1140,7 +1143,6 @@ class Stock(Stock):
             else:
                 cache_id = f"{product_code}_{lot_number}_{warehouse}"
         cache_stock = self.cache_get({'_id':cache_id,"_one":True, },**kwargs)
-        print('cache_stock=',cache_stock)
         kwargs.update(cache_stock.get('kwargs',{}))
         kwargs.update(cache_stock.get('cache',{}).get('kwargs',{}))
         if cache_stock.get('cache',{}).get('record_id'):
@@ -1149,6 +1151,7 @@ class Stock(Stock):
             initial_stock = self.get_product_stock(product_code, warehouse=warehouse, location=location, \
                 lot_number=lot_number, date_to=date_from,  **kwargs)
             stock['actuals'] += initial_stock.get('actuals',0)
+            print('initial_stock=', initial_stock)
         stock['adjustments'] = self.stock_adjustments_moves( product_code=product_code, lot_number=lot_number, \
             warehouse=warehouse, location=location, date_from=date_from, date_to=date_to, **kwargs)
         # print('adjustments =',  stock['adjustments'])
@@ -1163,15 +1166,14 @@ class Stock(Stock):
         stock['move_in'] = self.stock_moves('in', product_code=product_code, warehouse=warehouse, location=location, \
             lot_number=lot_number, date_from=date_from, date_to=date_to, **kwargs)
         #GET PRODUCT EXITS
-        # print('stock IN =',stock['move_in'])
+        print('stock IN =',stock['move_in'])
 
         stock['move_out'] = self.stock_moves('out', product_code=product_code, warehouse=warehouse, location=location, \
             lot_number=lot_number, date_from=date_from, date_to=date_to, **kwargs)
-        # print('stock OUT = ',stock['move_out'])
+        print('stock OUT = ',stock['move_out'])
         scrapped, cuarentin = self.stock_scrap(product_code=product_code, warehouse=warehouse, location=location, \
             lot_number=lot_number, date_from=date_from, date_to=date_to, status='done', **kwargs )  
         # print('stock scrapped',scrapped)  
-        print('stock scrapped = ',scrapped)
         stock['scrapped'] = scrapped
         stock['cuarentin'] = cuarentin
 
@@ -1191,7 +1193,7 @@ class Stock(Stock):
         if stock.get('stock_in') and stock.get('scrapped'):
             stock['scrap_perc'] = round(stock.get('scrapped',0)/stock.get('stock_in',1),2)
         print('stock=', stock)
-        print('**********************acutals=', stock['actuals'])
+        print('********************** acutals=', stock['actuals'])
         return stock
 
     def get_product_recipe(self, all_codes, stage=[2,3,4], recipe_type='Main'):
@@ -2384,6 +2386,9 @@ class Stock(Stock):
         if move_type =='out':
             if warehouse:
                 unwind_query.update({f"answers.{self.CATALOG_INVENTORY_OBJ_ID}.{self.f['warehouse']}":warehouse})      
+            else:
+                stock_warehouses = self.get_warehouse(warehouse_type='Stock')
+                unwind_query.update({f"answers.{self.CATALOG_INVENTORY_OBJ_ID}.{self.f['warehouse']}":{"$in":stock_warehouses}})      
             if location:
                 unwind_query.update({f"answers.{self.CATALOG_INVENTORY_OBJ_ID}.{self.f['warehouse_location']}":location})
 
@@ -2391,6 +2396,10 @@ class Stock(Stock):
             if warehouse:
                 # warehouse = warehouse.lower().replace(' ', '_')
                 unwind_query.update({f"answers.{self.f['move_group']}.{self.WAREHOUSE_LOCATION_DEST_OBJ_ID}.{self.f['warehouse_dest']}":warehouse})    
+            else:
+                stock_warehouses = self.get_warehouse(warehouse_type='Stock')
+                unwind_query.update({f"answers.{self.f['move_group']}.{self.WAREHOUSE_LOCATION_DEST_OBJ_ID}.{self.f['warehouse_dest']}":{"$in":stock_warehouses}})    
+
             if location:
                 unwind_query.update({f"answers.{self.f['move_group']}.{self.WAREHOUSE_LOCATION_DEST_OBJ_ID}.{self.f['warehouse_location_dest']}":location})   
        
@@ -2426,7 +2435,7 @@ class Stock(Stock):
         res = self.cr.aggregate(query)
         result = {}
         # if move_type == 'out':
-        #     print('query=', query)
+        #     print('query=', simplejson.dumps(query, indent=2))
         for r in res:
             pcode = r.get('product_code')
             result[pcode] = result.get(pcode, 0)        
