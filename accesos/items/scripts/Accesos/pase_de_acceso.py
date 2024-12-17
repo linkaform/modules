@@ -26,6 +26,8 @@ if __name__ == "__main__":
     qr_code=data.get("qr_code")
     tab_status=data.get("tab_status")
     pre_sms = data.get("enviar_pre_sms",{})
+    update_obj = data.get("update_obj",{})
+    
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
     elif option == 'create_access_pass' or option == 'crear_pase':
@@ -37,6 +39,8 @@ if __name__ == "__main__":
         response = acceso_obj.update_pass(access_pass,folio)
     elif option == 'update_full_pass':
         response = acceso_obj.update_full_pass(access_pass,folio, qr_code, location)
+    elif option == 'update_active_pass':
+        response = acceso_obj.update_active_pass(folio, qr_code, update_obj)
     elif option == 'catalogos_pase_area':
         response = acceso_obj.catalogos_pase_area(location)
     elif option == 'catalogos_pase_location':
