@@ -21,8 +21,14 @@ class Schedule(Schedule):
         self.mf.update({
             'pais_localidad':'631fccdd844ed53c7d989718',
             'localidad':'631fc1e48d9fe191da0c3daf',
+            'first_date':'fffff0001000000000000001',
+            'due_date':'fffff0001000000000000002',
             })
-
+        
+        self.f.update({
+            'first_date':'fffff0001000000000000001',
+            'due_date':'fffff0001000000000000002',
+            })
 
         self.LOCALIDADES = self.lkm.catalog_id('localidades')
         self.LOCALIDADES_ID = self.LOCALIDADES.get('id')
