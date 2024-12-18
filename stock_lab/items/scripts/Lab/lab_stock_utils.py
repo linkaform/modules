@@ -1433,7 +1433,6 @@ class Stock(Stock):
             year = product[self.f['plant_cut_year']]
             day = product.get(self.f['plant_cut_day'])
             cut_week = product.get(self.f['production_cut_week'])
-
             contamin_code = product.get(self.f['plant_contamin_code'])
             if day:
                 prduction_date = datetime.strptime(f'{year}{day:03}','%Y%j')
@@ -1445,7 +1444,6 @@ class Stock(Stock):
             else:
                 msg = "You must specify a Cut Day or a Cut Week"
                 self.LKFException(msg)
-            prduction_date = datetime.strptime(f'{year}{day:03}','%Y%j')
             adjust_lot_by = product.get(self.f['adjust_lot_by'], 'week')
             if adjust_lot_by == 'week':
                 prduction_date = datetime.strptime(f'{year}{week:02}0','%Y%j%w')
