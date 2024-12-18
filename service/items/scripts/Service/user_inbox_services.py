@@ -113,7 +113,6 @@ class Service(Service):
     def search_inboxes(self):
         sup_users = self.supe_users()
         del_user_inbox = {}
-        sup_users = [13840,10975]
         user_inbox = self.lkf_api.get_user_inbox(sup_users, threading=True)
         for user_id, inboxes in user_inbox.items():
             self.to_delete = []
