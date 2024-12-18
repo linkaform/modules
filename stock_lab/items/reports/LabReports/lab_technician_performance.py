@@ -42,7 +42,7 @@ class Reports(Reports):
 
     def get_productivity(self, yearweek_form, yearweek_to, plant_code, stage):
         res = []
-        print('========== cr==========', self.cr)
+        print('========= cr==========', self.cr)
         productivity_lab = self.get_plants_per_hr(yearweek_form, yearweek_to, plant_code, stage, by_team=False)
         productivity_lab += self.get_plants_per_hr(yearweek_form, yearweek_to, plant_code, stage)
         prod_stage = self.get_plants_per_hr_by_stage(yearweek_form, yearweek_to, plant_code, stage)
@@ -151,10 +151,6 @@ class Reports(Reports):
         aggregate.append(group_by)
         aggregate.append(project)
         aggregate.append(sort)
-<<<<<<< HEAD
-        # print('query=', simplejson.dumps(aggregate, indent=4))
-=======
->>>>>>> 690d5bfe9b217e0909c10e5ff6da8a7a97485956
         res = self.cr.aggregate(aggregate)
         result = []
         for r in res:
