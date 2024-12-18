@@ -42,15 +42,9 @@ class Reports(Reports):
 
     def get_productivity(self, yearweek_form, yearweek_to, plant_code, stage):
         res = []
-<<<<<<< HEAD
-
         print('========== cr==========', self.cr)
         productivity_lab = self.get_plants_per_hr(yearweek_form, yearweek_to, plant_code, stage, by_team=False)
         productivity_lab += self.get_plants_per_hr(yearweek_form, yearweek_to, plant_code, stage)
-=======
-        # productivity_lab = self.get_plants_per_hr(yearweek_form, yearweek_to, plant_code, stage, by_team=False)
-        # productivity_lab += self.get_plants_per_hr(yearweek_form, yearweek_to, plant_code, stage)
->>>>>>> 690d5bfe9b217e0909c10e5ff6da8a7a97485956
         prod_stage = self.get_plants_per_hr_by_stage(yearweek_form, yearweek_to, plant_code, stage)
 
         prod_stage, prod_stage_char = arrage_stage(prod_stage)
