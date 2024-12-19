@@ -1240,8 +1240,8 @@ class Stock(Stock):
                     'S2_overage':this_recipe.get(self.f['reicpe_overage']),
                     'plant_code':this_recipe.get(self.f['product_code'],),
                     'product_code':this_recipe.get(self.f['product_code'],),
-                    'plant_name':this_recipe.get(self.f['product_name'],['',])[0],
-                    'product_name':this_recipe.get(self.f['product_name'],['',])[0],
+                    'plant_name':self.unlist(this_recipe.get(self.f['product_name'],['',])),
+                    'product_name':self.unlist(this_recipe.get(self.f['product_name'],['',])),
                     'start_week' : this_recipe.get(self.f['reicpe_start_week']),
                     'end_week' : this_recipe.get(self.f['reicpe_end_week']),
                     'start_size': this_recipe.get(self.f['reicpe_start_size']),
@@ -1262,9 +1262,9 @@ class Stock(Stock):
                     'S3_mult_rate':this_recipe.get(self.f['reicpe_mult_rate']),
                     'S3_overage':this_recipe.get(self.f['reicpe_overage']),
                     'plant_code':this_recipe.get(self.f['product_code'],),
-                    'plant_name':this_recipe.get(self.f['product_name'],['',])[0],
+                    'plant_name':self.unlist(this_recipe.get(self.f['product_name'],['',])),
                     'product_code':this_recipe.get(self.f['product_code'],),
-                    'product_name':this_recipe.get(self.f['product_name'],['',])[0],
+                    'product_name':self.unlist(this_recipe.get(self.f['product_name'],['',])),
                     'start_week' : this_recipe.get(self.f['reicpe_start_week']),
                     'end_week' : this_recipe.get(self.f['reicpe_end_week']),
                     'start_size': this_recipe.get(self.f['reicpe_start_size']),
@@ -1286,9 +1286,9 @@ class Stock(Stock):
                     'S4_overage_rate':this_recipe.get(self.f['reicpe_overage']),
                     'S4_overage': this_recipe.get(self.f['reicpe_overage']),
                     'plant_code':this_recipe.get(self.f['product_code'],),
-                    'plant_name':this_recipe.get(self.f['product_name'],['',])[0],
+                    'plant_name':self.unlist(this_recipe.get(self.f['product_name'],['',])),
                     'product_code':this_recipe.get(self.f['product_code'],),
-                    'product_name':this_recipe.get(self.f['product_name'],['',])[0],
+                    'product_name':self.unlist(this_recipe.get(self.f['product_name'],['',])),
                     'start_week' : this_recipe.get(self.f['reicpe_start_week']),
                     'end_week' : this_recipe.get(self.f['reicpe_end_week']),
                     'start_size': this_recipe.get(self.f['reicpe_start_size']),
@@ -1434,20 +1434,21 @@ class Stock(Stock):
             day = product.get(self.f['plant_cut_day'])
             cut_week = product.get(self.f['production_cut_week'])
             contamin_code = product.get(self.f['plant_contamin_code'])
-            if day:
-                prduction_date = datetime.strptime(f'{year}{day:03}','%Y%j')
-                lot_number = self.create_proudction_lot_number_old(prduction_date, group, cycle)
-            elif cut_week:
-                str_date = str(year) + "-" + str(cut_week) + "-" + str(1) 
-                prduction_date = datetime.strptime(str_date, "%Y-%W-%w")
-                lot_number = self.create_proudction_lot_number(prduction_date, group, cycle)
-            else:
-                msg = "You must specify a Cut Day or a Cut Week"
-                self.LKFException(msg)
+            # if day:
+            #     prduction_date = datetime.strptime(f'{year}{day:03}','%Y%j')
+            #     lot_number = self.create_proudction_lot_number_old(prduction_date, group, cycle)
+            # elif cut_week:
+            #     str_date = str(year) + "-" + str(cut_week) + "-" + str(1) 
+            #     prduction_date = datetime.strptime(str_date, "%Y-%W-%w")
+            #     lot_number = self.create_proudction_lot_number(prduction_date, group, cycle)
+            # else:
+            #     msg = "You must specify a Cut Day or a Cut Week"
+            #     self.LKFException(msg)
+            # print('0lot_number', lot_number)
             adjust_lot_by = product.get(self.f['adjust_lot_by'], 'week')
             if adjust_lot_by == 'week':
-                prduction_date = datetime.strptime(f'{year}{week:02}0','%Y%j%w')
-                lot_number = self.create_proudction_lot_number_by_cutday(prduction_date, group, cycle)
+                prduction_date = datetime.strptime(f'{year}{cut_week}-1','%Y%W-%w')
+                lot_number = self.create_proudction_lot_number(prduction_date, group, cycle)
             else:
                 prduction_date = datetime.strptime(f'{year}{day:03}','%Y%j')
                 lot_number = self.create_proudction_lot_number_by_cutday(prduction_date, group, cycle)
@@ -1480,7 +1481,6 @@ class Stock(Stock):
 
             if last_verions_products.get(f'{product_code}_{lot_number}_{warehouse}_{location_id}'):
                 last_verions_products.pop(f'{product_code}_{lot_number}_{warehouse}_{location_id}')
-            print('lot_number', lot_number)
             exist = self.product_stock_exists(product_code=product_code, lot_number=lot_number, warehouse=warehouse, location=location_id)
             cache_id = f'{product_code}_{lot_number}_{warehouse}_{location_id}'
             self.cache_drop({"_id":cache_id})
@@ -2358,7 +2358,7 @@ class Stock(Stock):
         res = self.cr.aggregate(query)
         result = 0
         for r in res:
-            result = r.get('total', 0)        
+            result = r.get('total', 0)
         return result  
   
     def stock_moves(self, move_type, product_code=None, warehouse=None, location=None, lot_number=None, date_from=None, date_to=None, status='done', **kwargs):
