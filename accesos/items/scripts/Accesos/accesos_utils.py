@@ -10,6 +10,13 @@ class Accesos(Accesos):
 
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
+        self.f.update({
+            'duracion_rondin':'6639b47565d8e5c06fe97cf3',
+            'duracion_traslado_area':'6760a9581e31b10a38a22f1f',
+            'fecha_inspeccion_area':'6760a908a43b1b0e41abad6b',
+            'fecha_inicio_rondin':'6760a8e68cef14ecd7f8b6fe',
+            'grupo_areas_visitadas':'66462aa5d4a4af2eea07e0d1',
+            })
 
     def get_cantidades_de_pases(self, x_empresa=False):
         print('entra a get_cantidades_de_pases')
