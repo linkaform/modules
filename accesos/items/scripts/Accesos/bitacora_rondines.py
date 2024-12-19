@@ -17,6 +17,7 @@ class Accesos(Accesos):
         print('epoch fecha_inicio=',fecha_inicio)
         areas_visitadas = self.answers[self.f['grupo_areas_visitadas']]
         fecha_inspeccion = 0
+        duracion_total = 0
         for area in areas_visitadas:
             print('area', area)
             fecha_inspeccion = area.get(self.f['fecha_inspeccion_area'])
@@ -27,8 +28,8 @@ class Accesos(Accesos):
             duracion = fecha_inspeccion - fecha_inicio
             print('duracion', duracion)
             area[self.f['duracion_traslado_area']] = round(duracion / 60,2)
+            duracion_total += duracion
         if fecha_inspeccion:
-            duracion_total = fecha_inspeccion - fecha_inicio
             print('duracion_total', duracion_total)
             self.answers[self.f['duracion_rondin']] = round(duracion_total / 60,2)
         return True
