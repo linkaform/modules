@@ -646,7 +646,7 @@ class Stock(Stock):
                         'warehouse_location': stock['warehouse_location'],
                         'record_id':self.record_id
                         })
-        res = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=stock['folio'] )
+        res = self.unlist(self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=stock['folio'] ))
         return res.get(stock['folio'],{}) 
 
     def do_scrap(self):
