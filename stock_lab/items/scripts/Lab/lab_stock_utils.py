@@ -686,7 +686,7 @@ class Stock(Stock):
         #             }
         #         }
         #     raise Exception( simplejson.dumps( msg_error_app ) )  
-        res = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=update_folios )
+        res = self.unlist(self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=update_folios ))
         return res.get(stock['folio'],{}) 
 
     #### Temino heredacion para hace lote tipo string
@@ -850,8 +850,8 @@ class Stock(Stock):
         if product_exist:
             folio = product_exist['folio']
             # res = self.update_calc_fields(product_code, lot_number, warehouse, location=location)
-            res = self.update_stock(answers=product_exist.get('answers'), form_id=product_exist.get('form_id'), folios=folio )
-            return res[folio]
+            res = self.unlist(self.update_stock(answers=product_exist.get('answers'), form_id=product_exist.get('form_id'), folios=folio ))
+            return res['folio']
         else:
             metadata = self.lkf_api.get_metadata(self.FORM_INVENTORY_ID)
             metadata.update({
@@ -1809,8 +1809,6 @@ class Stock(Stock):
         res_create = self.lkf_api.post_forms_answers_list(create_new_records)
         #updates records from where stock was moved
         res = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=folios)
-        res ={}
-        #res = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=folios)
         return True
 
     def move_multi_2_one_location(self):
@@ -1875,7 +1873,6 @@ class Stock(Stock):
                         'record_id':self.record_id
                         })
         res = self.update_stock(answers={}, form_id=self.FORM_INVENTORY_ID, folios=folios)
-        res ={}
         new_records_data = []
         warehouse_ans = self.swap_location_dest(self.answers[self.WAREHOUSE_LOCATION_DEST_OBJ_ID])
         warehouse_dest = self.answers[self.WAREHOUSE_LOCATION_DEST_OBJ_ID].get(self.f['warehouse_dest'])
@@ -2161,7 +2158,7 @@ class Stock(Stock):
 
         folios_2_update = []
         for record in new_records_data:
-            if record.get('new_record'):
+            if isinstance(record, dict) and record.get('new_record'):
                 res_create = self.lkf_api.post_forms_answers_list(record['new_record'])
                 # print('res_create', res_create)
                 for new_rec in res_create:
@@ -2170,7 +2167,7 @@ class Stock(Stock):
                     if info.get('error'):
                         self.LKFException('Error al crear registro')
             else:
-                dest_folio = record.get('folio')
+                dest_folio = record
                 if dest_folio:
                     folios_2_update.append(dest_folio)
                 for oml in old_move_lines:
