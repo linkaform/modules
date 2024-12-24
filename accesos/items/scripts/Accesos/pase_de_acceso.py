@@ -68,6 +68,8 @@ if __name__ == "__main__":
         response = acceso_obj.get_pdf(qr_code)
     elif option == 'get_user_contacts':
         response = acceso_obj.get_user_contacts()
+    elif option == 'get_config_modulo_seguridad':
+        response = acceso_obj.get_config_modulo_seguridad(location)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
