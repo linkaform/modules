@@ -849,9 +849,9 @@ class Stock(Stock):
         product_exist = self.product_stock_exists(product_code, location=location, warehouse=warehouse,  lot_number=lot_number)
         if product_exist:
             folio = product_exist['folio']
-            # res = self.update_calc_fields(product_code, lot_number, warehouse, location=location)
             res = self.unlist(self.update_stock(answers=product_exist.get('answers'), form_id=product_exist.get('form_id'), folios=folio ))
-            return res['folio']
+            res['status_code'] = 202
+            return res
         else:
             metadata = self.lkf_api.get_metadata(self.FORM_INVENTORY_ID)
             metadata.update({
@@ -2163,11 +2163,10 @@ class Stock(Stock):
                 # print('res_create', res_create)
                 for new_rec in res_create:
                     info =  simplejson.loads(new_rec.get('data',{}))
-                    print('info',info)
                     if info.get('error'):
                         self.LKFException('Error al crear registro')
             else:
-                dest_folio = record
+                dest_folio = record.get('folio')
                 if dest_folio:
                     folios_2_update.append(dest_folio)
                 for oml in old_move_lines:
