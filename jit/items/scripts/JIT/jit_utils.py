@@ -21,6 +21,7 @@ class JIT(JIT):
          "month": '6206b9ae8209a9677f9b8bd9',
          "year": '6206b9ae8209a9677f9b8bda',
          }
+     self.Product.f['product_sku']= '6205f73281bb36a6f1573358'
      self.procurments = []
 
      if hasattr(self, 'f'):
@@ -93,7 +94,19 @@ class JIT(JIT):
          folio = record_data['folio']
          record_data['answers'].update(procs_by_folio[folio])
          res = self.lkf_api.patch_record_list(record_data)
-   
+
+   def get_produce_procument(self, order, product_code, sku, warehouse, location, **kwargs):
+      print('/////// order //////', order)
+      qty_allocated = order.get('qty_allocated',0)
+      qty = order['qty'] - qty_allocated
+      print('qty needed...', qty)
+      bom_steps = self.get_bom_template(product_code, sku, qty=qty, warehouse=warehouse, location=location)
+      print('bom_steps', bom_steps)
+      self.evaluate_steps(bom_steps, qty_needed)
+      print('boms', bdoms)
+      # boms = self.get_bom(product_code, sku, qty=qty, warehouse=warehouse, location=location, bom_type='manufacture')
+      return boms
+
    def get_open_allocations(self, product_code, sku, warehouse=None, location=None, client=None, **kwargs):
         kwargs.update( {
             'query':{
@@ -129,7 +142,6 @@ class JIT(JIT):
             
         )
         query = self.query_procurment_record(product_code, sku, **kwargs)
-        # print('procurment query=', simplejson.dumps(query, indent=3))
         open_procurments = self.format_cr(self.cr.aggregate(query))
         return open_procurments
 
@@ -150,8 +162,13 @@ class JIT(JIT):
             new_orders[product_code][sku]= orders_by_sku
       return new_orders
 
-   def create_procurment(self, threading=True):
+   def create_procurments(self, data, product_code, sku, warehouse, location=None, threading=True):
      #call thread function
+     print('data>>>>', data)
+     for order in data:
+         procurment_method = order['procurment_method']
+         if procurment_method == 'produce':
+            procument_orders = self.get_produce_procument(order, product_code, sku, warehouse, location)
      self.lkf_post_multirecords(metadata, threading=threading)
 
    def can_allocate_location(self, product_code, sku, orders_by_sku):
@@ -388,7 +405,7 @@ class JIT(JIT):
                  'alloctaion_group':f'$answers.{self.f["alloctaion_group"]}',
                  'location':f'$answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.WH.f["warehouse_location"]}',
                  'warehouse':f'$answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.WH.f["warehouse"]}',
-                 'client':f'$answers.{self.CLIENTE_CAT_OBJ_ID}.{self.f["client"]}',
+                 'client':f'$answers.{self.CLIENTE_CAT_OBJ_ID}.{self.f["client_code"]}',
          }
      if kwargs.get('query'):
          query_dict = kwargs['query']
@@ -517,7 +534,7 @@ class JIT(JIT):
      can = []
 
      orders = self.can_allocate_orders(order_needs, **kwargs)
-     print('orders=', orders)
+     print('1orders=', orders)
      #print ya hizo las allocations q pudo
      #hay que actualizar los procurments asi como las orders
      self.do_allocation(orders, source_document='demand')
@@ -525,10 +542,27 @@ class JIT(JIT):
 
      order_needs = self.get_demand_needs(product_code=product_code, sku=sku, warehouse=warehouse, location=location, client=client, **kwargs)
      print('orders2=', orders)
-     #hay que crear un muevo procurment.... para llenar todos los espacios... 
+     print('**************************************************')
+     #hay que crear un nuevo procurment.... para llenar todos los espacios... 
      #hay que crer para el mas antiguo un procurment.. y luego buscar para los otros
      #and so and dos....
      #vamos a crear un for para cada una de las ordenes vamos a correr todo el proceso....
+     for product_code, skus in orders.items():
+        print('product_code', product_code)
+        print('product_sku', sku)
+        for sku, sku_orders in skus.items():
+            print('sku', sku)
+            print('abc', sku_orders)
+            orders_by_location = sku_orders.get('location')
+            orders_by_warehouse = sku_orders.get('warehouse')
+            orders_by_other = sku_orders.get('others')
+            #TODO que se supe que deben de ser los others
+            print('orders_by_location=', orders_by_location)
+            print('orders_by_warehouse', orders_by_warehouse)
+            for warehouse, warehouse_orders in orders_by_warehouse.items():
+                print('warehouse', warehouse)
+                print('warehouse_orders', warehouse_orders)
+                self.create_procurments(warehouse_orders, product_code, sku, warehouse )
      #1.- crear su procurment... 
      # res = self.procurment_method(procurment_obj, qty, bom)
      # self.create_procurment(can)

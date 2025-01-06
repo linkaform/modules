@@ -5,8 +5,6 @@ from jit_utils import JIT
 
 from account_settings import *
 
-
-
 if __name__ == '__main__':
     jit_obj = JIT(settings, sys_argv=sys.argv, use_api=True)
     jit_obj.console_run()
