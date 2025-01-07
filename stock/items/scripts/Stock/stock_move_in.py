@@ -449,7 +449,8 @@ if __name__ == '__main__':
         folio = stock_obj.folio
     if not folio:
         today = stock_obj.get_today_format()
-        folio = f"REC{datetime.strftime(today, '%y%m%d')}"
+        # folio = f"REC{datetime.strftime(today, '%y%m%d')}"
+        folio = "REC"
         next_folio = stock_obj.get_record_folio(stock_obj.STOCK_IN_ONE_MANY_ONE, folio)
         folio = f"{folio}-{next_folio}"
 
