@@ -92,6 +92,7 @@ class Accesos(Accesos):
         list_imgs = data.get('list_img',[])
         comment = data.get('comment','')
         str_url = f'https://app.linkaform.com/#/records/detail/{id_record}'  
+
         answers_set = {
             '674e2e9eecf32979019392af':{
                 '663e5d44f5b8a7ce8211ed0f':location,
@@ -160,7 +161,9 @@ class Accesos(Accesos):
         metadata = self.lkf_api.get_metadata(126790)
         metadata['answers'] = dic_response
         resp_create = self.lkf_api.post_forms_answers_list(metadata)
-        print('resp_create=',resp_create)
+        print('------------')
+        print('resp_create',resp_create)
+        print('------------')
         dic_res = {'status_request':'400'}
         if len(resp_create) == 1:
             data = resp_create[0].get('json',{})
@@ -188,15 +191,19 @@ class Accesos(Accesos):
         for item in res:
             name_location = item.get('663e5d44f5b8a7ce8211ed0f','')
             type_location = item.get('663e5e68f5b8a7ce8211ed18','')
-            image_location = item.get('6745fe8de98682c15c94dcde',[])
+            image_location = item.get('6763096aa99cee046ba766ad',[])
             ubication_location = item.get('663e5c57f5b8a7ce8211ed0b','')
             direction_location = item.get('663a7e0fe48382c5b1230901','')
+            #----Get Last Record
+            last_record = script_obj.get_last_record_check(name_location)
+
             dic_res = {
                 "name_location": name_location,
                 "type_location": type_location,
                 "image_location": image_location,
                 "ubication_location": ubication_location,
                 "direction_location": direction_location,
+                "last_record": last_record,
             }
         return dic_res
 
@@ -311,12 +318,61 @@ class Accesos(Accesos):
             dic_res['catalog_list'] = catalog_list
         return dic_res
 
-    def set_update_tag(self, tag_id, id_catalog_record):
-        res_update = self.lkf_api.update_catalog_multi_record( {'6762f7b0922cc2a2f57d4044': tag_id}, 126716, record_id=[id_catalog_record])
+    def set_update_tag(self, tag_id, list_images_dic, id_catalog_record):
+        res_update = {
+            '6762f7b0922cc2a2f57d4044': tag_id,
+            '6763096aa99cee046ba766ad': list_images_dic,
+        }
+        res_update = self.lkf_api.update_catalog_multi_record( res_update, 126716, record_id=[id_catalog_record])
         dic_res = {'status_request':'400'}
         dic_res['status_request'] = res_update.get('status_code','400')
         return dic_res
 
+    #----Last Record Check
+    def get_last_record_check(self, location):
+        match_query = {
+            "form_id":126213,
+            "deleted_at": {"$exists":False},
+        }
+        if tag_id :
+            match_query.update({"answers.674e2ac6e3e7c31132939288.663e5d44f5b8a7ce8211ed0f":{'$in':[location,[location]]}})
+
+        query = [
+            {"$match": match_query},  
+            {"$project": {  
+                "_id": 1,
+                "folio": "$_id",
+                "created": "$created_at",
+            }},
+            {'$sort': {'created': -1 }},
+            {'$limit':1}
+        ]
+        result = self.cr.aggregate(query)
+        #------Date
+        msg_return = ''
+        date = ''
+        for item in result:
+            date = item.get('created','')
+
+        if date and date != '':  
+            if isinstance(date, str):
+                fecha_creada = datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f')
+            elif isinstance(date, datetime):
+                fecha_creada = date
+
+            fecha_actual = datetime.now()
+            diferencia = fecha_actual - fecha_creada  # Esto es un objeto timedelta
+            dias_transcurridos = diferencia.days
+
+            if dias_transcurridos == 0:
+                horas_transcurridas = diferencia.seconds // 3600
+                minutos_transcurridos = (diferencia.seconds % 3600) // 60
+                msg_return = f'Última inspección hace {horas_transcurridas} horas y {minutos_transcurridos} minutos'
+            else:
+                msg_return = f'Última inspección hace {dias_transcurridos} días'
+        else:
+            msg_return = f'No hay registros de inspección'
+        return msg_return
 
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
@@ -333,14 +389,12 @@ if __name__ == "__main__":
     location = data.get('location','')
     config = data.get('config','')
     folio_update = data.get('folioUpdate','')
+    list_images_dic = data.get('listImagesDic',[])
     id_catalog_record = data.get('idCatalog','')
     form_information = data.get('formInformation','')
     #----Functions
     if option == 'add_record_check':
         response = script_obj.set_add_record_check(form_information, folio_update);
-        print('-----------d-------------')
-        print('response',response)
-        print('-----------------------')
         script_obj.HttpResponse({"data":response})
     elif option == 'add_inspection_check':
         response = script_obj.set_add_inspection_record(form_information)
@@ -349,7 +403,6 @@ if __name__ == "__main__":
         response = script_obj.set_add_record_bitacora(tag_id,config);
         sys.stdout.write(simplejson.dumps({'data':response}))
     elif option == 'get_catalog':
-        #-Información de location origin y configuraciones
         response = script_obj.get_information_catalog(tag_id)
         sys.stdout.write(simplejson.dumps({'data':response}))
     elif option == 'get_config':
@@ -362,7 +415,7 @@ if __name__ == "__main__":
         response = script_obj.get_data_tag(tag_id)
         sys.stdout.write(simplejson.dumps({'data':response}))
     elif option == 'update_information_tag':
-        response = script_obj.set_update_tag(tag_id, id_catalog_record)
+        response = script_obj.set_update_tag(tag_id, list_images_dic, id_catalog_record)
         sys.stdout.write(simplejson.dumps({'data':response}))
     else:
         sys.stdout.write(simplejson.dumps({'msg':'empty'}))
