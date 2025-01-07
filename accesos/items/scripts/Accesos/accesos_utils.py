@@ -15,8 +15,15 @@ class Accesos(Accesos):
             'duracion_traslado_area':'6760a9581e31b10a38a22f1f',
             'fecha_inspeccion_area':'6760a908a43b1b0e41abad6b',
             'fecha_inicio_rondin':'6760a8e68cef14ecd7f8b6fe',
+            'status_rondin':'6639b2744bb44059fc59eb62',
             'grupo_areas_visitadas':'66462aa5d4a4af2eea07e0d1',
+            'nombre_recorrido':'6644fb97e14dcb705407e0ef',
             })
+
+        #BORRAR
+        self.CONFIGURACION_RECORRIDOS = self.lkm.catalog_id('configuracion_de_recorridos')
+        self.CONFIGURACION_RECORRIDOS_ID = self.CONFIGURACION_RECORRIDOS.get('id')
+        self.CONFIGURACION_RECORRIDOS_OBJ_ID = self.CONFIGURACION_RECORRIDOS.get('obj_id')
 
     def get_cantidades_de_pases(self, x_empresa=False):
         print('entra a get_cantidades_de_pases')
