@@ -26,7 +26,7 @@ class Reports(Reports):
                         'year': "$answers.6206b9ae8209a9677f9b8bda",
                         'stage': "$answers.620985602aee88510aca8bff",
                         'qty': "$answers.6206b9ae8209a9677f9b8bdb",
-                        'ready_date': "$answers.6232c4db8ace7e82661dc0e6.6232c528ba5509ed101dc089",
+                        'plant_date': "$answers.6232c4db8ace7e82661dc0e6.6232c528ba5509ed101dc089",
                         'forcast': "$answers.6232c4db8ace7e82661dc0e6.6232c528ba5509ed101dc08b",
                         }
                     },
@@ -39,7 +39,7 @@ class Reports(Reports):
               { "year": "integer" },
               { "stage": "text" },
               { "qty": "integer" },
-              { "ready_date": "integer" },
+              { "plant_date": "integer" },
               { "forcast": "integer" },
             ],
             "output_schema":
@@ -49,7 +49,7 @@ class Reports(Reports):
               { "year": "integer" },
               { "stage": "text" },
               { "qty": "integer" },
-              { "ready_date": "integer" },
+              { "plant_date": "integer" },
               { "forcast": "integer" },
             ]
         }
