@@ -19,11 +19,10 @@ class Stock(Stock):
         for gset_grading in self.answers.get(self.f['grading_group'],[]):
             ready_year = gset_grading.get(self.f['grading_ready_year'])
             ready_week = gset_grading.get(self.f['grading_ready_week'])
-            lot_number = int(f"{ready_year}{ready_week}")
+            lot_number = int(f"{ready_year}{ready_week:02}")
             gset_grading[self.f['grading_ready_yearweek']] = lot_number
 
         for gset in self.answers.get(self.f['production_group'],[]):
-            print('calss...........')
             start_time = gset.get(self.f['set_production_date'])
             end_time = gset.get(self.f['time_out'])
             total_hours = self.calc_work_hours(gset)
@@ -44,11 +43,8 @@ class Stock(Stock):
             flats_per_hour = total_eu / float(total_hours)
             total_graded += total_eu
             gset[self.f['set_products_per_hours']] = round(flats_per_hour, 2) # Plants per Hour
-            print('calssround(total_hours, 2)',round(total_hours, 2))
-            print('calssround(total_eu, 2)',total_eu)
 
         self.answers[self.f['total_produced']] = total_graded
-        print('total graded',total_graded)
         self.answers[self.f['inv_scrap_status']] = 'done'
 
 

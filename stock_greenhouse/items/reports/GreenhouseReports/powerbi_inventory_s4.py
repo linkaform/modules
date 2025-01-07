@@ -23,9 +23,9 @@ class Reports(Reports):
                     {"$project":{
                         "_id":1,
                         'plant_code': f"$answers.{self.SKU_OBJ_ID}.{self.f['product_code']}",
+                        'qty_per_container':  {"$arrayElemAt": [f"$answers.{self.SKU_OBJ_ID}.{self.f['prod_qty_per_container']}",0]},
                         'ready_year_week': f"$answers.{self.f['product_lot']}",
                         'actuals': f"$answers.{self.f['actuals']}",
-                        #'actual_eaches': f"$answers.{self.f['actual_eaches_on_hand']}",
                         }
                     },
                     ],
@@ -33,12 +33,14 @@ class Reports(Reports):
             "selectColumns":[],
             "input_schema":  [
               { "plant_code": "text" },
+              { "qty_per_container": "text" },
               { "ready_year_week": "integer" },
               { "actuals": "integer" },
             ],
             "output_schema":
             [
               { "plant_code": "text" },
+              { "qty_per_container": "integer" },
               { "ready_year_week": "integer" },
               { "actuals": "integer" },
             ]
