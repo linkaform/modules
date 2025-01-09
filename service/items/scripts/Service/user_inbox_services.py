@@ -12,7 +12,6 @@ class Service(Service):
     def delete_all_new_inbox(self, status='new'):
         sup_users = self.supe_users()
         del_user_inbox = {}
-
         user_inbox = self.lkf_api.get_user_inbox(sup_users, threading=True)
         for user_id, inboxes in user_inbox.items():
             new_inbox = self.get_inbox_by_status(user_id, inboxes, status='new')
@@ -25,7 +24,9 @@ class Service(Service):
    
     def delete_inboxes(self, user_id):
         inboxes = self.to_delete
-        res = self.lkf_api.delete_users_inbox(user_id, inboxes, threading=False)
+        res = {}
+        if inboxes:
+            res = self.lkf_api.delete_users_inbox(user_id, inboxes, threading=False)
         return res
 
     def eval_inbox(self, inbox):
@@ -34,6 +35,8 @@ class Service(Service):
         due_date = answers.get(self.f['due_date'])
         today = time.time()
         epoch_program_date = self.date_2_epoch(program_date)
+        if not due_date:
+            return None
         epoch_due_date = self.date_2_epoch(due_date)
         work_window = epoch_due_date - epoch_program_date
         time_left = epoch_due_date  - today
@@ -131,9 +134,6 @@ class Service(Service):
                 self.send_notification(user_id, self.send_1_hr_notification, due_time="1")
             if self.send_1_day_notification:
                 self.send_notification(user_id, self.send_1_day_notification, due_time="24")
-
-
-
 
     def supe_users(self):
         users = self.lkf_api.get_supervised_users()
