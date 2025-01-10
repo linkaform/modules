@@ -33,8 +33,6 @@ if __name__ == "__main__":
     elif option == 'create_access_pass' or option == 'crear_pase':
         response = acceso_obj.create_access_pass(location, access_pass)
         folio_msj = response.get('json', {}).get('id', '')
-        if pre_sms and folio_msj:
-            pre_sms_response = acceso_obj.create_enviar_msj_pase(data_cel_msj=pre_sms, folio=folio_msj)
     elif option == 'update_pass':
         response = acceso_obj.update_pass(access_pass,folio)
     elif option == 'update_full_pass':
@@ -48,7 +46,7 @@ if __name__ == "__main__":
     elif option == 'catalogos_pase_no_jwt':
         response = acceso_obj.catalagos_pase_no_jwt(qr_code)
     elif option == 'enviar_msj':
-        response = acceso_obj.create_enviar_msj_pase(data_cel_msj=data_cel_msj, folio=folio)
+        response = acceso_obj.create_enviar_msj_pase(folio=folio)
     elif option == 'enviar_correo':
         response = acceso_obj.create_enviar_correo(data_msj=data_msj, folio=folio)
     elif option == 'catalago_vehiculo':
