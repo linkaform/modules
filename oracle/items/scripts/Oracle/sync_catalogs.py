@@ -1,6 +1,8 @@
 # coding: utf-8
 import sys, simplejson, time, datetime
 from linkaform_api import settings
+from bson import ObjectId
+
 from account_settings import *
 
 from oracle import Oracle
@@ -56,6 +58,8 @@ class Oracle(Oracle):
             'MARCAID':'FEC_MODIF',
             'MODELOID':'FEC_MODIF_MODELO',
             'VEHICULO_TALID':'FEC_MODIF',
+            'VEHICULO_TALID':'FEC_MODIF',
+            'ACTIVO_FIJOID':'FEC_MODIF',
             }
 
         self.schema_dict = {
@@ -245,7 +249,6 @@ class Oracle(Oracle):
             res = {'sync_data':{}}
             common_key = ', '.join(map(str, common_key))
             res['sync_data']['db_id'] = data[common_key]
-            res['sync_data']['db_id'] = data[common_key]
             res['sync_data']['updated_at'] = self.db_updated_at
             res['sync_data']['db_updated_at'] = data[self.db_id_fields[common_key]]
         return res
@@ -328,14 +331,11 @@ class Oracle(Oracle):
             usr = {}
 
             usr.update(metadata_catalog)
-            print('row=',row)
             usr['answers'] = self.api_etl(row, schema, catalog_id)
-            print('answers=',usr['answers'])
             usr['_id'] = usr['answers'].get('_id')
             usr['sync_data'] = usr['answers'].pop('sync_data') if usr['answers'].get('sync_data') else {}
             if usr.get('sync_data'):
                 usr['sync_data']['oracle_id'] = self.get_oracle_id(row)
-            # print('row', row.get('GENERO'))
             data.append(usr)
 
         if self.equipos:
@@ -384,20 +384,20 @@ class Oracle(Oracle):
                     res_data = res.get('json',{})
                     status_code = res['status_code']
                     if status_code in (200,201,202,204):
-                        sync_data['"updated_at"'] = time.time()
+                        sync_data['updated_at'] = time.time()
                         sres = self.update(query, sync_data, upsert=True)
                         # self.create(sync_data)
                 else:
                     self.post_catalog(db_name, item_id, rec, sync_data)
             else:
-                res = self.post_catalog(db_name, item_id, rec, db_sync=True)
+                res = self.post_catalog(db_name, item_id, rec, db_sync=False)
 
     def post_catalog(self, db_name, item_id, rec, sync_data={}, db_sync=False):
         res = self.lkf_api.post_catalog_answers(rec)
         res_data = res.get('json',{})
         status_code = res['status_code']
         if status_code in (200,201,202,204):
-            sync_data['"updated_at"'] = time.time()
+            sync_data['updated_at'] = time.time()
             sync_data['item_id'] = res_data['catalog_id'] if res_data.get('catalog_id') else item_id
             sync_data['item_type'] = 'catalog'
             sync_data['db_name'] = db_name
@@ -406,6 +406,7 @@ class Oracle(Oracle):
                 res = self.update(query, sync_data, upsert=True)
             else:
                 sync_data['lkf_id'] = res_data['id']
+                sync_data['_id'] = ObjectId()
                 res = self.create(sync_data)
         return res
 
@@ -418,7 +419,9 @@ if __name__ == "__main__":
     # gg = module_obj.search_views()
     # print('gg',gg)
     data = module_obj.data.get('data',{})
+    reset_db = module_obj.data.get('reset_db',{})
     option = data.get("option",'read')
+    db_to_reset = module_obj.data.get('reset_db')
 
     db_name = data.get('db_id',"LINK_EMPLEADOS")
 
@@ -439,6 +442,11 @@ if __name__ == "__main__":
                 # last_update_date
                 update = False
                 query = None
+                # last_update = 9
+                print('v',v)
+                if db_to_reset == v:
+                    print('RESETING DB: ', v)
+                    last_update = None
                 print('last_update', last_update)
                 if last_update:
                     update = True
@@ -451,8 +459,6 @@ if __name__ == "__main__":
                 # schema = getattr(module_obj, v, "Attribute not found")
                 print('-----------------------------------------------------------')
                 print('query=', query)
-                print('v',v)
-                print('response=', response)
                 if v == 'LINK_EMPLEADOS':
                     #Carga primero los Contactos
                     view = module_obj.schema_dict[v]
