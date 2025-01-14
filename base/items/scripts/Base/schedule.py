@@ -33,6 +33,20 @@ class Schedule(Schedule):
         return ans
 
 
+    def get_dag_dates(self, data):
+        res = {}
+        print('data=', data)
+        dag_info = self.unlist(data.get('dag_info',{}))
+        print('dag_info=', dag_info)
+        next_run = dag_info.get('next_dagrun')
+        create_after = dag_info.get('next_dagrun_create_after')
+        if next_run and create_after:
+            res ={
+                'abcde000100000000000f000': self.lkf_date(next_run),
+                'abcde000100000000000f001': self.lkf_date(create_after),
+            }
+        return res   
+
 if __name__ == "__main__":
     # print(sys.argv)
     schedule_obj = Schedule(settings, sys_argv=sys.argv, use_api=True)
@@ -48,7 +62,10 @@ if __name__ == "__main__":
             schedule_obj.answers['abcde00010000000a0000000'] = 'eliminado'
         else:
             schedule_obj.answers['abcde0001000000000000000'] = data.get('dag_id')
-            schedule_obj.answers.update(schedule_obj.get_dag_dates(data))
+            try:
+                schedule_obj.answers.update(schedule_obj.get_dag_dates(data))
+            except:
+                print('no pudo obtener proximas fechas.')
             if res.get('is_paused') == True:
                 schedule_obj.answers['abcde00010000000a0000000'] = 'pausado'
             else:
