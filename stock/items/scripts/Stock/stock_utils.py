@@ -347,13 +347,13 @@ class Stock(Stock):
 
     def read_xls_file(self):
         header, records = self.xls_header_record( self.mf['xls_file'])
+        self.proceso_onts = False
         if not header:
             return None, None
         if 'Serie ONT' in header:
             self.proceso_onts = True
             return self.carga_onts(header, records)
         else:
-            self.proceso_onts = False
             return self.carga_materiales(header, records)
 
     def read_xls(self, id_field_xls):
