@@ -3,14 +3,18 @@ import sys, simplejson
 from linkaform_api import settings, generar_qr
 from account_settings import *
 
+<<<<<<< Updated upstream
 from base_utils import Base
+=======
+from lkf_addons.addons.base.app import Base
+>>>>>>> Stashed changes
 
 
 def create_qr(field_id):
     record_id = base_obj.record_id
     lkf_qr = generar_qr.LKF_QR(settings)
     qr_generado = lkf_qr.procesa_qr( record_id, f"qr_{record_id}", base_obj.form_id, img_field_id=field_id )
-    base_obj.answers[field_id] = qr_generado
+    return qr_generado
 
 
 if __name__ == "__main__":
@@ -22,7 +26,7 @@ if __name__ == "__main__":
         base_obj.LKFException({"msg":"No se encontro el dato de field_id en los argumentos de script create_qr. Favor de agregar `fild_id` a los argumentos"})
     if not base_obj.record_id:
         base_obj.record_id = base_obj.object_id()
-    create_qr(field_id)
+    base_obj.answers[field_id] = [create_qr(field_id),]
     sys.stdout.write(simplejson.dumps({
         'status': 101,
         'replace_ans':  base_obj.answers,
