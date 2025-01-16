@@ -3,11 +3,7 @@ import sys, simplejson
 from linkaform_api import settings, generar_qr
 from account_settings import *
 
-<<<<<<< Updated upstream
 from base_utils import Base
-=======
-from lkf_addons.addons.base.app import Base
->>>>>>> Stashed changes
 
 
 def create_qr(field_id):
