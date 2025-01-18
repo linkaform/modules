@@ -7,6 +7,11 @@ from bson import ObjectId
 from stock_utils import Stock
 from account_settings import *
 
+from pymongo.errors import ConnectionFailure, OperationFailure
+from pymongo.read_concern import ReadConcern
+from pymongo.write_concern import WriteConcern
+from pymongo.read_preferences import ReadPreference
+
 class Stock(Stock):
 
     def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False):
@@ -28,7 +33,6 @@ class Stock(Stock):
         self.answers[self.f['move_group']] = []
         series_unique = []
         for num_serie in records:
-            print('aqui vamso, hay que iterar y agregar las lineas')
             num_serie = self.strip_special_characters(self.unlist(num_serie))
             if not num_serie:
                 continue
@@ -43,6 +47,61 @@ class Stock(Stock):
             row_set[self.CATALOG_INVENTORY_OBJ_ID][self.f['lot_number']] = num_serie
             self.answers[self.f['move_group']].append(row_set)
         return self.answers[self.f['move_group']] 
+
+    def ejecutar_transaccion(self, new_record, folio_serie_record={}):
+        # Inicia una sesión
+        if self.get_enviroment() == 'prod':
+            with self.client.start_session() as session:
+                # Define el bloque de transacción
+                #HACE TRANSACCIONES ACIDAS
+                def write_records(sess):
+                    if new_record.get('answers'):
+                        # Crea los nuevo registro de salida de stock
+                        self.records_cr.insert_one(new_record, session=sess)
+                        # Inserta directamente los registros nuevos de invetarios
+                        # Pone un cache para que sean calulados los inventarios una
+                        # vez dentro del intenvario
+                        self.direct_move_in(new_record)
+                        # Pone en 0 el stock de donde salio
+                        self.move_out_stock(new_record)
+                try:
+                    # Comienza la transacción
+                    session.with_transaction(
+                        write_records,
+                        read_concern=ReadConcern("snapshot"),  
+                        write_concern=WriteConcern("majority"),  
+                        read_preference=ReadPreference.PRIMARY  
+                    )
+                    print("Transacción completada exitosamente.")
+                except (ConnectionFailure, OperationFailure)  as e:
+                    print(f"Error conexion: {e}")
+                    self.LKFException( '', dict_error= {
+                        f"Error": {
+                        "msg": [f'Error en la conexion. {e}'], 
+                        "label": "Serie Repetida", "error": []}}
+                        )
+        else:
+            # try:
+            if True:
+                if new_record.get('answers'):
+                    # Crea los nuevo registro de salida de stock
+                    self.records_cr.insert_one(new_record)
+                    # Inserta directamente los registros nuevos de invetarios
+                    # Pone un cache para que sean calulados los inventarios una
+                    # vez dentro del intenvario
+                    response = self.direct_move_in(new_record)
+                    # Pone en 0 el stock de donde salio
+                    self.move_out_stock(new_record)
+                    #print('response = ', response)
+
+            # except Exception as e:
+            #     print('error: ', e)
+            #     series = [s['ont_serie'] for s in folio_serie_record]
+            #     self.LKFException( '', dict_error= {
+            #             f"{self.f['lot_number']}": {
+            #             "msg": [f'INTENTA NUEVAMENTE:  Se encontraron series repetidas en el excel. '], 
+            #             "label": "Serie Repetida", "error": []}}
+            #             )
 
     def carga_materiales(self, header, records):
         #ESTA FUNCION ES MUY PARECECIDA A STOCK_MOVE_IN SOLO QUE 
@@ -100,7 +159,7 @@ class Stock(Stock):
             
             sets_to_products.append({
                 self.CATALOG_INVENTORY_OBJ_ID: info_product,
-                self.f['inv_adjust_grp_status'] : "todo",
+                self.f['inv_adjust_grp_status'] : "done",
                 self.f['move_group_qty'] : cantidad,
             })
         if error_rows:
@@ -110,6 +169,86 @@ class Stock(Stock):
         else:
             self.answers[ self.f['move_group'] ] = sets_to_products
         return header_dict, records
+
+    def create_records(self, groups):
+        move_group = self.answers.get( self.f['move_group'], [] )
+        base_row_set = deepcopy(move_group[0])
+        self.answers[self.f['move_group']] = []
+        base_row_set[self.f['move_group_qty']] = 1
+        series_unique = []
+        total_groups = len(groups)
+        base_record = deepcopy(self.current_record)
+        base_record.update(self.get_complete_metadata())
+        base_record['answers'][self.f['move_group']] = []
+        base_record["editable"] = False 
+        for idx, records in enumerate(groups):
+            folio_serie_record = []
+            # self.answers[self.f['move_group']] = []
+            new_record = {}
+            new_folio = f"{self.folio}-{idx+1}/{total_groups}"
+            if idx > 0:
+                new_record = deepcopy(base_record)
+                new_record['folio'] = new_folio
+            for num_serie in records:
+                # num_serie = row[ pos_serie ]
+                num_serie = self.strip_special_characters(num_serie)
+                if not num_serie:
+                    continue
+                if num_serie in series_unique:
+                    self.LKFException( '', dict_error= {
+                        f"{self.f['lot_number']}": {
+                        "msg": ['Se encontraron series repetidas en el excel: {}'.format( num_serie )], 
+                        "label": "Serie Repetida", "error": []}}
+                        )
+                series_unique.append(num_serie)
+                row_set = deepcopy(base_row_set)
+                row_set[self.STOCK_INVENTORY_OBJ_ID][self.f['lot_number']] = num_serie
+                row_set[self.f['inv_adjust_grp_status']] = 'done'
+
+                folio_serie_record.append({'folio':new_folio, 'ont_serie':num_serie})
+                if idx == 0:
+                    self.current_record['folio'] = new_folio
+                    print('row_set',row_set)
+                    self.answers[self.f['move_group']].append(row_set)
+                    # self.this_record_sets.append(num_serie)
+                else:
+                    new_record['answers'][self.f['move_group']].append(row_set)
+                    new_record['answers'][self.f['inv_adjust_status']] = 'done'
+            
+            if new_record:
+                self.ejecutar_transaccion(new_record)
+                product_lot = [x['ont_serie'] for x in folio_serie_record]
+            # else:
+            #     self.move_out_stock(new_record)
+            #     self.ejecutar_transaccion({} )
+        return True
+    
+    def move_out_stock(self, new_record):
+        record_data = self.get_record_move_data(new_record)
+        for product_code, product_sku in record_data['product'].items():
+            for sku, product_lot in product_sku.items():
+                match_query = self.lot_match(product_code, sku, record_data['warehouse'], record_data['location'], product_lot)
+                update_res = self.cr.update_many(match_query, {"$set":{
+                    f"answers.{self.f['actual_eaches_on_hand']}":0,
+                    f"answers.{self.f['product_lot_actuals']}":0,
+                    f"answers.{self.f['move_out']}":1,
+                    }})
+
+    def get_record_move_data(self, data):
+        move_group = data['answers'].get( self.f['move_group'], [] )
+        warehouse_from = data['answers'].get(self.WH.WAREHOUSE_LOCATION_OBJ_ID)
+        warehouse = warehouse_from.get( self.WH.f['warehouse'])
+        warehouse_location = warehouse_from.get( self.WH.f['warehouse_location'])
+        product_by_sku = {}
+        for rec_set in move_group:
+            product_cat = rec_set.get(self.CATALOG_INVENTORY_OBJ_ID)
+            product_code = product_cat.get(self.Product.f['product_code'])
+            product_sku = product_cat.get(self.Product.f['product_sku'])
+            product_lot = product_cat.get(self.f['product_lot'])
+            product_by_sku[product_code] = product_by_sku.get(product_code, {})
+            product_by_sku[product_code][product_sku] = product_by_sku[product_code].get(product_sku,[])
+            product_by_sku[product_code][product_sku].append(product_lot)
+        return {'warehouse':warehouse, 'location':warehouse_location, 'product':product_by_sku}
 
     def load_onts(self):
         self.read_xls_onts()
@@ -182,31 +321,25 @@ class Stock(Stock):
             query_to_filter = { "$and": [ {self.f['warehouse']: {'$eq': connection_name}} ] }
             filter_name = connection_name.replace(' ', '')
             res_filter = self.lkf_api.create_filter(self.WH.WAREHOUSE_LOCATION_ID, filter_name, query_to_filter)
-            print("== res_filter=",res_filter)
             # Si el filtro se crea correctamente se lo debo compartir al contratista
             if res_filter.get('status_code', 0) == 201:
                 res_share_catalog_location = self.share_filter( filter_name, uri_user, self.WH.WAREHOUSE_LOCATION_ID )
-                print('res_share_catalog_location =',res_share_catalog_location)
 
             # Filtro para Warehouse Location Destination
             query_to_filter = { "$and": [ {self.f['warehouse_dest']: {'$eq': connection_name}} ] }
             filter_name += 'Destination'
             res_filter = self.lkf_api.create_filter(self.WH.WAREHOUSE_LOCATION_DEST_ID, filter_name, query_to_filter)
-            print("== res_filter=",res_filter)
             if res_filter.get('status_code', 0) == 201:
                 res_share_catalog_location_dest = self.share_filter( filter_name, uri_user, self.WH.WAREHOUSE_LOCATION_DEST_ID )
-                print('res_share_catalog_location_dest =',res_share_catalog_location_dest)
 
             # Se comparte la carpeta de las formas de Stock
             folder_share = f"/api/infosync/item/{self.FOLDER_FORMS_ID}/"
             res_share_folder_forms = self.share_item(uri_user, folder_share, "can_share_item")
-            print('== res_share_folder_forms=',res_share_folder_forms)
 
     def validate_move_qty(self, product_code, sku, lot_number, warehouse, location, move_qty, date_to=None, **kwargs):
         inv = self.get_product_stock(product_code, sku=sku,lot_number=lot_number, warehouse=warehouse, location=location,  
                 date_to=date_to, **kwargs)
         acctual_containers = inv.get('actuals')
-        print('acctual_containers',acctual_containers)
         if acctual_containers == 0:
             msg = f"This lot {lot_number} has 0 containers left, if this is NOT the case first do a inventory adjustment"
             msg_error_app = {
@@ -239,6 +372,70 @@ class Stock(Stock):
             self.LKFException( simplejson.dumps( msg_error_app ) )
         return True
 
+    def validate_onts(self, records):
+        move_group = self.answers.get( self.f['move_group'], [] )
+        product_lots = [r[0] for r in records]
+        base_row_set = deepcopy(move_group[0])
+        lot_size = len(records)
+        warehouse_from = self.answers.get(self.WH.WAREHOUSE_LOCATION_OBJ_ID)
+        warehouse = warehouse_from.get( self.WH.f['warehouse'])
+        warehouse_location = warehouse_from.get( self.WH.f['warehouse_location'])
+        product_cat = base_row_set.get(self.CATALOG_INVENTORY_OBJ_ID)
+        product_code = product_cat.get(self.Product.f['product_code'])
+        product_sku = product_cat.get(self.Product.f['product_sku'])
+        stock_size = self.validate_lote_size(product_code, product_sku, warehouse, warehouse_location, product_lots, lot_size)
+        if stock_size == 0:
+            print('valid')
+        elif stock_size < 0:
+            print('Error hay de menos')
+            self.LKFException(f'ERROR HAY {abs(stock_size)}, de menos')
+        elif stock_size > 0:
+            print('valido hay suficientes... pero en este caso no deberia...')
+        return True
+
+    def lot_match(self, product_code, product_sku, warehouse, location, product_lot):
+        match_query ={ 
+         'form_id': self.FORM_INVENTORY_ID,  
+         'deleted_at' : {'$exists':False},
+         } 
+        match_query.update({f"answers.{self.Product.SKU_OBJ_ID}.{self.f['product_code']}":product_code})
+        match_query.update({f"answers.{self.Product.SKU_OBJ_ID}.{self.f['product_sku']}":product_sku})
+        match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse']}":warehouse})
+        match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse_location']}":location})
+        match_query.update({f"answers.{self.f['product_lot']}":{"$in": product_lot}})
+        return match_query
+
+    def validate_lote_size(self, product_code, product_sku, warehouse, location, product_lot, lote_size):
+        match_query = self.lot_match(product_code, product_sku, warehouse, location, product_lot)
+        query = [
+            {'$match': match_query},
+            {'$project':{
+                '_id':0,
+                'product_code':f"$answers.{self.Product.SKU_OBJ_ID}.{self.f['product_code']}",
+                'warehouse':f"$answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse']}",
+                'actuals':f"$answers.{self.f['actual_eaches_on_hand']}",
+            }},
+            {'$group':{
+                '_id':{
+                    'product_code':'$product_code',
+                    'warehouse':'$warehouse'
+                },
+                'actuals':{'$sum':'$actuals'}
+            }},
+            {"$project":{
+                "_id":0,
+                "product_code":"$_id.product_code",
+                "warehouse":"$_id.warehouse",
+                "actuals": "$actuals",
+            }},
+        ]
+        stock =  self.format_cr(self.cr.aggregate(query), get_one=True)
+        stock_size = stock.get('actuals',0)
+        return stock_size - lote_size
+
+
+
+
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
     stock_obj.console_run()
@@ -247,10 +444,9 @@ if __name__ == '__main__':
         folio = stock_obj.folio
     if not folio:
         today = stock_obj.get_today_format()
-        folio = f"SAL{datetime.strftime(today, '%y%m%d')}"
+        folio = "SAL"
         next_folio = stock_obj.get_record_folio(stock_obj.STOCK_ONE_MANY_ONE, folio)
         folio = f"{folio}-{next_folio}"
-
     if not stock_obj.record_id:
         stock_obj.record_id = stock_obj.object_id() 
     stock_obj.folio = folio
@@ -259,7 +455,12 @@ if __name__ == '__main__':
     # else:
     #     stock_obj.read_xls_file()
     #try:
+    stock_obj.set_mongo_connections()
     header, records = stock_obj.read_xls_file()
+    if stock_obj.proceso_onts:
+        groups = stock_obj.validate_onts(records)
+        groups = stock_obj.do_groups(header, records)
+        stock_obj.create_records(groups)
     # except:
     #     print('no hay excel')
     #     header = None
@@ -269,7 +470,11 @@ if __name__ == '__main__':
             stock_obj.LKFException('El archivo cargado no contiene datos, favor de revisar')
     # print('answ3rs', stock_obj.answers)
     #stock_obj.share_filter_and_forms_to_connection()
-    response = stock_obj.move_one_many_one(records)
+    #response = stock_obj.move_one_many_one(records)
+    stock_obj.current_record['answers'] = stock_obj.answers
+    stock_obj.folio = f"{folio}-1/{len(groups)}"
+    response = stock_obj.direct_move_in(stock_obj.current_record)
+    stock_obj.move_out_stock(stock_obj.current_record)
     stock_obj.answers[stock_obj.f['inv_adjust_status']] =  'done'
 
     sys.stdout.write(simplejson.dumps({

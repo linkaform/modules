@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import sys, simplejson
+import sys, simplejson, time
+from bson import ObjectId
 from datetime import datetime, timedelta, date
 from copy import deepcopy
 
@@ -34,7 +35,95 @@ class Stock(Stock):
             'xls_onts': '66e0cd760cc8e3fb75f23803',
             'capture_num_serie': '66c75e0c0810217b0b5593ca'
         }
+        self.max_sets = 2500
 
+    def do_groups(self, header, records):
+        pos_serie = header.get('serie_ont')
+        error_rows = []
+        move_group = self.answers.get( self.f['move_group'], [] )
+        if move_group:
+            # capture_num_serie = self.unlist( move_group[0].get( self.Product.SKU_OBJ_ID, {} ).get( self.mf['capture_num_serie'] ) ) == 'Si'
+            # print('capture_num_serie',capture_num_serie)
+            # cantidad_solicitada = move_group[0].get( self.f['move_group_qty'], 0 )
+            # print('cantidad_solicitada',cantidad_solicitada)
+            # #if capture_num_serie and cantidad_solicitada:
+            onts = [x[pos_serie] for x in records]
+            groups = [onts[i:i + self.max_sets] for i in range(0, len(onts), self.max_sets) ]
+            print('records=', len(groups))
+        else:
+
+            self.LKFException( '', dict_error= {
+                        "msg": 'Favor de indicar el numero de producto y sku a procesar en la carga de ONTS'} 
+                )
+        return groups
+
+    def direct_move_in(self, new_record):
+        #solo se usa en pci y en pruebas de exposion de materiales
+        answers = self._labels(data=new_record)
+        self.answer_label = self._labels()
+        warehouse = self.answer_label['warehouse']
+        location = self.answer_label['warehouse_location']
+        warehouse_to = self.answer_label['warehouse_dest']
+        location_to = self.answer_label['warehouse_location_dest']
+        move_lines = self.answer_label['move_group'] 
+        move_lines = answers['move_group'] 
+        # Información original del Inventory Flow
+        status_code = 0
+        move_locations = []
+        folios = []
+        # lots_in = {}
+        data_from = {'warehouse':warehouse, 'warehouse_location':location}
+        new_records_data = []
+        skus = self.get_group_skus(move_lines)
+        metadata = self.lkf_api.get_metadata(self.FORM_INVENTORY_ID)
+        if self.proceso_onts:
+            metadata.update(self.get_complete_metadata(fields = {'voucher_id':ObjectId('6743d90d5f1c35d02395a7cf')}))
+        new_stock_records = []
+        folio = new_record['folio']
+        for idx, moves in enumerate(move_lines):
+            status = moves.get('inv_adjust_grp_status')
+            if status == 'done' and not self.proceso_onts:
+                continue
+            this_metadata = deepcopy(metadata)
+            this_metadata['folio'] = f'{folio}-{idx}'
+            move_line = self.answers[self.f['move_group']][idx]
+
+            answers = self.stock_inventory_model(moves, skus[moves['product_code']], labels=True)
+            answers.update({
+                self.WH.WAREHOUSE_LOCATION_OBJ_ID:{
+                self.f['warehouse']:warehouse_to,
+                self.f['warehouse_location']:location_to},
+                self.f['product_lot']:moves['product_lot'],
+                    }
+                )
+            this_metadata['answers'] = answers
+            new_stock_records.append(this_metadata)
+            if not self.proceso_onts:
+                create_resp = self.lkf_api.post_forms_answers(this_metadata)
+                try:
+                    new_inv = self.get_record_by_id(create_resp.get('id'))
+                except:
+                    print('no encontro...')
+                status_code = create_resp.get('status_code',404)
+                if status_code == 201:
+                    new_folio = create_resp.get('json',{}).get('folio','')
+                    move_line[self.f['inv_adjust_grp_status']] = 'done'
+                    move_line[self.f['move_dest_folio']] = new_folio
+                else:
+                    error = create_resp.get('json',{}).get('error', 'Unkown error')
+                    move_line[self.f['inv_adjust_grp_status']] = 'error'
+                    move_line[self.f['inv_adjust_grp_comments']] = f'Status Code: {status_code}, Error: {error}'
+        if self.proceso_onts:
+            if new_stock_records:
+                res = self.cr.insert_many(new_stock_records)
+                print('INSERTRED IDS....', res.inserted_ids)
+                self.cache_set({
+                                'cache_type': 'direct_move_in',
+                                'inserted_ids':res.inserted_ids,
+                                'folio':res.inserted_ids,
+                                })
+                return res.inserted_ids
+        return True
 
     def carga_onts(self, header, records):
         header_dict = self.make_header_dict(header)
@@ -94,6 +183,51 @@ class Stock(Stock):
             
         return bom_res
 
+    def get_complete_metadata(self, fields={}):
+        now = datetime.now()
+        format_date = int(now.timestamp())  # Converting to timestamp
+        fields['user_id'] = self.user['user_id']
+        fields['user_name'] = self.user['username']
+        fields['assets'] = {
+            "template_conf" : None,
+            "followers" : [ 
+                {
+                    "asset_id" : self.user['user_id'],
+                    "email" : self.user['email'],
+                    "name" : "PCI Automatico",
+                    "username" : None,
+                    "rtype" : "user",
+                    "rules" : None
+                }
+            ],
+            "supervisors" : [],
+            "performers" : [],
+            "groups" : []
+        }
+        fields['created_at'] = now
+        fields['updated_at'] = now
+        fields['editable'] = True
+        fields['start_timestamp'] = time.time()
+        fields['end_timestamp'] = time.time()
+        fields['start_date'] = now
+        fields['end_date'] = now
+        fields['duration'] = 0
+        fields['created_by_id'] = self.user['user_id']
+        fields['created_by_name'] = self.user['username']
+        fields['created_by_email'] = "linkaform@operacionpci.com.mx"
+        fields['timezone'] = "America/Monterrey"
+        fields['tz_offset'] = -360
+        fields['other_versions'] = []  
+        return fields
+
+    def get_enviroment(self):
+        if self.settings.config.get('MONGODB_HOST'):
+            if 'db4' in self.settings.config['MONGODB_HOST']:
+                return 'prod'
+            if 'dbs2' in self.settings.config['MONGODB_HOST']:
+                return 'preprod'
+        return 'local'
+
     def get_skus_records(self):
         """
         Se revisa en el catalogo de productos que exista el codigo y sku para obtener la informacion en los readonly
@@ -118,7 +252,7 @@ class Stock(Stock):
 
     def get_record_folio(self, form_id, folio):
         records = self.cr.find({'form_id':form_id, 'folio':{'$regex': f"^{folio}"} },{'folio':1})
-        max_folio = 1
+        max_folio = 0
         for r in records:
             tfolio = r.get('folio','')
             folio_list = tfolio.split('-')
@@ -130,7 +264,6 @@ class Stock(Stock):
             # except:
             #     print('folio not found')
         return max_folio + 1
-
 
     def move_in(self):
         #solo se usa en pci y en pruebas de exposion de materiales
@@ -316,6 +449,7 @@ class Stock(Stock):
 
         create_new_records = []
         for record in new_records_data:
+            print('record=', record)
             if record.get('new_record'):
                 create_new_records.append(record['new_record'])
             else:
@@ -398,6 +532,14 @@ class Stock(Stock):
         header, records = self.read_file( file_url_xls )
         return {'header': header, 'records': records}
 
+    def set_mongo_connections(self):
+        self.client = self.get_mongo_client()
+        dbname = 'infosync_answers_client_{}'.format(self.account_id)
+        db = self.client[dbname]
+        self.records_cr = db["form_answer"]
+        self.ont_cr = db["serie_onts"]
+        return True
+        
     # def stock_one_many_one(self, move_type, product_code=None, sku=None, lot_number=None, warehouse=None, location=None, date_from=None, date_to=None, status='done', **kwargs):
     #     unwind =None
     #     if move_type not in ('in','out'):
