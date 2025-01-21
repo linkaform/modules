@@ -484,7 +484,7 @@ class Stock(Stock):
         self.proceso_onts = False
         if not header:
             return None, None
-        if 'Serie ONT' in header:
+        if 'serie ont' in header.lower():
             self.proceso_onts = True
             return self.carga_onts(header, records)
         else:

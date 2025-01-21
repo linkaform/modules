@@ -208,7 +208,6 @@ class Stock(Stock):
                 folio_serie_record.append({'folio':new_folio, 'ont_serie':num_serie})
                 if idx == 0:
                     self.current_record['folio'] = new_folio
-                    print('row_set',row_set)
                     self.answers[self.f['move_group']].append(row_set)
                     # self.this_record_sets.append(num_serie)
                 else:
@@ -232,6 +231,7 @@ class Stock(Stock):
                     f"answers.{self.f['actual_eaches_on_hand']}":0,
                     f"answers.{self.f['product_lot_actuals']}":0,
                     f"answers.{self.f['move_out']}":1,
+                    f"answers.{self.f['status']}":"done",
                     }})
 
     def get_record_move_data(self, data):
