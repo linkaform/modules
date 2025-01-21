@@ -10,6 +10,7 @@ from account_settings import *
 class Stock(Stock):
 
     def get_product_info(self, **kwargs):
+        #REVISAR SI ESTO NO SE DEBE DE BORRAR DE MASTER
         try:
             product_code, sku, lot_number, warehouse, location = self.get_product_lot_location()
             # warehouse = self.answers[self.WAREHOUSE_LOCATION_OBJ_ID][self.f['warehouse']]
@@ -24,11 +25,8 @@ class Stock(Stock):
         values = {
                 '_id': a
                 }
-        print('values', values)
-        print('kwargs', kwargs)
         ccache = self.cache_read(values)
         product_stock = self.get_product_stock(product_code, sku=sku, lot_number=lot_number, warehouse=warehouse, location=location, kwargs=kwargs.get('kwargs',{}) )
-        print('product_stock', product_stock)
         per_container = self.answers.get(self.f['per_container'],1)
         self.answers[self.f['product_lot_produced']] = product_stock['production']
         self.answers[self.f['product_lot_move_in']] = product_stock['move_in']

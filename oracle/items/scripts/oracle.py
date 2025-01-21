@@ -8,14 +8,16 @@ from lkf_addons.addons.activo_fijo.app import Vehiculo
 
 from lkf_addons.addons.oracle.app import Oracle
 
-class Oracle(Oracle, Employee, Vehiculo, base.LKF_Base):
+class Oracle(Oracle):
 
     def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
+        print('de aqui...')
         #use self.lkm.catalog_id() to get catalog id
         self.name =  __class__.__name__
         self.settings = settings
         print('self f', self.f)
+
 
 #         # Forms
 
@@ -35,6 +37,6 @@ class Oracle(Oracle, Employee, Vehiculo, base.LKF_Base):
     
 #     #---Format Functions 
 
-    def sync_db_catalog(self, db_name):
-        header, data = self.query_view(db_name)
+    def sync_db_catalog(self, db_name, query={}):
+        header, data = self.query_view(db_name, query=query)
         return header, data
