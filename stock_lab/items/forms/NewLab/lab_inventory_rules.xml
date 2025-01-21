@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <lkf>
-    <form_id>{{ form.lab_inventory.id }}</form_id>
+    <form_id>{{ form.lab_inventroy.id }}</form_id>
     <id>65e900076177fa6356ac516f</id>
     <rules>
         <item>
@@ -59,7 +59,7 @@
                 </item>
                 <item>
                     <catalog_id>None</catalog_id>
-                    <field_id>{{ catalog.product_recipe.obj_id}}</field_id>
+                    <field_id>{{ catalog.plant_recipe.obj_id}}</field_id>
                     <group_id>None</group_id>
                     <id>61ef32bcdf0ec2ba73dec33c</id>
                     <label>Product Recipe</label>
