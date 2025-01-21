@@ -17,7 +17,6 @@ class Reports(Reports):
                             "form_id":self.PRODUCTION_PLAN, "deleted_at":{"$exists":False}
                         }
                     },
-                    {"$unwind": f"$answers.{self.f['prod_plan_development_group']}"},
                     {"$project":{
                         "_id":1,
                         "plant_code":f"$answers.{self.PRODUCT_OBJ_ID}.{self.f['product_code']}",
