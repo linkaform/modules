@@ -6,7 +6,15 @@ from account_settings import *
 from accesos_utils import Accesos
 
 class Accesos(Accesos):
-    pass
+
+    def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False, **kwargs):
+        #--Variables
+        # Module Globals#
+        super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
+        self.load(module='Location', **self.kwargs)
+
+
+
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
@@ -27,15 +35,24 @@ if __name__ == "__main__":
         pre_sms = pre_sms_value.lower() == 'true'
 
     #Datos necesario para enviar el sms
-    telefono_invitado = acceso_obj.answers.get('662c2937108836dec6d92582', '')
-    nombre_invitado = acceso_obj.answers.get('662c2937108836dec6d92580', '')
-    link_completar_pase = acceso_obj.answers.get('6732aa1189fc6b0ae27e3824', '')
+    telefono_invitado = acceso_obj.answers.get(acceso_obj.mf['telefono_pase'], '')
+    nombre_invitado = acceso_obj.answers.get(acceso_obj.mf['nombre_pase'], '')
+    link_completar_pase = acceso_obj.answers.get(acceso_obj.pase_entrada_fields['link'], '')
     # nombre_visita_a = acceso_obj.answers.get('663d4ba61b14fab90559ebb0', '')[0].get('677ffe8c638c8536ff37effb', '').get('62c5ff407febce07043024dd', '')
     # ubicacion = acceso_obj.answers.get('666718cb1bdffb6d8fc908d6', '').get('663e5c57f5b8a7ce8211ed0b', '')
-    nombre_visita_a = acceso_obj.answers.get('663d4ba61b14fab90559ebb0', '')[0].get('66a83ab5ca3453e21ea08d19', '').get('62c5ff407febce07043024dd', '')
-    ubicacion = acceso_obj.answers.get('66a83a74de752e12018fbc3c', '').get('663e5c57f5b8a7ce8211ed0b', '')
-    fecha_desde = acceso_obj.answers.get('662c304fad7432d296d92582', '')
-    fecha_hasta = acceso_obj.answers.get('662c304fad7432d296d92583', '')
+    grupo_visitados = acceso_obj.answers.get(acceso_obj.mf['grupo_visitados'], [])
+    nombre_visita_a = ''
+    for visita_a in grupo_visitados:
+        vista_catalog = visita_a.get(acceso_obj.Employee.CONF_AREA_EMPLEADOS_CAT_OBJ_ID,{})
+        nombre = vista_catalog.get(acceso_obj.mf['nombre_empleado'])
+        if nombre:
+            if len(nombre_visita_a) > 0:
+                nombre_visita_a += ', '
+            nombre_visita_a += nombre
+
+    ubicacion = acceso_obj.answers.get(acceso_obj.Location,{}).get(acceso_obj.Location.f['location'], '')
+    fecha_desde = acceso_obj.answers.get(acceso_obj.mf['fecha_desde_visita'], '')
+    fecha_hasta = acceso_obj.answers.get(acceso_obj.mf['fecha_desde_hasta'], '')
 
     data_cel_msj = {
         'numero': telefono_invitado,
