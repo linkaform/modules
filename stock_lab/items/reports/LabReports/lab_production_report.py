@@ -365,7 +365,7 @@ class Reports(Reports):
             {'$sort': {'cut_week': 1}}
             ]
         # print('====================================================')
-        # print('query', simplejson.dumps(query, indent=3))
+        #print('query', simplejson.dumps(query, indent=3))
         res = self.cr.aggregate(query)
         result = []
         all_codes = []
@@ -392,14 +392,12 @@ class Reports(Reports):
 
         if group_by == 'get_weeks':
             for r in res:
-                print('r=r',r)
                 if r.get('plant_code') and r.get('plant_code') not in all_codes:
                     all_codes.append(r['plant_code'])
                 year_week = '{}{:02d}'.format(r.get('cut_year'), r.get('cut_week'))
                 if year_week not in all_weeks:
                     all_weeks.append(int(year_week))
                 result.append(r)
-            print('all_codes', all_codes)
             return result, all_codes, all_weeks
 
         if group_by == 'cut_day':
@@ -411,7 +409,7 @@ class Reports(Reports):
             total = 0
             for r in res:
                 total += int(r['eaches'])
-                r['cut_week'] = int(r['cut_week'])
+                r['cut_week'] = 1 if r['cut_week'] == None else int(r['cut_week'])
                 result.append(r)
             for r in result:
                 r['eaches'] = float('{0:.2f}'.format(r['eaches']/total*100))
