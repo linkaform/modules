@@ -49,7 +49,14 @@
             <page_description>None</page_description>
             <page_fields>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>7bc218310bd405</rule_id>
+                            <rule_index>0</rule_index>
+                            <rule_type>required</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -435,7 +442,7 @@
                         <item>65b41448b2f9af986d0d612e</item>
                         <item>6442e4831198daf81456f274</item>
                         <item>65ac6fbc070b93e656bd7fbe</item>
-                        <item>620a9ee0a449b98114f61d76</item>
+                        <item>622bb9946d0d6fef17fe0842</item>
                         <item>620a9ee0a449b98114f61d77</item>
                         <item>6441d33a153b3521f5b2afc9</item>
                         <item>620ad6247a217dbcb888d16f</item>
@@ -598,7 +605,7 @@
                         <view_fields>
                             <item>6442e4831198daf81456f274</item>
                             <item>65ac6fbc070b93e656bd7fbe</item>
-                            <item>620a9ee0a449b98114f61d76</item>
+                            <item>622bb9946d0d6fef17fe0842</item>
                             <item>620a9ee0a449b98114f61d77</item>
                         </view_fields>
                         <view_index>0</view_index>
@@ -609,7 +616,7 @@
                         <item>620ad6247a217dbcb888d170</item>
                         <item>6442e4831198daf81456f274</item>
                         <item>65ac6fbc070b93e656bd7fbe</item>
-                        <item>620a9ee0a449b98114f61d76</item>
+                        <item>622bb9946d0d6fef17fe0842</item>
                         <item>620a9ee0a449b98114f61d77</item>
                     </catalog_fields>
                     <catalog_relation>None</catalog_relation>
@@ -750,7 +757,9 @@
                         <watermark_enable>False</watermark_enable>
                     </properties>
                     <required>False</required>
-                    <rules>[]</rules>
+                    <rules>
+                        <item>7bc218310bd405</item>
+                    </rules>
                     <show_for_rule>True</show_for_rule>
                     <validations>{}</validations>
                     <visible>True</visible>
@@ -841,7 +850,7 @@
                         <catalog_field_id>{{ catalog.lab_inventory.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.lab_inventory.id }}</catalog_id>
                         <field_type>integer</field_type>
-                        <filters>None</filters>
+                        <filters />
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -854,7 +863,7 @@
                     <default_value />
                     <descriptor>None</descriptor>
                     <fav>True</fav>
-                    <field_id>620a9ee0a449b98114f61d76</field_id>
+                    <field_id>622bb9946d0d6fef17fe0842</field_id>
                     <field_type>catalog-select</field_type>
                     <grading_criteria>{}</grading_criteria>
                     <group>
@@ -863,7 +872,7 @@
                     </group>
                     <groups_fields>[]</groups_fields>
                     <help_text>None</help_text>
-                    <label>Cut Day</label>
+                    <label>Cut Week</label>
                     <number_type>None</number_type>
                     <options>[]</options>
                     <properties>
@@ -1405,5 +1414,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1719490480.0</updated_at>
+    <updated_at>1737477916.0</updated_at>
 </lkf>

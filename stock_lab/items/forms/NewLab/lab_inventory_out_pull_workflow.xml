@@ -109,16 +109,19 @@
                     <action_settings>{}</action_settings>
                     <configuration>
                         <assignTo>
-                            <customUser>
-                                <email>linkaform@magnoliagardens.com</email>
-                                <first_name>Magnolia Gardens</first_name>
-                                <id>9908</id>
-                                <username>linkaform@magnoliagardens.com</username>
-                            </customUser>
-                            <field_id>CUSTOM_USER</field_id>
-                            <label>User</label>
+                            <item>
+                                <customUser>
+                                    <email>linkaform@magnoliagardens.com</email>
+                                    <first_name>Magnolia Gardens</first_name>
+                                    <id>9908</id>
+                                    <username>linkaform@magnoliagardens.com</username>
+                                </customUser>
+                                <field_id>CUSTOM_USER</field_id>
+                                <label>User</label>
+                                <push_notification>True</push_notification>
+                                <send_mail>False</send_mail>
+                            </item>
                         </assignTo>
-                        <push_notification>True</push_notification>
                     </configuration>
                     <name>None</name>
                 </item>
