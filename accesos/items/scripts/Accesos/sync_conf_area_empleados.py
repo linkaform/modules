@@ -14,8 +14,8 @@ class Accesos(Accesos):
 
     def in_catalog(self, data):
         # print(simplejson.dumps(data, indent=4))
-        nombre_completo = data.get('66a83aaa40fcd6362499844c', {}).get('62c5ff407febce07043024dd', '')
-        grupo_repetitivo = data.get('663cf9d77500019d1359eb9f', [])
+        nombre_completo = data.get(self.EMPLOYEE_OBJ_ID, {}).get(self.mf['nombre_empleado'])
+        grupo_repetitivo = data.get(self.mf['areas_grupo'], [])
         
         if not nombre_completo:
             print("El nombre completo no se encontró en los datos.")
@@ -23,12 +23,12 @@ class Accesos(Accesos):
         
         selector = {}
         
-        selector.update({"answers.62c5ff407febce07043024dd": nombre_completo})
+        selector.update({f"answers.{self.mf['nombre_empleado']}": nombre_completo})
 
         if not selector:
             selector = {"_id": {"$gt": None}}
 
-        fields = ["_id", "answers.62c5ff407febce07043024dd", "answers.663e5c57f5b8a7ce8211ed0b", "answers.663e5d44f5b8a7ce8211ed0f"]
+        fields = ["_id", f"answers.{self.mf['nombre_empleado']}", f"answers.{self.mf['ubicacion']}", f"answers.{self.mf['nombre_area']}"]
 
         mango_query = {
             "selector": selector,
@@ -44,8 +44,8 @@ class Accesos(Accesos):
                 existing_locations = set()
                 
                 for item_catalog in row_catalog:
-                    area = item_catalog.get('663e5d44f5b8a7ce8211ed0f', '')
-                    location = item_catalog.get('663e5c57f5b8a7ce8211ed0b', '')
+                    area = item_catalog.get(self.mf['nombre_area'])
+                    location = item_catalog.get(self.mf['ubicacion'])
 
                     if area: 
                         existing_areas.add(area)
@@ -53,14 +53,14 @@ class Accesos(Accesos):
                         existing_locations.add(location)
 
                 for item in grupo_repetitivo:
-                    area_grupo = item.get('66a83a77cfed7f342775c161', {}).get('663e5d44f5b8a7ce8211ed0f', '')
-                    location_grupo = item.get('66a83a77cfed7f342775c161', {}).get('663e5c57f5b8a7ce8211ed0b', '')
+                    area_grupo = item.get(self.mf['catalogo_ubicaciones'], {}).get(self.mf['nombre_area'])
+                    location_grupo = item.get(self.mf['catalogo_ubicaciones'], {}).get(self.mf['ubicacion'])
                     print(f'Area: {area_grupo}, Ubicación: {location_grupo}')
 
                     if area_grupo in existing_areas:
-                        item.get('66a83a77cfed7f342775c161').update({'existente': True})
+                        item.get(self.mf['catalogo_ubicaciones']).update({'existente': True})
                     else:
-                        item.get('66a83a77cfed7f342775c161').update({'existente': False})
+                        item.get(self.mf['catalogo_ubicaciones']).update({'existente': False})
 
                 # print(grupo_repetitivo)
                 self.format_group_to_catalog(data, grupo_repetitivo)
@@ -75,22 +75,22 @@ class Accesos(Accesos):
 
         answer = {}
         catalogo_metadata = self.lkf_api.get_catalog_metadata(catalog_id=self.CONF_AREA_EMPLEADOS_CAT_ID)
-        nombre_completo = data.get('66a83aaa40fcd6362499844c', '').get('62c5ff407febce07043024dd', '')
-        # grupo_repetitivo = data.get('663cf9d77500019d1359eb9f', [])
-        usuario_data = data.get('66a83aaa40fcd6362499844c', '')
+        nombre_completo = data.get(self.EMPLOYEE_OBJ_ID, {}).get(self.mf['nombre_empleado'])
+        # grupo_repetitivo = data.get(self.mf['areas_grupo'], [])
+        usuario_data = data.get(self.EMPLOYEE_OBJ_ID, {})
 
         for item in usuario_data:
             answer.update({item: usuario_data[item]})
         
-        answer['62c5ff407febce07043024dd'] = nombre_completo
-        answer.pop('663bcbe2274189281359eb78')
+        answer[self.mf['nombre_empleado']] = nombre_completo
+        answer.pop(self.employee_fields['estatus_disponibilidad'])
 
         for item in grupo_repetitivo:
-            if not item.get('66a83a77cfed7f342775c161', {}).get('existente'):
+            if not item.get(self.mf['catalogo_ubicaciones'], {}).get('existente'):
                 answer.update(
                     {
-                        '663e5c57f5b8a7ce8211ed0b': item.get('66a83a77cfed7f342775c161', {}).get('663e5c57f5b8a7ce8211ed0b', ''),
-                        '663e5d44f5b8a7ce8211ed0f': item.get('66a83a77cfed7f342775c161', {}).get('663e5d44f5b8a7ce8211ed0f', '')
+                        self.mf['ubicacion']: item.get(self.mf['catalogo_ubicaciones'], {}).get(self.mf['ubicacion']),
+                        self.mf['nombre_area']: item.get(self.mf['catalogo_ubicaciones'], {}).get(self.mf['nombre_area'])
                     }
                 )
                 catalogo_metadata.update({'answers': answer})
@@ -102,8 +102,8 @@ class Accesos(Accesos):
 
     def in_catalog_apoyo(self, data):
         # print(simplejson.dumps(data, indent=4))
-        nombre_completo = data.get('66a83aaa40fcd6362499844c', {}).get('62c5ff407febce07043024dd', '')
-        grupo_repetitivo = data.get('663cf9d77500019d1359eb9f', [])
+        nombre_completo = data.get(self.EMPLOYEE_OBJ_ID, {}).get(self.mf['nombre_empleado'])
+        grupo_repetitivo = data.get(self.mf['areas_grupo'], [])
         
         if not nombre_completo:
             print("El nombre completo no se encontró en los datos.")
@@ -111,12 +111,12 @@ class Accesos(Accesos):
         
         selector = {}
         
-        selector.update({"answers.663bd36eb19b7fb7d9e97ccb": nombre_completo})
+        selector.update({f"answers.{self.mf['nombre_guardia_apoyo']}": nombre_completo})
 
         if not selector:
             selector = {"_id": {"$gt": None}}
 
-        fields = ["_id", "answers.663bd36eb19b7fb7d9e97ccb", "answers.663e5c57f5b8a7ce8211ed0b", "answers.663fb45992f2c5afcfe97ca8"]
+        fields = ["_id", f"answers.{self.mf['nombre_guardia_apoyo']}", f"answers.{self.mf['ubicacion']}", f"answers.{self.mf['nombre_area_salida']}"]
 
         mango_query = {
             "selector": selector,
@@ -132,8 +132,8 @@ class Accesos(Accesos):
                 existing_locations = set()
                 
                 for item_catalog in row_catalog:
-                    area = item_catalog.get('663fb45992f2c5afcfe97ca8', '')
-                    location = item_catalog.get('663e5c57f5b8a7ce8211ed0b', '')
+                    area = item_catalog.get(self.mf['nombre_area_salida'])
+                    location = item_catalog.get(self.mf['ubicacion'])
 
                     if area: 
                         existing_areas.add(area)
@@ -141,14 +141,14 @@ class Accesos(Accesos):
                         existing_locations.add(location)
 
                 for item in grupo_repetitivo:
-                    area_grupo = item.get('66a83a77cfed7f342775c161', {}).get('663e5d44f5b8a7ce8211ed0f', '')
-                    location_grupo = item.get('66a83a77cfed7f342775c161', {}).get('663e5c57f5b8a7ce8211ed0b', '')
+                    area_grupo = item.get(self.mf['catalogo_ubicaciones'], {}).get(self.mf['nombre_area'])
+                    location_grupo = item.get(self.mf['catalogo_ubicaciones'], {}).get(self.mf['ubicacion'])
                     print(f'Area: {area_grupo}, Ubicación: {location_grupo}')
 
                     if area_grupo in existing_areas:
-                        item.get('66a83a77cfed7f342775c161').update({'existente': True})
+                        item.get(self.mf['catalogo_ubicaciones']).update({'existente': True})
                     else:
-                        item.get('66a83a77cfed7f342775c161').update({'existente': False})
+                        item.get(self.mf['catalogo_ubicaciones']).update({'existente': False})
 
                 # print(grupo_repetitivo)
                 self.format_group_to_catalog_apoyo(data, grupo_repetitivo)
@@ -163,22 +163,22 @@ class Accesos(Accesos):
 
         answer = {}
         catalogo_metadata = self.lkf_api.get_catalog_metadata(catalog_id=self.CONF_AREA_EMPLEADOS_AP_CAT_ID)
-        nombre_completo = data.get('66a83aaa40fcd6362499844c', '').get('62c5ff407febce07043024dd', '')
-        # grupo_repetitivo = data.get('663cf9d77500019d1359eb9f', [])
-        usuario_data = data.get('66a83aaa40fcd6362499844c', '')
+        nombre_completo = data.get(self.EMPLOYEE_OBJ_ID, {}).get(self.mf['nombre_empleado'])
+        # grupo_repetitivo = data.get(self.mf['areas_grupo'], [])
+        usuario_data = data.get(self.EMPLOYEE_OBJ_ID, {})
 
         for item in usuario_data:
             answer.update({item: usuario_data[item]})
         
-        answer['663bd36eb19b7fb7d9e97ccb'] = nombre_completo
-        answer.pop('663bcbe2274189281359eb78')
+        answer[self.mf['nombre_guardia_apoyo']] = nombre_completo
+        answer.pop(self.employee_fields['estatus_disponibilidad'])
 
         for item in grupo_repetitivo:
-            if not item.get('66a83a77cfed7f342775c161', {}).get('existente'):
+            if not item.get(self.mf['catalogo_ubicaciones'], {}).get('existente'):
                 answer.update(
                     {
-                        '663e5c57f5b8a7ce8211ed0b': item.get('66a83a77cfed7f342775c161', {}).get('663e5c57f5b8a7ce8211ed0b', ''),
-                        '663fb45992f2c5afcfe97ca8': item.get('66a83a77cfed7f342775c161', {}).get('663e5d44f5b8a7ce8211ed0f', '')
+                        self.mf['ubicacion']: item.get(self.mf['catalogo_ubicaciones'], {}).get(self.mf['ubicacion']),
+                        self.mf['nombre_area_salida']: item.get(self.mf['catalogo_ubicaciones'], {}).get(self.mf['nombre_area'])
                     }
                 )
                 catalogo_metadata.update({'answers': answer})
