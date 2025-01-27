@@ -62,11 +62,7 @@ class Oracle(Oracle):
                 }
             },
             'LINK_EMPLEADOS_2':{
-<<<<<<< HEAD
                 'catalog_id': self.Employee.EMPLEADOS_JEFES_DIRECTOS_ID,
-=======
-                'catalog_id': self.EMPLEADOS_JEFES_DIRECTOS_ID,
->>>>>>> 5e8d2bfb4e49a2dbf84a170ff62e4c029c3c2798
                 'schema':{
                     'DEPARTAMENTO': self.f['worker_department'],
                     'CONTACTOID': self.f['worker_code_jefes'],
@@ -393,6 +389,7 @@ if __name__ == "__main__":
                     'DESCRIPCION': module_obj.f['worker_position'],
                     }
         for v in views:
+            print('-----------------------------------------------------------')
             if True:
                 record_ids, last_update,  = module_obj.get_last_db_update_data(v)
                 # last_update_date
@@ -400,13 +397,17 @@ if __name__ == "__main__":
                 query = None
                 if last_update:
                     update = True
+                    #se restan 6 hrs para aplicar GMT-6:00
+                    last_update = last_update - 6*60*60
                     date_time = datetime.datetime.fromtimestamp(last_update)
                     last_update_date = date_time.strftime('%Y-%m-%d %H:%M:%S')
+                    print('last_update_date', last_update_date)
                     a = f"TO_TIMESTAMP('{last_update_date}', 'YYYY-MM-DD HH24:MI:SS.FF6')"
                     query = f'SELECT * FROM {v} WHERE FEC_MODIF  > {a}'
 
                 header, response = module_obj.sync_db_catalog(db_name=v, query=query)
                 # schema = getattr(module_obj, v, "Attribute not found")
+                print('query=', query)
                 if v == 'LINK_EMPLEADOS':
                     #Carga primero los Contactos
                     view = module_obj.schema_dict[v]
@@ -426,4 +427,5 @@ if __name__ == "__main__":
                 view = module_obj.views[v]
                 schema = view['schema']
                 catalog_id = view['catalog_id']
+                print('catalog_id',catalog_id)
                 module_obj.load_data(v, view, response, schema, catalog_id)
