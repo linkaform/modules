@@ -19,6 +19,7 @@ class Accesos(Accesos):
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
+    # print('ANSWERSSSSSSSSSSSSS', acceso_obj.answers)
 
     #Obtener id para obtener el link del pdf
     qr_code = json.loads(sys.argv[1])
@@ -38,8 +39,6 @@ if __name__ == "__main__":
     telefono_invitado = acceso_obj.answers.get(acceso_obj.mf['telefono_pase'], '')
     nombre_invitado = acceso_obj.answers.get(acceso_obj.mf['nombre_pase'], '')
     link_completar_pase = acceso_obj.answers.get(acceso_obj.pase_entrada_fields['link'], '')
-    # nombre_visita_a = acceso_obj.answers.get('663d4ba61b14fab90559ebb0', '')[0].get('677ffe8c638c8536ff37effb', '').get('62c5ff407febce07043024dd', '')
-    # ubicacion = acceso_obj.answers.get('666718cb1bdffb6d8fc908d6', '').get('663e5c57f5b8a7ce8211ed0b', '')
     grupo_visitados = acceso_obj.answers.get(acceso_obj.mf['grupo_visitados'], [])
     nombre_visita_a = ''
     for visita_a in grupo_visitados:
@@ -50,7 +49,7 @@ if __name__ == "__main__":
                 nombre_visita_a += ', '
             nombre_visita_a += nombre
 
-    ubicacion = acceso_obj.answers.get(acceso_obj.Location,{}).get(acceso_obj.Location.f['location'], '')
+    ubicacion = acceso_obj.answers.get(acceso_obj.Location.UBICACIONES_CAT_OBJ_ID,{}).get(acceso_obj.Location.f['location'], '')
     fecha_desde = acceso_obj.answers.get(acceso_obj.mf['fecha_desde_visita'], '')
     fecha_hasta = acceso_obj.answers.get(acceso_obj.mf['fecha_desde_hasta'], '')
 
@@ -65,6 +64,16 @@ if __name__ == "__main__":
         'qr_code': qr_code,
         'pre_sms': pre_sms
     }
+
+    seleccion_de_visitante = acceso_obj.answers.get(acceso_obj.pase_entrada_fields['tipo_visita'])
+
+    if(seleccion_de_visitante == 'Buscar visitantes registrados'):
+        visitante_registrado = acceso_obj.answers.get(acceso_obj.pase_entrada_fields['catalogo_visitante_registrado'], {})
+        nombre_visitante_registrado = visitante_registrado.get(acceso_obj.pase_entrada_fields['nombre_visitante_registrado'], '')
+        telefono_vistante_registrado = visitante_registrado.get(acceso_obj.mf['telefono_visita'], [])[0][0]
+
+        data_cel_msj['nombre'] = nombre_visitante_registrado
+        data_cel_msj['numero'] = telefono_vistante_registrado
 
     print(simplejson.dumps(data_cel_msj, indent=4))
     
