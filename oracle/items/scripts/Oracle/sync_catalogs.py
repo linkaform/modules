@@ -437,6 +437,7 @@ if __name__ == "__main__":
                     'DESCRIPCION': module_obj.f['worker_position'],
                     }
         for v in views:
+            print('-----------------------------------------------------------')
             if True:
                 record_ids, last_update,  = module_obj.get_last_db_update_data(v)
                 # last_update_date
@@ -450,14 +451,16 @@ if __name__ == "__main__":
                 print('last_update', last_update)
                 if last_update:
                     update = True
+                    #se restan 6 hrs para aplicar GMT-6:00
+                    last_update = last_update - 6*60*60
                     date_time = datetime.datetime.fromtimestamp(last_update)
                     last_update_date = date_time.strftime('%Y-%m-%d %H:%M:%S')
+                    print('last_update_date', last_update_date)
                     a = f"TO_TIMESTAMP('{last_update_date}', 'YYYY-MM-DD HH24:MI:SS.FF6')"
                     query = f'SELECT * FROM {v} WHERE FEC_MODIF  > {a}'
 
                 header, response = module_obj.sync_db_catalog(db_name=v, query=query)
                 # schema = getattr(module_obj, v, "Attribute not found")
-                print('-----------------------------------------------------------')
                 print('query=', query)
                 if v == 'LINK_EMPLEADOS':
                     #Carga primero los Contactos
