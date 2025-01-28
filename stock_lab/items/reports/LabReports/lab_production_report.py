@@ -140,6 +140,7 @@ class Reports(Reports):
         match_query = {
             "deleted_at":{"$exists":False},
             "form_id":self.MOVE_NEW_PRODUCTION_ID,
+            f"answers.{self.f['move_status']}":"done",
             }
         if plant_code:
             match_query.update({f"answers.{self.SKU_OBJ_ID}.{self.f['product_code']}":plant_code})
@@ -364,7 +365,7 @@ class Reports(Reports):
             },
             {'$sort': {'cut_week': 1}}
             ]
-        # print('====================================================')
+        #print('====================================================')
         #print('query', simplejson.dumps(query, indent=3))
         res = self.cr.aggregate(query)
         result = []
