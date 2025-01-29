@@ -25,6 +25,7 @@ class Stock(Stock):
             'series_group':'66c75ca499596663582eed59',
             'num_serie': '66c75d1e601ad1dd405593fe',
         })
+
         self.prev_version = {}
         # self.max_sets = 5000
         self.sku_finds = []
@@ -121,6 +122,7 @@ class Stock(Stock):
             # self.answers[self.f['move_group']] = []
             new_record = {}
             new_folio = f"{self.folio}-{idx+1}/{total_groups}"
+
             if idx > 0:
                 new_record = deepcopy(base_record)
                 new_record['folio'] = new_folio
@@ -165,7 +167,9 @@ class Stock(Stock):
                         self.direct_move_in(new_record)
                     try:
                         if folio_serie_record:
-                            self.ont_cr.insert_many(folio_serie_record, session=sess)
+                            print('DESOCMENTAR */*-/*-/-///-/')
+                            print('DESOCMENTAR */*-/*-/-///-/',stop)
+                            #self.ont_cr.insert_many(folio_serie_record, session=sess)
                     except Exception as e:
                         print(f"Error durante la transacción: {e}")
                         self.LKFException( '', dict_error= {
@@ -193,7 +197,8 @@ class Stock(Stock):
         else:
             try:
                 if folio_serie_record:
-                    res = self.ont_cr.insert_many(folio_serie_record)
+                    print('esta y la otra DESOCMENTAR */*-/*-/-///-/')
+                    # res = self.ont_cr.insert_many(folio_serie_record)
             except Exception as e:
                 self.LKFException( '', dict_error= {
                         f"Error": {

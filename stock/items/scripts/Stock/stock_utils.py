@@ -27,6 +27,12 @@ class Stock(Stock):
 
         self.f.update({
             'parts_group':'62c5da67f850f35cc2483346',
+            'parts_group':'62c5da67f850f35cc2483346',
+            'fecha_recepcion':'000000000000000000000111',
+            'fecha_recepcion_inventario':'65dfecbf3199f9a04082955e',
+            'observaciones_stock':'6799c243cf81bd103124bf51',
+            'stock_move_comments':'66b561232c91d2011147118c',
+
             })
         self.answer_label = self._labels()
         self.FOLDER_FORMS_ID = self.lkm.item_id('Stock', 'form_folder').get('id')
@@ -35,7 +41,7 @@ class Stock(Stock):
             'xls_onts': '66e0cd760cc8e3fb75f23803',
             'capture_num_serie': '66c75e0c0810217b0b5593ca'
         }
-        self.max_sets = 2500
+        self.max_sets = 10
 
     def do_groups(self, header, records):
         pos_serie = header.get('serie_ont')
@@ -59,6 +65,9 @@ class Stock(Stock):
 
     def direct_move_in(self, new_record):
         #solo se usa en pci y en pruebas de exposion de materiales
+        print('emntra a direct move in....', self.answers)
+        fecha_recepcion = self.answers.get(self.f['fecha_recepcion'])
+        observaciones = self.answers.get(self.f['stock_move_comments'])
         answers = self._labels(data=new_record)
         self.answer_label = self._labels()
         warehouse = self.answer_label['warehouse']
@@ -77,7 +86,7 @@ class Stock(Stock):
         skus = self.get_group_skus(move_lines)
         metadata = self.lkf_api.get_metadata(self.FORM_INVENTORY_ID)
         if self.proceso_onts:
-            metadata.update(self.get_complete_metadata(fields = {'voucher_id':ObjectId('6743d90d5f1c35d02395a7cf')}))
+            metadata.update(self.get_complete_metadata(fields = {'voucher_id':ObjectId('6799c40fff1c2b9ea324bf65')}))
         new_stock_records = []
         folio = new_record['folio']
         for idx, moves in enumerate(move_lines):
@@ -85,7 +94,7 @@ class Stock(Stock):
             if status == 'done' and not self.proceso_onts:
                 continue
             this_metadata = deepcopy(metadata)
-            this_metadata['folio'] = f'{folio}-{idx}'
+            this_metadata['folio'] = f'{folio}-{idx+1}'
             move_line = self.answers[self.f['move_group']][idx]
 
             answers = self.stock_inventory_model(moves, skus[moves['product_code']], labels=True)
@@ -94,6 +103,8 @@ class Stock(Stock):
                 self.f['warehouse']:warehouse_to,
                 self.f['warehouse_location']:location_to},
                 self.f['product_lot']:moves['product_lot'],
+                self.f['fecha_recepcion_inventario']: fecha_recepcion,
+                self.f['observaciones_stock']: observaciones
                     }
                 )
             this_metadata['answers'] = answers
