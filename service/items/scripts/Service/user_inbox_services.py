@@ -62,8 +62,12 @@ class Service(Service):
         res = []
         for inbox in inboxes:
             doc = inbox.get('doc',{})
-            if doc.get('status') and doc['status'] == status:
-                res.append(inbox)
+            if type(status) == list:
+                if doc.get('status') and doc['status'] in status:
+                    res.append(inbox)
+            else:
+                if doc.get('status') and doc['status'] == status:
+                    res.append(inbox)
         return res
 
     def send_notification(self, user, inboxes, due_time=""):
@@ -123,7 +127,7 @@ class Service(Service):
             self.send_1_day_notification = []
             print('==================================')
             print('Seaching Inbox of user: ', user_id)
-            new_inbox = self.get_inbox_by_status(user_id, inboxes, status='new')
+            new_inbox = self.get_inbox_by_status(user_id, inboxes, status=['new','seen'])
             for inbox in new_inbox:
                 self.eval_inbox(inbox)
             self.delete_inboxes(user_id)
