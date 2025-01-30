@@ -455,8 +455,10 @@ if __name__ == '__main__':
     # else:
     #     stock_obj.read_xls_file()
     #try:
+    
     stock_obj.set_mongo_connections()
     header, records = stock_obj.read_xls_file()
+    groups = []
     if stock_obj.proceso_onts:
         groups = stock_obj.validate_onts(records)
         groups = stock_obj.do_groups(header, records)
@@ -472,7 +474,8 @@ if __name__ == '__main__':
     #stock_obj.share_filter_and_forms_to_connection()
     #response = stock_obj.move_one_many_one(records)
     stock_obj.current_record['answers'] = stock_obj.answers
-    stock_obj.folio = f"{folio}-1/{len(groups)}"
+    if groups:
+        stock_obj.folio = f"{folio}-1/{len(groups)}"
     response = stock_obj.direct_move_in(stock_obj.current_record)
     stock_obj.move_out_stock(stock_obj.current_record)
     stock_obj.answers[stock_obj.f['inv_adjust_status']] =  'done'

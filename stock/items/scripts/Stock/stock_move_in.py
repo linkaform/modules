@@ -113,6 +113,8 @@ class Stock(Stock):
         base_row_set[self.f['move_group_qty']] = 1
         series_unique = []
         total_groups = len(groups)
+        self.answers[self.f['folio_recepcion']] = self.folio
+        self.current_record['answers'] = self.answers
         base_record = deepcopy(self.current_record)
         base_record.update(self.get_complete_metadata(fields = {'voucher_id':ObjectId('6743d90d5f1c35d02395a7cf')}))
         base_record['answers'][self.f['move_group']] = []
@@ -167,9 +169,7 @@ class Stock(Stock):
                         self.direct_move_in(new_record)
                     try:
                         if folio_serie_record:
-                            print('DESOCMENTAR */*-/*-/-///-/')
-                            print('DESOCMENTAR */*-/*-/-///-/',stop)
-                            #self.ont_cr.insert_many(folio_serie_record, session=sess)
+                            self.ont_cr.insert_many(folio_serie_record, session=sess)
                     except Exception as e:
                         print(f"Error durante la transacción: {e}")
                         self.LKFException( '', dict_error= {
@@ -197,8 +197,7 @@ class Stock(Stock):
         else:
             try:
                 if folio_serie_record:
-                    print('esta y la otra DESOCMENTAR */*-/*-/-///-/')
-                    # res = self.ont_cr.insert_many(folio_serie_record)
+                    res = self.ont_cr.insert_many(folio_serie_record)
             except Exception as e:
                 self.LKFException( '', dict_error= {
                         f"Error": {

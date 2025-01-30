@@ -189,14 +189,18 @@
                     <action_settings>{}</action_settings>
                     <configuration>
                         <assignTo>
-                            <customUser>
-                                <email>alfred.tenorio@tech-center.com</email>
-                                <first_name>Alfredo Tenorio Ponce</first_name>
-                                <id>2558</id>
-                                <username>alfred.tenorio@tech-center.com</username>
-                            </customUser>
-                            <field_id>CUSTOM_USER</field_id>
-                            <label>Conexión</label>
+                            <item>
+                                <customUser>
+                                    <email>alfred.tenorio@tech-center.com</email>
+                                    <first_name>Alfredo Tenorio Ponce</first_name>
+                                    <id>2558</id>
+                                    <username>alfred.tenorio@tech-center.com</username>
+                                </customUser>
+                                <field_id>CUSTOM_USER</field_id>
+                                <label>Conexión</label>
+                                <push_notification>False</push_notification>
+                                <send_mail>False</send_mail>
+                            </item>
                         </assignTo>
                     </configuration>
                     <name>None</name>
@@ -268,14 +272,18 @@
                     <action_settings>{}</action_settings>
                     <configuration>
                         <assignTo>
-                            <customUser>
-                                <email>aleal_pc@hotmail.com</email>
-                                <first_name>Alejandro Leal</first_name>
-                                <id>1844</id>
-                                <username>aleal_pc@hotmail.com</username>
-                            </customUser>
-                            <field_id>CUSTOM_USER</field_id>
-                            <label>Conexión</label>
+                            <item>
+                                <customUser>
+                                    <email>aleal_pc@hotmail.com</email>
+                                    <first_name>Alejandro Leal</first_name>
+                                    <id>1844</id>
+                                    <username>aleal_pc@hotmail.com</username>
+                                </customUser>
+                                <field_id>CUSTOM_USER</field_id>
+                                <label>Conexión</label>
+                                <push_notification>False</push_notification>
+                                <send_mail>False</send_mail>
+                            </item>
                         </assignTo>
                     </configuration>
                     <name>None</name>
@@ -347,14 +355,18 @@
                     <action_settings>{}</action_settings>
                     <configuration>
                         <assignTo>
-                            <customUser>
-                                <email>rous1323@hotmail.com</email>
-                                <first_name>Rosendo Anaya Luna</first_name>
-                                <id>1492</id>
-                                <username>rous1323@hotmail.com</username>
-                            </customUser>
-                            <field_id>CUSTOM_USER</field_id>
-                            <label>Conexión</label>
+                            <item>
+                                <customUser>
+                                    <email>rous1323@hotmail.com</email>
+                                    <first_name>Rosendo Anaya Luna</first_name>
+                                    <id>1492</id>
+                                    <username>rous1323@hotmail.com</username>
+                                </customUser>
+                                <field_id>CUSTOM_USER</field_id>
+                                <label>Conexión</label>
+                                <push_notification>False</push_notification>
+                                <send_mail>False</send_mail>
+                            </item>
                         </assignTo>
                     </configuration>
                     <name>None</name>
@@ -426,14 +438,18 @@
                     <action_settings>{}</action_settings>
                     <configuration>
                         <assignTo>
-                            <customUser>
-                                <email>torres_wlj@hotmail.com</email>
-                                <first_name>Adolfo Torres Ocampo</first_name>
-                                <id>1768</id>
-                                <username>torres_wlj@hotmail.com</username>
-                            </customUser>
-                            <field_id>CUSTOM_USER</field_id>
-                            <label>Conexión</label>
+                            <item>
+                                <customUser>
+                                    <email>torres_wlj@hotmail.com</email>
+                                    <first_name>Adolfo Torres Ocampo</first_name>
+                                    <id>1768</id>
+                                    <username>torres_wlj@hotmail.com</username>
+                                </customUser>
+                                <field_id>CUSTOM_USER</field_id>
+                                <label>Conexión</label>
+                                <push_notification>False</push_notification>
+                                <send_mail>False</send_mail>
+                            </item>
                         </assignTo>
                     </configuration>
                     <name>None</name>
@@ -505,14 +521,18 @@
                     <action_settings>{}</action_settings>
                     <configuration>
                         <assignTo>
-                            <customUser>
-                                <email>einar01002@gmail.com</email>
-                                <first_name>Einar Casarrubias Aguilar</first_name>
-                                <id>10015</id>
-                                <username>einar01002@gmail.com</username>
-                            </customUser>
-                            <field_id>CUSTOM_USER</field_id>
-                            <label>Conexión</label>
+                            <item>
+                                <customUser>
+                                    <email>einar01002@gmail.com</email>
+                                    <first_name>Einar Casarrubias Aguilar</first_name>
+                                    <id>10015</id>
+                                    <username>einar01002@gmail.com</username>
+                                </customUser>
+                                <field_id>CUSTOM_USER</field_id>
+                                <label>Conexión</label>
+                                <push_notification>False</push_notification>
+                                <send_mail>False</send_mail>
+                            </item>
                         </assignTo>
                     </configuration>
                     <name>None</name>
@@ -584,14 +604,18 @@
                     <action_settings>{}</action_settings>
                     <configuration>
                         <assignTo>
-                            <customUser>
-                                <email>dianareyesitesa@operacionpci.com.mx</email>
-                                <first_name>IASA - Diana Lidia Reyes García</first_name>
-                                <id>1940</id>
-                                <username>dianareyesitesa@operacionpci.com.mx</username>
-                            </customUser>
-                            <field_id>CUSTOM_USER</field_id>
-                            <label>Conexión</label>
+                            <item>
+                                <customUser>
+                                    <email>dianareyesitesa@operacionpci.com.mx</email>
+                                    <first_name>IASA - Diana Lidia Reyes García</first_name>
+                                    <id>1940</id>
+                                    <username>dianareyesitesa@operacionpci.com.mx</username>
+                                </customUser>
+                                <field_id>CUSTOM_USER</field_id>
+                                <label>Conexión</label>
+                                <push_notification>False</push_notification>
+                                <send_mail>False</send_mail>
+                            </item>
                         </assignTo>
                     </configuration>
                     <name>None</name>
@@ -663,14 +687,18 @@
                     <action_settings>{}</action_settings>
                     <configuration>
                         <assignTo>
-                            <customUser>
-                                <email>bautistavazquez1984@gmail.com</email>
-                                <first_name>Bautista Vazquez Elpidio</first_name>
-                                <id>11477</id>
-                                <username>bautistavazquez1984@gmail.com</username>
-                            </customUser>
-                            <field_id>CUSTOM_USER</field_id>
-                            <label>Usuario</label>
+                            <item>
+                                <customUser>
+                                    <email>bautistavazquez1984@gmail.com</email>
+                                    <first_name>Bautista Vazquez Elpidio</first_name>
+                                    <id>11477</id>
+                                    <username>bautistavazquez1984@gmail.com</username>
+                                </customUser>
+                                <field_id>CUSTOM_USER</field_id>
+                                <label>Usuario</label>
+                                <push_notification>False</push_notification>
+                                <send_mail>False</send_mail>
+                            </item>
                         </assignTo>
                     </configuration>
                     <name>None</name>

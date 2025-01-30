@@ -35,19 +35,27 @@
             <fields_ruled>
                 <item>
                     <catalog_id>None</catalog_id>
+                    <field_id>65e1169689c0e0790f8843f1</field_id>
+                    <group_id>None</group_id>
+                    <id>65e1169689c0e0790f8843f1</id>
+                    <label>Cantidad Solicitada</label>
+                    <type>integer</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
                     <field_id>ffff00000000000000000001</field_id>
-                    <group_id>6442e4537775ce64ef72dd69</group_id>
+                    <group_id>None</group_id>
                     <id>ffff00000000000000000001</id>
                     <label>Folio Stock Destino</label>
                     <type>text</type>
                 </item>
                 <item>
                     <catalog_id>None</catalog_id>
-                    <field_id>65e1169689c0e0790f8843f1</field_id>
-                    <group_id>6442e4537775ce64ef72dd69</group_id>
-                    <id>65e1169689c0e0790f8843f1</id>
-                    <label>Cantidad Solicitada</label>
-                    <type>integer</type>
+                    <field_id>679bd3e1e213a8e4c124c05c</field_id>
+                    <group_id>None</group_id>
+                    <id>679bd3e1e213a8e4c124c05c</id>
+                    <label>Folio de Recepcion</label>
+                    <type>text</type>
                 </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>

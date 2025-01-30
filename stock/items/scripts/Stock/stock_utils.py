@@ -30,6 +30,7 @@ class Stock(Stock):
             'parts_group':'62c5da67f850f35cc2483346',
             'fecha_recepcion':'000000000000000000000111',
             'fecha_recepcion_inventario':'65dfecbf3199f9a04082955e',
+            'folio_recepcion':'679bd3e1e213a8e4c124c05c',
             'observaciones_stock':'6799c243cf81bd103124bf51',
             'stock_move_comments':'66b561232c91d2011147118c',
 
@@ -41,7 +42,7 @@ class Stock(Stock):
             'xls_onts': '66e0cd760cc8e3fb75f23803',
             'capture_num_serie': '66c75e0c0810217b0b5593ca'
         }
-        self.max_sets = 10
+        self.max_sets = 2
 
     def do_groups(self, header, records):
         pos_serie = header.get('serie_ont')
@@ -68,6 +69,7 @@ class Stock(Stock):
         print('emntra a direct move in....', self.answers)
         fecha_recepcion = self.answers.get(self.f['fecha_recepcion'])
         observaciones = self.answers.get(self.f['stock_move_comments'])
+        folio_recepcion = self.answers.get(self.f['folio_recepcion'])
         answers = self._labels(data=new_record)
         self.answer_label = self._labels()
         warehouse = self.answer_label['warehouse']
@@ -104,7 +106,8 @@ class Stock(Stock):
                 self.f['warehouse_location']:location_to},
                 self.f['product_lot']:moves['product_lot'],
                 self.f['fecha_recepcion_inventario']: fecha_recepcion,
-                self.f['observaciones_stock']: observaciones
+                self.f['observaciones_stock']: observaciones,
+                self.f['folio_recepcion']: folio_recepcion
                     }
                 )
             this_metadata['answers'] = answers
@@ -551,110 +554,3 @@ class Stock(Stock):
         self.records_cr = db["form_answer"]
         self.ont_cr = db["serie_onts"]
         return True
-        
-    # def stock_one_many_one(self, move_type, product_code=None, sku=None, lot_number=None, warehouse=None, location=None, date_from=None, date_to=None, status='done', **kwargs):
-    #     unwind =None
-    #     if move_type not in ('in','out'):
-    #         raise('Move type only accepts values "in" or "out" ')
-    #     match_query = {
-    #         "deleted_at":{"$exists":False},
-    #         }
-    #     match_query.update(self.stock_kwargs_query(**kwargs))
-    #     query_forms = self.STOCK_ONE_MANY_ONE_FORMS
-    #     if len(query_forms) > 1:
-    #         form_query = {"form_id":{"$in":query_forms}}
-    #     else:
-    #         form_query = {"form_id":self.STOCK_ONE_MANY_ONE_FORMS[0]}
-    #     match_query.update(form_query)
-    #     if date_from or date_to:
-    #         match_query.update(self.get_date_query(date_from=date_from, date_to=date_to, date_field_id=self.f['grading_date']))
-
-    #     unwind = {'$unwind': '$answers.{}'.format(self.f['move_group'])}
-    #     unwind_query = {}
-    #     unwind_stage = []
-    #     # print('move type.............', move_type)
-    #     # print('warehouse', warehouse)
-    #     # print('location', location)
-    #     # print('product_code', product_code)
-    #     # print('sku', sku)
-    #     # print('lot_number', lot_number)
-    #     if move_type =='in':
-    #         if warehouse:
-    #             match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID}.{self.f['warehouse_dest']}":warehouse})
-    #         if location:
-    #             match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID}.{self.f['warehouse_location_dest']}":location})        
-    #     if move_type =='out':
-    #         if warehouse:
-    #             match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse']}":warehouse})
-    #         if location:
-    #             match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse_location']}":location})
-       
-    #     if product_code:
-    #         p_code_query = {"$or":[
-    #             {f"answers.{self.f['move_group']}.{self.STOCK_INVENTORY_OBJ_ID}.{self.f['product_code']}":product_code},
-    #             {f"answers.{self.f['move_group']}.{self.Product.SKU_OBJ_ID}.{self.f['product_code']}":product_code}
-    #         ]
-    #         }
-    #         unwind_stage.append({'$match': p_code_query })
-    #     if sku:
-    #         sku_query = {"$or":[
-    #             {f"answers.{self.f['move_group']}.{self.STOCK_INVENTORY_OBJ_ID}.{self.f['sku']}":sku},
-    #             {f"answers.{self.f['move_group']}.{self.Product.SKU_OBJ_ID}.{self.f['sku']}":sku}
-    #         ]
-    #         }
-    #         unwind_stage.append({'$match': sku_query })
-    #     if lot_number:
-    #         lot_number_query = {"$or":[
-    #             {f"answers.{self.f['move_group']}.{self.STOCK_INVENTORY_OBJ_ID}.{self.f['lot_number']}":lot_number},
-    #             {f"answers.{self.f['move_group']}.{self.Product.SKU_OBJ_ID}.{self.f['lot_number']}":lot_number},
-    #             {f"answers.{self.f['move_group']}.{self.f['lot_number']}":lot_number}
-    #         ]
-    #         }
-    #         unwind_stage.append({'$match': lot_number_query })
-    #     if status:
-    #         match_query.update({f"answers.{self.f['stock_status']}":status})
-    #     if date_from or date_to:
-    #         match_query.update(self.get_date_query(date_from=date_from, date_to=date_to, date_field_id=self.f['grading_date']))
-    #     project = {'$project':
-    #             {'_id': 1,
-    #                 'product_code':{"$ifNull":[
-    #                     f"$answers.{self.f['move_group']}.{self.CATALOG_INVENTORY_OBJ_ID}.{self.f['product_code']}",
-    #                     f"$answers.{self.f['move_group']}.{self.Product.SKU_OBJ_ID}.{self.f['product_code']}",
-    #                 ] } ,
-    #                 'total': f"$answers.{self.f['move_group']}.{self.f['move_group_qty']}",
-    #                 }
-    #         }
-    #     query= [{'$match': match_query }]
-    #     query.append(unwind)
-    #     if unwind_query:
-    #         query.append({'$match': unwind_query })
-    #     if unwind_stage:
-    #         query += unwind_stage
-    #     query.append(project)
-    #     query += [
-    #         {'$group':
-    #             {'_id':
-    #                 { 'product_code': '$product_code',
-    #                   },
-    #               'total': {'$sum': '$total'},
-    #               }
-    #         },
-    #         {'$project':
-    #             {'_id': 0,
-    #             'product_code': '$_id.product_code',
-    #             'total': '$total',
-    #             }
-    #         },
-    #         {'$sort': {'product_code': 1}}
-    #         ]
-    #     print('2query=', simplejson.dumps(query, indent=3))
-    #     res = self.cr.aggregate(query)
-    #     result = {}
-    #     for r in res:
-    #         pcode = r.get('product_code')
-    #         result[pcode] = result.get(pcode, 0)        
-    #         result[pcode] += r.get('total',0)
-    #     if product_code:
-    #         result = result.get(product_code,0)
-    #     return result 
-
