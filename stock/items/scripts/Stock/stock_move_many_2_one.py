@@ -450,12 +450,15 @@ if __name__ == '__main__':
     if not stock_obj.record_id:
         stock_obj.record_id = stock_obj.object_id() 
     stock_obj.folio = folio
+    stock_obj.folio = folio
+    stock_obj.current_record['folio'] = folio
+    stock_obj.answers[stock_obj.f['folio_recepcion']] = folio
     # if status == 'cargar_onts':
     #     stock_obj.load_onts()
     # else:
     #     stock_obj.read_xls_file()
     #try:
-    
+
     stock_obj.set_mongo_connections()
     header, records = stock_obj.read_xls_file()
     groups = []
@@ -478,6 +481,8 @@ if __name__ == '__main__':
         stock_obj.folio = f"{folio}-1/{len(groups)}"
     response = stock_obj.direct_move_in(stock_obj.current_record)
     stock_obj.move_out_stock(stock_obj.current_record)
+    if not stock_obj.proceso_onts:
+        response = stock_obj.move_one_many_one()
     stock_obj.answers[stock_obj.f['inv_adjust_status']] =  'done'
 
     sys.stdout.write(simplejson.dumps({

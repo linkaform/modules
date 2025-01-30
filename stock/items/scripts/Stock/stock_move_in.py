@@ -113,8 +113,6 @@ class Stock(Stock):
         base_row_set[self.f['move_group_qty']] = 1
         series_unique = []
         total_groups = len(groups)
-        self.answers[self.f['folio_recepcion']] = self.folio
-        self.current_record['answers'] = self.answers
         base_record = deepcopy(self.current_record)
         base_record.update(self.get_complete_metadata(fields = {'voucher_id':ObjectId('6743d90d5f1c35d02395a7cf')}))
         base_record['answers'][self.f['move_group']] = []
@@ -325,6 +323,8 @@ if __name__ == '__main__':
 
     stock_obj.folio = folio
     stock_obj.current_record['folio'] = folio
+    stock_obj.answers[stock_obj.f['folio_recepcion']] = folio
+    stock_obj.current_record['answers'] = stock_obj.answers
     stock_obj.set_mongo_connections()
     header, records = stock_obj.read_xls_file()
     if stock_obj.proceso_onts:

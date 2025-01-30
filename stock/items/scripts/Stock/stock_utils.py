@@ -17,7 +17,7 @@ class Stock(Stock):
     def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False, **kwargs):
         super().__init__(settings, folio_solicitud=folio_solicitud, sys_argv=sys_argv, use_api=use_api)
         self.load('JIT', **self.kwargs)
-
+        self.proceso_onts = False
 
         # La relacion entre la forma de inventario y el catalogo utilizado para el inventario
         # por default simpre dejar los mismos nombres
@@ -124,7 +124,8 @@ class Stock(Stock):
                     move_line[self.f['inv_adjust_grp_status']] = 'done'
                     move_line[self.f['move_dest_folio']] = new_folio
                 else:
-                    error = create_resp.get('json',{}).get('error', 'Unkown error')
+                    print('ERROR: create_resp=',create_resp)
+                    error = create_resp.get('json',{}).get('data', 'Unkown error')
                     move_line[self.f['inv_adjust_grp_status']] = 'error'
                     move_line[self.f['inv_adjust_grp_comments']] = f'Status Code: {status_code}, Error: {error}'
         if self.proceso_onts:
@@ -495,7 +496,7 @@ class Stock(Stock):
 
     def read_xls_file(self):
         header, records = self.xls_header_record( self.mf['xls_file'])
-        self.proceso_onts = False
+        
         if not header:
             return None, None
 
