@@ -42,7 +42,7 @@ class Stock(Stock):
             'xls_onts': '66e0cd760cc8e3fb75f23803',
             'capture_num_serie': '66c75e0c0810217b0b5593ca'
         }
-        self.max_sets = 2
+        self.max_sets = 2500
 
     def do_groups(self, header, records):
         pos_serie = header.get('serie_ont')
