@@ -1027,7 +1027,7 @@
                     </group>
                     <groups_fields>[]</groups_fields>
                     <help_text>None</help_text>
-                    <label>Producto</label>
+                    <label>Productoa</label>
                     <number_type>None</number_type>
                     <options>[]</options>
                     <properties>
@@ -1858,7 +1858,7 @@
                     <catalog_fields>[]</catalog_fields>
                     <catalog_relation>None</catalog_relation>
                     <default>True</default>
-                    <default_value>done</default_value>
+                    <default_value>todo</default_value>
                     <descriptor>None</descriptor>
                     <fav>True</fav>
                     <field_id>ad00000000000000000ad999</field_id>
@@ -1971,5 +1971,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1737220666.0</updated_at>
+    <updated_at>1738277205.0</updated_at>
 </lkf>

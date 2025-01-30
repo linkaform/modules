@@ -1293,7 +1293,7 @@
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
                     <help_text>None</help_text>
-                    <label>Folio Recepcion</label>
+                    <label>Folio de Movimiento</label>
                     <number_type>None</number_type>
                     <options>[]</options>
                     <properties>
@@ -2548,5 +2548,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1738267243.0</updated_at>
+    <updated_at>1738276259.0</updated_at>
 </lkf>
