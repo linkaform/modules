@@ -121,6 +121,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -197,6 +198,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -273,6 +275,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -364,6 +367,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -440,6 +444,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -516,6 +521,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -546,7 +552,7 @@
                     <default>False</default>
                     <default_value />
                     <descriptor>None</descriptor>
-                    <fav>True</fav>
+                    <fav>False</fav>
                     <field_id>6209705080c17c97320e3382</field_id>
                     <field_type>catalog-select</field_type>
                     <grading_criteria>{}</grading_criteria>
@@ -592,6 +598,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -622,7 +629,7 @@
                     <default>False</default>
                     <default_value />
                     <descriptor>None</descriptor>
-                    <fav>True</fav>
+                    <fav>False</fav>
                     <field_id>6205f73281bb36a6f157335b</field_id>
                     <field_type>catalog-select</field_type>
                     <grading_criteria>{}</grading_criteria>
@@ -668,6 +675,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -744,6 +752,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -820,6 +829,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -896,6 +906,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -972,6 +983,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1048,6 +1060,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1124,6 +1137,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1200,6 +1214,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1266,6 +1281,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1332,6 +1348,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1398,6 +1415,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1464,6 +1482,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1530,6 +1549,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1550,7 +1570,7 @@
                     <default>False</default>
                     <default_value />
                     <descriptor>None</descriptor>
-                    <fav>False</fav>
+                    <fav>True</fav>
                     <field_id>65dfecbf3199f9a04082955e</field_id>
                     <field_type>date</field_type>
                     <grading_criteria>{}</grading_criteria>
@@ -1596,6 +1616,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1616,7 +1637,7 @@
                     <default>False</default>
                     <default_value />
                     <descriptor>None</descriptor>
-                    <fav>True</fav>
+                    <fav>False</fav>
                     <field_id>6271dc35e84e2577579eafeb</field_id>
                     <field_type>integer</field_type>
                     <grading_criteria>{}</grading_criteria>
@@ -1662,6 +1683,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1728,6 +1750,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1794,6 +1817,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1860,6 +1884,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1926,6 +1951,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1992,6 +2018,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -2058,6 +2085,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -2124,6 +2152,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -2190,6 +2219,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -2275,6 +2305,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -2354,6 +2385,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -2433,6 +2465,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -2499,6 +2532,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -2548,5 +2582,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1738276259.0</updated_at>
+    <updated_at>1738340905.0</updated_at>
 </lkf>
