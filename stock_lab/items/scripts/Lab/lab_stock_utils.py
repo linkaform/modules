@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, date
 from copy import deepcopy
 from bson import ObjectId
 
-from lkf_addons.addons.stock_greenhouse.stock_utils import Stock
+from lkf_addons.addons.stock_greenhouse.app import Stock
 # from lkf_addons.addons.employee.employee_utils import Employee
 # from lkf_addons.addons.product.product_utils import Product, Warehouse
 

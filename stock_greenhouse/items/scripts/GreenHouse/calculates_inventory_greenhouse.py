@@ -4,7 +4,7 @@ from datetime import timedelta, datetime
 from bson import ObjectId
 
 from linkaform_api import settings, network, utils
-from lkf_addons.addons.stock_greenhouse.stock_utils import Stock
+from lkf_addons.addons.stock_greenhouse.app import Stock
 
 from account_settings import *
 

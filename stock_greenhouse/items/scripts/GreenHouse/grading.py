@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 #from account_utils import get_inventory_flow
 from linkaform_api import network, utils
-from lkf_addons.addons.stock_greenhouse.stock_utils import Stock
+from lkf_addons.addons.stock_greenhouse.app import Stock
 
 from account_settings import *
 

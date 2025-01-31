@@ -7,7 +7,7 @@ import sys, simplejson
 from linkaform_api import settings, utils
 from account_settings import *
 
-from lkf_addons.addons.stock_greenhouse.stock_utils import Stock
+from lkf_addons.addons.stock_greenhouse.app import Stock
 
 
 fdict ={

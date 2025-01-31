@@ -4,8 +4,8 @@ import sys, simplejson
 from datetime import datetime, timedelta, date
 from copy import deepcopy
 
-from lkf_addons.addons.stock_greenhouse.stock_reports import Reports
-from lkf_addons.addons.stock_greenhouse.stock_utils import Stock
+from lkf_addons.addons.stock_greenhouse.report import Reports
+from lkf_addons.addons.stock_greenhouse.app import Stock
 
 
 # sys.path.append('/srv/scripts/addons/modules/stock_greenhouse/items/scripts/')

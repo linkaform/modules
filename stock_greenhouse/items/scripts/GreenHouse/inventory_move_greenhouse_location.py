@@ -5,7 +5,7 @@ from math import floor
 
 #from account_utils import unlist, get_inventory_flow, get_record_greenhouse_inventory
 
-from lkf_addons.addons.stock_greenhouse.stock_utils import Stock
+from lkf_addons.addons.stock_greenhouse.app import Stock
 
 from account_settings import *
 

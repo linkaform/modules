@@ -7,7 +7,7 @@ from linkaform_api import settings, utils
 from account_settings import *
 #from account_utils import get_plant_recipe, select_S4_recipe
 
-from lkf_addons.addons.stock_greenhouse.stock_utils import Stock
+from lkf_addons.addons.stock_greenhouse.app import Stock
 
 #from account_utils import Plant, PlantRecipe
 

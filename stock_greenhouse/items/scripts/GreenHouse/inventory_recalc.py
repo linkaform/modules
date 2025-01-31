@@ -2,7 +2,7 @@
 import sys, simplejson, threading, concurrent.futures, time
 
 from linkaform_api import settings
-from lkf_addons.addons.stock_greenhouse.stock_utils import Stock
+from lkf_addons.addons.stock_greenhouse.app import Stock
 
 from account_settings import *
 
