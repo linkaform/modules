@@ -113,21 +113,54 @@ class Stock(Stock):
             this_metadata['answers'] = answers
             new_stock_records.append(this_metadata)
             if not self.proceso_onts:
-                create_resp = self.lkf_api.post_forms_answers(this_metadata)
-                try:
-                    new_inv = self.get_record_by_id(create_resp.get('id'))
-                except:
-                    print('no encontro...')
-                status_code = create_resp.get('status_code',404)
-                if status_code == 201:
-                    new_folio = create_resp.get('json',{}).get('folio','')
-                    move_line[self.f['inv_adjust_grp_status']] = 'done'
-                    move_line[self.f['move_dest_folio']] = new_folio
+            ####
+                exists = self.product_stock_exists(
+                                product_code=moves['product_code'], 
+                                sku=moves['sku'], 
+                                lot_number=moves['product_lot'], 
+                                warehouse=warehouse_to, 
+                                location=location_to)
+                cache_data = {
+                            '_id': f"{moves['product_code']}_{moves['sku']}_{moves['product_lot']}_{warehouse_to}_{location_to}",
+                            'move_in': moves['move_group_qty'],
+                            'product_lot': moves['product_lot'],
+                            'product_code':moves['product_code'],
+                            'sku':moves['sku'],
+                            'warehouse': warehouse_to,
+                            'warehouse_location': location_to,
+                            'record_id':self.record_id
+                            }
+                if exists:
+                    if self.folio:
+                        cache_data.update({'kwargs': {'nin_folio':self.folio }})
+                    self.cache_set(cache_data)
+                    response = self.update_stock(answers=exists.get('answers',{}), form_id=self.FORM_INVENTORY_ID, folios=exists['folio'])
+                    if not response:
+                        comments += f"Error updating product {moves['product_lot']} lot {moves['product_lot']}. "
+                        move_line[self.f['inv_adjust_grp_status']] = 'error'
+                    else:
+                        move_line[self.f['move_dest_folio']] = exists['folio']
+                        move_line[self.f['inv_adjust_grp_status']] = 'done'
+                        move_line[self.f['inv_adjust_grp_comments']] = ""
+                        print('moves', move_line)
+                ####
                 else:
-                    print('ERROR: create_resp=',create_resp)
-                    error = create_resp.get('json',{}).get('data', 'Unkown error')
-                    move_line[self.f['inv_adjust_grp_status']] = 'error'
-                    move_line[self.f['inv_adjust_grp_comments']] = f'Status Code: {status_code}, Error: {error}'
+                    create_resp = self.lkf_api.post_forms_answers(this_metadata)
+                
+                    try:
+                        new_inv = self.get_record_by_id(create_resp.get('id'))
+                    except:
+                        print('no encontro...')
+                    status_code = create_resp.get('status_code',404)
+                    if status_code == 201:
+                        new_folio = create_resp.get('json',{}).get('folio','')
+                        move_line[self.f['inv_adjust_grp_status']] = 'done'
+                        move_line[self.f['move_dest_folio']] = new_folio
+                    else:
+                        print('ERROR: create_resp=',create_resp)
+                        error = create_resp.get('json',{}).get('data', 'Unkown error')
+                        move_line[self.f['inv_adjust_grp_status']] = 'error'
+                        move_line[self.f['inv_adjust_grp_comments']] = f'Status Code: {status_code}, Error: {error}'
         if self.proceso_onts:
             if new_stock_records:
                 res = self.cr.insert_many(new_stock_records)
