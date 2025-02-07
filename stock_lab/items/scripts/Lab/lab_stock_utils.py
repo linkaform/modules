@@ -116,6 +116,7 @@ class Stock(Stock):
             'set_production_date_out':'61f1fcf8c66d2990c8fcccc6',
             'stage_4_plan_require_yearweek':'626c2792f7f680727fdba0f5',
             'stage_4_plan_requierments':'6206b6186c0b3b00535d60d8',
+            'next_cutweek':'65e241959ee4e466eadd2be3',
             'new_cutweek':'65e241959ee4e466eadd2be3',
             'new_location_group':'63193fc51b3cefa880fefcc7',
             'new_location_racks':'c24000000000000000000001',

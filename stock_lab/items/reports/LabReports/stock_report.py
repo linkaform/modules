@@ -20,6 +20,7 @@ class Reports(Reports, Stock):
         #base.LKF_Base.__init__(self, settings, sys_argv=sys_argv, use_api=use_api)
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
         self.GREENHOUSE_INVENTORY_ID = self.lkm.form_id('green_house_inventory','id')
+        self.FORM_INVENTORY_ID = self.lkm.form_id('lab_inventory','id')
         self.plants_by_week = {}
         self.f.update({
             'catalog_product_lot':'620a9ee0a449b98114f61d77',
