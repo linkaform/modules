@@ -15,7 +15,7 @@ class Accesos(Accesos):
     def search_in_catalog(self, data):
         # print('dataaaaaaaaaaaaaaaaaaaaaaaaa')
         # print(simplejson.dumps(data, indent=4))
-        departamento = data.get(self.mf['catalogo_departamentos'], {}).get(self.mf['departamento_empleado'])
+        departamento = data.get(self.DEPARTAMENTOS_OBJ_ID, {}).get(self.mf['departamento_empleado'])
         grupo_repetitivo = data.get(self.mf['grupo_puestos'], [])
         
         if not departamento:
@@ -52,13 +52,13 @@ class Accesos(Accesos):
                         existing_puesto.add(puesto)
 
                 for item in grupo_repetitivo:
-                    puesto_grupo = item.get(self.mf['catalogo_puestos'], {}).get(self.mf['puesto_empleado'])
+                    puesto_grupo = item.get(self.PUESTOS_OBJ_ID, {}).get(self.mf['puesto_empleado'])
                     # print(f'Puesto: {puesto_grupo}')
 
                     if puesto_grupo in existing_puesto:
-                        item.get(self.mf['catalogo_puestos']).update({'existente': True})
+                        item.get(self.PUESTOS_OBJ_ID).update({'existente': True})
                     else:
-                        item.get(self.mf['catalogo_puestos']).update({'existente': False})
+                        item.get(self.PUESTOS_OBJ_ID).update({'existente': False})
 
                 # print('grupo_repetitivo/////////////', grupo_repetitivo)
                 self.insert_group_to_catalog(data, grupo_repetitivo)
@@ -76,26 +76,26 @@ class Accesos(Accesos):
         # print(simplejson.dumps(grupo_repetitivo, indent=4))
 
         answer = {}
-        departamento = data.get(self.mf['catalogo_departamentos'], {}).get(self.mf['departamento_empleado'])
+        departamento = data.get(self.DEPARTAMENTOS_OBJ_ID, {}).get(self.mf['departamento_empleado'])
         grupo_repetitivo = data.get(self.mf['grupo_puestos'], [])
         catalogo_metadata = self.lkf_api.get_catalog_metadata(catalog_id=self.CONF_DEPARTAMENTOS_PUESTOS_CAT_ID)
         
         answer[self.mf['departamento_empleado']] = departamento
 
         for item in grupo_repetitivo:
-            if not item.get(self.mf['catalogo_puestos'], {}).get('existente'):
+            if not item.get(self.PUESTOS_OBJ_ID, {}).get('existente'):
                 answer.update(
                     {
-                        self.mf['puesto_empleado']: item.get(self.mf['catalogo_puestos'], {}).get(self.mf['puesto_empleado']),
+                        self.mf['puesto_empleado']: item.get(self.PUESTOS_OBJ_ID, {}).get(self.mf['puesto_empleado']),
                     }
                 )
                 catalogo_metadata.update({'answers': answer})
                 # print('catalogo_metadata/////////////////////')
-                print(f"Nuevo registro: {item.get(self.mf['catalogo_puestos'], {}).get(self.mf['puesto_empleado'])}")
+                print(f"Nuevo registro: {item.get(self.PUESTOS_OBJ_ID, {}).get(self.mf['puesto_empleado'])}")
                 self.lkf_api.post_catalog_answers(catalogo_metadata, jwt_settings_key='APIKEY_JWT_KEY')
                 # print('Respuesta de la creación del registro en el catálogo:', res)
             else:
-                print(f"{item.get(self.mf['catalogo_puestos'], {}).get(self.mf['puesto_empleado'])} ya se encuentra registrado")
+                print(f"{item.get(self.PUESTOS_OBJ_ID, {}).get(self.mf['puesto_empleado'])} ya se encuentra registrado")
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
