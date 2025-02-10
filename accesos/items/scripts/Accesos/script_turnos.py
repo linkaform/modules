@@ -77,6 +77,9 @@ if __name__ == "__main__":
     elif option == 'update_bitacora_entrada':
         # used
         response = acceso_obj.update_bitacora_entrada(data, record_id=record_id)
+    elif option == 'update_bitacora_entrada_many':
+        # used
+        response = acceso_obj.update_bitacora_entrada_many(data, record_id=record_id)
     elif option == 'notes_guard':
         response = acceso_obj.get_guard_notes(location, booth)
     elif option == 'vehiculo_tipo':
