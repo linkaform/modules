@@ -43,6 +43,8 @@ if __name__ == "__main__":
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
     elif option == 'assets_access_pass':
         response = acceso_obj.assets_access_pass(location)
+    elif option == 'assing_gafete':
+        response = acceso_obj.assing_gafete(data_gafete)
     elif option == 'list_bitacora':
         response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades)
     elif option == 'get_user_booths':
@@ -99,6 +101,7 @@ if __name__ == "__main__":
         response = acceso_obj.visita_a_detail(location, visita_a)
     elif option == 'enviar_msj':
         response = acceso_obj.create_enviar_msj(data_msj=data_msj, data_cel_msj=data_cel_msj)
+
     else :
         response = {"msg": "Empty"}
     print('================ END RETURN =================')
