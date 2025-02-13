@@ -10,10 +10,11 @@ class Custom(Custom):
     
     def actualizar_proximo_mantenimiento(self, equipo, fecha):
         serie = equipo[self.CATALOGO_EQUIPOS_OBJ_ID][self.f['serie_orden_trabajo']]
-        frecuencia = self.unlist(equipo[self.CATALOGO_EQUIPOS_OBJ_ID][self.f['frecuencia_mantenimniento']])
+        print('equipo', equipo[self.CATALOGO_EQUIPOS_OBJ_ID])
+        frecuencia = self.unlist(equipo[self.CATALOGO_EQUIPOS_OBJ_ID].get(self.f['frecuencia_mantenimniento'],'3 Meses'))
         equipo = self.get_equipo(serie)
         equipo_id = equipo['_id']
-        frecuencia_obj = frecuencia.split(' ')
+        frecuencia_obj =  frecuencia.split(' ') if frecuencia else [3,]
         frecuencia_obj = frecuencia_obj[0]
         frecuencia_obj = int(frecuencia_obj)
         fecha_n = datetime.strptime(fecha, '%Y-%m-%d')
