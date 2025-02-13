@@ -28,6 +28,7 @@ if __name__ == "__main__":
     pre_sms = data.get("enviar_pre_sms",{})
     update_obj = data.get("update_obj",{})
     envio = data.get("envio",[])
+    account_id = data.get("account_id", "")
     
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
@@ -64,7 +65,10 @@ if __name__ == "__main__":
     elif option == 'get_my_pases':
         response = acceso_obj.get_my_pases(tab_status=tab_status)
     elif option == 'get_pdf':
-        response = acceso_obj.get_pdf(qr_code)
+        if account_id == 7742:
+            response = acceso_obj.get_pdf(qr_code, template_id=553)
+        else:
+            response = acceso_obj.get_pdf(qr_code)
     elif option == 'get_user_contacts':
         response = acceso_obj.get_user_contacts()
     elif option == 'get_config_modulo_seguridad':
