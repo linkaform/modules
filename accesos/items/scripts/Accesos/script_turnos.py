@@ -36,6 +36,9 @@ if __name__ == "__main__":
     status_visita=data.get("status_visita", "")
     inActive= data.get("inActive", "")
     prioridades = data.get("prioridades",[])
+    id_bitacora = data.get("id_bitacora",[])
+    data_gafete = data.get("data_gafete",{})
+    tipo_movimiento = data.get("tipo_movimiento",{})
     #-FUNCTIONS
     print('option', option)
     if option == 'load_shift':
@@ -44,7 +47,7 @@ if __name__ == "__main__":
     elif option == 'assets_access_pass':
         response = acceso_obj.assets_access_pass(location)
     elif option == 'assing_gafete':
-        response = acceso_obj.assing_gafete(data_gafete)
+        response = acceso_obj.assing_gafete(data_gafete, id_bitacora, tipo_movimiento)
     elif option == 'list_bitacora':
         response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades)
     elif option == 'get_user_booths':
