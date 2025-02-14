@@ -26,8 +26,9 @@ if __name__ == "__main__":
     qr_code = qr_code.get('_id', '').get('$oid', '')
 
     #Saber si sera un pre_sms o no
-    pre_sms_raw = json.loads(sys.argv[2])
-    pre_sms_value = pre_sms_raw.get('pre_sms', '')
+    data_raw = json.loads(sys.argv[2])
+    pre_sms_value = data_raw.get('pre_sms', '')
+    cuenta_value = data_raw.get('cuenta', '')
 
     # Convertir a booleano de forma segura
     if isinstance(pre_sms_value, bool):
@@ -78,7 +79,7 @@ if __name__ == "__main__":
     print(simplejson.dumps(data_cel_msj, indent=4))
     
     #Enviar sms
-    response = acceso_obj.send_msj_pase(data_cel_msj=data_cel_msj, pre_sms=pre_sms)
+    response = acceso_obj.send_msj_pase(data_cel_msj=data_cel_msj, pre_sms=pre_sms, account=cuenta_value)
 
     sys.stdout.write(simplejson.dumps({
         'status': 101,
