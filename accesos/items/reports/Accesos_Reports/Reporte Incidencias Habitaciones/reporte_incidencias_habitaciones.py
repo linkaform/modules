@@ -297,7 +297,6 @@ def get_graphic_data(ubicacion='', mes='', date_from='', date_to=''):
     return res
 
 def format_graphic(data):
-    print('format_graphiiiiccc', data)
     inspecciones_por_mes = {}
     nos_por_mes = {}
 
