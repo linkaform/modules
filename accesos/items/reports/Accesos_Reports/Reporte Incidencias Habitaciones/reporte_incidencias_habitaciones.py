@@ -26,7 +26,6 @@ def get_first_filter():
 
     try:
         row_catalog = script_obj.lkf_api.search_catalog(script_obj.UBICACIONES_CAT_ID, mango_query)
-        # print(f"Resultado de la búsqueda: {row_catalog}")
         data_formateada = format_first_filter(row_catalog)
         return data_formateada
     except Exception as e:
@@ -58,16 +57,15 @@ def get_all_rooms(ubicacion=''):
 
     try:
         row_catalog = script_obj.lkf_api.search_catalog(script_obj.AREAS_DE_LAS_UBICACIONES_CAT_ID, mango_query)
-        # print(f"Resultado de la búsqueda: {row_catalog}")
         res, cantidad = format_get_all_rooms(row_catalog)
         return res, cantidad
     except Exception as e:
-        print(f"Error al realizar la búsqueda en get_second_filter: {e}")
+        print(f"Error al realizar la búsqueda en get_all_rooms: {e}")
 
 def format_get_all_rooms(data):
     rooms = []
     for room in data:
-        if "HABITACIÓN" in room.get(script_obj.mf['nombre_area']):
+        if "HABITACIÓN " in room.get(script_obj.mf['nombre_area']):
             rooms.append({
                 "habitacion": room.get(script_obj.mf['nombre_area'])
             })
@@ -117,7 +115,6 @@ def get_report_data(ubicacion='', mes='', date_from='', date_to=''):
     }
 
     if mes and mes != 'custom':
-        print('entra en mes')
         meses = {
             'enero': 1,
             'febrero': 2,
@@ -146,11 +143,9 @@ def get_report_data(ubicacion='', mes='', date_from='', date_to=''):
                 "$lte": date_to_mes
             }
     if date_from:
-        print('entra en date from')
         date_from = datetime.strptime(date_from, "%Y-%m-%d")
         match_query_visitas["created_at"] = {"$gte": date_from}
     if date_to:
-        print('entra en date to')
         date_to = datetime.strptime(date_to, "%Y-%m-%d")
         if "created_at" not in match_query_visitas:
             match_query_visitas["created_at"] = {}
@@ -169,10 +164,9 @@ def get_report_data(ubicacion='', mes='', date_from='', date_to=''):
     ]
 
     resultado = script_obj.format_cr(script_obj.cr.aggregate(query_visitas))
-    # print(resultado)
     cards = format_get_cards(resultado, cantidad_rooms=cantidad_rooms)
     res = actualizar_habitaciones_con_ids(rooms, resultado)
-    graphic = format_graphic(resultado)
+    graphic = get_graphic_data(ubicacion=ubicacion, mes=mes, date_from=date_from, date_to=date_to)
     return res, cantidad_rooms, cards, graphic
 
 def actualizar_habitaciones_con_ids(formato_final, data_con_ids):
@@ -199,12 +193,9 @@ def actualizar_habitaciones_con_ids(formato_final, data_con_ids):
                     if numero_habitacion in inspecciones_adicionales and inspecciones_adicionales[numero_habitacion]:
                         habitacion['inspecciones'] = inspecciones_adicionales[numero_habitacion]
     
-    # print(formato_final)
     return formato_final
 
 def format_get_cards(data, cantidad_rooms):
-    print("Cantidad de habitaciones por piso:", cantidad_rooms)
-    
     total_inspecciones = 0
     total_nos = 0
     data_cards = {}
@@ -237,14 +228,76 @@ def format_get_cards(data, cantidad_rooms):
         'totalnos': total_nos
     })
 
-    # Resultados
-    # print("Total de inspecciones:", total_inspecciones)
-    # print("Total de 'nos':", total_nos)
-    # print("Promedio de cumplimiento:", promedio_cumplimiento)
-    # print("Porcentaje de inspecciones realizadas:", porcentaje_inspecciones, "%")
     return data_cards
 
+def get_graphic_data(ubicacion='', mes='', date_from='', date_to=''):
+    match_query_visitas = {
+        "deleted_at": {"$exists": False},
+        "form_id": 126656,
+        f"answers.{script_obj.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{script_obj.mf['ubicacion']}": ubicacion,
+        f"answers.{script_obj.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{script_obj.mf['nombre_area']}": {
+            "$regex": ".*HABITACIÓN.*",
+            "$options": "i"
+        },
+    }
+
+    if mes and mes != 'custom':
+        meses = {
+            'enero': 1,
+            'febrero': 2,
+            'marzo': 3,
+            'abril': 4,
+            'mayo': 5,
+            'junio': 6,
+            'julio': 7,
+            'agosto': 8,
+            'septiembre': 9,
+            'octubre': 10,
+            'noviembre': 11,
+            'diciembre': 12
+        }
+        mes_num = meses.get(mes.lower())
+        if mes_num:
+            year = datetime.now().year
+            first_day_of_month = datetime(year, mes_num, 1)
+            last_day_of_month = datetime(year, mes_num, calendar.monthrange(year, mes_num)[1])
+
+            date_from_mes = first_day_of_month - timedelta(days=180)
+            date_to_mes = last_day_of_month + timedelta(days=180)
+
+            match_query_visitas["created_at"] = {
+                "$gte": date_from_mes,
+                "$lte": date_to_mes
+            }
+    if date_from:
+        if isinstance(date_from, str):
+            date_from = datetime.strptime(date_from, "%Y-%m-%d")
+        match_query_visitas["created_at"] = {"$gte": date_from}
+    if date_to:
+        if isinstance(date_to, str):
+            date_to = datetime.strptime(date_to, "%Y-%m-%d")
+        if "created_at" not in match_query_visitas:
+            match_query_visitas["created_at"] = {}
+        match_query_visitas["created_at"]["$lte"] = date_to
+
+    proyect_fields_visitas = {
+        '_id': 1,
+        'created_date': '$created_at',
+        'numero': f"$answers.{script_obj.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{script_obj.mf['nombre_area']}",
+        'total_nos': '$points'
+    }
+
+    query_visitas = [
+        {'$match': match_query_visitas},
+        {'$project': proyect_fields_visitas},
+    ]
+
+    resultado = script_obj.format_cr(script_obj.cr.aggregate(query_visitas))
+    res = format_graphic(resultado)
+    return res
+
 def format_graphic(data):
+    print('format_graphiiiiccc', data)
     inspecciones_por_mes = {}
     nos_por_mes = {}
 
@@ -289,7 +342,6 @@ def format_graphic(data):
             }
         ]
     }
-    # print(simplejson.dumps(resultado, indent=4))
     return resultado
 
 def get_second_table_data(ubicacion='', mes='', date_from='', date_to=''):
@@ -304,7 +356,6 @@ def get_second_table_data(ubicacion='', mes='', date_from='', date_to=''):
     }
 
     if mes and mes != 'custom':
-        print('entra en mes')
         meses = {
             'enero': 1,
             'febrero': 2,
@@ -333,11 +384,9 @@ def get_second_table_data(ubicacion='', mes='', date_from='', date_to=''):
                 "$lte": date_to_mes
             }
     if date_from:
-        print('entra en date from')
         date_from = datetime.strptime(date_from, "%Y-%m-%d")
         match_query_visitas["created_at"] = {"$gte": date_from}
     if date_to:
-        print('entra en date to')
         date_to = datetime.strptime(date_to, "%Y-%m-%d")
         if "created_at" not in match_query_visitas:
             match_query_visitas["created_at"] = {}
@@ -348,7 +397,6 @@ def get_second_table_data(ubicacion='', mes='', date_from='', date_to=''):
     ]
 
     resultado = script_obj.format_cr(script_obj.cr.aggregate(query_visitas))
-    # print(resultado)
     res = format_data_second_table(resultado)
     return res
 
