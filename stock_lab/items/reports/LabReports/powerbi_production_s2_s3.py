@@ -16,6 +16,7 @@ class Reports(Reports):
                     {"$match":{
                             "deleted_at":{"$exists":False},
                             "form_id":self.MOVE_NEW_PRODUCTION_ID,
+                            f"answers.{self.f['move_status']}":'done',
                         }
                     },
                     {"$project":{

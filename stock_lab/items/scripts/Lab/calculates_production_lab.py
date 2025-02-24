@@ -17,7 +17,6 @@ class Stock(Stock):
         self.answers[self.PRODUCT_RECIPE_OBJ_ID ] = self.answers.get(self.PRODUCT_RECIPE_OBJ_ID, {})
         # soil_type = self.unlist(self.answers.get(self.PRODUCT_RECIPE_OBJ_ID,{}).get(self.f['reicpe_soil_type'],""))
         # self.answers[self.PRODUCT_RECIPE_OBJ_ID ][self.f['reicpe_soil_type']] = soil_type
-
         # self.answers[self.PRODUCT_RECIPE_OBJ_ID ][self.f['prod_qty_per_container']] = \
         #     [self.answers.get(self.PRODUCT_RECIPE_OBJ_ID,{}).get(self.f['prod_qty_per_container'],""),  ]
         # self.answers[self.PRODUCT_RECIPE_OBJ_ID ][self.f['reicpe_container']] = \
