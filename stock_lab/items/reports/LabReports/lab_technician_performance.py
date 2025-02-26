@@ -16,6 +16,7 @@ class Reports(Reports):
         
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
+        self.PRODUCTION_FORM_ID = self.lkm.form_id('lab_production','id')
         self.json = {
                     "firstElement":{
                         'tabledata':[]
@@ -42,43 +43,32 @@ class Reports(Reports):
 
     def get_productivity(self, yearweek_form, yearweek_to, plant_code, stage):
         res = []
-        print('========= cr==========', self.cr)
+        # print('========= cr==========', self.cr)
+        # print('**********===')
         productivity_lab = self.get_plants_per_hr(yearweek_form, yearweek_to, plant_code, stage, by_team=False)
+        # print('*aaaaaa*')
         productivity_lab += self.get_plants_per_hr(yearweek_form, yearweek_to, plant_code, stage)
         prod_stage = self.get_plants_per_hr_by_stage(yearweek_form, yearweek_to, plant_code, stage)
 
         prod_stage, prod_stage_char = arrage_stage(prod_stage)
-        # print('prod_stage_char=' ,prod_stage_chard)
         ###
-        # print('1- prod_stage',prod_stage)
-        # print('2- prod_stage_char',prod_stage_char)
         prod_code = self.get_plants_per_hr_by_plant(yearweek_form, yearweek_to, plant_code, stage, sort_by={'plants_per_hr':-1})
 
         ## Por Codigo
         prod_code_char = arrage_stage_plants(prod_code)
-        # print('3- prod_code_char',prod_code_char)
         ##
         prod_code_team = self.get_plants_per_hr_by_plant_team(yearweek_form, yearweek_to, plant_code, stage)
         plant_team_table = arrage_tems(prod_code, prod_code_team)
-        # print('4- plant_team_table',plant_team_table)
         ##
         prod_code_cutter = self.get_plants_per_hr_by_plant_cutter(yearweek_form, yearweek_to, plant_code, stage, group='cutter')
         prod_code_cutter_plant = self.get_plants_per_hr_by_plant_cutter(yearweek_form, yearweek_to, plant_code, stage, group='plant')
-        # print('prod_code_cutter_plant',prod_code_cutter_plant )
         plant_cutter_table = arrage_plant_cutter(prod_code, prod_code_cutter_plant)
         cutter_plant_table = arrage_cutter_plant(prod_code_cutter, prod_code_cutter_plant)
         cutter_plant_char = arrage_cutter_plant_chart(prod_code_cutter)
-        # print('5- plant_cutter_table',plant_cutter_table)
-        # print('6. cutter_plant_char',cutter_plant_char)
         ## hours
-        # print('4- prod_code_team',prod_code_team)
         team_hour_chart, plant_hour_chart = arrage_hours_team(prod_code_team)
-        # print('8. team_hour_chart',team_hour_chart)
-        # print('9. plant_hour_chart',plant_hour_chart)
         cutter_hours_chart = arrage_hours_cutter(prod_code_cutter_plant)
-        # print('10.cuter_hour_chart',cutter_hours_chart)
         cutter_hours_table = table_hours_cutter(cutter_hours_chart)
-        # print('11. plant_hour_chart',cutter_hours_table)
 
         #---Asign
         self.json['firstElement']['tabledata'] = prod_stage
@@ -152,8 +142,10 @@ class Reports(Reports):
         aggregate.append(project)
         aggregate.append(sort)
         res = self.cr.aggregate(aggregate)
+        # print('aggregate=',aggregate)
         result = []
         for r in res:
+            print('r=',r)
             r['plants'] = int(r['plants_per_hr'])
             r['plants_per_hr'] = '{} pl/hr'.format(int(r['plants_per_hr']))
             if r['stage'] == 'S2':
@@ -510,7 +502,6 @@ if __name__ == "__main__":
     plant_code = data.get("plant_code")
     stage = data.get("stage")
     test = data.get("test",[])
-    print('stage', stage)
     if stage == "":
         stage = None
     if stage =='stage2' or stage == 'stage_2' or stage == '2':
@@ -522,11 +513,9 @@ if __name__ == "__main__":
 
     yearweek_form = date_from
     yearweek_to = date_to
-    try:
-            ####
-        productivity = report_obj.get_productivity(yearweek_form, yearweek_to, plant_code, stage)
-        if not test:
-            sys.stdout.write(simplejson.dumps(report_obj.report_print()))
 
-    except Exception as e:
-        sys.stdout.write(simplejson.dumps({"firstElement": {"error":f"Something went wrong: {e}"}}))
+    productivity = report_obj.get_productivity(yearweek_form, yearweek_to, plant_code, stage)
+    if not test:
+        sys.stdout.write(simplejson.dumps(report_obj.report_print()))
+
+
