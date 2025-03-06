@@ -8,15 +8,15 @@ import sys, simplejson, json
 from linkaform_api import settings
 from account_settings import *
 
-from accesos_utils import Accesos
+from employee_utils import Employee
 
-class Accesos(Accesos):
+class Employee(Employee):
 
     def search_in_catalog(self, data):
         # print('dataaaaaaaaaaaaaaaaaaaaaaaaa')
         # print(simplejson.dumps(data, indent=4))
-        departamento = data.get(self.DEPARTAMENTOS_OBJ_ID, {}).get(self.mf['departamento_empleado'])
-        grupo_repetitivo = data.get(self.mf['grupo_puestos'], [])
+        departamento = data.get(self.DEPARTAMENTOS_OBJ_ID, {}).get(self.f['departamento_empleado'])
+        grupo_repetitivo = data.get(self.f['grupo_puestos'], [])
         
         if not departamento:
             print("El departamento no se encontró en los datos.")
@@ -24,12 +24,12 @@ class Accesos(Accesos):
         
         selector = {}
         
-        selector.update({f"answers.{self.mf['departamento_empleado']}": departamento})
+        selector.update({f"answers.{self.f['departamento_empleado']}": departamento})
 
         if not selector:
             selector = {"_id": {"$gt": None}}
 
-        fields = ["_id", f"answers.{self.mf['departamento_empleado']}", f"answers.{self.mf['puesto_empleado']}"]
+        fields = ["_id", f"answers.{self.f['departamento_empleado']}", f"answers.{self.f['puesto_empleado']}"]
 
         mango_query = {
             "selector": selector,
@@ -45,14 +45,14 @@ class Accesos(Accesos):
                 existing_puesto = set()
                 
                 for item_catalog in row_catalog:
-                    puesto = item_catalog.get(self.mf['puesto_empleado'])
+                    puesto = item_catalog.get(self.f['puesto_empleado'])
                     # print(f'Puesto row_catalog: {puesto}')
 
                     if puesto:
                         existing_puesto.add(puesto)
 
                 for item in grupo_repetitivo:
-                    puesto_grupo = item.get(self.PUESTOS_OBJ_ID, {}).get(self.mf['puesto_empleado'])
+                    puesto_grupo = item.get(self.PUESTOS_OBJ_ID, {}).get(self.f['puesto_empleado'])
                     # print(f'Puesto: {puesto_grupo}')
 
                     if puesto_grupo in existing_puesto:
@@ -76,31 +76,31 @@ class Accesos(Accesos):
         # print(simplejson.dumps(grupo_repetitivo, indent=4))
 
         answer = {}
-        departamento = data.get(self.DEPARTAMENTOS_OBJ_ID, {}).get(self.mf['departamento_empleado'])
-        grupo_repetitivo = data.get(self.mf['grupo_puestos'], [])
+        departamento = data.get(self.DEPARTAMENTOS_OBJ_ID, {}).get(self.f['departamento_empleado'])
+        grupo_repetitivo = data.get(self.f['grupo_puestos'], [])
         catalogo_metadata = self.lkf_api.get_catalog_metadata(catalog_id=self.CONF_DEPARTAMENTOS_PUESTOS_CAT_ID)
         
-        answer[self.mf['departamento_empleado']] = departamento
+        answer[self.f['departamento_empleado']] = departamento
 
         for item in grupo_repetitivo:
             if not item.get(self.PUESTOS_OBJ_ID, {}).get('existente'):
                 answer.update(
                     {
-                        self.mf['puesto_empleado']: item.get(self.PUESTOS_OBJ_ID, {}).get(self.mf['puesto_empleado']),
+                        self.f['puesto_empleado']: item.get(self.PUESTOS_OBJ_ID, {}).get(self.f['puesto_empleado']),
                     }
                 )
                 catalogo_metadata.update({'answers': answer})
                 # print('catalogo_metadata/////////////////////')
-                print(f"Nuevo registro: {item.get(self.PUESTOS_OBJ_ID, {}).get(self.mf['puesto_empleado'])}")
+                print(f"Nuevo registro: {item.get(self.PUESTOS_OBJ_ID, {}).get(self.f['puesto_empleado'])}")
                 self.lkf_api.post_catalog_answers(catalogo_metadata, jwt_settings_key='APIKEY_JWT_KEY')
                 # print('Respuesta de la creación del registro en el catálogo:', res)
             else:
-                print(f"{item.get(self.PUESTOS_OBJ_ID, {}).get(self.mf['puesto_empleado'])} ya se encuentra registrado")
+                print(f"{item.get(self.PUESTOS_OBJ_ID, {}).get(self.f['puesto_empleado'])} ya se encuentra registrado")
 
 if __name__ == "__main__":
-    acceso_obj = Accesos(settings, sys_argv=sys.argv)
-    acceso_obj.console_run()
-    acceso_obj.search_in_catalog(acceso_obj.answers)
+    employee_obj = Employee(settings, sys_argv=sys.argv)
+    employee_obj.console_run()
+    employee_obj.search_in_catalog(employee_obj.answers)
 
     sys.stdout.write(simplejson.dumps({
         'status': 101,
