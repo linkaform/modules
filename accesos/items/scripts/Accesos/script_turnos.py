@@ -35,6 +35,7 @@ if __name__ == "__main__":
     data_cel_msj=data.get("data_cel_msj", {})
     status_visita=data.get("status_visita", "")
     inActive= data.get("inActive", "")
+    turn_areas= data.get("turn_areas", True)
     prioridades = data.get("prioridades",[])
     id_bitacora = data.get("id_bitacora",[])
     data_gafete = data.get("data_gafete",{})
@@ -51,7 +52,7 @@ if __name__ == "__main__":
     elif option == 'list_bitacora':
         response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades)
     elif option == 'get_user_booths':
-        response = acceso_obj.get_user_booths_availability()
+        response = acceso_obj.get_user_booths_availability(turn_areas=turn_areas)
     elif option == 'get_boot_guards' or option == 'guardias_de_apoyo':
         response = acceso_obj.get_booths_guards(location, area, solo_disponibles=True, **{'position':acceso_obj.support_guard})
     elif option == 'catalog_estado':
