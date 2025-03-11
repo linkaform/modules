@@ -68,6 +68,8 @@ def arrange_info(yearWeek):
     res = []
     x = 0
     for pcode, data in report_obj.plants.items():
+        print('pcode', pcode)
+        print('data2', data)
         row = {}
         if x == 0:
             row = {

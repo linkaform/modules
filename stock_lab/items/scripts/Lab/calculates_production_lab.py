@@ -2,7 +2,7 @@
 import sys, simplejson, math
 from datetime import timedelta, datetime
 
-from linkaform_api import settings, network, utils
+from linkaform_api import network, utils
 
 #from account_utils import get_plant_recipe, select_S4_recipe, get_record_greenhouse_inventory
 from account_settings import *
@@ -29,6 +29,9 @@ class Stock(Stock):
 
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)
+    print('stock _obj', stock_obj)
+    print('stock _obj', stock_obj.settings)
+    print('stock _obj', stock_obj.settings.config)
     #stock_obj.set_product_catalog()
     stock_obj.console_run()
     prod_status = stock_obj.answers.get(stock_obj.f['production_left_overs'],'')

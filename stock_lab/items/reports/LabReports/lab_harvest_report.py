@@ -39,29 +39,38 @@ def arrange_info(data, stage, recipes3={}, recipes4={}, report_obj=None):
                 cut_yearWeek = x.get('cut_yearWeek')
             else:
                 cut_yearWeek = x.get('product_lot')
+            print('cut_yearWeek', cut_yearWeek)
             selected_recipe_s4 = report_obj.select_S4_recipe(recipes4.get(pcode,{}), str(cut_yearWeek)[4:])
-            multi_rate_s4 = selected_recipe_s4.get('S4_mult_rate',1)
-            overage_s4 = selected_recipe_s4.get('S4_overage', selected_recipe_s4.get('S4_overage_rate',0))
             grow_weeks_s4 = selected_recipe_s4.get('S4_growth_weeks', 0)
+            print('grow_weeks_s4', grow_weeks_s4)
             t_grow_weeks = int(str(cut_yearWeek)[4:]) + grow_weeks_s4
+            print('t_grow_weeks', t_grow_weeks)
             x['total'] = x.get('total', x.get('total_harvest',0))
             if x.get('from') == 'Stage 3':
                 selected_recipe = report_obj.select_S4_recipe(recipes3.get(pcode,{}), str(cut_yearWeek)[4:])
                 multi_rate = selected_recipe.get('S4_mult_rate',1)
+                print('333multi_rate', multi_rate)
                 grow_weeks = selected_recipe.get('S4_growth_weeks',0)
                 overage = selected_recipe.get('S4_overage_rate', selected_recipe_s4.get('S4_overage', 0))
+                print('TOTAL1', x['total'])
                 x['total'] =  (x['total'] * multi_rate) * (1-overage)
+                print('TOTAL2===', x['total'])
                 t_grow_weeks +=  grow_weeks
+            multi_rate = selected_recipe_s4.get('S4_mult_rate',1)
+            print('multi_rate', multi_rate)
+            overage_s4 = selected_recipe_s4.get('S4_overage', selected_recipe_s4.get('S4_overage_rate',0))
             harvest_date = datetime.strptime(str(cut_yearWeek)[:4], "%Y") + timedelta(weeks=t_grow_weeks-1)
             harvest_week= int(harvest_date.strftime('%Y%W'))
+            print('harvest_date', harvest_date)
             # if col == 'forcast':
             #     if harvest_week < today_week:
             #         harvest_date = today
-                
             x['total_harvest'] = int(round((x['total'] * multi_rate) * (1-overage_s4) ,0))
-            x['havest_week'] =  int(harvest_date.strftime('%W'))
+            print('TOTAL3===', x['total_harvest'])
+            x['havest_week'] = int(harvest_date.strftime('%W'))
             x['havest_month'] = int(harvest_date.strftime('%m'))
             x['havest_year'] = int(harvest_date.strftime('%Y'))
+            print('x=', x)
             # x['total_harvest'] = int(x['total_planting'] * multi_rate)
             # x['total_harvest'] = int(x['total_harvest'] * (1-overage_s4) )
         except:
@@ -71,7 +80,6 @@ def arrange_info(data, stage, recipes3={}, recipes4={}, report_obj=None):
             x['havest_month'] = 0
             x['havest_year'] = 0
             x['total_harvest'] = 0
-        # print('x2=',x)
         # print('havest_year=',x['havest_year'] )
         # print('havest_year=',x['havest_year'] )
         # print('havest_week=',x['havest_week'] )
@@ -99,7 +107,9 @@ def get_report(report_obj, product_code=None, stage='S3'):
     greenhouse_stock, all_codes = report_obj.query_greenhouse_stock(product_code, all_codes)
     recipesS3 = report_obj.get_product_recipe(all_codes, stage=[4])
     recipesS4 = report_obj.get_product_recipe(all_codes, stage=[4, "Ln72"])
-    res += greenhouse_stock
+    print('res', res)
+    # print('res', resd)
+    # res += greenhouse_stock
     res = arrange_info(res, stage, recipesS3, recipesS4, report_obj)
     return res
 
@@ -122,11 +132,13 @@ if __name__ == '__main__':
     report_obj.console_run()
     data = report_obj.data.get("data", {})
     product_code = data.get("product_code")
+    test = data.get("test")
     response = get_report(report_obj, product_code)
-    sys.stdout.write(simplejson.dumps(
-        {"firstElement":{
-            'tabledata':response
+    if not test:
+        sys.stdout.write(simplejson.dumps(
+            {"firstElement":{
+                'tabledata':response
+                }
             }
-        }
+            )
         )
-    )

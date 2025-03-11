@@ -22,7 +22,7 @@ class Reports(Reports):
                     {"$project":{
                         "_id":1,
                         'plant_code': f"$answers.{self.SKU_OBJ_ID}.{self.f['product_code']}",
-                        'stage': f"$answers.61ef32bcdf0ec2ba73dec33c.{self.f['reicpe_start_size']}",
+                        'stage': f"$answers.61ef32bcdf0ec2ba73dec33c.{self.f['reicpe_stage']}",
                         'new_cutweek': f"$answers.{self.f['new_cutweek']}",
                         'product_lot': f"$answers.{self.f['product_lot']}",
                         'actuals': f"$answers.{self.f['actuals']}",

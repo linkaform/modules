@@ -29,6 +29,7 @@ class Reports(Reports, Stock):
             'weely_production_status':'62e4bd2ed9814e169a3f6bef',
             'workhouse_yearweek':'63d06a8f01fe398a70e4166f',
             'workhouse_house':'63d06a8f01fe398a70e4166e',
+            'reicpe_stage':'6205f73281bb36a6f1573358',
             })
 
     def available_hours(self, yearweek=None):
@@ -510,7 +511,8 @@ class Reports(Reports, Stock):
             },
             {'$sort': {'plant_code': 1, 'cutweek':1}}
             ]
-        print('query=', simplejson.dumps(query, indent=4))
+        print('cr', self.cr)
+        print('///query_get_stock_by_cutWeek query=', simplejson.dumps(query, indent=4))
         res = self.cr.aggregate(query)
         result = {}
 
@@ -543,6 +545,7 @@ class Reports(Reports, Stock):
             "form_id": self.FORM_INVENTORY_ID,
             f"answers.{self.f['inventory_status']}": status
             }
+        # product_code = 'LAGBG'
         if product_code:
             match_query.update({f"answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_code']}":product_code})
         
@@ -550,13 +553,13 @@ class Reports(Reports, Stock):
         if stage:
             if stage == 2 or str(stage).lower() == 's2' or str(stage).lower() == '2':
                 from_stage = 'Stage 2'
-                print('>>>>>>>>>>>>>>stage', stage)
                 match_query.update({f"answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['reicpe_stage']}":'S2'})
             if stage == 3 or str(stage).lower() == 's3' or str(stage).lower() == '3':
                 from_stage = 'Stage 3'
                 match_query.update({f"answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['reicpe_stage']}":'S3'})
         if lot_number:
-            match_query.update({f"answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_lot']}":lot_number})
+            # match_query.update({f"answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_lot']}":lot_number})
+            match_query.update({f"answers.{self.f['product_lot']}":lot_number})
         if warehouse:
             unwind_query.update({f"answers.{self.CATALOG_INVENTORY_OBJ_ID}.{self.f['warehouse']}":warehouse})      
         if location:
@@ -593,7 +596,8 @@ class Reports(Reports, Stock):
             },
             {'$sort': {'_id.product_code': 1, '_id.cut_yearWeek': 1, '_id.cut_week':1}}
             ]
-        # print('query=', simplejson.dumps(query, indent=4))
+        # print('================== query_get_stock ================')
+        print('query=', simplejson.dumps(query, indent=4))
         res = self.cr.aggregate(query)
         result = [r for r in res]
 
@@ -610,6 +614,8 @@ class Reports(Reports, Stock):
             "form_id":self.GREENHOUSE_INVENTORY_ID,
             f"answers.{self.f['inventory_status']}": status
             }
+
+        # product_code = 'LAGBG'
         if product_code:
             match_query.update({f"answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_code']}":product_code,})
         query= [{'$match': match_query },
@@ -636,6 +642,8 @@ class Reports(Reports, Stock):
             },
             {'$sort': {'_id.product_code': 1, '_id.cut_year': 1, '_id.cut_week':1}}
             ]
+        # print('================== query_greenhouse_stock ================')
+        # print('query=', simplejson.dumps(query, indent=4))
         res = self.cr.aggregate(query)
         # result = [r for r in res]
         result=[]

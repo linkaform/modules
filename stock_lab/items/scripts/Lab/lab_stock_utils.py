@@ -113,6 +113,7 @@ class Stock(Stock):
             'reicpe_stage':'6205f73281bb36a6f1573358',
             'recipe_stage':'6205f73281bb36a6f1573358',
             'reicpe_start_size':'621fca56ee94313e8d8c5e2e',
+            'requierd_eaches':'63f8e128694361f17f7b59d4',
             'set_production_date_out':'61f1fcf8c66d2990c8fcccc6',
             'stage_4_plan_require_yearweek':'626c2792f7f680727fdba0f5',
             'stage_4_plan_requierments':'6206b6186c0b3b00535d60d8',
@@ -1199,7 +1200,8 @@ class Stock(Stock):
         return stock
 
     def get_product_recipe(self, all_codes, stage=[2,3,4], recipe_type='Main'):
-
+        print('===== LAB STYOCK UTILS: get_product_recipe =====')
+        print('stage', stage)
         if type(all_codes) == str and all_codes:
             all_codes = [all_codes.upper(),]
         recipe = {}
@@ -1224,8 +1226,10 @@ class Stock(Stock):
             recipe_s3 = self.lkf_api.search_catalog(self.CATALOG_PRODUCT_RECIPE_ID, mango_query)
         if 4 in stage:
             if 'Ln72' in stage:
+                print('va pro la ln72')
                 mango_query = self.plant_recipe_query(all_codes,  "S4", "Ln72", recipe_type)
             else:
+                print('va pro la 3 a 4')
                 mango_query = self.plant_recipe_query(all_codes, "S3", "S4", recipe_type)
             recipe_s4 = self.lkf_api.search_catalog(self.CATALOG_PRODUCT_RECIPE_ID, mango_query, jwt_settings_key='APIKEY_JWT_KEY')
         if recipe_s2 and not recipe:
