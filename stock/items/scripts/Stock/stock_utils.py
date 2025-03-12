@@ -18,7 +18,6 @@ class Stock(Stock):
     def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False):
         super().__init__(settings, folio_solicitud=folio_solicitud, sys_argv=sys_argv, use_api=use_api)
 
-
         # La relacion entre la forma de inventario y el catalogo utilizado para el inventario
         # por default simpre dejar los mismos nombres
         print('self.FORM_INVENTORY_ID',self.FORM_INVENTORY_ID)
