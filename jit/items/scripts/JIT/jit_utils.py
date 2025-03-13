@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import sys, simplejson
+import sys, simplejson, requests
 from datetime import datetime, timedelta, date
 from copy import deepcopy
 
@@ -33,7 +33,6 @@ class JIT(JIT, Stock):
         ]
         self.cr.delete_many({'form_id':{'$in':forms}}) #    or _delete
         
-
     def upsert_procurment(self, product_by_warehouse, **kwargs):
         print('product by warehouse',product_by_warehouse)
         response = {}
@@ -61,7 +60,6 @@ class JIT(JIT, Stock):
 
         return response
 
-
     def get_rutas_transpaso(self):
         all_prod = self.Product.get_product_catalog()
         res = {}
@@ -74,7 +72,6 @@ class JIT(JIT, Stock):
             #     }})
         res = { p.get(self.Product.f['product_code']): p.get(self.Product.f['sku_percontainer']) for p in all_prod}
         return res
-
 
     def model_procurment(self, qty, product_code, sku, warehouse, location, uom=None, schedule_date=None, \
         bom=None, status='programmed', procurment_method='buy'):
@@ -105,7 +102,6 @@ class JIT(JIT, Stock):
         answers[self.mf['procurment_schedule_date']] = schedule_date
 
         return answers
-
 
     def balance_warehouse(self, warehouse=None, location=None, product_code=None, sku=None, status='active'):
         product_rules = self.get_reorder_rules(
@@ -143,3 +139,51 @@ class JIT(JIT, Stock):
                 product_by_warehouse[warehouse].append(ans)
         response = self.upsert_procurment(product_by_warehouse)
         return response
+
+class SIPRE:
+
+    def __init__(self):
+        self.host = "http://162.215.128.43:808/api/"
+        self.token_endpoint = "AuthResponse/GetToken"
+        self.stock_endpoint = "WhiReStock/Resumen/{}/{}"
+        self.user = "katusak"
+        self.passcode = "8572"
+
+    def api_request(self, url, data={}, method='POST', content_type='application/json'):
+        headers = {
+            "accept": "*/*",
+            "Content-Type": content_type
+        }
+        if hasattr(self, 'token'):
+            headers.update({'Authorization': f"Bearer {self.token}"})
+        try:
+            if method =='POST':
+                response = requests.post(url, json=data, headers=headers)
+            elif method == 'GET':
+                response = requests.get(url, headers=headers)
+            
+            response.raise_for_status()  # Raise an HTTPError for bad responses (4xx and 5xx)
+            return response.json()  # Assuming the response is JSON
+        except requests.exceptions.RequestException as e:
+            return {"error": str(e)}
+
+    def get_stock_and_demand(self, familia):
+        if not hasattr(self, 'token'):
+            self.get_token()
+        endpoint = self.stock_endpoint.format(self.token, familia)
+        response = self.api_request(f"{self.host}{endpoint}", method='GET')
+        result = response.get('resultado',{})
+        print('result', result)
+        return result
+
+
+    def get_token(self):
+        data = {
+              "userCode": self.user,
+              "passcode": self.passcode
+            }
+        response = self.api_request(f"{self.host}{self.token_endpoint}", data)
+        result = response.get('resultado',{})
+        self.token = result.get('token')
+        return True
+

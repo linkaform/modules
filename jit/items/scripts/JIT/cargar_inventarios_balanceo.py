@@ -6,15 +6,22 @@ from account_settings import *
 from datetime import datetime
 #from linkaform_api.lkf_object import LKFBaseObject
 
-from lkf_addons.addons.base.app import CargaUniversal
+from lkf_addons.addons.base.app import CargaUniversal, Base
+# from lkf_addons.addons.stock.app import Stock 
 # from lkf_addons.addons.stock.app import Stock
 # from lkf_addons.addons.jit.app import JIT
-from jit_utils import JIT
+from stock_utils import Stock 
+from jit_utils import JIT, SIPRE
 from bson import ObjectId
 
 
 
 wh_dict_loc = {'ALM GUADALAJARA':'CEDIS GUADALAJARA'}
+NOMBRE_UBICACIONES = {
+    'ALM MONTERREY':'Almacen Monterrey',
+    'ALM MERIDA':'Almacen Merida',
+    'ALM GUADALAJARA':'Almacen Guadalajara',
+    }
 
 class CargaUniversal(CargaUniversal):
     
@@ -22,7 +29,6 @@ class CargaUniversal(CargaUniversal):
     def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False, **kwargs):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
         self.carga_catalogs = {}
-
 
     def clean_records(self, records):
         res = []
@@ -255,6 +261,73 @@ class CargaUniversal(CargaUniversal):
             metadata = None
             return records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records
         
+    def carga_stock_from_sipre(self):
+        #   Se utiliza para el registro de errores
+        self.field_id_error_records = '5e32fbb498849f475cfbdca3'
+        
+        #   Obtiene una info de un formulario en específico que viene de metadata
+        id_forma_seleccionada = class_obj.Stock.FORM_INVENTORY_ID
+        metadata_form = self.lkf_api.get_metadata(form_id=id_forma_seleccionada)
+        
+        #   Complementa la información del formulario con ayuda del método get_complete_metadata
+        metadata_form.update(self.get_complete_metadata())
+        # Necesito un diccionario que agrupe los registros que se crearán y los que están en un grupo repetitivo y pertenecen a uno principal
+        # Agrego información de la carga, se vuelve a actualizar metadata_form, agregando el campo properties
+        metadata_form.update({'properties': 
+            {"device_properties":{
+                "system": "SCRIPT",
+                "process":"Carga Universal", 
+                "accion":'CREA Y ACTUALIZA REGISTROS DE CUALQUIER FORMA', 
+                "folio carga":self.folio, 
+                "archive":"carga_documentos_a_forma.py"
+                }
+            }
+            }
+        )
+        
+        stock = sipre_obj.get_stock_and_demand('01')
+        resultado = {'creados':0,'error':0,'actualizados':0, 'no_update':0}
+        total_rows = len(stock)   #   Longitud total de registros del diccionario "stock"
+        #   Manejo del subgrupo de errores
+        subgrupo_errors = []
+        
+        #   Se crea el diccionario donde se almacenaran los registros creados o actualizados
+        dict_records_copy = {'create': [], 'update': {}}
+        upload_records = [] #   aquí se almacenan los registros procesados y listos para cargar
+        
+        #   Se recorre el numero de registros, se asigna un folio y se agrega a metada_form
+        today_date = datetime.today()
+        for_folio = f'{today_date.month}{today_date.day}{today_date.second}'
+        for p, record in enumerate(stock):
+            # if p > 3:
+            #     continue
+            print('record=', record)
+            metadata = metadata_form.copy() #   copia de metafa_form
+            metadata.update({'folio': f"{self.folio}-{id_forma_seleccionada}-{for_folio}-{p}"})
+            answers = {}
+            
+            if p in subgrupo_errors:
+                error_records.append(record+['',])
+                continue
+            #proceso = self.crea_actualiza_record(metadata, self.existing_records, error_records, records, sets_in_row, dict_records_to_multi, dict_records_copy, self.ids_fields_no_update)
+
+            #   Se manda a llamar procesa_row para obtener los datos, se actualiza metada agregando el diccionario answers con todos los valores
+            # answers = self.procesa_row(pos_field_dict, record, files_dir, nueva_ruta, id_forma_seleccionada, answers, p, dict_catalogs)
+            answers = self.transform_answers(record)
+            metadata.update({"answers":answers})
+            upload_records.append(metadata)
+
+        #   Inserta el documento completo a mongodb
+        ids = []
+        if upload_records:
+            res = self.cr.insert_many(upload_records)
+            try:
+                inserted_ids = res.inserted_ids
+                ids = [str(ids) for ids in inserted_ids]
+            except:
+                print('no econtro ids')
+        return ids
+
     def carga_doctos_records(self, records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records):
         
         #   Se utiliza para el registro de errores
@@ -531,7 +604,6 @@ class CargaUniversal(CargaUniversal):
         return answers
 
     def get_complete_metadata(self):
-        
         now = datetime.now()
         format_date = int(now.timestamp())  # Converting to timestamp
         
@@ -653,6 +725,27 @@ class CargaUniversal(CargaUniversal):
         answers.update(res)
         return answers
 
+    def transform_answers(self, record):
+        print('transforming records')
+        answers = {}
+        answers = {
+            self.Stock.WH.WAREHOUSE_LOCATION_OBJ_ID:{
+                self.Stock.WH.f['warehouse']: record.get('almacenNombre'),
+                self.Stock.WH.f['warehouse_location']: NOMBRE_UBICACIONES[record.get('almacenNombre')],
+            },
+            self.Stock.Product.SKU_OBJ_ID:{
+                self.Stock.Product.f['product_code']: record.get('producto'),
+                self.Stock.Product.f['product_sku']: record.get('producto'),
+                self.Stock.Product.f['product_name']: record.get('productoNombre'),
+                self.Stock.Product.f['product_category']: record.get('lineaProducto'),
+                self.Stock.Product.f['product_type']: record.get('familiaProducto'),
+            },
+            self.Stock.f['actual_eaches_on_hand']: record.get('inventario')
+
+        }
+        return answers
+
+
 
 
 if __name__ == '__main__':
@@ -667,6 +760,11 @@ if __name__ == '__main__':
     #for step in [ 'carga_stock']:
     estatus = 'demanda_cargada'
     #for step in ['carga_stock']:
+    sipre_obj = SIPRE()
+
+    stock = class_obj.carga_stock_from_sipre()
+    print('token', stock)
+    print('response', respdonse)
     for step in ['demanda', 'carga_stock']:
         if step == 'demanda':
             
@@ -685,6 +783,8 @@ if __name__ == '__main__':
                 jit_obj.borrar_historial()
             
             records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records = class_obj.carga_doctos_headers(own_header=header,form_id_to_load=from_id)
+            print('records', records[0])
+            print('records', recordds[0])
             new_ids = class_obj.carga_doctos_records(records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records )
             res = class_obj.lkf_api.patch_multi_record(
                 answers={jit_obj.f['comments']:'update'}, 
