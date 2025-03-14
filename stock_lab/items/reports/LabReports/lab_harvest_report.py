@@ -108,8 +108,7 @@ def get_report(report_obj, product_code=None, stage='S3'):
     recipesS3 = report_obj.get_product_recipe(all_codes, stage=[4])
     recipesS4 = report_obj.get_product_recipe(all_codes, stage=[4, "Ln72"])
     print('res', res)
-    # print('res', resd)
-    # res += greenhouse_stock
+    res += greenhouse_stock
     res = arrange_info(res, stage, recipesS3, recipesS4, report_obj)
     return res
 
