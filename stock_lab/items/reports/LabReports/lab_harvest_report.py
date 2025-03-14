@@ -103,11 +103,13 @@ def arrange_info(data, stage, recipes3={}, recipes4={}, report_obj=None):
 
 def get_report(report_obj, product_code=None, stage='S3'):
     global plants, WEEKS
+    # product_code = 'LNAGS'
     res, all_codes = report_obj.query_get_stock(product_code, stage)
     greenhouse_stock, all_codes = report_obj.query_greenhouse_stock(product_code, all_codes)
     recipesS3 = report_obj.get_product_recipe(all_codes, stage=[4])
     recipesS4 = report_obj.get_product_recipe(all_codes, stage=[4, "Ln72"])
-    print('res', res)
+    # print('recipesS3', recipesS3)
+    # print('res', res)
     res += greenhouse_stock
     res = arrange_info(res, stage, recipesS3, recipesS4, report_obj)
     return res

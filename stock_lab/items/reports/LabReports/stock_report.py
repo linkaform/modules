@@ -4,7 +4,7 @@ import sys, simplejson
 from datetime import datetime, timedelta, date
 from copy import deepcopy
 
-from lkf_addons.addons.stock_greenhouse.stock_reports import Reports
+from lkf_addons.addons.stock_greenhouse.report import Reports
 
 #Se agrega path para que obtenga el archivo de Stock de este modulo
 sys.path.append('/srv/scripts/addons/modules/stock_lab/items/scripts/Lab')
@@ -545,7 +545,7 @@ class Reports(Reports, Stock):
             "form_id": self.FORM_INVENTORY_ID,
             f"answers.{self.f['inventory_status']}": status
             }
-        # product_code = 'LAGBG'
+        # product_code = 'LNAGS'
         if product_code:
             match_query.update({f"answers.{self.CATALOG_PRODUCT_RECIPE_OBJ_ID}.{self.f['product_code']}":product_code})
         
