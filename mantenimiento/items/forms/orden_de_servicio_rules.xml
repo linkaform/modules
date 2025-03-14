@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<lkf>
+    <form_id>{{ form.orden_de_servicio.id }}</form_id>
+    <id>67d3280bdd0390e4c73ea525</id>
+    <rules>[]</rules>
+</lkf>
