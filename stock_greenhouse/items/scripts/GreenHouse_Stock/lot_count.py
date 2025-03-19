@@ -47,9 +47,9 @@ if __name__ == '__main__':
     elif option == 'delete_cycle_count':
         # Elimina un registro a la tabla de Cycle Counts
         response = stock_obj.delete_cycle_count(folio=folio)
-    elif option == 'search_cycle_count':
+    elif option == 'search_cycle_counts':
         # Busca registros en la tabla de Cycle Counts a partir de los parametros
-        response = stock_obj.search_cycle_count(search_params=search_params)
+        response = stock_obj.search_cycle_counts(search_params=search_params)
     else:
         # En caso de que no se seleccione una opcion
         response = stock_obj.create_response("error", 404, "No se recibio ninguna opcion")
