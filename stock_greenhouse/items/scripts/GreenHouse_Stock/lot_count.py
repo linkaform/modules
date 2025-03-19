@@ -22,7 +22,8 @@ if __name__ == '__main__':
     data = stock_obj.data.get('data', {})
     option = data.get('option', '')
     warehouse = data.get('warehouse', '')
-    cycle_data = data.get('cycle_data', '')
+    search_params = data.get('search_params', {})
+    cycle_data = data.get('cycle_data', {})
     folio = data.get('folio', '')
 
     if option == 'get_warehouses':
@@ -46,6 +47,9 @@ if __name__ == '__main__':
     elif option == 'delete_cycle_count':
         # Elimina un registro a la tabla de Cycle Counts
         response = stock_obj.delete_cycle_count(folio=folio)
+    elif option == 'search_cycle_count':
+        # Busca registros en la tabla de Cycle Counts a partir de los parametros
+        response = stock_obj.search_cycle_count(search_params=search_params)
     else:
         # En caso de que no se seleccione una opcion
         response = stock_obj.create_response("error", 404, "No se recibio ninguna opcion")
