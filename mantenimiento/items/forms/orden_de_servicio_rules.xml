@@ -293,5 +293,39 @@
             <rule_type>invisible</rule_type>
             <user_conditions>{}</user_conditions>
         </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>iexact=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>67d259f3799fb700b898122d</field_id>
+                        <group_id>67d25912831814afbf6ae8a0</group_id>
+                        <id>67d259f3799fb700b898122d</id>
+                        <label>Golpeado</label>
+                        <type>radio</type>
+                    </field>
+                    <value>sí</value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67dc8983d1e50246e22a12b4</field_id>
+                    <group_id>67d25912831814afbf6ae8a0</group_id>
+                    <id>67dc8983d1e50246e22a12b4</id>
+                    <label>Foto del Tanque Golpeado</label>
+                    <type>images</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Ocultar / Mostrar Fotografia Tanque Golpeado</name>
+            <operator>and</operator>
+            <rule_id>19d914b9238b161c</rule_id>
+            <rule_type>show</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
     </rules>
 </lkf>
