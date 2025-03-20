@@ -59,5 +59,82 @@
                 </wf_fields>
             </rules>
         </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67dbaa9d7997d993e5872333</_id>
+                    <action_id>5</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <body>{% raw %} {{record.user.name}} ha confirmado su cita:{{record.folio}} con {{record.answers.67c9e431b59043d4bb7a2714.667468e3e577b8b98c852aaa}}. &lt;br&gt;&lt;br&gt;
+
+Ver registro&gt; {{record_url}} {% endraw %}</body>
+                        <email_fields>[]</email_fields>
+                        <emails>
+                            <item>josepato@linkaform.com</item>
+                        </emails>
+                        <embed_company_picture>True</embed_company_picture>
+                        <fields_attached>[]</fields_attached>
+                        <pdf_template>{}</pdf_template>
+                        <resend>RESEND</resend>
+                        <send_attachments>False</send_attachments>
+                        <send_pdf>True</send_pdf>
+                        <sender>RECORD_USER</sender>
+                        <subject>{% raw %} {{record.user.name}} ha confirmado su cita:{{record.folio}} {% endraw %}</subject>
+                        <timer_config>
+                            <seconds_to_expire>None</seconds_to_expire>
+                        </timer_config>
+                    </configuration>
+                    <name>Confirmacion de Cita</name>
+                </item>
+            </actions>
+            <id>67dbaa9d7997d993e5872337</id>
+            <name>None</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-03-20T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-20T05:39:49.827Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>True</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>False</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>cita_confirmada</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
     </workflows>
 </lkf>
