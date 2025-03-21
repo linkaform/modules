@@ -54,7 +54,7 @@ if __name__ == "__main__":
     elif option == 'delete_incidence':
         response = acceso_obj.delete_incidence(folio)
     elif option == 'catalogo_area_empleado':
-        response = acceso_obj.catalogo_config_area_empleado()
+        response = acceso_obj.catalogo_config_area_empleado(bitacora='Incidencias', location=location)
     elif option == 'catalogo_incidencias':
         response = acceso_obj.catalogo_incidencias()
     else :
