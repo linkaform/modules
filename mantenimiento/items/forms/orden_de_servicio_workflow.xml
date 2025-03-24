@@ -6,62 +6,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>67cb6846028e53c786f27e18</_id>
-                    <action_id>7</action_id>
-                    <action_settings>{}</action_settings>
-                    <configuration>
-                        <script>
-                            <created_at>2025-03-07T15:38:32.962313</created_at>
-                            <deleted_at>None</deleted_at>
-                            <end_date>None</end_date>
-                            <id>{{ script.get_orden_servicio_totals.id }}</id>
-                            <is_fileShared>False</is_fileShared>
-                            <itype>script</itype>
-                            <name>{{ script.get_orden_servicio_totals.name }}</name>
-                            <start_date>2025-03-07T15:38:32.957679</start_date>
-                            <updated_at>2025-03-07T21:41:38.411786</updated_at>
-                        </script>
-                        <user>SCRIPT_OWNER</user>
-                    </configuration>
-                    <name>None</name>
-                </item>
-            </actions>
-            <id>67cb169a9d7eb4cd05183df0</id>
-            <name>Obtener totales y subtotales</name>
-            <rules>
-                <metadata>
-                    <connection>[]</connection>
-                    <date>
-                        <period>
-                            <month>1</month>
-                            <selected>False</selected>
-                            <year>2014</year>
-                        </period>
-                        <range>
-                            <end>2025-03-08T06:00:00.000Z</end>
-                            <selected>False</selected>
-                            <start>2025-03-07T15:38:48.477Z</start>
-                        </range>
-                    </date>
-                    <grading>{}</grading>
-                    <user>[]</user>
-                </metadata>
-                <record>
-                    <created>False</created>
-                    <deleted>False</deleted>
-                    <edited>False</edited>
-                    <run_multiple_times>True</run_multiple_times>
-                    <runtime>before</runtime>
-                </record>
-                <wf_fields>
-                    <operator>all</operator>
-                    <triggers>[]</triggers>
-                </wf_fields>
-            </rules>
-        </item>
-        <item>
-            <actions>
-                <item>
                     <_id>67dbaa9d7997d993e5872333</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
@@ -131,6 +75,172 @@ Ver registro&gt; {{record_url}} {% endraw %}</body>
                                 <type>select</type>
                             </trigger_field>
                             <value>cita_confirmada</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67ddb49530766f8df3803e45</_id>
+                    <action_id>7</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <script>
+                            <created_at>2025-03-21T18:46:33.439263</created_at>
+                            <deleted_at>None</deleted_at>
+                            <end_date>None</end_date>
+                            <id>{{ script.send_message_notification.id }}</id>
+                            <is_fileShared>False</is_fileShared>
+                            <itype>script</itype>
+                            <name>{{ script.send_message_notification.name }}</name>
+                            <start_date>2025-03-21T18:46:33.437094</start_date>
+                            <updated_at>2025-03-21T18:46:33.659788</updated_at>
+                        </script>
+                        <user>SCRIPT_OWNER</user>
+                    </configuration>
+                    <name>Se ejecuta script</name>
+                </item>
+            </actions>
+            <id>67ddb49530766f8df3803e4c</id>
+            <name>Envio de notificacion por mensaje</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-03-22T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-21T18:47:45.960Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>False</created>
+                    <deleted>False</deleted>
+                    <edited>False</edited>
+                    <run_multiple_times>False</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>finalizado</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67e1a0270befd7b5538b72db</_id>
+                    <action_id>7</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <script>
+                            <created_at>2025-03-24T15:21:47.498140</created_at>
+                            <deleted_at>None</deleted_at>
+                            <end_date>None</end_date>
+                            <id>{{ script.create_and_update_activo_fijo.id }}</id>
+                            <is_fileShared>False</is_fileShared>
+                            <itype>script</itype>
+                            <name>{{ script.create_and_update_activo_fijo.name }}</name>
+                            <start_date>2025-03-24T15:21:47.495608</start_date>
+                            <updated_at>2025-03-24T17:44:23.226850</updated_at>
+                        </script>
+                        <user>SCRIPT_OWNER</user>
+                    </configuration>
+                    <name>None</name>
+                </item>
+            </actions>
+            <id>67e179336a5a2a2a14f98755</id>
+            <name>Creacion del activo fijo</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-03-25T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-24T15:22:53.223Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>True</created>
+                    <deleted>False</deleted>
+                    <edited>False</edited>
+                    <run_multiple_times>False</run_multiple_times>
+                    <runtime>before</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>not__empty=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d258ea799fb700b898120f</field_id>
+                                <group>{}</group>
+                                <label>Nick/Eco</label>
+                                <type>text</type>
+                            </trigger_field>
+                            <value> </value>
+                        </item>
+                        <item>
+                            <condition>not__empty=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>
+                                    <catalog_field_id>{{ catalog.activos_fijos.obj_id }}</catalog_field_id>
+                                    <catalog_id>{{ catalog.activos_fijos.id }}</catalog_id>
+                                    <field_type>text</field_type>
+                                    <filters />
+                                    <geofence>None</geofence>
+                                    <last>True</last>
+                                    <related_catalog>{}</related_catalog>
+                                    <view_fields>[]</view_fields>
+                                    <view_index>3</view_index>
+                                </catalog>
+                                <field_id>66c192ef89463aa27fc1818b</field_id>
+                                <group>{}</group>
+                                <label>Nombre del equipo</label>
+                                <type>catalog-select</type>
+                            </trigger_field>
+                            <value> </value>
                         </item>
                     </triggers>
                 </wf_fields>
