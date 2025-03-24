@@ -11,6 +11,7 @@ class Mantenimiento(Mantenimiento):
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
         self.load(module='Activo_Fijo', module_class='Vehiculo', import_as='ActivoFijo', **self.kwargs)
+        self.load(module='Employee', **self.kwargs)
 
     def create_response(self, status, status_code, message="", data=[]):
         """
@@ -59,7 +60,8 @@ class Mantenimiento(Mantenimiento):
             'modelo': modelo,
             'placa': answers.get(self.f['placa'], ''),
             'imagen_del_equipo': answers.get(catalog_key, {}).get(self.f['imagen_del_equipo'], []),
-            'fecha_adquisicion': mx_time.strftime("%Y-%m-%d"),
+            'fecha_instalacion': mx_time.strftime("%Y-%m-%d"),
+            'tecnico_asignado': answers.get(self.Employee.EMPLOYEE_OBJ_ID, {}).get(self.Employee.f['worker_name'], ''),
             'estatus': 'disponible',
             'estado': 'activo'
         }
@@ -92,33 +94,13 @@ class Mantenimiento(Mantenimiento):
 
         try:
             for key, value in data.items():
-                if key == 'nombre_equipo':
-                    answers[self.ActivoFijo.f['nombre_equipo']] = nuevo_nombre_equipo
-                elif key == 'marca':
-                    answers[self.ActivoFijo.MODELO_OBJ_ID] = {
-                        self.ActivoFijo.f['marca']: value,
-                        self.ActivoFijo.f['modelo']: data.get('modelo', ''),
-                        self.ActivoFijo.f['categoria_marca']: data.get('tipo_de_equipo', ''),
-                    }
-                elif key == 'tipo_de_equipo':
-                    answers[self.ActivoFijo.TIPO_DE_EQUIPO_OBJ_ID] = {
-                        self.ActivoFijo.f['tipo_equipo']: value[0]
-                    }
-                elif key == 'placa':
-                    answers[self.ActivoFijo.f['numero_de_serie_chasis']] = value
-                elif key == 'estatus':
-                    answers[self.ActivoFijo.f['estatus']] = value
-                elif key == 'estado':
-                    answers[self.ActivoFijo.f['estado']] = value
-                elif key == 'fecha_adquisicion':
-                    answers[self.f['fecha_de_adquisicion']] = value
-                elif key == 'nombre_cliente':
+                if key == 'nombre_cliente':
                     answers[self.CLIENTE_CAT_OBJ_ID] = {
                         self.f['nombre_comercial']: value,
                         self.f['email']: data.get('email_cliente', ''),
                     }
-                elif key == 'imagen_del_equipo':
-                    answers[self.f['imagen_del_equipo']] = value
+                elif key == 'nombre_equipo':
+                    answers[self.ActivoFijo.f['nombre_equipo']] = nuevo_nombre_equipo
                 elif key == 'nombre_direccion_contacto':
                     answers[self.CONTACTO_CAT_OBJ_ID] = {
                         self.f['address_name']: value,
@@ -126,6 +108,30 @@ class Mantenimiento(Mantenimiento):
                         self.f['phone']: data.get('telefono_contacto', ''),
                         self.f['email']: data.get('email_contacto', '')
                     }
+                elif key == 'tipo_de_equipo':
+                    answers[self.ActivoFijo.TIPO_DE_EQUIPO_OBJ_ID] = {
+                        self.ActivoFijo.f['tipo_equipo']: value[0]
+                    }
+                elif key == 'marca':
+                    answers[self.ActivoFijo.MODELO_OBJ_ID] = {
+                        self.ActivoFijo.f['marca']: value,
+                        self.ActivoFijo.f['modelo']: data.get('modelo', ''),
+                        self.ActivoFijo.f['categoria_marca']: data.get('tipo_de_equipo', ''),
+                    }
+                elif key == 'placa':
+                    answers[self.ActivoFijo.f['numero_de_serie_chasis']] = value
+                elif key == 'imagen_del_equipo':
+                    answers[self.f['imagen_del_equipo']] = value
+                elif key == 'fecha_instalacion':
+                    answers[self.f['fecha_de_instalacion']] = value
+                elif key == 'tecnico_asignado':
+                    answers[self.Employee.CONF_AREA_EMPLEADOS_CAT_OBJ_ID] = {
+                        self.Employee.f['worker_name']: value
+                    }
+                elif key == 'estatus':
+                    answers[self.ActivoFijo.f['estatus']] = value
+                elif key == 'estado':
+                    answers[self.ActivoFijo.f['estado']] = value
                 else:
                     pass
             metadata.update({'answers':answers})
