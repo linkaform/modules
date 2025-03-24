@@ -87,6 +87,10 @@ Ver registro&gt; {{record_url}} {% endraw %}</body>
                     <action_id>7</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
+                        <arguments>
+                            <message_version>cita_confirmada</message_version>
+                        </arguments>
+                        <integration>None</integration>
                         <script>
                             <created_at>2025-03-21T18:46:33.439263</created_at>
                             <deleted_at>None</deleted_at>
@@ -98,13 +102,39 @@ Ver registro&gt; {{record_url}} {% endraw %}</body>
                             <start_date>2025-03-21T18:46:33.437094</start_date>
                             <updated_at>2025-03-21T18:46:33.659788</updated_at>
                         </script>
+                        <scriptArguments>
+                            <item>
+                                <label>message_version</label>
+                                <value>cita_confirmada</value>
+                            </item>
+                        </scriptArguments>
+                        <scriptQuery>None</scriptQuery>
+                        <selectedUser>None</selectedUser>
                         <user>SCRIPT_OWNER</user>
+                        <userOptions>
+                            <item>
+                                <id>SCRIPT_OWNER</id>
+                                <name>Dueño del script</name>
+                            </item>
+                            <item>
+                                <id>FORM_OWNER</id>
+                                <name>Dueño de la forma</name>
+                            </item>
+                            <item>
+                                <id>OWNER_ACCOUNT_EMAIL</id>
+                                <name>Dueño de la cuenta</name>
+                            </item>
+                            <item>
+                                <id>RECORD_USER</id>
+                                <name>Usuario que contesta</name>
+                            </item>
+                        </userOptions>
                     </configuration>
                     <name>Se ejecuta script</name>
                 </item>
             </actions>
             <id>67ddb49530766f8df3803e4c</id>
-            <name>Envio de notificacion por mensaje</name>
+            <name>Envio de notificacion por mensaje - Cita Confirmada</name>
             <rules>
                 <metadata>
                     <connection>[]</connection>
@@ -126,8 +156,8 @@ Ver registro&gt; {{record_url}} {% endraw %}</body>
                 <record>
                     <created>False</created>
                     <deleted>False</deleted>
-                    <edited>False</edited>
-                    <run_multiple_times>False</run_multiple_times>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
                     <runtime>after</runtime>
                 </record>
                 <wf_fields>
@@ -145,7 +175,7 @@ Ver registro&gt; {{record_url}} {% endraw %}</body>
                                 <label>Estatus</label>
                                 <type>select</type>
                             </trigger_field>
-                            <value>finalizado</value>
+                            <value>cita_confirmada</value>
                         </item>
                     </triggers>
                 </wf_fields>
@@ -241,6 +271,107 @@ Ver registro&gt; {{record_url}} {% endraw %}</body>
                                 <type>catalog-select</type>
                             </trigger_field>
                             <value> </value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67e1e402041738196ec8a6f3</_id>
+                    <action_id>7</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <arguments>
+                            <message_version>finalizado</message_version>
+                        </arguments>
+                        <integration>None</integration>
+                        <script>
+                            <created_at>2025-03-21T18:46:33.439263</created_at>
+                            <deleted_at>None</deleted_at>
+                            <end_date>None</end_date>
+                            <id>{{ script.send_message_notification.id }}</id>
+                            <is_fileShared>False</is_fileShared>
+                            <itype>script</itype>
+                            <name>{{ script.send_message_notification.name }}</name>
+                            <start_date>2025-03-21T18:46:33.437094</start_date>
+                            <updated_at>2025-03-24T22:57:44.085066</updated_at>
+                        </script>
+                        <scriptArguments>
+                            <item>
+                                <label>message_version</label>
+                                <value>finalizado</value>
+                            </item>
+                        </scriptArguments>
+                        <scriptQuery>None</scriptQuery>
+                        <selectedUser>None</selectedUser>
+                        <user>SCRIPT_OWNER</user>
+                        <userOptions>
+                            <item>
+                                <id>SCRIPT_OWNER</id>
+                                <name>Dueño del script</name>
+                            </item>
+                            <item>
+                                <id>FORM_OWNER</id>
+                                <name>Dueño de la forma</name>
+                            </item>
+                            <item>
+                                <id>OWNER_ACCOUNT_EMAIL</id>
+                                <name>Dueño de la cuenta</name>
+                            </item>
+                            <item>
+                                <id>RECORD_USER</id>
+                                <name>Usuario que contesta</name>
+                            </item>
+                        </userOptions>
+                    </configuration>
+                    <name>Se ejecuta script</name>
+                </item>
+            </actions>
+            <id>67e1e403041738196ec8a6fd</id>
+            <name>Envio de notificacion por mensaje - Finalizado</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-03-25T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-24T17:51:54.294Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>False</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>finalizado</value>
                         </item>
                     </triggers>
                 </wf_fields>
