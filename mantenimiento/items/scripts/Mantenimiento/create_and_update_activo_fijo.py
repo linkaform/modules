@@ -46,8 +46,8 @@ class Mantenimiento(Mantenimiento):
     def format_data_to_create_activo_fijo(self, answers):
         mx_time = datetime.now(pytz.timezone("America/Mexico_City"))
         catalog_key = self.ActivoFijo.ACTIVOS_FIJOS_CAT_OBJ_ID
-        marca = answers.get(catalog_key, {}).get(self.ActivoFijo.f['marca'])
-        modelo = answers.get(catalog_key, {}).get(self.ActivoFijo.f['modelo'])
+        marca = answers.get(catalog_key, {}).get(self.ActivoFijo.f['marca'], '')
+        modelo = answers.get(catalog_key, {}).get(self.ActivoFijo.f['modelo'], '')
 
         if not marca:
             marca = answers.get(self.f['marca_campo'])
