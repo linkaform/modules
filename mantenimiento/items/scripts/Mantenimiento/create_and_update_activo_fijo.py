@@ -12,15 +12,6 @@ class Mantenimiento(Mantenimiento):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
         self.load(module='Activo_Fijo', module_class='Vehiculo', import_as='ActivoFijo', **self.kwargs)
 
-        self.f.update({
-            'nick_eco': '67d258ea799fb700b898120f',
-            'placa': '67d258ea799fb700b8981214',
-            'marca_campo': '67d258ea799fb700b8981211',
-            'modelo_campo': '67d258ea799fb700b8981210',
-            'fecha_de_adquisicion': '6646393c3fa8b818265d0327',
-            'imagen_del_equipo': '6646393c3fa8b818265d0326'
-        })
-
     def create_response(self, status, status_code, message="", data=[]):
         """
             Crea una respuesta estructurada.
@@ -55,22 +46,22 @@ class Mantenimiento(Mantenimiento):
             modelo = answers.get(self.f['modelo_campo'])
 
         data = {
-            'nombre_equipo': answers.get(catalog_key, {}).get(self.ActivoFijo.f['nombre_equipo']),
-            'nick_eco': answers.get(self.f['nick_eco']),
-            'marca': marca,
-            'modelo': modelo,
-            'tipo_de_equipo': answers.get(catalog_key, {}).get(self.ActivoFijo.f['categoria']),
-            'placa': answers.get(self.f['placa'], ''),
-            'estatus': 'disponible',
-            'estado': 'activo',
-            'fecha_adquisicion': mx_time.strftime("%Y-%m-%d"),
             'nombre_cliente': answers.get(self.CLIENTE_CAT_OBJ_ID, {}).get(self.f['nombre_comercial'], ''),
             'email_cliente': answers.get(self.CLIENTE_CAT_OBJ_ID, {}).get(self.f['email_contacto'], ''),
-            'imagen_del_equipo': answers.get(catalog_key, {}).get(self.f['imagen_del_equipo'], []),
+            'nombre_equipo': answers.get(catalog_key, {}).get(self.ActivoFijo.f['nombre_equipo']),
+            'nick_eco': answers.get(self.f['nick_eco']),
             'nombre_direccion_contacto': answers.get(self.CONTACTO_CAT_OBJ_ID, {}).get(self.f['address_name'], ''),
             'geolocalizacion_contacto': answers.get(self.CONTACTO_CAT_OBJ_ID, {}).get(self.f['address_geolocation'], []),
             'telefono_contacto': answers.get(self.CONTACTO_CAT_OBJ_ID, {}).get(self.f['phone'], ''),
-            'email_contacto': answers.get(self.CONTACTO_CAT_OBJ_ID, {}).get(self.f['email'], '')
+            'email_contacto': answers.get(self.CONTACTO_CAT_OBJ_ID, {}).get(self.f['email'], ''),
+            'tipo_de_equipo': answers.get(catalog_key, {}).get(self.ActivoFijo.f['categoria']),
+            'marca': marca,
+            'modelo': modelo,
+            'placa': answers.get(self.f['placa'], ''),
+            'imagen_del_equipo': answers.get(catalog_key, {}).get(self.f['imagen_del_equipo'], []),
+            'fecha_adquisicion': mx_time.strftime("%Y-%m-%d"),
+            'estatus': 'disponible',
+            'estado': 'activo'
         }
 
         return data
