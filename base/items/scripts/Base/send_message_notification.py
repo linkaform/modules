@@ -39,11 +39,24 @@ class Base(Base):
 if __name__ == "__main__":
     base_obj = Base(settings, sys_argv=sys.argv)
     base_obj.console_run()
+    data_full_answers = json.loads(sys.argv[1])
+    data_raw = json.loads(sys.argv[2])
+
+    folio = data_full_answers.get('folio')
+    message_version = data_raw.get('message_version')
 
     # User data
     user_info = base_obj.lkf_api.get_user_by_id(base_obj.user.get('user_id'))
-    phone_to = f"+52{user_info.get('phone')}"
+    # phone_to = f"+52{user_info.get('phone')}"
+    phone_to = ""
     mensaje = ""
+
+    if message_version == 'cita_confirmada':
+        mensaje = f"La Orden de Instalacion con Folio: {folio}, fue marcada como: Cita confirmada, "
+        mensaje += "para mas detalles consulta la plataforma de Linkaform."
+    elif message_version == 'finalizado':
+        mensaje = f"La Orden de Instalacion con Folio: {folio}, fue marcada como: Finalizada, "
+        mensaje += "para mas detalles consulta la plataforma de Linkaform. "
 
     if mensaje:
         #Enviar sms
