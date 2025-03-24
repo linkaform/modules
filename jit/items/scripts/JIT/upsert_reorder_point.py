@@ -12,7 +12,8 @@ if __name__ == '__main__':
     cu_obj = CargaUniversal(settings, sys_argv=sys.argv, use_api=True)
     jit_obj.console_run()
     response = jit_obj.upsert_reorder_point()
-    res = cu_obj.update_status_record( 'reglas_reorden')
+    res = cu_obj.update_status_record('reglas_reorden')
+    print('==========res',res)
 
     sys.stdout.write(simplejson.dumps({
         'status': 101,

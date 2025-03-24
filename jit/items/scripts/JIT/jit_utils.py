@@ -21,6 +21,15 @@ class JIT(JIT, Stock):
         # self.load('Product')
         self.load('Product', **self.kwargs)
 
+    def ave_daily_demand(self, demanda_12_meses):
+        demanda = 0
+        conf_data = self.get_config()
+        dias_laborales_consumo = conf_data.get('dias_laborales_consumo',360)
+        factor_crecimiento_jit = conf_data.get('factor_crecimiento_jit')
+        if demanda_12_meses:
+            demanda = f"{demanda_12_meses/dias_laborales_consumo:.2f}"
+        return demanda
+
     def borrar_historial(self):
         print('arranca borrar')
         forms = [
@@ -32,50 +41,83 @@ class JIT(JIT, Stock):
             self.FORM_INVENTORY_ID,
         ]
         self.cr.delete_many({'form_id':{'$in':forms}}) #    or _delete
-        
+
+    def update_procurmet(self, records, **kwargs):
+        response = []
+        for rec in records:
+            response.append(self.lkf_api.patch_multi_record( answers = rec, form_id=self.PROCURMENT, record_id=[rec.get('_id'),]))
+        return response
+
     def upsert_procurment(self, product_by_warehouse, **kwargs):
-        print('product by warehouse',product_by_warehouse)
         response = {}
         for wh, create_records in product_by_warehouse.items():
-            print(f'----------------{wh}--------------------')
             existing_records = self.get_procurments(warehouse=wh)
             update_records = []
             # existing_skus = [prod['sku'] for prod in existing_procurments]
             for product in create_records[:]:
-                if self.Product.SKU_OBJ_ID in product:
+                if self.Product.SKU_OBJ_ID in list(product.keys()):
                     product_code = product[self.Product.SKU_OBJ_ID].get(self.f['product_code'])
                     sku = product[self.Product.SKU_OBJ_ID].get(self.f['sku'])
                     for existing_record in existing_records:
+                        print('existing_record', existing_record)
                         if existing_record.get('product_code') == product_code and \
                             existing_record.get('sku') == sku:
+                            print('product', product)
+                            product.update({'_id':existing_record.get('_id')})
                             update_records.append(product)
                             try:
                                 create_records.remove(product)
                             except ValueError:
                                  print('allready removed')
-
             print('update_records', update_records)
-            print('create_records', create_records)
-            response = self.create_procurment(create_records, **kwargs)
+            response = self.update_procurmet(update_records, **kwargs)
+            response += self.create_procurment(create_records, **kwargs)
 
         return response
 
-    def get_rutas_transpaso(self):
-        all_prod = self.Product.get_product_catalog()
-        res = {}
-        self.product_data = {}
-        for p in all_prod:
-            res[ p.get(self.Product.f['product_code'])] =  p.get(self.Product.f['sku_percontainer'])
-            # self.product_data.update({sku:{
-            #     'linea':p.get(self.Product.f['linea'])
-            #     'familia':p.get(self.Product.f['product_category'])
-            #     }})
-        res = { p.get(self.Product.f['product_code']): p.get(self.Product.f['sku_percontainer']) for p in all_prod}
-        return res
+    # def get_rutas_transpaso(self):
+    #     all_prod = self.Product.get_product_catalog()
+    #     res = {}
+    #     self.product_data = {}
+    #     for p in all_prod:
+    #         res[ p.get(self.Product.f['product_code'])] =  p.get(self.Product.f['sku_percontainer'])
+    #         # self.product_data.update({sku:{
+    #         #     'linea':p.get(self.Product.f['linea'])
+    #         #     'familia':p.get(self.Product.f['product_category'])
+    #         #     }})
+    #     res = { p.get(self.Product.f['product_code']): p.get(self.Product.f['sku_percontainer']) for p in all_prod}
+    #     return res
+
+    def get_procurment_transfers(self,qty, product_code, sku, warehouse, location, uom=None, schedule_date=None, status='programmed'):
+        self.set_rutas_transpaso()
+        routes = self.ROUTE_RULES.get(product_code,{}).get(sku).get(warehouse).get(location)
+        print('route', routes)
+        if routes:
+            # try:
+            if True:
+                warehouse_from = list(routes.keys())[0]  # "WAREHOUSE"
+                warehouse_location_from = list(routes[warehouse_from].keys())[0]  # "location"
+                standar_pack = routes[warehouse_from][warehouse_location_from]['standar_pack']
+            # except:
+            #     warehouse_from = None
+            #     warehouse_location_from = None
+            #     standar_pack = 1
+            return  {'warehouse': warehouse_from, 'warehouse_location':warehouse_location_from, 'standar_pack':standar_pack}
 
     def model_procurment(self, qty, product_code, sku, warehouse, location, uom=None, schedule_date=None, \
         bom=None, status='programmed', procurment_method='buy'):
         answers = {}
+        if procurment_method == 'transfer':
+           tranfer_data = self.get_procurment_transfers(qty, product_code, sku, warehouse, location, uom=uom, schedule_date=schedule_date, status=status)
+           answers[self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID] = {}
+           if tranfer_data['warehouse']:
+               answers[self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID][self.WH.f['warehouse_dest']] = tranfer_data['warehouse']
+           if tranfer_data['warehouse_location']:
+               answers[self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID][self.WH.f['warehouse_location_dest']] = tranfer_data['warehouse_location']
+           standar_pack = tranfer_data.get('standar_pack', 1)
+        else:
+            standar_pack = self.ROUTE_RULES.get(str(product_code),{}).get(warehouse)
+
         config = self.get_config(*['uom'])
 
         if not schedule_date:
@@ -84,9 +126,6 @@ class JIT(JIT, Stock):
             location = self.get_warehouse_config('tipo_almacen', 'abastacimiento', 'warehouse_location')
         if not uom:
             uom = config.get('uom')
-        print('self.ROUTE_RULES = ',self.ROUTE_RULES)
-        print('product_code=', product_code)
-        standar_pack = self.ROUTE_RULES.get(str(product_code),1)
         answers[self.Product.SKU_OBJ_ID] = {}
         answers[self.Product.SKU_OBJ_ID][self.f['product_code']] = product_code
         answers[self.Product.SKU_OBJ_ID][self.f['sku']] = sku
@@ -100,7 +139,6 @@ class JIT(JIT, Stock):
         answers[self.mf['procurment_qty']] = self.calc_shipment_pack(qty, standar_pack)
         answers[self.mf['procurment_status']] = status
         answers[self.mf['procurment_schedule_date']] = schedule_date
-
         return answers
 
     def balance_warehouse(self, warehouse=None, location=None, product_code=None, sku=None, status='active'):
@@ -115,7 +153,7 @@ class JIT(JIT, Stock):
 
         product_by_warehouse = {}
         product_codes = [r['product_code'] for r in  product_rules if r.get('product_code')]
-        self.ROUTE_RULES = self.get_rutas_transpaso()
+        self.set_rutas_transpaso()
         for rule in product_rules:
             product_code = rule.get('product_code')
             sku = rule.get('sku')
@@ -135,8 +173,9 @@ class JIT(JIT, Stock):
             order_qty = self.exec_reorder_rules(rule, product_stock)
             if order_qty:
                 print('order qty', order_qty)
-                ans = self.model_procurment(order_qty, product_code, sku, warehouse, location, procurment_method='buy')
+                ans = self.model_procurment(order_qty, product_code, sku, warehouse, location, procurment_method='transfer')
                 product_by_warehouse[warehouse].append(ans)
+                print('ans qty', ans)
         response = self.upsert_procurment(product_by_warehouse)
         return response
 
