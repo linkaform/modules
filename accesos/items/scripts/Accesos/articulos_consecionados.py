@@ -32,6 +32,7 @@ if __name__ == "__main__":
     location = data.get("location",'Planta Monterrey')
     #folio = data.get("folio",'')
     folio = data.get("folio",['553-10'])
+    tipo = data.get("tipo","")
     #-FUNCTIONS
     #option = 'new_article';
     #option = 'get_articles';
@@ -40,11 +41,16 @@ if __name__ == "__main__":
     if option == 'new_article':
         response = acceso_obj.create_article_concessioned(data_article)
     elif option == 'get_articles':
-        response = acceso_obj.get_list_article_concessioned(location)
+        response = acceso_obj.get_list_article_concessioned()
     elif option == 'update_article':
         response = acceso_obj.update_article_concessioned(data_article_update, folio)
     elif option == 'delete_article':
         response = acceso_obj.delete_article_concessioned(folio)
+    elif option == 'catalogo_tipo_concesion':
+        if tipo:
+            response = acceso_obj.catalogo_tipo_concesion(tipo)
+        else:
+            response = acceso_obj.catalogo_tipo_concesion(tipo="")
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
