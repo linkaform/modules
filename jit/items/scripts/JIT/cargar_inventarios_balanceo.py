@@ -23,6 +23,33 @@ NOMBRE_UBICACIONES = {
     'ALM GUADALAJARA':'Almacen Guadalajara',
     }
 
+
+FAMILIAS = {
+    'PENDIENTE':'00',
+    'TUBOS':'01',
+    'BARBETTI':'02',
+    'CONSA':'03',
+    'COPLEACERO':'04',
+    'COBRE':'05',
+    'INDEL':'06',
+    'LA COLMENA':'07',
+    'REYCO':'08',
+    'NIPLES':'09',
+    'MILLER':'10',
+    'BLUE LINE':'11',
+    'TEXAS':'12',
+    'CABLE':'13',
+    'GOLDEN (GUANTE)':'14',
+    'USALOK':'15',
+    'GENERAL FORGE':'16',
+    'PROFLOW':'17',
+    'SANITARIO':'18',
+    'PROMOCIONALES':'19',
+    'MANGUERAS':'20',
+    'AUTOMATIZACIONES':'21',
+}
+
+
 class CargaUniversal(CargaUniversal):
     
 
@@ -81,7 +108,7 @@ class CargaUniversal(CargaUniversal):
         for p, record in enumerate(sipre_obj.stock):
             # if p > 3:
             #     continue
-            print('record=', record)
+            # print('record=', record)
             this_metadata_stock = metadata_stock.copy() #   copia de metafa_form
             this_metadata_sales = metadata_sales.copy() #   copia de metafa_form
             this_metadata_stock.update({'folio': f"{self.folio}-{for_folio}-{p}"})
@@ -222,79 +249,21 @@ if __name__ == '__main__':
     estatus = 'demanda_cargada'
     #for step in ['carga_stock']:
     sipre_obj = SIPRE()
-    print('class_obj', class_obj.answers)
-    familia = class_obj.answers.get(jit_obj.Product.PRODUCT_OBJ_ID,{}).get(jit_obj.Product.f['product_type'])
+    ans_familia = class_obj.answers.get(jit_obj.Product.PRODUCT_OBJ_ID,{}).get(jit_obj.Product.f['product_type'])
+    familia = FAMILIAS.get(ans_familia)
+    if not familia:
+        class_obj.LKFException('Familia {ans_familia} no econtrada')
     print('familia', familia)
-    familia = '01'
     jit_obj.borrar_historial()
-    #sipre_obj.stock = sipre_obj.get_stock_and_demand(familia)
+    sipre_obj.stock = sipre_obj.get_stock_and_demand(familia)
     sipre_obj.stock = [
-        {'almacen': '01', 'almacenNombre': 'ALM MONTERREY', 'producto': '750200301001', 'productoNombre': 'MTRS TUBO S/C A106B/API5L STD 1/4"', 'ventas': 61.0, 'inventario': 2.7, 'familiaProducto': 'TUBOS', 'lineaProducto': 'A.C.', 'fechaAltaProducto': '2016-06-30T00:00:00', 'renglones': 1, }, 
-        {'almacen': '02', 'almacenNombre': 'ALM GUADALAJARA', 'producto': '750200301001', 'productoNombre': 'MTRS TUBO S/C A106B/API5L STD 1/4"', 'ventas': 17.4, 'inventario': 345.8, 'familiaProducto': 'TUBOS', 'lineaProducto': 'A.C.', 'fechaAltaProducto': '2016-06-30T00:00:00', 'renglones': 1} ]
+     {'almacen': '01', 'almacenNombre': 'ALM MONTERREY', 'producto': '750200301001', 'productoNombre': 'MTRS TUBO S/C A106B/API5L STD 1/4"', 'ventas': 61.0, 'inventario': 2.7, 'familiaProducto': 'TUBOS', 'lineaProducto': 'A.C.', 'fechaAltaProducto': '2016-06-30T00:00:00', 'renglones': 1, }, 
+     {'almacen': '02', 'almacenNombre': 'ALM GUADALAJARA', 'producto': '750200301001', 'productoNombre': 'MTRS TUBO S/C A106B/API5L STD 1/4"', 'ventas': 17.4, 'inventario': 345.8, 'familiaProducto': 'TUBOS', 'lineaProducto': 'A.C.', 'fechaAltaProducto': '2016-06-30T00:00:00', 'renglones': 1} ]
     stock = class_obj.carga_stock_from_sipre()
 
-    # print('token', stock)
-    # print('step', step)
-    # for step in ['demanda', 'carga_stock']:
-    #     if step == 'demanda':
-            
-    #         from_id = jit_obj.DEMANDA_UTIMOS_12_MES
-    #         header = [
-    #             'fecha',
-    #             'almacen:_warehouse_name',
-    #             'unidad_de_medida:_unidad_de_medida', 
-    #             'producto:_product_code', 
-    #             'producto:_sku',
-    #             '', 
-    #             'demanda_ultimos_12_meses',]
-
-    #         borrar = class_obj.answers.get(jit_obj.f.get('borrar_historial'))
-    #         if borrar == 'si':
-    #             jit_obj.borrar_historial()
-            
-    #         records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records = class_obj.carga_doctos_headers(own_header=header,form_id_to_load=from_id)
-    #         print('records', records[0])
-    #         print('records', recordds[0])
-    #         new_ids = class_obj.carga_doctos_records(records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records )
-    #         res = class_obj.lkf_api.patch_multi_record(
-    #             answers={jit_obj.f['comments']:'update'}, 
-    #             form_id=jit_obj.DEMANDA_UTIMOS_12_MES, 
-    #             record_id=new_ids,
-    #             threading=True,
-    #             )
-    #     elif step == 'carga_stock':
-    #         from_id = class_obj.Stock.FORM_INVENTORY_ID
-    #         header = [
-    #             'fecha',
-    #             'status',
-    #             'warehouse:_warehouse_name',
-    #             'warehouse:_location',
-    #             'product_sku:_product_code',
-    #             'product_sku:_sku',
-    #             'product_sku:_nombre_de_producto',
-    #             'product_sku:_type',
-    #             'product_sku:_categoria',
-    #             '',
-    #             'unidades_actuales',
-    #         ]
-    #         records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records = class_obj.carga_doctos_headers(own_header=header,form_id_to_load=from_id)
-    #         new_ids = class_obj.carga_doctos_records(records, pos_field_dict, files_dir, nueva_ruta, id_forma_seleccionada, dict_catalogs, group_records )
-    #     elif step == 'carga_adjust_stock':
-    #         from_id = class_obj.Stock.STOCK_INVENTORY_ADJUSTMENT_ID
-    #         header = [
-    #             'fecha',
-    #             'status',
-    #             'warehouse_location:_warehouse_name',
-    #             'warehouse_location:_location',
-    #             'actual_inventory:_product:_product_code', 
-    #             'actual_inventory:_product:_sku', 
-    #             'actual_inventory:_numero_de_lote', 
-    #             'actual_inventory:_adjust_status', 
-    #             '',
-    #             '',
-    #             'actual_inventory:_actual_qty', 
-    #         ]
-
-    #     #print('header', header)
+    # sys.stdout.write(simplejson.dumps({
+    #     'status': 101,
+    #     'replace_ans': jit_obj.answers,
+    #     }))
     res = class_obj.update_status_record(estatus)
 

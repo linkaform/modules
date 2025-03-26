@@ -90,8 +90,7 @@ class JIT(JIT, Stock):
 
     def get_procurment_transfers(self,qty, product_code, sku, warehouse, location, uom=None, schedule_date=None, status='programmed'):
         self.set_rutas_transpaso()
-        routes = self.ROUTE_RULES.get(product_code,{}).get(sku).get(warehouse).get(location)
-        print('route', routes)
+        routes = self.ROUTE_RULES.get(product_code,{}).get(sku,{}).get(warehouse,{}).get(location)
         if routes:
             # try:
             if True:
@@ -103,6 +102,7 @@ class JIT(JIT, Stock):
             #     warehouse_location_from = None
             #     standar_pack = 1
             return  {'warehouse': warehouse_from, 'warehouse_location':warehouse_location_from, 'standar_pack':standar_pack}
+        return {}
 
     def model_procurment(self, qty, product_code, sku, warehouse, location, uom=None, schedule_date=None, \
         bom=None, status='programmed', procurment_method='buy'):
@@ -110,9 +110,9 @@ class JIT(JIT, Stock):
         if procurment_method == 'transfer':
            tranfer_data = self.get_procurment_transfers(qty, product_code, sku, warehouse, location, uom=uom, schedule_date=schedule_date, status=status)
            answers[self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID] = {}
-           if tranfer_data['warehouse']:
+           if tranfer_data.get('warehouse'):
                answers[self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID][self.WH.f['warehouse_dest']] = tranfer_data['warehouse']
-           if tranfer_data['warehouse_location']:
+           if tranfer_data.get('warehouse_location'):
                answers[self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID][self.WH.f['warehouse_location_dest']] = tranfer_data['warehouse_location']
            standar_pack = tranfer_data.get('standar_pack', 1)
         else:

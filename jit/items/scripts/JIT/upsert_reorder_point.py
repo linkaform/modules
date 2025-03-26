@@ -14,8 +14,9 @@ if __name__ == '__main__':
     response = jit_obj.upsert_reorder_point()
     res = cu_obj.update_status_record('reglas_reorden')
     print('==========res',res)
+    # res = class_obj.update_status_record(estatus)
 
-    sys.stdout.write(simplejson.dumps({
-        'status': 101,
-        'replace_ans': jit_obj.answers,
-        }))
+    # sys.stdout.write(simplejson.dumps({
+    #     'status': 101,
+    #     'replace_ans': jit_obj.answers,
+    #     }))

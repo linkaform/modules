@@ -1,0 +1,69 @@
+<?xml version='1.0' encoding='utf-8'?>
+<lkf>
+    <form_id>{{ form.balanceo_de_inventarios.id }}</form_id>
+    <id>670877436ea51e03f7895697</id>
+    <rules>
+        <item>
+            <conditions>
+                <item>
+                    <condition>not__empty=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>5e32fbb498849f475cfbdca2</field_id>
+                        <group_id>None</group_id>
+                        <id>5e32fbb498849f475cfbdca2</id>
+                        <label>Estatus</label>
+                        <type>select</type>
+                    </field>
+                    <value> </value>
+                </item>
+                <item>
+                    <condition>is__empty=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>5e32fbb498849f475cfbdca2</field_id>
+                        <group_id>None</group_id>
+                        <id>5e32fbb498849f475cfbdca2</id>
+                        <label>Estatus</label>
+                        <type>select</type>
+                    </field>
+                    <value> </value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>5e32fbb498849f475cfbdca3</field_id>
+                    <group_id>None</group_id>
+                    <id>5e32fbb498849f475cfbdca3</id>
+                    <label>Errores</label>
+                    <type>file</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>6707feb08900f35982811710</field_id>
+                    <group_id>None</group_id>
+                    <id>6707feb08900f35982811710</id>
+                    <label>Errores 2</label>
+                    <type>file</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>5e32fbb498849f475cfbdca4</field_id>
+                    <group_id>None</group_id>
+                    <id>5e32fbb498849f475cfbdca4</id>
+                    <label>Comentarios</label>
+                    <type>text</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Ocultar Campos</name>
+            <operator>or</operator>
+            <rule_id>10de1589934b46</rule_id>
+            <rule_type>invisible</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+    </rules>
+</lkf>
