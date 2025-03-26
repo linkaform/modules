@@ -11,6 +11,7 @@ from account_settings import *
 class Stock(Stock):
 
     def get_product_info(self, **kwargs):
+        #REVISAR SI ESTO NO SE DEBE DE BORRAR DE MASTER
         try:
             product_code, sku, lot_number, warehouse, location = self.get_product_lot_location()
             # warehouse = self.answers[self.WAREHOUSE_LOCATION_OBJ_ID][self.f['warehouse']]
@@ -19,17 +20,12 @@ class Stock(Stock):
         except Exception as e:
             print('**********************************************')
             self.LKFException('Warehosue and product code are requierd', e)
-        print('getting product tock........', sku)
         a = f'{product_code}_{sku}_{lot_number}_{warehouse}_{location}'
-        print('reading cache...', a)
         values = {
                 '_id': a
                 }
         ccache = self.cache_read(values)
-        print('reading ccache...', ccache)
         product_stock = self.get_product_stock(product_code, sku=sku, lot_number=lot_number, warehouse=warehouse, location=location, kwargs=kwargs.get('kwargs',{}) )
-        print('=== stock de calculate ====', product_stock)
-        print('=== stock de calculate ====', self.answers)
         per_container = self.answers.get(self.f['per_container'],1)
         self.answers[self.f['product_lot_produced']] = product_stock['production']
         self.answers[self.f['product_lot_move_in']] = product_stock['move_in']
@@ -59,7 +55,6 @@ if __name__ == '__main__':
     ccache = stock_obj.cache_read(values)
     print('4444444444444reading ccache...', ccache)
     #stock_obj.merge_stock_records()
-    # print('current_record',current_record)
 
     # if folio:
     #     #si ya existe el registro, no cambio el numero de lote

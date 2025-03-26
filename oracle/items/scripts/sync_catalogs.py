@@ -6,13 +6,19 @@ from account_settings import *
 from oracle import Oracle
 
 class Oracle(Oracle):
-    pass
 
     def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False, **kwargs):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
         self.class_cr = self.get_db_cr('Oracle')
         #use self.lkm.catalog_id() to get catalog id
         self.name =  __class__.__name__
+        self.load('Employee', **self.kwargs)
+        self.Employee.f.update({
+            'worker_code':'670f585bf844ff7bc357b1dc',
+            'worker_code':'670f585bf844ff7bc357b1dc',
+            
+            })
+        self.f.update(self.Employee.f)
         self.settings = settings
         self.etl_values = {
             'A':'Activo',
@@ -56,7 +62,7 @@ class Oracle(Oracle):
                 }
             },
             'LINK_EMPLEADOS_2':{
-                'catalog_id': self.EMPLEADOS_JEFES_DIRECTOS_ID,
+                'catalog_id': self.Employee.EMPLEADOS_JEFES_DIRECTOS_ID,
                 'schema':{
                     'DEPARTAMENTO': self.f['worker_department'],
                     'CONTACTOID': self.f['worker_code_jefes'],
@@ -378,11 +384,12 @@ if __name__ == "__main__":
         views = list(module_obj.views.keys())
         module_obj.equipos = []
         module_obj.equipos_row = []
-        equipos_schema:{
+        equipos_schema ={
                     'VEHICULO_TALID': '_id',
                     'DESCRIPCION': module_obj.f['worker_position'],
                     }
         for v in views:
+            print('-----------------------------------------------------------')
             if True:
                 record_ids, last_update,  = module_obj.get_last_db_update_data(v)
                 # last_update_date
@@ -390,13 +397,17 @@ if __name__ == "__main__":
                 query = None
                 if last_update:
                     update = True
+                    #se restan 6 hrs para aplicar GMT-6:00
+                    last_update = last_update - 6*60*60
                     date_time = datetime.datetime.fromtimestamp(last_update)
                     last_update_date = date_time.strftime('%Y-%m-%d %H:%M:%S')
+                    print('last_update_date', last_update_date)
                     a = f"TO_TIMESTAMP('{last_update_date}', 'YYYY-MM-DD HH24:MI:SS.FF6')"
                     query = f'SELECT * FROM {v} WHERE FEC_MODIF  > {a}'
 
                 header, response = module_obj.sync_db_catalog(db_name=v, query=query)
                 # schema = getattr(module_obj, v, "Attribute not found")
+                print('query=', query)
                 if v == 'LINK_EMPLEADOS':
                     #Carga primero los Contactos
                     view = module_obj.schema_dict[v]
@@ -416,4 +427,5 @@ if __name__ == "__main__":
                 view = module_obj.views[v]
                 schema = view['schema']
                 catalog_id = view['catalog_id']
+                print('catalog_id',catalog_id)
                 module_obj.load_data(v, view, response, schema, catalog_id)
