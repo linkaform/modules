@@ -35,6 +35,30 @@ class Mantenimiento(Mantenimiento):
         }
         return response
     
+    def exists_activo_fijo(self, answers):
+        selector = {}
+        nombre_equipo = answers.get(self.ActivoFijo.ACTIVOS_FIJOS_CAT_OBJ_ID, {}).get(self.ActivoFijo.f['nombre_equipo'], '')
+        
+        selector.update({
+            f"answers.{self.ActivoFijo.f['nombre_equipo']}": nombre_equipo,
+            f"answers.{self.ActivoFijo.f['estado']}": "In Activo",
+            f"answers.{self.ActivoFijo.f['estatus']}": "No disponible"
+        })
+
+        fields = ["_id", f"answers.{self.ActivoFijo.f['nombre_equipo']}"]
+
+        mango_query = {
+            "selector": selector,
+            "fields": fields,
+            "limit": 1
+        }
+
+        row_catalog = self.lkf_api.search_catalog(self.ActivoFijo.ACTIVOS_FIJOS_CAT_ID, mango_query)
+        if row_catalog:
+            return False
+        else: 
+            return True
+    
     def format_data_to_create_activo_fijo(self, answers):
         mx_time = datetime.now(pytz.timezone("America/Mexico_City"))
         catalog_key = self.ActivoFijo.ACTIVOS_FIJOS_CAT_OBJ_ID
@@ -169,13 +193,15 @@ if __name__ == "__main__":
     mantenimiento_obj = Mantenimiento(settings, sys_argv=sys.argv)
     mantenimiento_obj.console_run()
 
-    data = mantenimiento_obj.format_data_to_create_activo_fijo(mantenimiento_obj.answers)
-    response = mantenimiento_obj.create_activo_fijo(data=data)
+    exists = mantenimiento_obj.exists_activo_fijo(mantenimiento_obj.answers)
     replace_answers = mantenimiento_obj.answers
-    if response.get('status') == 'success':
-        replace_answers = mantenimiento_obj.update_activo_fijo_in_orden_instalacion(mantenimiento_obj.answers, data)
+    if not exists:
+        data = mantenimiento_obj.format_data_to_create_activo_fijo(mantenimiento_obj.answers)
+        response = mantenimiento_obj.create_activo_fijo(data=data)
+        if response.get('status') == 'success':
+            replace_answers = mantenimiento_obj.update_activo_fijo_in_orden_instalacion(mantenimiento_obj.answers, data)
+        print(response)
 
-    print(response)
     sys.stdout.write(simplejson.dumps({
         'status': 101,
         'replace_ans': replace_answers
