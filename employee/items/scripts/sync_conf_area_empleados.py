@@ -12,6 +12,10 @@ from employee_utils import Employee
 
 class Employee(Employee):
 
+    def __init__(self, settings, sys_argv=None, use_api=False):
+        super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
+        self.load(module='Accesos', **self.kwargs)
+
     def in_catalog(self, data):
         # print(simplejson.dumps(data, indent=4))
         nombre_completo = data.get(self.EMPLOYEE_OBJ_ID, {}).get(self.f['nombre_empleado'])
@@ -54,27 +58,27 @@ class Employee(Employee):
 
                 # print('existing_pairssssssss', existing_pairs)
                 for item in grupo_repetitivo:
-                    area_grupo = item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['nombre_area'], '').strip()
-                    location_grupo = item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['ubicacion'], '').strip()
+                    area_grupo = item.get(self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['nombre_area'], '').strip()
+                    location_grupo = item.get(self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['ubicacion'], '').strip()
 
-                    item[self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID][self.f['nombre_area']] = area_grupo
+                    item[self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID][self.f['nombre_area']] = area_grupo
 
                     print(f'Area: {area_grupo}, Ubicación: {location_grupo}')
 
                     if (area_grupo, location_grupo) in existing_pairs:
-                        item[self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID].update({'existente': True})
+                        item[self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID].update({'existente': True})
                     else:
-                        item[self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID].update({'existente': False})
+                        item[self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID].update({'existente': False})
 
                 # print(grupo_repetitivo)
                 self.format_group_to_catalog(data, grupo_repetitivo)
             else:
                 print('=====No hay ninguno de estos registros en el catalogo Conf Areas y Empleados======')
                 for item in grupo_repetitivo:
-                    area_grupo = item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['nombre_area'], '').strip()
-                    location_grupo = item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['ubicacion']).strip()
+                    area_grupo = item.get(self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['nombre_area'], '').strip()
+                    location_grupo = item.get(self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['ubicacion']).strip()
                     
-                    item[self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID][self.f['nombre_area']] = area_grupo
+                    item[self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID][self.f['nombre_area']] = area_grupo
 
                     print(f'Area: {area_grupo}, Ubicación: {location_grupo}')
                 # print(grupo_repetitivo)
@@ -99,11 +103,11 @@ class Employee(Employee):
         answer[self.f['nombre_empleado']] = nombre_completo
         # answer.pop(self.employee_fields['estatus_disponibilidad'])
         for item in grupo_repetitivo:
-            if not item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get('existente'):
+            if not item.get(self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get('existente'):
                 answer.update(
                     {
-                        self.f['ubicacion']: item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['ubicacion']),
-                        self.f['nombre_area']: item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['nombre_area'])
+                        self.f['ubicacion']: item.get(self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['ubicacion']),
+                        self.f['nombre_area']: item.get(self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['nombre_area'])
                     }
                 )
                 catalogo_metadata.update({'answers': answer})
@@ -156,30 +160,30 @@ class Employee(Employee):
                 # print('existing_pairssssssss', existing_pairs)
 
                 for item in grupo_repetitivo:
-                    area_grupo = item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['nombre_area']).strip()
-                    location_grupo = item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['ubicacion']).strip()
+                    area_grupo = item.get(self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['nombre_area']).strip()
+                    location_grupo = item.get(self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['ubicacion']).strip()
 
-                    item[self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID][self.f['nombre_area']] = area_grupo
+                    item[self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID][self.f['nombre_area']] = area_grupo
 
                     print(f'Area: {area_grupo}, Ubicación: {location_grupo}')
 
                     if (area_grupo, location_grupo) in existing_pairs:
-                        item[self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID].update({'existente': True})
+                        item[self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID].update({'existente': True})
                     else:
-                        item[self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID].update({'existente': False})
+                        item[self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID].update({'existente': False})
 
                 # print(grupo_repetitivo)
                 self.format_group_to_catalog_apoyo(data, grupo_repetitivo)
             else:
                 print('=====No hay ninguno de estos registros en el catalogo Conf Areas y Empleados Apoyo======')
                 for item in grupo_repetitivo:
-                    area_grupo = item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['nombre_area'], '').strip()
-                    location_grupo = item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['ubicacion']).strip()
+                    area_grupo = item.get(self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['nombre_area'], '').strip()
+                    location_grupo = item.get(self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['ubicacion']).strip()
                     
-                    item[self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID][self.f['nombre_area']] = area_grupo
+                    item[self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID][self.f['nombre_area']] = area_grupo
 
                     print(f'Area: {area_grupo}, Ubicación: {location_grupo}')
-                    item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID).pop('existente', None)
+                    item.get(self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID).pop('existente', None)
                 # print(grupo_repetitivo)
                 self.format_group_to_catalog_apoyo(data, grupo_repetitivo)
         except Exception as e:
@@ -204,11 +208,11 @@ class Employee(Employee):
         # answer.pop(self.employee_fields['estatus_disponibilidad'])
 
         for item in grupo_repetitivo:
-            if not item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get('existente'):
+            if not item.get(self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get('existente'):
                 answer.update(
                     {
-                        self.f['ubicacion']: item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['ubicacion']),
-                        self.f['nombre_area_salida']: item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['nombre_area'])
+                        self.f['ubicacion']: item.get(self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['ubicacion']),
+                        self.f['nombre_area_salida']: item.get(self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['nombre_area'])
                     }
                 )
                 catalogo_metadata.update({'answers': answer})
