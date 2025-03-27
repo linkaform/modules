@@ -45,11 +45,11 @@ if __name__ == "__main__":
     #option = 'update_article';
     #option = 'delete_article';
     if option == 'nuevo_paquete':
-        response = acceso_obj.nuevo_paquete(data_paquete)
+        response = acceso_obj.create_paquete(data_paquete)
     elif option == 'get_paquetes':
         response = acceso_obj.get_paquetes(location, area,status)
     elif option == 'actualizar_paquete':
-        response = acceso_obj.actualizar_paquete(data_paquete_actualizar, folio)
+        response = acceso_obj.update_paquete(data_paquete_actualizar, folio)
     elif option == 'eliminar_paquete':
         response = acceso_obj.delete_paquete(folio)
     else :
