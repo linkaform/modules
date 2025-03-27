@@ -73,7 +73,8 @@ class CargaUniversal(CargaUniversal):
         #   Obtiene una info de un formulario en específico que viene de metadata
         metadata_stock = self.lkf_api.get_metadata(form_id=class_obj.Stock.FORM_INVENTORY_ID)
         metadata_sales = self.lkf_api.get_metadata(form_id=jit_obj.DEMANDA_UTIMOS_12_MES)
-        
+        print('form id inventory', class_obj.Stock.FORM_INVENTORY_ID)
+        print('form id DEMANDA_UTIMOS_12_MES', jit_obj.DEMANDA_UTIMOS_12_MES)
         #   Complementa la información del formulario con ayuda del método get_complete_metadata
         metadata_stock.update(self.get_complete_metadata())
         metadata_sales.update(self.get_complete_metadata())
@@ -233,7 +234,6 @@ class CargaUniversal(CargaUniversal):
 
         }
         return answers
-
     
 
 if __name__ == '__main__':
@@ -256,9 +256,9 @@ if __name__ == '__main__':
     print('familia', familia)
     jit_obj.borrar_historial()
     sipre_obj.stock = sipre_obj.get_stock_and_demand(familia)
-    sipre_obj.stock = [
-     {'almacen': '01', 'almacenNombre': 'ALM MONTERREY', 'producto': '750200301001', 'productoNombre': 'MTRS TUBO S/C A106B/API5L STD 1/4"', 'ventas': 61.0, 'inventario': 2.7, 'familiaProducto': 'TUBOS', 'lineaProducto': 'A.C.', 'fechaAltaProducto': '2016-06-30T00:00:00', 'renglones': 1, }, 
-     {'almacen': '02', 'almacenNombre': 'ALM GUADALAJARA', 'producto': '750200301001', 'productoNombre': 'MTRS TUBO S/C A106B/API5L STD 1/4"', 'ventas': 17.4, 'inventario': 345.8, 'familiaProducto': 'TUBOS', 'lineaProducto': 'A.C.', 'fechaAltaProducto': '2016-06-30T00:00:00', 'renglones': 1} ]
+    # sipre_obj.stock = [
+    #  {'almacen': '01', 'almacenNombre': 'ALM MONTERREY', 'producto': '750200301001', 'productoNombre': 'MTRS TUBO S/C A106B/API5L STD 1/4"', 'ventas': 61.0, 'inventario': 2.7, 'familiaProducto': 'TUBOS', 'lineaProducto': 'A.C.', 'fechaAltaProducto': '2016-06-30T00:00:00', 'renglones': 1, }, 
+    #  {'almacen': '02', 'almacenNombre': 'ALM GUADALAJARA', 'producto': '750200301001', 'productoNombre': 'MTRS TUBO S/C A106B/API5L STD 1/4"', 'ventas': 17.4, 'inventario': 345.8, 'familiaProducto': 'TUBOS', 'lineaProducto': 'A.C.', 'fechaAltaProducto': '2016-06-30T00:00:00', 'renglones': 1} ]
     stock = class_obj.carga_stock_from_sipre()
 
     # sys.stdout.write(simplejson.dumps({

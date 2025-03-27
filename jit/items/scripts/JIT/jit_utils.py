@@ -212,7 +212,6 @@ class SIPRE:
         endpoint = self.stock_endpoint.format(self.token, familia)
         response = self.api_request(f"{self.host}{endpoint}", method='GET')
         result = response.get('resultado',{})
-        print('result', result)
         return result
 
 

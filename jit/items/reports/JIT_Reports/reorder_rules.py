@@ -21,6 +21,7 @@ class Reports(Reports):
     def almancenes_por_porcentaje(self, sku_data):
         self.warehouse_percentage = {}
         for sku, data in sku_data.items():
+            self.ROUTE_RULES = {x['product_code']:x for x in self.get_rutas_transpaso(product_codes) if x.get('product_code')}
             standar_pack = self.ROUTE_RULES.get(str(sku),{})
             sku_warehouses = []
             print('standar_pack', standar_pack)
@@ -220,8 +221,8 @@ class Reports(Reports):
                 f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['product_code']}": {'$in': product_code}
                 })
             
-        match_query.update({
-            f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['product_code']}": "750200301071"})
+        # match_query.update({
+        #     f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['product_code']}": "750200301071"})
         if sku:
             match_query.update({
                 f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['sku']}":sku
@@ -248,7 +249,7 @@ class Reports(Reports):
                     'warehouse':f'$answers.{warehouse_obj.WAREHOUSE_LOCATION_OBJ_ID}.{warehouse_obj.f["warehouse"]}',
                     'warehouse_location':f'$answers.{warehouse_obj.WAREHOUSE_LOCATION_OBJ_ID}.{warehouse_obj.f["warehouse_location"]}',
             }}]
-        # print('query=', simplejson.dumps(query, indent=3))
+        print('query=', simplejson.dumps(query, indent=3))
         return procurment_obj.format_cr(procurment_obj.cr.aggregate(query))
 
     def get_report_filters(self, filters=[], product_code_aux=None):
@@ -306,11 +307,12 @@ class Reports(Reports):
 
     def generate_report_info(self):
         products = reorder_obj.get_product_by_type(product_type=product_family, product_line=product_line)
+        print('products', products)
         product_dict = {x['product_code']: x for x in products}
         product_code = list(product_dict.keys())
-                    
-        # print('product_code=',product_code)
+        print('product_code=',product_code)
         procurment = reorder_obj.get_procurments(product_code=product_code)
+        print('procurment', procurment)
         if not procurment:
             return None
         product_stock = stock_obj.get_products_inventory(product_code=product_code, warehouse=warehouse_info)
@@ -475,7 +477,9 @@ class Reports(Reports):
 
     def warehouse_transfer_update(self):
         self.ROUTE_RULES = self.get_rutas_transpaso()
+
         stock_list = self.generate_report_info()  # Lista de productos
+        print('stock list', stock_list)
         if not stock_list:
             return [{}]
         data = self.build_data_from_report(stock_list)  # Genera los datos del informe
