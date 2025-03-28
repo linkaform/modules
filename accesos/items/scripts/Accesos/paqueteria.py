@@ -47,7 +47,7 @@ if __name__ == "__main__":
     if option == 'nuevo_paquete':
         response = acceso_obj.create_paquete(data_paquete)
     elif option == 'get_paquetes':
-        response = acceso_obj.get_paquetes(location, area,status)
+        response = acceso_obj.get_paquetes(location, area, status)
     elif option == 'actualizar_paquete':
         response = acceso_obj.update_paquete(data_paquete_actualizar, folio)
     elif option == 'eliminar_paquete':
