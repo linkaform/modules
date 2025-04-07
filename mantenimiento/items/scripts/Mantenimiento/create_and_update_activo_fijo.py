@@ -37,12 +37,12 @@ class Mantenimiento(Mantenimiento):
     
     def exists_activo_fijo(self, answers):
         selector = {}
-        nombre_equipo = answers.get(self.ActivoFijo.ACTIVOS_FIJOS_CAT_OBJ_ID, {}).get(self.ActivoFijo.f['nombre_equipo'], '')
-        
+        modelo = answers.get(self.ActivoFijo.ACTIVOS_FIJOS_CAT_OBJ_ID, {}).get(self.ActivoFijo.f['modelo'], '')
+
         selector.update({
-            f"answers.{self.ActivoFijo.f['nombre_equipo']}": nombre_equipo,
-            f"answers.{self.ActivoFijo.f['estado']}": "In Activo",
-            f"answers.{self.ActivoFijo.f['estatus']}": "No disponible"
+            f"answers.{self.ActivoFijo.f['modelo']}": modelo,
+            f"answers.{self.ActivoFijo.f['estado']}": "Activo",
+            f"answers.{self.ActivoFijo.f['estatus']}": "Disponible"
         })
 
         fields = ["_id", f"answers.{self.ActivoFijo.f['nombre_equipo']}"]
@@ -55,30 +55,24 @@ class Mantenimiento(Mantenimiento):
 
         row_catalog = self.lkf_api.search_catalog(self.ActivoFijo.ACTIVOS_FIJOS_CAT_ID, mango_query)
         if row_catalog:
-            return False
-        else: 
             return True
+        else: 
+            return False
     
     def format_data_to_create_activo_fijo(self, answers):
         mx_time = datetime.now(pytz.timezone("America/Mexico_City"))
         catalog_key = self.ActivoFijo.ACTIVOS_FIJOS_CAT_OBJ_ID
-        marca = answers.get(catalog_key, {}).get(self.ActivoFijo.f['marca'], '')
         modelo = answers.get(catalog_key, {}).get(self.ActivoFijo.f['modelo'], '')
-
-        if not marca:
-            marca = answers.get(self.f['marca_campo'])
-        if not modelo:
-            modelo = answers.get(self.f['modelo_campo'])
+        marca = modelo
 
         data = {
-            'nombre_cliente': answers.get(self.CLIENTE_CAT_OBJ_ID, {}).get(self.f['nombre_comercial'], ''),
+            'nombre_cliente': answers.get(self.CLIENTE_CAT_OBJ_ID, {}).get(self.f['cliente_instalacion'], ''),
             'email_cliente': answers.get(self.CLIENTE_CAT_OBJ_ID, {}).get(self.f['email_contacto'], ''),
-            'nombre_equipo': answers.get(catalog_key, {}).get(self.ActivoFijo.f['nombre_equipo']),
-            'nick_eco': answers.get(self.f['nick_eco']),
+            'nombre_equipo': answers.get(catalog_key, {}).get(self.ActivoFijo.f['modelo']),
+            'mobile_id_instalacion': answers.get(self.f['mobile_id_instalacion']),
             'nombre_direccion_contacto': answers.get(self.CONTACTO_CAT_OBJ_ID, {}).get(self.f['address_name'], ''),
+            'email_contacto': answers.get(self.CLIENTE_CAT_OBJ_ID, {}).get(self.f['email_contacto'], ''),
             'geolocalizacion_contacto': answers.get(self.CONTACTO_CAT_OBJ_ID, {}).get(self.f['address_geolocation'], []),
-            'telefono_contacto': answers.get(self.CONTACTO_CAT_OBJ_ID, {}).get(self.f['phone'], ''),
-            'email_contacto': answers.get(self.CONTACTO_CAT_OBJ_ID, {}).get(self.f['email'], ''),
             'tipo_de_equipo': answers.get(catalog_key, {}).get(self.ActivoFijo.f['categoria']),
             'marca': marca,
             'modelo': modelo,
@@ -98,8 +92,8 @@ class Mantenimiento(Mantenimiento):
             return response
         
         nombre_equipo = data.get('nombre_equipo')
-        nick_eco = data.get('nick_eco')
-        nuevo_nombre_equipo = nombre_equipo + '-' + nick_eco
+        mobile_id = data.get('mobile_id_instalacion')
+        nuevo_nombre_equipo = nombre_equipo + '-' + mobile_id
         
         metadata = self.lkf_api.get_metadata(form_id=self.ActivoFijo.ACTIVOS_FIJOS)
         metadata.update({
@@ -129,7 +123,6 @@ class Mantenimiento(Mantenimiento):
                     answers[self.CONTACTO_CAT_OBJ_ID] = {
                         self.f['address_name']: value,
                         self.f['address_geolocation']: data.get('geolocalizacion_contacto', ''),
-                        self.f['phone']: data.get('telefono_contacto', ''),
                         self.f['email']: data.get('email_contacto', '')
                     }
                 elif key == 'tipo_de_equipo':
@@ -139,7 +132,7 @@ class Mantenimiento(Mantenimiento):
                 elif key == 'marca':
                     answers[self.ActivoFijo.MODELO_OBJ_ID] = {
                         self.ActivoFijo.f['marca']: value,
-                        self.ActivoFijo.f['modelo']: data.get('modelo', ''),
+                        self.ActivoFijo.f['modelo']: nuevo_nombre_equipo,
                         self.ActivoFijo.f['categoria_marca']: data.get('tipo_de_equipo', ''),
                     }
                 elif key == 'placa':
@@ -176,13 +169,11 @@ class Mantenimiento(Mantenimiento):
         
     def update_activo_fijo_in_orden_instalacion(self, answers, data):
         nombre_equipo = data.get('nombre_equipo')
-        nick_eco = data.get('nick_eco')
-        nuevo_nombre_equipo = nombre_equipo + '-' + nick_eco
+        mobile_id = data.get('mobile_id_instalacion')
+        nuevo_nombre_equipo = nombre_equipo + '-' + mobile_id
 
         answers[self.ActivoFijo.ACTIVOS_FIJOS_CAT_OBJ_ID] = {
-            self.ActivoFijo.f['marca']: data.get('marca'),
-            self.ActivoFijo.f['modelo']: data.get('modelo'),
-            self.ActivoFijo.f['nombre_equipo']: nuevo_nombre_equipo,
+            self.ActivoFijo.f['modelo']: nuevo_nombre_equipo,
             self.ActivoFijo.f['categoria_marca']: data.get('tipo_de_equipo'),
             self.f['imagen_del_equipo']: data.get('imagen_del_equipo')
         }
@@ -195,12 +186,16 @@ if __name__ == "__main__":
 
     exists = mantenimiento_obj.exists_activo_fijo(mantenimiento_obj.answers)
     replace_answers = mantenimiento_obj.answers
+    print(simplejson.dumps(mantenimiento_obj.answers))
     if not exists:
+        print('Creating Activo Fijo...')
         data = mantenimiento_obj.format_data_to_create_activo_fijo(mantenimiento_obj.answers)
         response = mantenimiento_obj.create_activo_fijo(data=data)
         if response.get('status') == 'success':
             replace_answers = mantenimiento_obj.update_activo_fijo_in_orden_instalacion(mantenimiento_obj.answers, data)
         print(response)
+    else:
+        print('Activo Fijo ya existe')
 
     sys.stdout.write(simplejson.dumps({
         'status': 101,
