@@ -39,11 +39,7 @@ if __name__ == "__main__":
     area = data.get("area")
     folio = data.get("folio")
     tipo = data.get("tipo","")
-    #-FUNCTIONS
-    #option = 'new_article';
-    #option = 'get_articles';
-    #option = 'update_article';
-    #option = 'delete_article';
+
     if option == 'nuevo_paquete':
         response = acceso_obj.create_paquete(data_paquete)
     elif option == 'get_paquetes':
@@ -52,6 +48,8 @@ if __name__ == "__main__":
         response = acceso_obj.update_paquete(data_paquete_actualizar, folio)
     elif option == 'eliminar_paquete':
         response = acceso_obj.delete_paquete(folio)
+    elif option == 'get_catalogo_paquetes':
+        response = acceso_obj.get_catalogo_paquetes()
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
