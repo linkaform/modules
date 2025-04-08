@@ -6,9 +6,11 @@
             <_id>form_131261</_id>
             <config>True</config>
             <inc_by>1</inc_by>
-            <next>3</next>
+            <manual>False</manual>
+            <next>4</next>
             <padding_zeros>3</padding_zeros>
             <prefix>%y%m-</prefix>
+            <required>False</required>
             <suffix />
         </folio>
     </advanced_options>
@@ -3884,7 +3886,7 @@
                         <catalog_field_id>None</catalog_field_id>
                         <catalog_id>{{ catalog.activos_fijos.id }}</catalog_id>
                         <field_type>None</field_type>
-                        <filters>EquiposBase</filters>
+                        <filters>EquiposAlta</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -4861,6 +4863,95 @@
                 <item>
                     <affecting_rules>[]</affecting_rules>
                     <buttons_ids>[]</buttons_ids>
+                    <catalog>None</catalog>
+                    <catalog_fields>[]</catalog_fields>
+                    <catalog_relation>None</catalog_relation>
+                    <default>True</default>
+                    <default_value>no</default_value>
+                    <descriptor>None</descriptor>
+                    <fav>False</fav>
+                    <field_id>67f52f6fcfb232a1a94fb9ef</field_id>
+                    <field_type>radio</field_type>
+                    <grading_criteria>{}</grading_criteria>
+                    <group>None</group>
+                    <groups_fields>[]</groups_fields>
+                    <help_text>None</help_text>
+                    <label>Requiere refacciones</label>
+                    <number_type>None</number_type>
+                    <options>
+                        <item>
+                            <label>Si</label>
+                            <points>None</points>
+                            <selected>False</selected>
+                            <value>si</value>
+                        </item>
+                        <item>
+                            <label>No</label>
+                            <points>None</points>
+                            <selected>False</selected>
+                            <value>no</value>
+                        </item>
+                    </options>
+                    <properties>
+                        <body_payload>[]</body_payload>
+                        <color />
+                        <comment />
+                        <custom />
+                        <elements_ids>[]</elements_ids>
+                        <email_configuration>None</email_configuration>
+                        <enable_barcode>None</enable_barcode>
+                        <fieldId>[]</fieldId>
+                        <file_name />
+                        <file_name_array>[]</file_name_array>
+                        <help_text>False</help_text>
+                        <icon>{}</icon>
+                        <image_origin>None</image_origin>
+                        <input_parameter>[]</input_parameter>
+                        <max>None</max>
+                        <max_images_count>5</max_images_count>
+                        <metadata>[]</metadata>
+                        <method />
+                        <mime_types>[]</mime_types>
+                        <min>None</min>
+                        <min_images_count>0</min_images_count>
+                        <multi_selection>False</multi_selection>
+                        <notification>{}</notification>
+                        <number_of_decimals>2</number_of_decimals>
+                        <openChoice>False</openChoice>
+                        <parameters>[]</parameters>
+                        <pfd_print>always</pfd_print>
+                        <pfd_style>Tabla_respuestas</pfd_style>
+                        <selected>1</selected>
+                        <send_email>False</send_email>
+                        <send_record>False</send_record>
+                        <send_to_lkf>False</send_to_lkf>
+                        <service_name />
+                        <update_values>{}</update_values>
+                        <url />
+                        <username>False</username>
+                        <visible_on />
+                        <wait_response>False</wait_response>
+                        <watermark_config>None</watermark_config>
+                        <watermark_enable>False</watermark_enable>
+                    </properties>
+                    <required>False</required>
+                    <rules>
+                        <item>7a91b7222da1b58</item>
+                    </rules>
+                    <show_for_rule>True</show_for_rule>
+                    <validations>{}</validations>
+                    <visible>True</visible>
+                </item>
+                <item>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>7a91b7222da1b58</rule_id>
+                            <rule_index>0</rule_index>
+                            <rule_type>invisible</rule_type>
+                        </item>
+                    </affecting_rules>
+                    <buttons_ids>[]</buttons_ids>
                     <catalog>
                         <catalog_field_id>None</catalog_field_id>
                         <catalog_id>{{ catalog.warehouse_locations.id }}</catalog_id>
@@ -4942,7 +5033,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>7a91b7222da1b58</rule_id>
+                            <rule_index>0</rule_index>
+                            <rule_type>invisible</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
                         <catalog_field_id>{{ catalog.warehouse_locations.obj_id }}</catalog_field_id>
@@ -5019,7 +5117,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>7a91b7222da1b58</rule_id>
+                            <rule_index>0</rule_index>
+                            <rule_type>invisible</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
                         <catalog_field_id>{{ catalog.warehouse_locations.obj_id }}</catalog_field_id>
@@ -5096,7 +5201,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>7a91b7222da1b58</rule_id>
+                            <rule_index>0</rule_index>
+                            <rule_type>invisible</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -5179,7 +5291,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>7a91b7222da1b58</rule_id>
+                            <rule_index>0</rule_index>
+                            <rule_type>invisible</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
                         <catalog_field_id>None</catalog_field_id>
@@ -5276,7 +5395,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>7a91b7222da1b58</rule_id>
+                            <rule_index>0</rule_index>
+                            <rule_type>invisible</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
                         <catalog_field_id>{{ catalog.stock_inventory.obj_id }}</catalog_field_id>
@@ -5356,7 +5482,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>7a91b7222da1b58</rule_id>
+                            <rule_index>0</rule_index>
+                            <rule_type>invisible</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
                         <catalog_field_id>{{ catalog.stock_inventory.obj_id }}</catalog_field_id>
@@ -5436,7 +5569,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>7a91b7222da1b58</rule_id>
+                            <rule_index>0</rule_index>
+                            <rule_type>invisible</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
                         <catalog_field_id>{{ catalog.stock_inventory.obj_id }}</catalog_field_id>
@@ -6236,7 +6376,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>7a91b7222da1b58</rule_id>
+                            <rule_index>0</rule_index>
+                            <rule_type>invisible</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -6306,7 +6453,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>7a91b7222da1b58</rule_id>
+                            <rule_index>0</rule_index>
+                            <rule_type>invisible</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -8668,15 +8822,14 @@
     <templates>
         <item>
             <_type>single_record</_type>
-            <default>True</default>
-            <description>Template de Orden de Servicio para Boson Ti</description>
-            <id>564</id>
-            <name>Boson Ti - Orden de Servicio</name>
+            <description>Template de Orden de Revisión para Boson Ti</description>
+            <id>571</id>
+            <name>Boson Ti -  Orden de Revision</name>
             <owner>/api/infosync/user/17213/</owner>
             <paginate>True</paginate>
-            <pdfName>{% raw %} Orden de Servicio - {{record.folio}} {% endraw %} </pdfName>
+            <pdfName>{% raw %} Orden de Revision - {{record.folio}} {% endraw %} </pdfName>
             <properties>{}</properties>
-            <resource_uri>/api/infosync/templates/564/</resource_uri>
+            <resource_uri>/api/infosync/templates/571/</resource_uri>
             <script>{}</script>
         </item>
     </templates>
@@ -8688,5 +8841,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1744073505.0</updated_at>
+    <updated_at>1744130524.0</updated_at>
 </lkf>

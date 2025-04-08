@@ -6,9 +6,11 @@
             <_id>form_131262</_id>
             <config>True</config>
             <inc_by>1</inc_by>
-            <next>3</next>
+            <manual>False</manual>
+            <next>4</next>
             <padding_zeros>3</padding_zeros>
             <prefix>%y%m-</prefix>
+            <required>False</required>
             <suffix />
         </folio>
     </advanced_options>
@@ -3132,7 +3134,7 @@
                         <catalog_field_id>None</catalog_field_id>
                         <catalog_id>{{ catalog.activos_fijos.id }}</catalog_id>
                         <field_type>None</field_type>
-                        <filters>EquiposBase</filters>
+                        <filters>EquiposAlta</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -4820,14 +4822,14 @@
         <item>
             <_type>single_record</_type>
             <default>True</default>
-            <description>Template de Orden de Servicio para Boson Ti</description>
-            <id>564</id>
-            <name>Boson Ti - Orden de Servicio</name>
+            <description>Template de boson Ti para desinstalación</description>
+            <id>570</id>
+            <name>Boson Ti - Orden de Desinstalación</name>
             <owner>/api/infosync/user/17213/</owner>
             <paginate>True</paginate>
-            <pdfName>{% raw %} Orden de Servicio - {{record.folio}} {% endraw %} </pdfName>
+            <pdfName>{% raw %} Orden de Desinstalación - {{record.folio}} {% endraw %} </pdfName>
             <properties>{}</properties>
-            <resource_uri>/api/infosync/templates/564/</resource_uri>
+            <resource_uri>/api/infosync/templates/570/</resource_uri>
             <script>{}</script>
         </item>
     </templates>
@@ -4839,5 +4841,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1743704908.0</updated_at>
+    <updated_at>1744130959.0</updated_at>
 </lkf>

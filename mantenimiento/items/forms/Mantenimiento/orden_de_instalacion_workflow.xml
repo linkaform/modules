@@ -2676,10 +2676,8 @@ Ver registro&gt; {{record_url}} {% endraw %}</body>
                                     <conditions>[]</conditions>
                                 </etl>
                                 <input>
-                                    <field_type>catalog-select</field_type>
-                                    <id>6442e4831198daf81456f274</id>
-                                    <type>field_to_field</type>
-                                    <value>None</value>
+                                    <type>value_to_field</type>
+                                    <value>Clientes</value>
                                 </input>
                                 <output>
                                     <id>65bdc71b3e183f49761a33b9</id>
@@ -2690,10 +2688,8 @@ Ver registro&gt; {{record_url}} {% endraw %}</body>
                                     <conditions>[]</conditions>
                                 </etl>
                                 <input>
-                                    <field_type>catalog-select</field_type>
-                                    <id>65ac6fbc070b93e656bd7fbe</id>
-                                    <type>field_to_field</type>
-                                    <value>None</value>
+                                    <type>value_to_field</type>
+                                    <value>Clientes</value>
                                 </input>
                                 <output>
                                     <id>65c12749cfed7d3a0e1a341b</id>
@@ -2704,8 +2700,8 @@ Ver registro&gt; {{record_url}} {% endraw %}</body>
                                     <conditions>[]</conditions>
                                 </etl>
                                 <input>
-                                    <field_type>catalog-detail</field_type>
-                                    <id>6441d33a153b3521f5b2afc9</id>
+                                    <field_type>integer</field_type>
+                                    <id>67f441e4949f04b9c9f84498</id>
                                     <type>field_to_field</type>
                                     <value>None</value>
                                 </input>
