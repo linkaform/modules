@@ -1,0 +1,2832 @@
+<?xml version='1.0' encoding='utf-8'?>
+<lkf>
+    <form_id>{{ form.orden_de_instalacion.id }}</form_id>
+    <id>67cb133740e0f34d97183dee</id>
+    <workflows>
+        <item>
+            <actions>
+                <item>
+                    <_id>67dbaa9d7997d993e5872333</_id>
+                    <action_id>5</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <body>{% raw %} {{record.user.name}} ha confirmado su cita:{{record.folio}} con {{record.answers.67c9e431b59043d4bb7a2714.667468e3e577b8b98c852aaa}}. &lt;br&gt;&lt;br&gt;
+
+Ver registro&gt; {{record_url}} {% endraw %}</body>
+                        <email_fields>[]</email_fields>
+                        <emails>
+                            <item>josepato@linkaform.com</item>
+                        </emails>
+                        <embed_company_picture>True</embed_company_picture>
+                        <fields_attached>[]</fields_attached>
+                        <pdf_template>{}</pdf_template>
+                        <resend>RESEND</resend>
+                        <send_attachments>False</send_attachments>
+                        <send_pdf>True</send_pdf>
+                        <sender>RECORD_USER</sender>
+                        <subject>{% raw %} {{record.user.name}} ha confirmado su cita:{{record.folio}} {% endraw %}</subject>
+                        <timer_config>
+                            <seconds_to_expire>None</seconds_to_expire>
+                        </timer_config>
+                    </configuration>
+                    <name>Confirmacion de Cita</name>
+                </item>
+            </actions>
+            <id>67dbaa9d7997d993e5872337</id>
+            <name>None</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-03-20T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-20T05:39:49.827Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>True</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>False</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>cita_confirmada</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67ddb49530766f8df3803e45</_id>
+                    <action_id>7</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <arguments>
+                            <message_version>cita_confirmada</message_version>
+                        </arguments>
+                        <integration>None</integration>
+                        <script>
+                            <created_at>2025-03-21T18:46:33.439263</created_at>
+                            <deleted_at>None</deleted_at>
+                            <end_date>None</end_date>
+                            <id>{{ script.send_message_notification.id }}</id>
+                            <is_fileShared>False</is_fileShared>
+                            <itype>script</itype>
+                            <name>{{ script.send_message_notification.name }}</name>
+                            <start_date>2025-03-21T18:46:33.437094</start_date>
+                            <updated_at>2025-03-21T18:46:33.659788</updated_at>
+                        </script>
+                        <scriptArguments>
+                            <item>
+                                <label>message_version</label>
+                                <value>cita_confirmada</value>
+                            </item>
+                        </scriptArguments>
+                        <scriptQuery>None</scriptQuery>
+                        <selectedUser>None</selectedUser>
+                        <user>SCRIPT_OWNER</user>
+                        <userOptions>
+                            <item>
+                                <id>SCRIPT_OWNER</id>
+                                <name>Dueño del script</name>
+                            </item>
+                            <item>
+                                <id>FORM_OWNER</id>
+                                <name>Dueño de la forma</name>
+                            </item>
+                            <item>
+                                <id>OWNER_ACCOUNT_EMAIL</id>
+                                <name>Dueño de la cuenta</name>
+                            </item>
+                            <item>
+                                <id>RECORD_USER</id>
+                                <name>Usuario que contesta</name>
+                            </item>
+                        </userOptions>
+                    </configuration>
+                    <name>Se ejecuta script</name>
+                </item>
+            </actions>
+            <id>67ddb49530766f8df3803e4c</id>
+            <name>Envio de notificacion por mensaje - Cita Confirmada</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-03-22T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-21T18:47:45.960Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>False</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>cita_confirmada</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67e1a0270befd7b5538b72db</_id>
+                    <action_id>7</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <script>
+                            <created_at>2025-03-24T15:21:47.498140</created_at>
+                            <deleted_at>None</deleted_at>
+                            <end_date>None</end_date>
+                            <id>{{ script.create_and_update_activo_fijo.id }}</id>
+                            <is_fileShared>False</is_fileShared>
+                            <itype>script</itype>
+                            <name>{{ script.create_and_update_activo_fijo.name }}</name>
+                            <start_date>2025-03-24T15:21:47.495608</start_date>
+                            <updated_at>2025-03-24T17:44:23.226850</updated_at>
+                        </script>
+                        <user>SCRIPT_OWNER</user>
+                    </configuration>
+                    <name>None</name>
+                </item>
+            </actions>
+            <id>67e179336a5a2a2a14f98755</id>
+            <name>Creacion del activo fijo</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-03-25T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-24T15:22:53.223Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>True</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>before</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>not__empty=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>
+                                    <catalog_field_id>{{ catalog.activos_fijos.obj_id }}</catalog_field_id>
+                                    <catalog_id>{{ catalog.activos_fijos.id }}</catalog_id>
+                                    <field_type>text</field_type>
+                                    <filters />
+                                    <geofence>None</geofence>
+                                    <last>True</last>
+                                    <related_catalog>{}</related_catalog>
+                                    <view_fields>[]</view_fields>
+                                    <view_index>1</view_index>
+                                </catalog>
+                                <field_id>66beb11907981d4509575056</field_id>
+                                <group>{}</group>
+                                <label>Modelo</label>
+                                <type>catalog-select</type>
+                            </trigger_field>
+                            <value></value>
+                        </item>
+                        <item>
+                            <condition>not__empty=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67e2eddf63e826145d5a045d</field_id>
+                                <group>{}</group>
+                                <label>Mobile ID</label>
+                                <type>text</type>
+                            </trigger_field>
+                            <value></value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67e1e402041738196ec8a6f3</_id>
+                    <action_id>7</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <arguments>
+                            <message_version>finalizado</message_version>
+                        </arguments>
+                        <integration>None</integration>
+                        <script>
+                            <created_at>2025-03-21T18:46:33.439263</created_at>
+                            <deleted_at>None</deleted_at>
+                            <end_date>None</end_date>
+                            <id>{{ script.send_message_notification.id }}</id>
+                            <is_fileShared>False</is_fileShared>
+                            <itype>script</itype>
+                            <name>{{ script.send_message_notification.name }}</name>
+                            <start_date>2025-03-21T18:46:33.437094</start_date>
+                            <updated_at>2025-03-24T22:57:44.085066</updated_at>
+                        </script>
+                        <scriptArguments>
+                            <item>
+                                <label>message_version</label>
+                                <value>finalizado</value>
+                            </item>
+                        </scriptArguments>
+                        <scriptQuery>None</scriptQuery>
+                        <selectedUser>None</selectedUser>
+                        <user>SCRIPT_OWNER</user>
+                        <userOptions>
+                            <item>
+                                <id>SCRIPT_OWNER</id>
+                                <name>Dueño del script</name>
+                            </item>
+                            <item>
+                                <id>FORM_OWNER</id>
+                                <name>Dueño de la forma</name>
+                            </item>
+                            <item>
+                                <id>OWNER_ACCOUNT_EMAIL</id>
+                                <name>Dueño de la cuenta</name>
+                            </item>
+                            <item>
+                                <id>RECORD_USER</id>
+                                <name>Usuario que contesta</name>
+                            </item>
+                        </userOptions>
+                    </configuration>
+                    <name>Se ejecuta script</name>
+                </item>
+            </actions>
+            <id>67e1e403041738196ec8a6fd</id>
+            <name>Envio de notificacion por mensaje - Finalizado</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-03-25T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-24T17:51:54.294Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>False</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>finalizado</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67e32281dfa684b13249a6bd</_id>
+                    <action_id>5</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <body>{% raw %} &lt;!DOCTYPE html&gt;
+&lt;html&gt;
+
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+    &lt;style&gt;
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container-main {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #dddddd7d;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: #4F9345;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .header h1 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .content {
+            padding: 20px;
+            text-align: left;
+        }
+
+        .content p {
+            color: #333;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 12px 20px;
+            margin-top: 15px;
+            font-size: 16px;
+            color: #ffffff !important;
+            background: #4CAF50;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            color: #777;
+            font-size: 14px;
+        }
+
+        .footer a {
+            color: #777;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .contenedor-principal {
+            background: #F8F9F9;
+            padding-top: 50px;
+            padding-bottom: 50px;
+        }
+
+        ul {
+            font-size: 16px;
+        }
+
+        li {
+            font-size: 16px;
+        }
+        .boson-logo-container{
+            width: 35%;
+            margin: 0 auto;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .boson-logo-img{
+            width: 100%;
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+    &lt;div class="contenedor-principal"&gt;
+        &lt;div class="container-main"&gt;
+            &lt;!-- Encabezado --&gt;
+            &lt;div class="header"&gt;
+                &lt;h1&gt;¡Tienes un nuevo servicio agendado! ✅&lt;/h1&gt;
+            &lt;/div&gt;
+
+            &lt;!-- Contenido --&gt;
+            &lt;div class="content"&gt;
+                &lt;div class="boson-logo-container"&gt;
+                    &lt;img src="https://f001.backblazeb2.com/file/app-linkaform/public-client-126/71202/60b81349bde5588acca320e1/67e5c56da882dc744190fec6.png" alt="Logo de la compañia Boson TI" class="boson-logo-img"&gt;
+                &lt;/div&gt;
+                &lt;p&gt;Hola,&lt;/p&gt;
+                &lt;p&gt;Se le ha asignado un nuevo servicio programado para:&lt;/p&gt;
+                &lt;ul&gt;
+                    &lt;li&gt;&lt;b&gt;📅 Fecha:&lt;/b&gt; {{record.answers.67c8c67734cc8b94bc183eca}}&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;📍 Ubicación:&lt;/b&gt; {{record.answers.67c9e41b708e33c4ee6aea8f.663a7e0fe48382c5b1230902}}&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;👤 Cliente:&lt;/b&gt; {{record.answers.67c9e431b59043d4bb7a2714.667468e3e577b8b98c852aaa}}&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;📌 Tipo de servicio:&lt;/b&gt; Instalación&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;🚛 Unidad:&lt;/b&gt; {{record.answers.67d214e933308c2d5d01b41c.65f22098d1dc5e0b9529e89c}}&lt;/li&gt;
+                &lt;/ul&gt;
+                &lt;p&gt;Este servicio requiere su validación y posterior confirmación.&lt;/p&gt;
+                &lt;p&gt;Agradecemos su confianza en &lt;b&gt;BOSON TI&lt;/b&gt;.&lt;/p&gt;
+            &lt;/div&gt;
+
+            &lt;!-- Pie de página --&gt;
+            &lt;div class="footer"&gt;
+                &lt;p&gt;&amp;copy; 2025 Linkaform. Todos los derechos reservados.&lt;/p&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/body&gt;
+
+&lt;/html&gt; {% endraw %}</body>
+                        <email_fields>
+                            <item>
+                                <catalog_field_id>67c9e532b383a87836981405</catalog_field_id>
+                                <field_id>638a9a7767c332f5d459fc82</field_id>
+                                <group_id>None</group_id>
+                                <label>Email del tecnico</label>
+                            </item>
+                        </email_fields>
+                        <emails>[]</emails>
+                        <embed_company_picture>True</embed_company_picture>
+                        <fields_attached>[]</fields_attached>
+                        <pdf_template>{}</pdf_template>
+                        <resend>RESEND</resend>
+                        <send_attachments>False</send_attachments>
+                        <send_pdf>False</send_pdf>
+                        <sender>RECORD_USER</sender>
+                        <subject>{% raw %} Servicio Asignado {{record.answers.67c9e431b59043d4bb7a2714.667468e3e577b8b98c852aaa}} - Boson TI {% endraw %}</subject>
+                        <timer_config>
+                            <seconds_to_expire>None</seconds_to_expire>
+                        </timer_config>
+                    </configuration>
+                    <name>Se envia el correo</name>
+                </item>
+            </actions>
+            <id>67e32282dfa684b13249a6ca</id>
+            <name>Correo - Servicio Asignado</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-03-26T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-25T21:34:12.143Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>True</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>asignado</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67e343ad6c8297c950f1350d</_id>
+                    <action_id>5</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <body>{% raw %} &lt;!DOCTYPE html&gt;
+&lt;html&gt;
+
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+    &lt;style&gt;
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container-main {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #dddddd7d;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: #4F9345;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .header h1 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .content {
+            padding: 20px;
+            text-align: left;
+        }
+
+        .content p {
+            color: #333;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 12px 20px;
+            margin-top: 15px;
+            font-size: 16px;
+            color: #ffffff !important;
+            background: #4CAF50;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            color: #777;
+            font-size: 14px;
+        }
+
+        .footer a {
+            color: #777;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .contenedor-principal {
+            background: #F8F9F9;
+            padding-top: 50px;
+            padding-bottom: 50px;
+        }
+
+        ul {
+            font-size: 16px;
+        }
+
+        li {
+            font-size: 16px;
+        }
+        .boson-logo-container{
+            width: 35%;
+            margin: 0 auto;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .boson-logo-img{
+            width: 100%;
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+    &lt;div class="contenedor-principal"&gt;
+        &lt;div class="container-main"&gt;
+            &lt;!-- Encabezado --&gt;
+            &lt;div class="header"&gt;
+                &lt;h1&gt;Tu cita ha sido confirmada 📅&lt;/h1&gt;
+            &lt;/div&gt;
+
+            &lt;!-- Contenido --&gt;
+            &lt;div class="content"&gt;
+                &lt;div class="boson-logo-container"&gt;
+                    &lt;img src="https://f001.backblazeb2.com/file/app-linkaform/public-client-126/71202/60b81349bde5588acca320e1/67e5c56da882dc744190fec6.png" alt="Logo de la compañia Boson TI" class="boson-logo-img"&gt;
+                &lt;/div&gt;
+                &lt;p&gt;Estimado/a {{record.answers.67c9e431b59043d4bb7a2714.667468e3e577b8b98c852aaa}},&lt;/p&gt;
+                &lt;p&gt;Le confirmamos que su servicio ha sido agendado con los siguientes detalles:&lt;/p&gt;
+                &lt;ul&gt;
+                    &lt;li&gt;&lt;b&gt;📌 Tipo de servicio:&lt;/b&gt; Instalación&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;📅 Fecha:&lt;/b&gt; {{record.answers.67c8c67734cc8b94bc183eca}}&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;📍 Ubicación:&lt;/b&gt; {{record.answers.67c9e41b708e33c4ee6aea8f.663a7e0fe48382c5b1230902}}&lt;/li&gt;
+
+                    {% if record.answers.67d218329d65ba66bf981251|length &gt; 0 %}
+                    &lt;li&gt;&lt;b&gt;🔧 Técnicos asignados:&lt;/b&gt;
+                        &lt;ul&gt;
+                            &lt;li&gt;Técnico líder: {{record.answers.67c9e532b383a87836981405.62c5ff407febce07043024dd}}&lt;/li&gt;
+                            &lt;li&gt;Técnicos auxiliares:
+                                {% for tecnico in record.answers.67d218329d65ba66bf981251 %}
+                                &lt;span&gt;{{ tecnico.67d21c6076546d5a61a7d806.a2c5ff407febce07043024dd }}, &lt;/span&gt;
+                                {% endfor %}
+                            &lt;/li&gt;
+                        &lt;/ul&gt;
+                        {% else %}
+                    &lt;li&gt;&lt;b&gt;🔧 Técnico asignado:&lt;/b&gt; {{record.answers.67c9e532b383a87836981405.62c5ff407febce07043024dd}}
+                        {% endif %}
+                    &lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;🚛 Unidad:&lt;/b&gt; {{record.answers.67d258ea799fb700b898120f}}&lt;/li&gt;
+                &lt;/ul&gt;
+                &lt;p&gt;En BOSON TI, nos complace poder atenderle y garantizamos que nuestro equipo de profesionales estará a
+                    su disposición para brindarle el mejor servicio de calidad.&lt;/p&gt;
+                &lt;p&gt;Le recordamos que, si tienen alguna consulta adicional o requiere alguna modificación antes de la
+                    cita, no dude en ponerse en contacto con nosotros mediante nuestro número de contacto o respondiendo a este correo.&lt;/p&gt;
+                &lt;p&gt;Agradecemos su confianza en &lt;b&gt;BOSON TI&lt;/b&gt;.&lt;/p&gt;
+                &lt;p&gt;Atentamente,&lt;/p&gt;
+                &lt;p&gt;Priscila Barajas - Boson TI&lt;/p&gt;
+                &lt;p&gt;&lt;b&gt;Contacto:&lt;/b&gt; &lt;a href="tel:+5218118228505"&gt;+52 1 81 1822 8505&lt;/a&gt;&lt;/p&gt;
+            &lt;/div&gt;
+
+            &lt;!-- Pie de página --&gt;
+            &lt;div class="footer"&gt;
+                &lt;p&gt;&amp;copy; 2025 Linkaform. Todos los derechos reservados.&lt;/p&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/body&gt;
+
+&lt;/html&gt; {% endraw %}</body>
+                        <email_fields>
+                            <item>
+                                <catalog_field_id>67c9e431b59043d4bb7a2714</catalog_field_id>
+                                <field_id>66bfd647cd15883ed163e9b5</field_id>
+                                <group_id>None</group_id>
+                                <label>Email cliente</label>
+                            </item>
+                        </email_fields>
+                        <emails>
+                            <item>priscila.barajas@bosonti.com</item>
+                        </emails>
+                        <embed_company_picture>True</embed_company_picture>
+                        <fields_attached>[]</fields_attached>
+                        <pdf_template>{}</pdf_template>
+                        <resend>RESEND</resend>
+                        <send_attachments>False</send_attachments>
+                        <send_pdf>False</send_pdf>
+                        <sender>RECORD_USER</sender>
+                        <subject>{% raw %} Cita Confirmada {{record.answers.67c9e431b59043d4bb7a2714.667468e3e577b8b98c852aaa}} - Boson TI {% endraw %}</subject>
+                        <timer_config>
+                            <seconds_to_expire>None</seconds_to_expire>
+                        </timer_config>
+                    </configuration>
+                    <name>Se envia correo</name>
+                </item>
+            </actions>
+            <id>67e343ad6c8297c950f13520</id>
+            <name>Correo - Cita Confirmada</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-03-26T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-25T21:39:54.005Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>False</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>cita_confirmada</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67e343ad6c8297c950f1350e</_id>
+                    <action_id>5</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <body>{% raw %} &lt;!DOCTYPE html&gt;
+&lt;html&gt;
+
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+    &lt;style&gt;
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container-main {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #dddddd7d;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: #4F9345;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .header h1 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .content {
+            padding: 20px;
+            text-align: left;
+        }
+
+        .content p {
+            color: #333;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 12px 20px;
+            margin-top: 15px;
+            font-size: 16px;
+            color: #ffffff !important;
+            background: #4CAF50;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            color: #777;
+            font-size: 14px;
+        }
+
+        .footer a {
+            color: #777;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .contenedor-principal {
+            background: #F8F9F9;
+            padding-top: 50px;
+            padding-bottom: 50px;
+        }
+
+        ul {
+            font-size: 16px;
+        }
+
+        li {
+            font-size: 16px;
+        }
+        .boson-logo-container{
+            width: 35%;
+            margin: 0 auto;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .boson-logo-img{
+            width: 100%;
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+    &lt;div class="contenedor-principal"&gt;
+        &lt;div class="container-main"&gt;
+            &lt;!-- Encabezado --&gt;
+            &lt;div class="header"&gt;
+                &lt;h1&gt;El técnico ha comenzado con el servicio 🛠️&lt;/h1&gt;
+            &lt;/div&gt;
+
+            &lt;!-- Contenido --&gt;
+            &lt;div class="content"&gt;
+                &lt;div class="boson-logo-container"&gt;
+                    &lt;img src="https://f001.backblazeb2.com/file/app-linkaform/public-client-126/71202/60b81349bde5588acca320e1/67e5c56da882dc744190fec6.png" alt="Logo de la compañia Boson TI" class="boson-logo-img"&gt;
+                &lt;/div&gt;
+                &lt;p&gt;Hola Priscila, le informamos que el técnico
+                    {{record.answers.67c9e532b383a87836981405.62c5ff407febce07043024dd}} ha comenzado a realizar el
+                    servicio con el cliente {{record.answers.67c9e431b59043d4bb7a2714.667468e3e577b8b98c852aaa}}. El
+                    servicio de Instalación ha iniciado con éxito.&lt;/p&gt;
+                &lt;p&gt;Detalles del servicio iniciado con éxito:&lt;/p&gt;
+                &lt;ul&gt;
+                    &lt;li&gt;&lt;b&gt;📌 Tipo de servicio:&lt;/b&gt; Instalación&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;📅 Fecha:&lt;/b&gt; {{record.answers.67c8c67734cc8b94bc183eca}}&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;📍 Ubicación:&lt;/b&gt; {{record.answers.67c9e41b708e33c4ee6aea8f.663a7e0fe48382c5b1230902}}&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;🚛 Unidad:&lt;/b&gt; {{record.answers.67d258ea799fb700b898120f}}&lt;/li&gt;
+                    {% if record.answers.67d218329d65ba66bf981251|length &gt; 0 %}
+                    &lt;li&gt;&lt;b&gt;🔧 Técnicos asignados:&lt;/b&gt;
+                        &lt;ul&gt;
+                            &lt;li&gt;Técnico líder: {{record.answers.67c9e532b383a87836981405.62c5ff407febce07043024dd}}&lt;/li&gt;
+                            &lt;li&gt;Técnicos auxiliares:
+                                {% for tecnico in record.answers.67d218329d65ba66bf981251 %}
+                                &lt;span&gt;{{ tecnico.67d21c6076546d5a61a7d806.a2c5ff407febce07043024dd }}, &lt;/span&gt;
+                                {% endfor %}
+                            &lt;/li&gt;
+                        &lt;/ul&gt;
+                        {% else %}
+                    &lt;li&gt;&lt;b&gt;🔧 Técnico asignado:&lt;/b&gt; {{record.answers.67c9e532b383a87836981405.62c5ff407febce07043024dd}}
+                        {% endif %}
+                    &lt;/li&gt;
+                &lt;/ul&gt;
+            &lt;/div&gt;
+
+            &lt;!-- Pie de página --&gt;
+            &lt;div class="footer"&gt;
+                &lt;p&gt;&amp;copy; 2025 Linkaform. Todos los derechos reservados.&lt;/p&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/body&gt;
+
+&lt;/html&gt; {% endraw %}</body>
+                        <email_fields>[]</email_fields>
+                        <emails>
+                            <item>priscila.barajas@bosonti.com</item>
+                        </emails>
+                        <embed_company_picture>True</embed_company_picture>
+                        <fields_attached>[]</fields_attached>
+                        <pdf_template>{}</pdf_template>
+                        <resend>RESEND</resend>
+                        <send_attachments>False</send_attachments>
+                        <send_pdf>False</send_pdf>
+                        <sender>RECORD_USER</sender>
+                        <subject>{% raw %} Servicio en Proceso {{record.answers.67c9e431b59043d4bb7a2714.667468e3e577b8b98c852aaa}} - Boson TI {% endraw %}</subject>
+                        <timer_config>
+                            <seconds_to_expire>None</seconds_to_expire>
+                        </timer_config>
+                    </configuration>
+                    <name>Se envia correo</name>
+                </item>
+            </actions>
+            <id>67e343ad6c8297c950f13523</id>
+            <name>Correo - Servicio en Proceso</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-03-26T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-25T21:39:54.005Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>False</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>en_proceso</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67e343ad6c8297c950f1350f</_id>
+                    <action_id>5</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <body>{% raw %} &lt;!DOCTYPE html&gt;
+&lt;html&gt;
+
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+    &lt;style&gt;
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container-main {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #dddddd7d;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: #4F9345;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .header h1 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .content {
+            padding: 20px;
+            text-align: left;
+        }
+
+        .content p {
+            color: #333;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 12px 20px;
+            margin-top: 15px;
+            font-size: 16px;
+            color: #ffffff !important;
+            background: #4CAF50;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            color: #777;
+            font-size: 14px;
+        }
+
+        .footer a {
+            color: #777;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .contenedor-principal {
+            background: #F8F9F9;
+            padding-top: 50px;
+            padding-bottom: 50px;
+        }
+
+        ul {
+            font-size: 16px;
+        }
+
+        li {
+            font-size: 16px;
+        }
+        .boson-logo-container{
+            width: 35%;
+            margin: 0 auto;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .boson-logo-img{
+            width: 100%;
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+    &lt;div class="contenedor-principal"&gt;
+        &lt;div class="container-main"&gt;
+            &lt;!-- Encabezado --&gt;
+            &lt;div class="header"&gt;
+                &lt;h1&gt;Actualización: Instalación finalizada con éxito 🌟&lt;/h1&gt;
+            &lt;/div&gt;
+
+            &lt;!-- Contenido --&gt;
+            &lt;div class="content"&gt;
+                &lt;div class="boson-logo-container"&gt;
+                    &lt;img src="https://f001.backblazeb2.com/file/app-linkaform/public-client-126/71202/60b81349bde5588acca320e1/67e5c56da882dc744190fec6.png" alt="Logo de la compañia Boson TI" class="boson-logo-img"&gt;
+                &lt;/div&gt;
+                &lt;p&gt;Hola Priscila, le informamos que el técnico
+                    {{record.answers.67c9e532b383a87836981405.62c5ff407febce07043024dd}} ha finalizado el servicio con
+                    el cliente {{record.answers.67c9e431b59043d4bb7a2714.667468e3e577b8b98c852aaa}}. El servicio de
+                    Instalación se ha completado exitosamente.&lt;/p&gt;
+                &lt;p&gt;Detalles del servicio finalizado con éxito:&lt;/p&gt;
+                &lt;ul&gt;
+                    &lt;li&gt;&lt;b&gt;📌 Tipo de servicio:&lt;/b&gt; Instalación&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;📅 Fecha:&lt;/b&gt; {{record.answers.67d218329d65ba66bf981253}}&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;📍 Ubicación:&lt;/b&gt; {{record.answers.67c9e41b708e33c4ee6aea8f.663a7e0fe48382c5b1230902}}&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;🚛 Unidad:&lt;/b&gt; {{record.answers.67d258ea799fb700b898120f}}&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;📟 Dispositivo instalado:&lt;/b&gt; {{record.answers.67d21521a163d9de897a2546.66c192ef89463aa27fc1818b}}&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;🛢️ Cantidad de tanques:&lt;/b&gt; {{record.answers.67d25912831814afbf6ae8a0|length}}&lt;/li&gt;
+                    {% if record.answers.67d218329d65ba66bf981251|length &gt; 0 %}
+                    &lt;li&gt;&lt;b&gt;🔧 Técnicos asignados:&lt;/b&gt;
+                        &lt;ul&gt;
+                            &lt;li&gt;Técnico líder: {{record.answers.67c9e532b383a87836981405.62c5ff407febce07043024dd}}&lt;/li&gt;
+                            &lt;li&gt;Técnicos auxiliares:
+                                {% for tecnico in record.answers.67d218329d65ba66bf981251 %}
+                                &lt;span&gt;{{ tecnico.67d21c6076546d5a61a7d806.a2c5ff407febce07043024dd }}, &lt;/span&gt;
+                                {% endfor %}
+                            &lt;/li&gt;
+                        &lt;/ul&gt;
+                        {% else %}
+                    &lt;li&gt;&lt;b&gt;🔧 Técnico asignado:&lt;/b&gt; {{record.answers.67c9e532b383a87836981405.62c5ff407febce07043024dd}}
+                        {% endif %}
+                    &lt;/li&gt;
+                &lt;/ul&gt;
+            &lt;/div&gt;
+
+            &lt;!-- Pie de página --&gt;
+            &lt;div class="footer"&gt;
+                &lt;p&gt;&amp;copy; 2025 Linkaform. Todos los derechos reservados.&lt;/p&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/body&gt;
+
+&lt;/html&gt; {% endraw %}</body>
+                        <email_fields>[]</email_fields>
+                        <emails>
+                            <item>priscila.barajas@bosonti.com</item>
+                        </emails>
+                        <embed_company_picture>True</embed_company_picture>
+                        <fields_attached>[]</fields_attached>
+                        <pdf_template>{}</pdf_template>
+                        <resend>RESEND</resend>
+                        <send_attachments>False</send_attachments>
+                        <send_pdf>False</send_pdf>
+                        <sender>RECORD_USER</sender>
+                        <subject>{% raw %} Servicio Finalizado {{record.answers.67c9e431b59043d4bb7a2714.667468e3e577b8b98c852aaa}} - Boson TI {% endraw %}</subject>
+                        <timer_config>
+                            <seconds_to_expire>None</seconds_to_expire>
+                        </timer_config>
+                    </configuration>
+                    <name>Se envia el correo</name>
+                </item>
+            </actions>
+            <id>67e343ad6c8297c950f13526</id>
+            <name>Correo - Servicio Finalizado</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-03-26T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-25T21:39:54.005Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>False</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>finalizado</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67e343ad6c8297c950f13510</_id>
+                    <action_id>5</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <body>{% raw %} &lt;!DOCTYPE html&gt;
+&lt;html&gt;
+
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+    &lt;style&gt;
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container-main {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #dddddd7d;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: #4F9345;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .header h1 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .content {
+            padding: 20px;
+            text-align: left;
+        }
+
+        .content p {
+            color: #333;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 12px 20px;
+            margin-top: 15px;
+            font-size: 16px;
+            color: #ffffff !important;
+            background: #4CAF50;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            color: #777;
+            font-size: 14px;
+        }
+
+        .footer a {
+            color: #777;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .contenedor-principal {
+            background: #F8F9F9;
+            padding-top: 50px;
+            padding-bottom: 50px;
+        }
+
+        ul {
+            font-size: 16px;
+        }
+
+        li {
+            font-size: 16px;
+        }
+        .boson-logo-container{
+            width: 35%;
+            margin: 0 auto;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .boson-logo-img{
+            width: 100%;
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+    &lt;div class="contenedor-principal"&gt;
+        &lt;div class="container-main"&gt;
+            &lt;!-- Encabezado --&gt;
+            &lt;div class="header"&gt;
+                &lt;h1&gt;Confirmación de servicio completado 🎉&lt;/h1&gt;
+            &lt;/div&gt;
+
+            &lt;!-- Contenido --&gt;
+            &lt;div class="content"&gt;
+                &lt;div class="boson-logo-container"&gt;
+                    &lt;img src="https://f001.backblazeb2.com/file/app-linkaform/public-client-126/71202/60b81349bde5588acca320e1/67e5c56da882dc744190fec6.png" alt="Logo de la compañia Boson TI" class="boson-logo-img"&gt;
+                &lt;/div&gt;
+                &lt;p&gt;Estimado/a, le informamos que el servicio ha sido ejecutado con éxito.&lt;/p&gt;
+                &lt;p&gt;Detalles del servicio ejecutado con éxito:&lt;/p&gt;
+                &lt;ul&gt;
+                    &lt;li&gt;&lt;b&gt;📌 Tipo de servicio:&lt;/b&gt; Instalación&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;📅 Fecha:&lt;/b&gt; {{record.answers.67d218329d65ba66bf981253}}&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;📍 Ubicación:&lt;/b&gt; {{record.answers.67c9e41b708e33c4ee6aea8f.663a7e0fe48382c5b1230902}}&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;🚛 Unidad:&lt;/b&gt; {{record.answers.67d258ea799fb700b898120f}}&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;📟 Dispositivo instalado:&lt;/b&gt; {{record.answers.67d21521a163d9de897a2546.66c192ef89463aa27fc1818b}}&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;🛢️ Cantidad de tanques:&lt;/b&gt; {{record.answers.67d25912831814afbf6ae8a0|length}}&lt;/li&gt;
+                    {% if record.answers.67d218329d65ba66bf981251|length &gt; 0 %}
+                    &lt;li&gt;&lt;b&gt;🔧 Técnicos asignados:&lt;/b&gt;
+                        &lt;ul&gt;
+                            &lt;li&gt;Técnico líder: {{record.answers.67c9e532b383a87836981405.62c5ff407febce07043024dd}}&lt;/li&gt;
+                            &lt;li&gt;Técnicos auxiliares:
+                                {% for tecnico in record.answers.67d218329d65ba66bf981251 %}
+                                &lt;span&gt;{{ tecnico.67d21c6076546d5a61a7d806.a2c5ff407febce07043024dd }}, &lt;/span&gt;
+                                {% endfor %}
+                            &lt;/li&gt;
+                        &lt;/ul&gt;
+                        {% else %}
+                    &lt;li&gt;&lt;b&gt;🔧 Técnico asignado:&lt;/b&gt; {{record.answers.67c9e532b383a87836981405.62c5ff407febce07043024dd}}
+                        {% endif %}
+                    &lt;/li&gt;
+                &lt;/ul&gt;
+                &lt;p&gt;Puede validar la información mediante nuestro reporte de evidencia, el cual se encuentra adjunto en formato PDF en
+                    este mismo correo.&lt;/p&gt;
+                &lt;p&gt;En caso que existan dudas o algun comentario, puede responder a este correo.&lt;/p&gt;
+                &lt;p&gt;Agradecemos su confianza en &lt;b&gt;BOSON TI&lt;/b&gt;.&lt;/p&gt;
+            &lt;/div&gt;
+
+            &lt;!-- Pie de página --&gt;
+            &lt;div class="footer"&gt;
+                &lt;p&gt;&amp;copy; 2025 Linkaform. Todos los derechos reservados.&lt;/p&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/body&gt;
+
+&lt;/html&gt; {% endraw %}</body>
+                        <email_fields>
+                            <item>
+                                <catalog_field_id>67c9e431b59043d4bb7a2714</catalog_field_id>
+                                <field_id>66bfd647cd15883ed163e9b5</field_id>
+                                <group_id>None</group_id>
+                                <label>Email cliente</label>
+                            </item>
+                            <item>
+                                <catalog_field_id>67c9e532b383a87836981405</catalog_field_id>
+                                <field_id>638a9a7767c332f5d459fc82</field_id>
+                                <group_id>None</group_id>
+                                <label>Email del tecnico</label>
+                            </item>
+                        </email_fields>
+                        <emails>[]</emails>
+                        <embed_company_picture>True</embed_company_picture>
+                        <fields_attached>[]</fields_attached>
+                        <pdf_template>
+                            <_type>single_record</_type>
+                            <description>Template de Orden de Servicio para Boson Ti</description>
+                            <id>564</id>
+                            <name>Boson Ti - Orden de Servicio</name>
+                            <owner>/api/infosync/user/17213/</owner>
+                            <paginate>True</paginate>
+                            <properties>{}</properties>
+                            <resource_uri>/api/infosync/templates/564/</resource_uri>
+                        </pdf_template>
+                        <resend>RESEND</resend>
+                        <send_attachments>False</send_attachments>
+                        <send_pdf>True</send_pdf>
+                        <sender>OWNER_EMAIL</sender>
+                        <subject>{% raw %} Servicio ejecutado con éxito {{record.answers.67c9e431b59043d4bb7a2714.667468e3e577b8b98c852aaa}} - Boson TI {% endraw %}</subject>
+                        <timer_config>
+                            <seconds_to_expire>None</seconds_to_expire>
+                        </timer_config>
+                    </configuration>
+                    <name>Se envia el correo</name>
+                </item>
+            </actions>
+            <id>67e343ad6c8297c950f13529</id>
+            <name>Correo - Servicio ejecutado con exito</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-03-26T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-25T21:39:54.005Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>False</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>validado</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67e4091d13010a5a81a4b39e</_id>
+                    <action_id>5</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <body>{% raw %} &lt;!DOCTYPE html&gt;
+&lt;html&gt;
+
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+    &lt;style&gt;
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container-main {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #dddddd7d;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: #4F9345;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .header h1 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .content {
+            padding: 20px;
+            text-align: left;
+        }
+
+        .content p {
+            color: #333;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 12px 20px;
+            margin-top: 15px;
+            font-size: 16px;
+            color: #ffffff !important;
+            background: #4CAF50;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            color: #777;
+            font-size: 14px;
+        }
+
+        .footer a {
+            color: #777;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .contenedor-principal {
+            background: #F8F9F9;
+            padding-top: 50px;
+            padding-bottom: 50px;
+        }
+
+        ul {
+            font-size: 16px;
+        }
+
+        li {
+            font-size: 16px;
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+    &lt;div class="contenedor-principal"&gt;
+        &lt;div class="container-main"&gt;
+            &lt;!-- Encabezado --&gt;
+            &lt;div class="header"&gt;
+                &lt;h1&gt;Reporte Incompleto ❌&lt;/h1&gt;
+            &lt;/div&gt;
+
+            &lt;!-- Contenido --&gt;
+            &lt;div class="content"&gt;
+                &lt;p&gt;Después de revisar el reporte del servicio realizado con el cliente
+                    {{record.answers.67c9e431b59043d4bb7a2714.667468e3e577b8b98c852aaa}}
+                    para el servicio de Instalación hemos encontrado que el reporte presenta algunos detalles que
+                    requieren correción.&lt;/p&gt;
+                &lt;p&gt;Detalles del servicio incompleto:&lt;/p&gt;
+                &lt;ul&gt;
+                    &lt;li&gt;&lt;b&gt;📌 Tipo de servicio:&lt;/b&gt; Instalación&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;📅 Fecha:&lt;/b&gt; {{record.answers.67d218329d65ba66bf981253}}&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;📍 Ubicación:&lt;/b&gt; {{record.answers.67c9e41b708e33c4ee6aea8f.663a7e0fe48382c5b1230902}}&lt;/li&gt;
+
+                    {% if record.answers.67d218329d65ba66bf981251|length &gt; 0 %}
+                    &lt;li&gt;&lt;b&gt;🔧 Técnicos asignados:&lt;/b&gt;
+                        &lt;ul&gt;
+                            &lt;li&gt;Técnico líder: {{record.answers.67c9e532b383a87836981405.62c5ff407febce07043024dd}}&lt;/li&gt;
+                            &lt;li&gt;Técnicos auxiliares:
+                                {% for tecnico in record.answers.67d218329d65ba66bf981251 %}
+                                &lt;span&gt;{{ tecnico.67d21c6076546d5a61a7d806.a2c5ff407febce07043024dd }}, &lt;/span&gt;
+                                {% endfor %}
+                            &lt;/li&gt;
+                        &lt;/ul&gt;
+                        {% else %}
+                    &lt;li&gt;&lt;b&gt;🔧 Técnico asignado:&lt;/b&gt; {{record.answers.67c9e532b383a87836981405.62c5ff407febce07043024dd}}
+                        {% endif %}
+                    &lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;🚛 Unidad:&lt;/b&gt; {{record.answers.67d214e933308c2d5d01b41c.65f22098d1dc5e0b9529e89c}}&lt;/li&gt;
+                &lt;/ul&gt;
+                &lt;p&gt;Le solicitamos que revise y corrija el reporte a la mayor brevedad posible, asegurandose de incluir
+                    todos los detalles requeridos y conforme a los estándares de calidad establecidos por BOSON TI.&lt;/p&gt;
+                &lt;p&gt;Una vez corregido el reporte, por favor confime que está todo en orden respondiendo este correo.&lt;/p&gt;
+                &lt;p&gt;Comentarios: {{record.answers.67d25c53891392185401b3f7}}.&lt;/p&gt;
+            &lt;/div&gt;
+
+            &lt;!-- Pie de página --&gt;
+            &lt;div class="footer"&gt;
+                &lt;p&gt;&amp;copy; 2024 Linkaform. Todos los derechos reservados.&lt;/p&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/body&gt;
+
+&lt;/html&gt; {% endraw %}</body>
+                        <email_fields>[]</email_fields>
+                        <emails>[]</emails>
+                        <embed_company_picture>True</embed_company_picture>
+                        <fields_attached>[]</fields_attached>
+                        <pdf_template>{}</pdf_template>
+                        <resend>RESEND</resend>
+                        <send_attachments>False</send_attachments>
+                        <send_pdf>True</send_pdf>
+                        <sender>RECORD_USER</sender>
+                        <subject>{% raw %} Reporte Incompleto - Boson TI {% endraw %}</subject>
+                        <timer_config>
+                            <seconds_to_expire>None</seconds_to_expire>
+                        </timer_config>
+                    </configuration>
+                    <name>Se envia el correo</name>
+                </item>
+            </actions>
+            <id>67e4091d13010a5a81a4b3bb</id>
+            <name>Correo - Servicio incompleto</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-03-27T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-26T13:49:02.177Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>False</created>
+                    <deleted>False</deleted>
+                    <edited>False</edited>
+                    <run_multiple_times>False</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>[]</triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67e4091d13010a5a81a4b39f</_id>
+                    <action_id>5</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <body>{% raw %} &lt;!DOCTYPE html&gt;
+&lt;html&gt;
+
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+    &lt;style&gt;
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container-main {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #dddddd7d;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: #4F9345;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .header h1 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .content {
+            padding: 20px;
+            text-align: left;
+        }
+
+        .content p {
+            color: #333;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 12px 20px;
+            margin-top: 15px;
+            font-size: 16px;
+            color: #ffffff !important;
+            background: #4CAF50;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            color: #777;
+            font-size: 14px;
+        }
+
+        .footer a {
+            color: #777;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .contenedor-principal {
+            background: #F8F9F9;
+            padding-top: 50px;
+            padding-bottom: 50px;
+        }
+
+        ul {
+            font-size: 16px;
+        }
+
+        li {
+            font-size: 16px;
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+    &lt;div class="contenedor-principal"&gt;
+        &lt;div class="container-main"&gt;
+            &lt;!-- Encabezado --&gt;
+            &lt;div class="header"&gt;
+                &lt;h1&gt;Cita Cancelada 📱&lt;/h1&gt;
+            &lt;/div&gt;
+
+            &lt;!-- Contenido --&gt;
+            &lt;div class="content"&gt;
+                &lt;p&gt;Estimado/a, se le informa que su cita programada ha sido cancelada.&lt;/p&gt;
+                &lt;p&gt;Detalles del servicio cancelado:&lt;/p&gt;
+                &lt;ul&gt;
+                    &lt;li&gt;&lt;b&gt;📌 Tipo de servicio:&lt;/b&gt; Instalación&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;📅 Fecha:&lt;/b&gt; {{record.answers.67d218329d65ba66bf981253}}&lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;📍 Ubicación:&lt;/b&gt; {{record.answers.67c9e41b708e33c4ee6aea8f.663a7e0fe48382c5b1230902}}&lt;/li&gt;
+
+                    {% if record.answers.67d218329d65ba66bf981251|length &gt; 0 %}
+                    &lt;li&gt;&lt;b&gt;🔧 Técnicos asignados:&lt;/b&gt;
+                        &lt;ul&gt;
+                            &lt;li&gt;Técnico líder: {{record.answers.67c9e532b383a87836981405.62c5ff407febce07043024dd}}&lt;/li&gt;
+                            &lt;li&gt;Técnicos auxiliares:
+                                {% for tecnico in record.answers.67d218329d65ba66bf981251 %}
+                                &lt;span&gt;{{ tecnico.67d21c6076546d5a61a7d806.a2c5ff407febce07043024dd }}, &lt;/span&gt;
+                                {% endfor %}
+                            &lt;/li&gt;
+                        &lt;/ul&gt;
+                        {% else %}
+                    &lt;li&gt;&lt;b&gt;🔧 Técnico asignado:&lt;/b&gt; {{record.answers.67c9e532b383a87836981405.62c5ff407febce07043024dd}}
+                        {% endif %}
+                    &lt;/li&gt;
+                    &lt;li&gt;&lt;b&gt;🚛 Unidad:&lt;/b&gt; {{record.answers.67d214e933308c2d5d01b41c.65f22098d1dc5e0b9529e89c}}&lt;/li&gt;
+                &lt;/ul&gt;
+                &lt;p&gt;Le recomendamos reprogramar su cita o bien se comunique con nosotros a la brevedad posible para coordinar nuevamente el servicio solicitado.&lt;/p&gt;
+                &lt;p&gt;Agradecemos su confianza en &lt;b&gt;BOSON TI&lt;/b&gt;.&lt;/p&gt;
+            &lt;/div&gt;
+
+            &lt;!-- Pie de página --&gt;
+            &lt;div class="footer"&gt;
+                &lt;p&gt;&amp;copy; 2024 Linkaform. Todos los derechos reservados.&lt;/p&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/body&gt;
+
+&lt;/html&gt; {% endraw %}</body>
+                        <email_fields>[]</email_fields>
+                        <emails>[]</emails>
+                        <embed_company_picture>True</embed_company_picture>
+                        <fields_attached>[]</fields_attached>
+                        <pdf_template>{}</pdf_template>
+                        <resend>RESEND</resend>
+                        <send_attachments>False</send_attachments>
+                        <send_pdf>True</send_pdf>
+                        <sender>RECORD_USER</sender>
+                        <subject>{% raw %} Cita Cancelada - Boson TI {% endraw %}</subject>
+                        <timer_config>
+                            <seconds_to_expire>None</seconds_to_expire>
+                        </timer_config>
+                    </configuration>
+                    <name>Se envia el correo</name>
+                </item>
+            </actions>
+            <id>67e4091d13010a5a81a4b3be</id>
+            <name>Correo - Cita cancelada</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-03-27T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-26T13:49:02.177Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>False</created>
+                    <deleted>False</deleted>
+                    <edited>False</edited>
+                    <run_multiple_times>False</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>[]</triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67e43bb815d529d868cbec9c</_id>
+                    <action_id>7</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <script>
+                            <created_at>2025-03-26T16:39:52.343189</created_at>
+                            <deleted_at>None</deleted_at>
+                            <end_date>None</end_date>
+                            <id>{{ script.set_end_time_service.id }}</id>
+                            <is_fileShared>False</is_fileShared>
+                            <itype>script</itype>
+                            <name>{{ script.set_end_time_service.name }}</name>
+                            <start_date>2025-03-26T16:39:52.341335</start_date>
+                            <updated_at>2025-03-26T17:04:34.273637</updated_at>
+                        </script>
+                        <user>SCRIPT_OWNER</user>
+                    </configuration>
+                    <name>Se ejecuta script</name>
+                </item>
+            </actions>
+            <id>67e43bb915d529d868cbecc1</id>
+            <name>Llenar fecha de finalizacion</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-03-27T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-26T13:49:02.177Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>False</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>before</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>finalizado</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67ea97cb4d45921024f88dc0</_id>
+                    <action_id>4</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <assignTo>
+                            <item>
+                                <customUser>
+                                    <email>manuel.villasenor@bosonti.com</email>
+                                    <first_name>José Manuel Villaseñor Vargas</first_name>
+                                    <id>17463</id>
+                                    <username>manuel.villasenor@bosonti.com</username>
+                                </customUser>
+                                <field_id>CUSTOM_USER</field_id>
+                                <label>Usuario</label>
+                                <push_notification>False</push_notification>
+                                <send_mail>False</send_mail>
+                            </item>
+                        </assignTo>
+                    </configuration>
+                    <name>Se asigna a usuario</name>
+                </item>
+            </actions>
+            <id>67ea97cb4d45921024f88de8</id>
+            <name>Se asigna registro técnico José Villaseñor</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-04-01T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-31T13:24:35.968Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>True</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>asignado</value>
+                        </item>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>
+                                    <catalog_field_id>{{ catalog.empleados.obj_id }}</catalog_field_id>
+                                    <catalog_id>{{ catalog.empleados.id }}</catalog_id>
+                                    <field_type>text</field_type>
+                                    <filters>None</filters>
+                                    <geofence>None</geofence>
+                                    <last>True</last>
+                                    <related_catalog>{}</related_catalog>
+                                    <view_fields>[]</view_fields>
+                                    <view_index>1</view_index>
+                                </catalog>
+                                <field_id>62c5ff407febce07043024dd</field_id>
+                                <group>{}</group>
+                                <label>Nombre completo del Técnico</label>
+                                <type>catalog-select</type>
+                            </trigger_field>
+                            <value>José Manuel Villaseñor Vargas</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67ea9b968334c1b954a31b32</_id>
+                    <action_id>4</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <assignTo>
+                            <item>
+                                <customUser>
+                                    <email>aldahir.villasenor@bosonti.com</email>
+                                    <first_name>Manuel Aldahir Villaseñor Ruiz</first_name>
+                                    <id>17465</id>
+                                    <username>aldahir.villasenor@bosonti.com</username>
+                                </customUser>
+                                <field_id>CUSTOM_USER</field_id>
+                                <label>Usuario</label>
+                                <push_notification>False</push_notification>
+                                <send_mail>False</send_mail>
+                            </item>
+                        </assignTo>
+                    </configuration>
+                    <name>Se asigna a usuario</name>
+                </item>
+            </actions>
+            <id>67ea9b968334c1b954a31b60</id>
+            <name>Se asigna registro técnico Manuel Villaseñor</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-04-01T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-31T13:24:35.968Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>True</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>asignado</value>
+                        </item>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>
+                                    <catalog_field_id>{{ catalog.empleados.obj_id }}</catalog_field_id>
+                                    <catalog_id>{{ catalog.empleados.id }}</catalog_id>
+                                    <field_type>text</field_type>
+                                    <filters>None</filters>
+                                    <geofence>None</geofence>
+                                    <last>True</last>
+                                    <related_catalog>{}</related_catalog>
+                                    <view_fields>[]</view_fields>
+                                    <view_index>1</view_index>
+                                </catalog>
+                                <field_id>62c5ff407febce07043024dd</field_id>
+                                <group>{}</group>
+                                <label>Nombre completo del Técnico</label>
+                                <type>catalog-select</type>
+                            </trigger_field>
+                            <value>Manuel Aldahir Villaseñor Ruiz</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67ea9b968334c1b954a31b33</_id>
+                    <action_id>4</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <assignTo>
+                            <item>
+                                <customUser>
+                                    <email>miguel.trevino@bosonti.com</email>
+                                    <first_name>Miguel Ángel Treviño Rodríguez</first_name>
+                                    <id>17466</id>
+                                    <username>miguel.trevino@bosonti.com</username>
+                                </customUser>
+                                <field_id>CUSTOM_USER</field_id>
+                                <label>Usuario</label>
+                                <push_notification>False</push_notification>
+                                <send_mail>False</send_mail>
+                            </item>
+                        </assignTo>
+                    </configuration>
+                    <name>Se asigna a usuario</name>
+                </item>
+            </actions>
+            <id>67ea9b968334c1b954a31b63</id>
+            <name>Se asigna registro técnico Miguel Treviño</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-04-01T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-31T13:24:35.968Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>True</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>asignado</value>
+                        </item>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>
+                                    <catalog_field_id>{{ catalog.empleados.obj_id }}</catalog_field_id>
+                                    <catalog_id>{{ catalog.empleados.id }}</catalog_id>
+                                    <field_type>text</field_type>
+                                    <filters>None</filters>
+                                    <geofence>None</geofence>
+                                    <last>True</last>
+                                    <related_catalog>{}</related_catalog>
+                                    <view_fields>[]</view_fields>
+                                    <view_index>1</view_index>
+                                </catalog>
+                                <field_id>62c5ff407febce07043024dd</field_id>
+                                <group>{}</group>
+                                <label>Nombre completo del Técnico</label>
+                                <type>catalog-select</type>
+                            </trigger_field>
+                            <value>Miguel Ángel Treviño Rodríguez</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67ea9b968334c1b954a31b34</_id>
+                    <action_id>4</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <assignTo>
+                            <item>
+                                <customUser>
+                                    <email>moises.lara@bosonti.com</email>
+                                    <first_name>Moisés Lara Muñoz</first_name>
+                                    <id>17464</id>
+                                    <username>moises.lara@bosonti.com</username>
+                                </customUser>
+                                <field_id>CUSTOM_USER</field_id>
+                                <label>Usuario</label>
+                                <push_notification>False</push_notification>
+                                <send_mail>False</send_mail>
+                            </item>
+                        </assignTo>
+                    </configuration>
+                    <name>Se asigna a usuario</name>
+                </item>
+            </actions>
+            <id>67ea9b968334c1b954a31b66</id>
+            <name>Se asigna registro técnico Moisés Lara</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-04-01T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-31T13:24:35.968Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>True</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>asignado</value>
+                        </item>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>
+                                    <catalog_field_id>{{ catalog.empleados.obj_id }}</catalog_field_id>
+                                    <catalog_id>{{ catalog.empleados.id }}</catalog_id>
+                                    <field_type>text</field_type>
+                                    <filters>None</filters>
+                                    <geofence>None</geofence>
+                                    <last>True</last>
+                                    <related_catalog>{}</related_catalog>
+                                    <view_fields>[]</view_fields>
+                                    <view_index>1</view_index>
+                                </catalog>
+                                <field_id>62c5ff407febce07043024dd</field_id>
+                                <group>{}</group>
+                                <label>Nombre completo del Técnico</label>
+                                <type>catalog-select</type>
+                            </trigger_field>
+                            <value>Moisés Lara Muñoz</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67ea9b968334c1b954a31b35</_id>
+                    <action_id>4</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <assignTo>
+                            <item>
+                                <customUser>
+                                    <email>priscila.barajas@bosonti.com</email>
+                                    <first_name>Priscila Barajas</first_name>
+                                    <id>17213</id>
+                                    <username>priscila.barajas@bosonti.com</username>
+                                </customUser>
+                                <field_id>CUSTOM_USER</field_id>
+                                <label>Usuario</label>
+                                <push_notification>False</push_notification>
+                                <send_mail>False</send_mail>
+                            </item>
+                        </assignTo>
+                    </configuration>
+                    <name>Se asigna a usuario</name>
+                </item>
+            </actions>
+            <id>67ea9b968334c1b954a31b69</id>
+            <name>Se asigna registro finalizado a Priscila Barajas</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-04-01T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-31T13:24:35.968Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>False</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>finalizado</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67eab1a839d5a240921ac307</_id>
+                    <action_id>4</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <assignTo>
+                            <item>
+                                <field_id>RECORD_USER</field_id>
+                                <label>Usuario que contesta</label>
+                                <push_notification>False</push_notification>
+                                <send_mail>False</send_mail>
+                            </item>
+                        </assignTo>
+                    </configuration>
+                    <name>Se asigna a usuario</name>
+                </item>
+            </actions>
+            <id>67eab1a939d5a240921ac33f</id>
+            <name>Se asigna Cita confirmada al mismo usuario que contesta</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-04-01T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-31T14:42:10.443Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>False</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>cita_confirmada</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67eab1a839d5a240921ac308</_id>
+                    <action_id>4</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <assignTo>
+                            <item>
+                                <field_id>RECORD_USER</field_id>
+                                <label>Usuario que contesta</label>
+                                <push_notification>False</push_notification>
+                                <send_mail>False</send_mail>
+                            </item>
+                        </assignTo>
+                    </configuration>
+                    <name>Se asigna a usuario</name>
+                </item>
+            </actions>
+            <id>67eab1a939d5a240921ac342</id>
+            <name>Se asigna En proceso al mismo usuario que contesta</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-04-01T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-03-31T14:42:10.443Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>False</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>en_proceso</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67f412643bc683a368f8455d</_id>
+                    <action_id>2</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <form>
+                            <deleted_at>None</deleted_at>
+                            <id>{{ form.salida_multiple_productos_a_una_ubicacion.id }}</id>
+                            <name>{{ form.salida_multiple_productos_a_una_ubicacion.name }}</name>
+                        </form>
+                        <mapping>
+                            <item>
+                                <etl>
+                                    <conditions>[]</conditions>
+                                </etl>
+                                <input>
+                                    <field_type>catalog-select</field_type>
+                                    <id>6442e4831198daf81456f274</id>
+                                    <type>field_to_field</type>
+                                    <value>None</value>
+                                </input>
+                                <output>
+                                    <id>6442e4831198daf81456f274</id>
+                                </output>
+                            </item>
+                            <item>
+                                <etl>
+                                    <conditions>[]</conditions>
+                                </etl>
+                                <input>
+                                    <field_type>catalog-select</field_type>
+                                    <id>65ac6fbc070b93e656bd7fbe</id>
+                                    <type>field_to_field</type>
+                                    <value>None</value>
+                                </input>
+                                <output>
+                                    <id>65ac6fbc070b93e656bd7fbe</id>
+                                </output>
+                            </item>
+                            <item>
+                                <etl>
+                                    <conditions>[]</conditions>
+                                </etl>
+                                <input>
+                                    <field_type>catalog-select</field_type>
+                                    <id>61ef32bcdf0ec2ba73dec33d</id>
+                                    <type>field_to_field</type>
+                                    <value>None</value>
+                                </input>
+                                <output>
+                                    <id>61ef32bcdf0ec2ba73dec33d</id>
+                                </output>
+                            </item>
+                            <item>
+                                <etl>
+                                    <conditions>[]</conditions>
+                                </etl>
+                                <input>
+                                    <field_type>catalog-select</field_type>
+                                    <id>65dec64a3199f9a040829243</id>
+                                    <type>field_to_field</type>
+                                    <value>None</value>
+                                </input>
+                                <output>
+                                    <id>65dec64a3199f9a040829243</id>
+                                </output>
+                            </item>
+                            <item>
+                                <etl>
+                                    <conditions>[]</conditions>
+                                </etl>
+                                <input>
+                                    <field_type>catalog-select</field_type>
+                                    <id>620a9ee0a449b98114f61d77</id>
+                                    <type>field_to_field</type>
+                                    <value>None</value>
+                                </input>
+                                <output>
+                                    <id>620a9ee0a449b98114f61d77</id>
+                                </output>
+                            </item>
+                            <item>
+                                <etl>
+                                    <conditions>[]</conditions>
+                                </etl>
+                                <input>
+                                    <field_type>integer</field_type>
+                                    <id>67f441e4949f04b9c9f84498</id>
+                                    <type>field_to_field</type>
+                                    <value>None</value>
+                                </input>
+                                <output>
+                                    <id>65e1169689c0e0790f8843f1</id>
+                                </output>
+                            </item>
+                            <item>
+                                <etl>
+                                    <conditions>[]</conditions>
+                                </etl>
+                                <input>
+                                    <field_type>catalog-select</field_type>
+                                    <id>6442e4831198daf81456f274</id>
+                                    <type>field_to_field</type>
+                                    <value>None</value>
+                                </input>
+                                <output>
+                                    <id>65bdc71b3e183f49761a33b9</id>
+                                </output>
+                            </item>
+                            <item>
+                                <etl>
+                                    <conditions>[]</conditions>
+                                </etl>
+                                <input>
+                                    <field_type>catalog-select</field_type>
+                                    <id>65ac6fbc070b93e656bd7fbe</id>
+                                    <type>field_to_field</type>
+                                    <value>None</value>
+                                </input>
+                                <output>
+                                    <id>65c12749cfed7d3a0e1a341b</id>
+                                </output>
+                            </item>
+                            <item>
+                                <etl>
+                                    <conditions>[]</conditions>
+                                </etl>
+                                <input>
+                                    <field_type>catalog-detail</field_type>
+                                    <id>6441d33a153b3521f5b2afc9</id>
+                                    <type>field_to_field</type>
+                                    <value>None</value>
+                                </input>
+                                <output>
+                                    <id>6442e4cc45983bf1778ec17d</id>
+                                </output>
+                            </item>
+                            <item>
+                                <etl>
+                                    <conditions>[]</conditions>
+                                </etl>
+                                <input>
+                                    <field_type>catalog-detail</field_type>
+                                    <id>6441d33a153b3521f5b2afc9</id>
+                                    <type>field_to_field</type>
+                                    <value>None</value>
+                                </input>
+                                <output>
+                                    <id>6441d33a153b3521f5b2afc9</id>
+                                </output>
+                            </item>
+                            <item>
+                                <etl>
+                                    <conditions>[]</conditions>
+                                </etl>
+                                <input>
+                                    <field_type>catalog-detail</field_type>
+                                    <id>61ef32bcdf0ec2ba73dec33e</id>
+                                    <type>field_to_field</type>
+                                    <value>None</value>
+                                </input>
+                                <output>
+                                    <id>61ef32bcdf0ec2ba73dec33e</id>
+                                </output>
+                            </item>
+                        </mapping>
+                    </configuration>
+                    <name>formaform</name>
+                </item>
+            </actions>
+            <id>67f407403e42e04355d9ff4d</id>
+            <name>Se hace la salida de almacen</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-04-08T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-04-07T16:59:29.524Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>True</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>not__empty=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>
+                                    <catalog_field_id>{{ catalog.warehouse_locations.obj_id }}</catalog_field_id>
+                                    <catalog_id>{{ catalog.warehouse_locations.id }}</catalog_id>
+                                    <field_type>text</field_type>
+                                    <filters />
+                                    <geofence>None</geofence>
+                                    <last>False</last>
+                                    <related_catalog>{}</related_catalog>
+                                    <view_fields>[]</view_fields>
+                                    <view_index>1</view_index>
+                                </catalog>
+                                <field_id>6442e4831198daf81456f274</field_id>
+                                <group>{}</group>
+                                <label>Warehouse Name</label>
+                                <type>catalog-select</type>
+                            </trigger_field>
+                            <value></value>
+                        </item>
+                        <item>
+                            <condition>not__empty=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>
+                                    <catalog_field_id>{{ catalog.warehouse_locations.obj_id }}</catalog_field_id>
+                                    <catalog_id>{{ catalog.warehouse_locations.id }}</catalog_id>
+                                    <field_type>text</field_type>
+                                    <filters />
+                                    <geofence>None</geofence>
+                                    <last>False</last>
+                                    <related_catalog>{}</related_catalog>
+                                    <view_fields>[]</view_fields>
+                                    <view_index>2</view_index>
+                                </catalog>
+                                <field_id>65ac6fbc070b93e656bd7fbe</field_id>
+                                <group>{}</group>
+                                <label>Location</label>
+                                <type>catalog-select</type>
+                            </trigger_field>
+                            <value></value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+    </workflows>
+</lkf>

@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<lkf>
+    <form_id>{{ form.orden_de_revision.id }}</form_id>
+    <id>67eecbc83740d579170f7ac9</id>
+    <rules>[]</rules>
+</lkf>
