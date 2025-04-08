@@ -42,6 +42,7 @@ if __name__ == "__main__":
     tipo_movimiento = data.get("tipo_movimiento",{})
     dateFrom = data.get("dateFrom", "")
     dateTo = data.get("dateTo", "")
+    filterDate = data.get("filterDate", "")
     #-FUNCTIONS
     print('option', option)
     if option == 'load_shift':
