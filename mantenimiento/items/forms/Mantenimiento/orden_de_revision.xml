@@ -7,7 +7,7 @@
             <config>True</config>
             <inc_by>1</inc_by>
             <manual>False</manual>
-            <next>4</next>
+            <next>5</next>
             <padding_zeros>3</padding_zeros>
             <prefix>%y%m-</prefix>
             <required>False</required>
@@ -4956,10 +4956,14 @@
                         <catalog_field_id>None</catalog_field_id>
                         <catalog_id>{{ catalog.warehouse_locations.id }}</catalog_id>
                         <field_type>None</field_type>
-                        <filters />
+                        <filters>AlmRefacciones</filters>
                         <geofence>None</geofence>
                         <last>False</last>
-                        <related_catalog>{}</related_catalog>
+                        <related_catalog>
+                            <childs>
+                                <item>67d216afdf78c6fb39dcb3f9</item>
+                            </childs>
+                        </related_catalog>
                         <view_fields>
                             <item>6442e4831198daf81456f274</item>
                             <item>65ac6fbc070b93e656bd7fbe</item>
@@ -5307,7 +5311,13 @@
                         <filters />
                         <geofence>None</geofence>
                         <last>False</last>
-                        <related_catalog>{}</related_catalog>
+                        <related_catalog>
+                            <catalog_id>129996</catalog_id>
+                            <related_fields>
+                                <item>6442e4831198daf81456f274</item>
+                                <item>65ac6fbc070b93e656bd7fbe</item>
+                            </related_fields>
+                        </related_catalog>
                         <view_fields>
                             <item>61ef32bcdf0ec2ba73dec33d</item>
                             <item>65dec64a3199f9a040829243</item>
@@ -8822,12 +8832,13 @@
     <templates>
         <item>
             <_type>single_record</_type>
+            <default>True</default>
             <description>Template de Orden de Revisión para Boson Ti</description>
             <id>571</id>
             <name>Boson Ti -  Orden de Revision</name>
             <owner>/api/infosync/user/17213/</owner>
             <paginate>True</paginate>
-            <pdfName>{% raw %} Orden de Revision - {{record.folio}} {% endraw %} </pdfName>
+            <pdfName>Orden de Revision</pdfName>
             <properties>{}</properties>
             <resource_uri>/api/infosync/templates/571/</resource_uri>
             <script>{}</script>
@@ -8841,5 +8852,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1744130524.0</updated_at>
+    <updated_at>1744158959.0</updated_at>
 </lkf>

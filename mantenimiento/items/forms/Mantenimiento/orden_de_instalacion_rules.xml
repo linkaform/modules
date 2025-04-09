@@ -628,7 +628,7 @@
                     <type>catalog</type>
                 </item>
                 <item>
-                    <catalog_id>67c9e49e7a90772f1a98144d</catalog_id>
+                    <catalog_id>None</catalog_id>
                     <field_id>6442e4831198daf81456f274</field_id>
                     <group_id>None</group_id>
                     <id>6442e4831198daf81456f274</id>
@@ -636,7 +636,7 @@
                     <type>catalog-select</type>
                 </item>
                 <item>
-                    <catalog_id>67c9e49e7a90772f1a98144d</catalog_id>
+                    <catalog_id>None</catalog_id>
                     <field_id>65ac6fbc070b93e656bd7fbe</field_id>
                     <group_id>None</group_id>
                     <id>65ac6fbc070b93e656bd7fbe</id>
@@ -654,31 +654,31 @@
                 <item>
                     <catalog_id>None</catalog_id>
                     <field_id>{{ catalog.stock_inventory.obj_id}}</field_id>
-                    <group_id>67f3f3a73b58fd621cff9d5f</group_id>
+                    <group_id>None</group_id>
                     <id>67d216afdf78c6fb39dcb3f9</id>
                     <label>Refaccion</label>
                     <type>catalog</type>
                 </item>
                 <item>
-                    <catalog_id>67d216afdf78c6fb39dcb3f9</catalog_id>
+                    <catalog_id>None</catalog_id>
                     <field_id>61ef32bcdf0ec2ba73dec33d</field_id>
-                    <group_id>67f3f3a73b58fd621cff9d5f</group_id>
+                    <group_id>None</group_id>
                     <id>61ef32bcdf0ec2ba73dec33d</id>
                     <label>Product Code</label>
                     <type>catalog-select</type>
                 </item>
                 <item>
-                    <catalog_id>67d216afdf78c6fb39dcb3f9</catalog_id>
+                    <catalog_id>None</catalog_id>
                     <field_id>65dec64a3199f9a040829243</field_id>
-                    <group_id>67f3f3a73b58fd621cff9d5f</group_id>
+                    <group_id>None</group_id>
                     <id>65dec64a3199f9a040829243</id>
                     <label>SKU</label>
                     <type>catalog-select</type>
                 </item>
                 <item>
-                    <catalog_id>67d216afdf78c6fb39dcb3f9</catalog_id>
+                    <catalog_id>None</catalog_id>
                     <field_id>620a9ee0a449b98114f61d77</field_id>
-                    <group_id>67f3f3a73b58fd621cff9d5f</group_id>
+                    <group_id>None</group_id>
                     <id>620a9ee0a449b98114f61d77</id>
                     <label>Lot Number</label>
                     <type>catalog-select</type>
@@ -686,18 +686,10 @@
                 <item>
                     <catalog_id>None</catalog_id>
                     <field_id>67f441e4949f04b9c9f84498</field_id>
-                    <group_id>67f3f3a73b58fd621cff9d5f</group_id>
+                    <group_id>None</group_id>
                     <id>67f441e4949f04b9c9f84498</id>
                     <label>Cantidad</label>
                     <type>integer</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>67f3f3de3abdda6cb5ff9d45</field_id>
-                    <group_id>67f3f3a73b58fd621cff9d5f</group_id>
-                    <id>67f3f3de3abdda6cb5ff9d45</id>
-                    <label>Costo Unitario</label>
-                    <type>decimal</type>
                 </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>

@@ -201,7 +201,7 @@ Ver registro&gt; {{record_url}} {% endraw %}</body>
                         </script>
                         <user>SCRIPT_OWNER</user>
                     </configuration>
-                    <name>None</name>
+                    <name>Se ejecuta el script</name>
                 </item>
             </actions>
             <id>67e179336a5a2a2a14f98755</id>
