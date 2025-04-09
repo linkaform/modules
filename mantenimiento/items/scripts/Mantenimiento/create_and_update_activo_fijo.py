@@ -41,8 +41,8 @@ class Mantenimiento(Mantenimiento):
 
         selector.update({
             f"answers.{self.ActivoFijo.f['modelo']}": modelo,
-            f"answers.{self.ActivoFijo.f['estado']}": "Activo",
-            f"answers.{self.ActivoFijo.f['estatus']}": "Disponible"
+            f"answers.{self.ActivoFijo.f['estado']}": "Instalado",
+            f"answers.{self.ActivoFijo.f['estatus']}": "Operativo"
         })
 
         fields = ["_id", f"answers.{self.ActivoFijo.f['nombre_equipo']}"]
@@ -80,8 +80,8 @@ class Mantenimiento(Mantenimiento):
             'imagen_del_equipo': answers.get(catalog_key, {}).get(self.f['imagen_del_equipo'], []),
             'fecha_instalacion': mx_time.strftime("%Y-%m-%d"),
             'tecnico_asignado': answers.get(self.Employee.EMPLOYEE_OBJ_ID, {}).get(self.Employee.f['worker_name'], ''),
-            'estatus': 'disponible',
-            'estado': 'activo'
+            'estatus': 'instalado',
+            'estado': 'operativo'
         }
 
         return data
