@@ -26,13 +26,15 @@ class Stock(Stock):
             }
 
         self.f.update({
+            'evidencia':'66b568e374a06756f51954b2',
+            'evidencia_salida':'671fc9b70df25c3156a8d458',
             'parts_group':'62c5da67f850f35cc2483346',
             'parts_group':'62c5da67f850f35cc2483346',
             'fecha_recepcion':'000000000000000000000111',
             'fecha_recepcion_inventario':'65dfecbf3199f9a04082955e',
             'folio_recepcion':'679bd3e1e213a8e4c124c05c',
             'observaciones_stock':'6799c243cf81bd103124bf51',
-            'stock_move_comments':'66b561232c91d2011147118c',
+            'observaciones_move_stock':'66b561232c91d2011147118c',
 
             })
         self.answer_label = self._labels()
@@ -107,7 +109,9 @@ class Stock(Stock):
                 self.f['product_lot']:moves['product_lot'],
                 self.f['fecha_recepcion_inventario']: fecha_recepcion,
                 self.f['observaciones_stock']: observaciones,
-                self.f['folio_recepcion']: folio_recepcion
+                self.f['folio_recepcion']: folio_recepcion,
+                self.f['actual_eaches_on_hand']: moves['move_group_qty'],
+                self.f['actuals']: moves['move_group_qty'],
                     }
                 )
             this_metadata['answers'] = answers
@@ -128,7 +132,8 @@ class Stock(Stock):
                             'sku':moves['sku'],
                             'warehouse': warehouse_to,
                             'warehouse_location': location_to,
-                            'record_id':self.record_id
+                            'record_id':self.record_id,
+                            'function':'direct_move_in_137'
                             }
                 if exists:
                     if self.folio:
@@ -142,9 +147,9 @@ class Stock(Stock):
                         move_line[self.f['move_dest_folio']] = exists['folio']
                         move_line[self.f['inv_adjust_grp_status']] = 'done'
                         move_line[self.f['inv_adjust_grp_comments']] = ""
-                        print('moves', move_line)
                 ####
                 else:
+                    self.cache_set(cache_data)
                     create_resp = self.lkf_api.post_forms_answers(this_metadata)
                 
                     try:
@@ -164,11 +169,9 @@ class Stock(Stock):
         if self.proceso_onts:
             if new_stock_records:
                 res = self.cr.insert_many(new_stock_records)
-                print('INSERTRED IDS....', res.inserted_ids)
                 self.cache_set({
                                 'cache_type': 'direct_move_in',
                                 'inserted_ids':res.inserted_ids,
-                                'folio':res.inserted_ids,
                                 })
                 return res.inserted_ids
         return True
@@ -491,6 +494,7 @@ class Stock(Stock):
             warehouse_ans = self.swap_location_dest(self.answers[self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID])
             new_lot.update(warehouse_ans)
             new_records_data.append(self.create_inventory_flow(answers=new_lot))
+
         
 
         res ={}

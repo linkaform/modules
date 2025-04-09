@@ -224,31 +224,57 @@ class Stock(Stock):
     
     def move_out_stock(self, new_record):
         record_data = self.get_record_move_data(new_record)
-        for product_code, product_sku in record_data['product'].items():
-            for sku, product_lot in product_sku.items():
-                match_query = self.lot_match(product_code, sku, record_data['warehouse'], record_data['location'], product_lot)
-                update_res = self.cr.update_many(match_query, {"$set":{
-                    f"answers.{self.f['actual_eaches_on_hand']}":0,
-                    f"answers.{self.f['product_lot_actuals']}":0,
-                    f"answers.{self.f['move_out']}":1,
-                    f"answers.{self.f['status']}":"done",
-                    }})
+        updated_ids = []
+
+        for idx, product_data in record_data['product'].items():
+            product_code = product_data['product_code']
+            sku = product_data['product_sku']
+            product_lot = product_data['product_lot']
+            move_qty = product_data.get('move_qty',0)
+            match_query = self.lot_match(product_code, sku, record_data['warehouse'], record_data['location'], product_lot)
+            product_db_info = self.format_cr(self.cr.find(match_query), get_one=True)
+            print('match_query',match_query)
+            updated_ids.append(product_db_info.get('_id'))
+            print('product_db_info',product_db_info)
+            product_stock = self.get_product_stock(product_code, sku=sku, lot_number=product_lot, warehouse=record_data['warehouse'], location=record_data['location'])
+            acutals = product_stock.get('actuals',0)
+            new_acutals = acutals - move_qty
+            if new_acutals <= 0:
+                status = 'done'
+            else:
+                status = 'active'
+            update_res = self.cr.update_many(match_query, {"$set":{
+                f"answers.{self.f['actual_eaches_on_hand']}":new_acutals,
+                f"answers.{self.f['product_lot_actuals']}":new_acutals,
+                f"answers.{self.f['move_out']}":move_qty,
+                f"answers.{self.f['status']}":status,
+                }})
+        self.cache_set({
+                        'cache_type': 'direct_move_in',
+                        'inserted_ids':updated_ids,
+                        })
 
     def get_record_move_data(self, data):
         move_group = data['answers'].get( self.f['move_group'], [] )
         warehouse_from = data['answers'].get(self.WH.WAREHOUSE_LOCATION_OBJ_ID)
         warehouse = warehouse_from.get( self.WH.f['warehouse'])
         warehouse_location = warehouse_from.get( self.WH.f['warehouse_location'])
-        product_by_sku = {}
-        for rec_set in move_group:
+        product_by_set = {}
+        print('move_group', move_group)
+        for idx, rec_set in enumerate(move_group):
+            print('record_set=', rec_set)
             product_cat = rec_set.get(self.CATALOG_INVENTORY_OBJ_ID)
             product_code = product_cat.get(self.Product.f['product_code'])
             product_sku = product_cat.get(self.Product.f['product_sku'])
             product_lot = product_cat.get(self.f['product_lot'])
-            product_by_sku[product_code] = product_by_sku.get(product_code, {})
-            product_by_sku[product_code][product_sku] = product_by_sku[product_code].get(product_sku,[])
-            product_by_sku[product_code][product_sku].append(product_lot)
-        return {'warehouse':warehouse, 'location':warehouse_location, 'product':product_by_sku}
+            move_qty = rec_set.get(self.f['move_group_qty'])
+            product_by_set[idx] = {
+                'product_code': product_code,
+                'product_sku': product_sku,
+                'product_lot': product_lot,
+                'move_qty': move_qty
+                }
+        return {'warehouse':warehouse, 'location':warehouse_location, 'product':product_by_set}
 
     def load_onts(self):
         self.read_xls_onts()
@@ -402,7 +428,11 @@ class Stock(Stock):
         match_query.update({f"answers.{self.Product.SKU_OBJ_ID}.{self.f['product_sku']}":product_sku})
         match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse']}":warehouse})
         match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse_location']}":location})
-        match_query.update({f"answers.{self.f['product_lot']}":{"$in": product_lot}})
+        if type(product_lot) == str:
+            match_query.update({f"answers.{self.f['product_lot']}": product_lot})
+        elif type(product_lot) == list:
+            match_query.update({f"answers.{self.f['product_lot']}":{"$in": product_lot}})
+
         return match_query
 
     def validate_lote_size(self, product_code, product_sku, warehouse, location, product_lot, lote_size):
@@ -481,8 +511,8 @@ if __name__ == '__main__':
         stock_obj.folio = f"{folio}-1/{len(groups)}"
     response = stock_obj.direct_move_in(stock_obj.current_record)
     stock_obj.move_out_stock(stock_obj.current_record)
-    if not stock_obj.proceso_onts:
-        response = stock_obj.move_one_many_one()
+    # if not stock_obj.proceso_onts:
+    #     response = stock_obj.move_one_many_one()
     stock_obj.answers[stock_obj.f['inv_adjust_status']] =  'done'
 
     sys.stdout.write(simplejson.dumps({

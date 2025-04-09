@@ -23,11 +23,11 @@
                         </script>
                         <user>SCRIPT_OWNER</user>
                     </configuration>
-                    <name>None</name>
+                    <name>Stock Move</name>
                 </item>
             </actions>
             <id>66881dc4dbd1f8dec8056cea</id>
-            <name>None</name>
+            <name>Stock Move</name>
             <rules>
                 <metadata>
                     <connection>[]</connection>
@@ -98,7 +98,7 @@
                 </item>
             </actions>
             <id>678bdb5098b7a7b9e589d65e</id>
-            <name>None</name>
+            <name>Update From Cache</name>
             <rules>
                 <metadata>
                     <connection>[]</connection>

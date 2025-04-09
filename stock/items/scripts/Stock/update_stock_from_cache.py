@@ -22,7 +22,10 @@ class Stock(Stock):
             inserted_ids = [str(x) for x in cach.get('inserted_ids',[])]
             print('inserted_ids',inserted_ids)
             answer = {self.f['product_grading_pending']:'auditado'}
-            self.lkf_api.patch_multi_record(answer, self.FORM_INVENTORY_ID,  record_id=inserted_ids, threading=True)
+            if inserted_ids:
+                self.lkf_api.patch_multi_record(answer, self.FORM_INVENTORY_ID,  record_id=inserted_ids, threading=True)
+                
+
         return True
 
 
