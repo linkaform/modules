@@ -38,11 +38,13 @@ class Mantenimiento(Mantenimiento):
     def exists_activo_fijo(self, answers):
         selector = {}
         modelo = answers.get(self.ActivoFijo.ACTIVOS_FIJOS_CAT_OBJ_ID, {}).get(self.ActivoFijo.f['modelo'], '')
+        mobile_id = answers.get(self.f['mobile_id_instalacion'])
+        nombre_equipo = modelo + '-' + mobile_id
 
         selector.update({
-            f"answers.{self.ActivoFijo.f['modelo']}": modelo,
-            f"answers.{self.ActivoFijo.f['estado']}": "Instalado",
-            f"answers.{self.ActivoFijo.f['estatus']}": "Operativo"
+            f"answers.{self.ActivoFijo.f['nombre_equipo']}": nombre_equipo,
+            f"answers.{self.ActivoFijo.f['estado']}": "Operativo",
+            f"answers.{self.ActivoFijo.f['estatus']}": "Instalado"
         })
 
         fields = ["_id", f"answers.{self.ActivoFijo.f['nombre_equipo']}"]
@@ -80,6 +82,11 @@ class Mantenimiento(Mantenimiento):
             'imagen_del_equipo': answers.get(catalog_key, {}).get(self.f['imagen_del_equipo'], []),
             'fecha_instalacion': mx_time.strftime("%Y-%m-%d"),
             'tecnico_asignado': answers.get(self.Employee.EMPLOYEE_OBJ_ID, {}).get(self.Employee.f['worker_name'], ''),
+            'mobile_id': answers.get(self.f['mobile_id_instalacion']),
+            's_n': answers.get(self.f['s_n']),
+            'p_n': answers.get(self.f['p_n']),
+            'imei': answers.get(self.f['imei']),
+            'sim': answers.get(self.f['sim']),
             'estatus': 'instalado',
             'estado': 'operativo'
         }
@@ -145,6 +152,16 @@ class Mantenimiento(Mantenimiento):
                     answers[self.Employee.CONF_AREA_EMPLEADOS_CAT_OBJ_ID] = {
                         self.Employee.f['worker_name']: value
                     }
+                elif key == 'mobile_id':
+                    answers[self.f['activo_mobile_id']] = value
+                elif key == 's_n':
+                    answers[self.f['activo_s_n']] = value
+                elif key == 'p_n':
+                    answers[self.f['activo_p_n']] = value
+                elif key == 'imei':
+                    answers[self.f['activo_imei']] = value
+                elif key == 'sim':
+                    answers[self.f['activo_sim']] = value
                 elif key == 'estatus':
                     answers[self.ActivoFijo.f['estatus']] = value
                 elif key == 'estado':
@@ -186,7 +203,7 @@ if __name__ == "__main__":
 
     exists = mantenimiento_obj.exists_activo_fijo(mantenimiento_obj.answers)
     replace_answers = mantenimiento_obj.answers
-    print(simplejson.dumps(mantenimiento_obj.answers))
+    # print(simplejson.dumps(mantenimiento_obj.answers))
     if not exists:
         print('Creating Activo Fijo...')
         data = mantenimiento_obj.format_data_to_create_activo_fijo(mantenimiento_obj.answers)
@@ -195,7 +212,7 @@ if __name__ == "__main__":
             replace_answers = mantenimiento_obj.update_activo_fijo_in_orden_instalacion(mantenimiento_obj.answers, data)
         print(response)
     else:
-        print('Activo Fijo ya existe')
+        print('//////////////////////Activo Fijo ya existe///////////////////////////')
 
     sys.stdout.write(simplejson.dumps({
         'status': 101,
