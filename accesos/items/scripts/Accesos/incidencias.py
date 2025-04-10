@@ -39,16 +39,16 @@ if __name__ == "__main__":
     area = data.get("area","")
     prioridades = data.get("prioridades",[])
     folio = data.get("folio")
-    #-FUNCTIONS
-    #option = 'new_incidence';
-    #option = 'update_incidence';
-    #option = 'get_incidences';
-    #option = 'delete_incidence';
+
+    dateFrom = data.get("dateFrom", "")
+    dateTo = data.get("dateTo", "")
+    filterDate = data.get("filterDate", "")
+
     print('option', option)
     if option == 'nueva_incidencia':
         response = acceso_obj.create_incidence(data_incidence)
     elif option == 'get_incidences':
-        response = acceso_obj.get_list_incidences(location, area, prioridades= prioridades)
+        response = acceso_obj.get_list_incidences(location, area, prioridades= prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate)
     elif option == 'update_incidence':
         response = acceso_obj.update_incidence(data_incidence_update, folio)
     elif option == 'delete_incidence':

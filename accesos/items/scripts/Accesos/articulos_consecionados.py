@@ -30,18 +30,19 @@ if __name__ == "__main__":
         'observacion_concesion':'hola actualizado',
     })
     location = data.get("location",'Planta Monterrey')
-    #folio = data.get("folio",'')
+    area = data.get("area","")
+    status= data.get("status", "")
     folio = data.get("folio",['553-10'])
     tipo = data.get("tipo","")
-    #-FUNCTIONS
-    #option = 'new_article';
-    #option = 'get_articles';
-    #option = 'update_article';
-    #option = 'delete_article';
+
+    dateFrom = data.get("dateFrom", "")
+    dateTo = data.get("dateTo", "")
+    filterDate = data.get("filterDate", "")
+   
     if option == 'new_article':
         response = acceso_obj.create_article_concessioned(data_article)
     elif option == 'get_articles':
-        response = acceso_obj.get_list_article_concessioned()
+        response = acceso_obj.get_list_article_concessioned(location, area, status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate)
     elif option == 'update_article':
         response = acceso_obj.update_article_concessioned(data_article_update, folio)
     elif option == 'delete_article':
