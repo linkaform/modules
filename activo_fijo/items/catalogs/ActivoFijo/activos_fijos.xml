@@ -7,7 +7,7 @@
         <redirect_url>default</redirect_url>
     </confirmation>
     <description />
-    <_rev>11-8c3ecee0605eafeb72895ff2c25920ba</_rev>
+    <_rev>16-d878c6734122f229cd3bad43134b7302</_rev>
     <updated_at>2025-03-12T23:13:37.868366+00:00Z</updated_at>
     <sync>
         <element_request>{}</element_request>
@@ -17,17 +17,31 @@
         <EquiposBase>
             <amp_and>
                 <item>
-                    <num_66c1940b89463aa27fc1818c>
-                        <amp_eq>In Activo</amp_eq>
-                    </num_66c1940b89463aa27fc1818c>
+                    <num_6646393c3fa8b818265d0329>
+                        <amp_eq>Disponible</amp_eq>
+                    </num_6646393c3fa8b818265d0329>
                 </item>
                 <item>
-                    <num_6646393c3fa8b818265d0329>
-                        <amp_eq>No disponible</amp_eq>
-                    </num_6646393c3fa8b818265d0329>
+                    <num_66c1940b89463aa27fc1818c>
+                        <amp_eq>No operativo</amp_eq>
+                    </num_66c1940b89463aa27fc1818c>
                 </item>
             </amp_and>
         </EquiposBase>
+        <EquiposAlta>
+            <amp_and>
+                <item>
+                    <num_6646393c3fa8b818265d0329>
+                        <amp_eq>Instalado</amp_eq>
+                    </num_6646393c3fa8b818265d0329>
+                </item>
+                <item>
+                    <num_66c1940b89463aa27fc1818c>
+                        <amp_eq>Operativo</amp_eq>
+                    </num_66c1940b89463aa27fc1818c>
+                </item>
+            </amp_and>
+        </EquiposAlta>
     </filters>
     <name>Activos Fijos</name>
     <edit_public_records>False</edit_public_records>
@@ -40,10 +54,6 @@
             <config>False</config>
         </folio>
     </advanced_options>
-    <catalog_id>130517</catalog_id>
-    <sync_last_update>None</sync_last_update>
-    <_id>67d21521a163d9de897a2546</_id>
-    <public>False</public>
     <catalog_pages>
         <item>
             <page_fields>
@@ -461,7 +471,7 @@
                     <field_type>decimal</field_type>
                     <view_fields>[]</view_fields>
                     <catalog_fields>[]</catalog_fields>
-                    <fav>True</fav>
+                    <fav>False</fav>
                     <required>False</required>
                     <field_id>66c189f689463aa27fc18188</field_id>
                     <catalog>{}</catalog>
@@ -503,7 +513,7 @@
                     <field_type>decimal</field_type>
                     <view_fields>[]</view_fields>
                     <catalog_fields>[]</catalog_fields>
-                    <fav>True</fav>
+                    <fav>False</fav>
                     <required>False</required>
                     <field_id>66c1758989463aa27fc18171</field_id>
                     <catalog>{}</catalog>
@@ -545,7 +555,7 @@
                     <field_type>decimal</field_type>
                     <view_fields>[]</view_fields>
                     <catalog_fields>[]</catalog_fields>
-                    <fav>True</fav>
+                    <fav>False</fav>
                     <required>False</required>
                     <field_id>66c1758989463aa27fc1816e</field_id>
                     <catalog>{}</catalog>
@@ -587,7 +597,7 @@
                     <field_type>decimal</field_type>
                     <view_fields>[]</view_fields>
                     <catalog_fields>[]</catalog_fields>
-                    <fav>True</fav>
+                    <fav>False</fav>
                     <required>False</required>
                     <field_id>66c1758989463aa27fc1816f</field_id>
                     <catalog>{}</catalog>
@@ -781,8 +791,14 @@
                         <item>
                             <points>None</points>
                             <selected>False</selected>
-                            <value>no_disponible</value>
-                            <label>No disponible</label>
+                            <value>asignado</value>
+                            <label>Asignado</label>
+                        </item>
+                        <item>
+                            <points>None</points>
+                            <selected>False</selected>
+                            <value>instalado</value>
+                            <label>Instalado</label>
                         </item>
                     </options>
                     <catalog_id>None</catalog_id>
@@ -810,14 +826,20 @@
                         <item>
                             <points>None</points>
                             <selected>False</selected>
-                            <value>activo</value>
-                            <label>Activo</label>
+                            <value>operativo</value>
+                            <label>Operativo</label>
                         </item>
                         <item>
                             <points>None</points>
                             <selected>False</selected>
-                            <value>in_activo</value>
-                            <label>In Activo</label>
+                            <value>no_operativo</value>
+                            <label>No operativo</label>
+                        </item>
+                        <item>
+                            <points>None</points>
+                            <selected>False</selected>
+                            <value>mantenimiento</value>
+                            <label>Mantenimiento</label>
                         </item>
                     </options>
                     <catalog_id>None</catalog_id>
@@ -835,4 +857,8 @@
             <page_description>None</page_description>
         </item>
     </catalog_pages>
+    <sync_last_update>None</sync_last_update>
+    <_id>67d21521a163d9de897a2546</_id>
+    <public>False</public>
+    <catalog_id>130517</catalog_id>
 </lkf>

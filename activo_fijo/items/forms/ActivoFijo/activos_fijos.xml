@@ -62,7 +62,6 @@
                     </catalog>
                     <catalog_fields>
                         <item>663a7ee1e48382c5b1230907</item>
-                        <item>667468e3e577b8b98c852aaa</item>
                     </catalog_fields>
                     <catalog_relation>None</catalog_relation>
                     <default>False</default>
@@ -2513,10 +2512,16 @@
                             <value>disponible</value>
                         </item>
                         <item>
-                            <label>No disponible</label>
+                            <label>Asignado</label>
                             <points>None</points>
                             <selected>False</selected>
-                            <value>no_disponible</value>
+                            <value>asignado</value>
+                        </item>
+                        <item>
+                            <label>Instalado</label>
+                            <points>None</points>
+                            <selected>False</selected>
+                            <value>instalado</value>
                         </item>
                     </options>
                     <properties>
@@ -2574,7 +2579,7 @@
                     <catalog_fields>[]</catalog_fields>
                     <catalog_relation>None</catalog_relation>
                     <default>True</default>
-                    <default_value>activo</default_value>
+                    <default_value>operativo</default_value>
                     <descriptor>None</descriptor>
                     <fav>True</fav>
                     <field_id>66c1940b89463aa27fc1818c</field_id>
@@ -2587,16 +2592,22 @@
                     <number_type>None</number_type>
                     <options>
                         <item>
-                            <label>Activo</label>
+                            <label>Operativo</label>
                             <points>None</points>
                             <selected>False</selected>
-                            <value>activo</value>
+                            <value>operativo</value>
                         </item>
                         <item>
-                            <label>In Activo</label>
+                            <label>No operativo</label>
                             <points>None</points>
                             <selected>False</selected>
-                            <value>in_activo</value>
+                            <value>no_operativo</value>
+                        </item>
+                        <item>
+                            <label>Mantenimiento</label>
+                            <points>None</points>
+                            <selected>False</selected>
+                            <value>mantenimiento</value>
                         </item>
                     </options>
                     <properties>
@@ -2685,5 +2696,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1742854555.0</updated_at>
+    <updated_at>1744159432.0</updated_at>
 </lkf>
