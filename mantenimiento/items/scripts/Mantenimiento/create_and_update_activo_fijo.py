@@ -43,11 +43,14 @@ class Mantenimiento(Mantenimiento):
 
         selector.update({
             f"answers.{self.ActivoFijo.f['nombre_equipo']}": nombre_equipo,
-            f"answers.{self.ActivoFijo.f['estado']}": "Operativo",
-            f"answers.{self.ActivoFijo.f['estatus']}": "Instalado"
         })
 
-        fields = ["_id", f"answers.{self.ActivoFijo.f['nombre_equipo']}"]
+        fields = [
+            "_id",
+            f"answers.{self.ActivoFijo.f['nombre_equipo']}",
+            f"answers.{self.ActivoFijo.f['estado']}",
+            f"answers.{self.ActivoFijo.f['estatus']}"
+        ]
 
         mango_query = {
             "selector": selector,
@@ -57,9 +60,55 @@ class Mantenimiento(Mantenimiento):
 
         row_catalog = self.lkf_api.search_catalog(self.ActivoFijo.ACTIVOS_FIJOS_CAT_ID, mango_query)
         if row_catalog:
-            return True
-        else: 
+            equipo = row_catalog[0]
+            estatus = equipo.get(self.ActivoFijo.f['estatus'], '')
+            estado = equipo.get(self.ActivoFijo.f['estado'], '')
+            
+            if estatus == 'Instalado' and estado == 'Operativo':
+                return True
+            elif estatus == 'Disponible' and estado == 'No operativo':
+                folio = self.search_activo_fijo(nombre_equipo)
+                if folio:
+                    estado = 'operativo'
+                    estatus = 'instalado'
+                    self.update_estatus_estado(estado=estado, estatus=estatus, folio=folio)
+                return True
+        else:
             return False
+        
+    def search_activo_fijo(self, name=''):
+        match_query = {
+            "deleted_at": {"$exists": False},
+            "form_id": self.ActivoFijo.ACTIVOS_FIJOS,
+            f"answers.{self.ActivoFijo.f['nombre_equipo']}": name
+        }
+
+        proyect_fields = {
+            '_id': 1,
+            'folio': '$folio',
+        }
+
+        query = [
+            {'$match': match_query},
+            {'$project': proyect_fields},
+        ]
+
+        activo_fijos = self.format_cr(self.cr.aggregate(query))
+        folio = ''
+        if activo_fijos:
+            folio = activo_fijos[0].get('folio', '') if activo_fijos else None
+        return folio
+
+
+    def update_estatus_estado(self, estatus, estado, folio):
+        answers = {}
+        answers[self.ActivoFijo.f['estatus']] = estatus
+        answers[self.ActivoFijo.f['estado']] = estado
+
+        if answers or folio:
+            print('Activo Fijo ya existe, actualizando estatus y estado...')
+            res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.ActivoFijo.ACTIVOS_FIJOS, folios=[folio])
+            print(res)
     
     def format_data_to_create_activo_fijo(self, answers):
         mx_time = datetime.now(pytz.timezone("America/Mexico_City"))
