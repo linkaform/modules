@@ -253,5 +253,227 @@
                 </wf_fields>
             </rules>
         </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67f939c6da115d2f5e448ade</_id>
+                    <action_id>7</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <script>
+                            <created_at>2025-04-11T15:48:05.417912</created_at>
+                            <deleted_at>None</deleted_at>
+                            <end_date>None</end_date>
+                            <id>{{ script.update_sim.id }}</id>
+                            <is_fileShared>False</is_fileShared>
+                            <itype>script</itype>
+                            <name>{{ script.update_sim.name }}</name>
+                            <start_date>2025-04-11T15:48:05.415752</start_date>
+                            <updated_at>2025-04-11T15:48:05.653102</updated_at>
+                        </script>
+                        <user>SCRIPT_OWNER</user>
+                    </configuration>
+                    <name>Se ejecuta el script</name>
+                </item>
+            </actions>
+            <id>67f939c6da115d2f5e448ae2</id>
+            <name>Se actualiza SIM</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-04-12T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-04-11T15:10:42.678Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>True</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>not__empty=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67f9346f8d6298ee9c6792de</field_id>
+                                <group>{}</group>
+                                <label>Nueva SIM</label>
+                                <type>text</type>
+                            </trigger_field>
+                            <value> </value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>67f943a168a77e19f33b3c5a</_id>
+                    <action_id>7</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <script>
+                            <created_at>2025-03-24T15:21:47.498140</created_at>
+                            <deleted_at>None</deleted_at>
+                            <end_date>None</end_date>
+                            <id>{{ script.create_and_update_activo_fijo.id }}</id>
+                            <is_fileShared>False</is_fileShared>
+                            <itype>script</itype>
+                            <name>{{ script.create_and_update_activo_fijo.name }}</name>
+                            <start_date>2025-03-24T15:21:47.495608</start_date>
+                            <updated_at>2025-04-10T21:39:20.209056</updated_at>
+                        </script>
+                        <user>SCRIPT_OWNER</user>
+                    </configuration>
+                    <name>Se ejecuta el script</name>
+                </item>
+            </actions>
+            <id>67f943a168a77e19f33b3c61</id>
+            <name>Creacion del activo fijo</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-04-12T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-04-11T15:10:42.678Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>True</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>before</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>not__empty=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>
+                                    <catalog_field_id>{{ catalog.activos_fijos.obj_id }}</catalog_field_id>
+                                    <catalog_id>{{ catalog.activos_fijos.id }}</catalog_id>
+                                    <field_type>text</field_type>
+                                    <filters />
+                                    <geofence>None</geofence>
+                                    <last>True</last>
+                                    <related_catalog>{}</related_catalog>
+                                    <view_fields>[]</view_fields>
+                                    <view_index>1</view_index>
+                                </catalog>
+                                <field_id>66beb11907981d4509575056</field_id>
+                                <group>{}</group>
+                                <label>Modelo</label>
+                                <type>catalog-select</type>
+                            </trigger_field>
+                            <value> </value>
+                        </item>
+                        <item>
+                            <condition>not__empty=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67e2eddf63e826145d5a045d</field_id>
+                                <group>{}</group>
+                                <label>Mobile ID</label>
+                                <type>text</type>
+                            </trigger_field>
+                            <value> </value>
+                        </item>
+                        <item>
+                            <condition>not__empty=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67e2eddf63e826145d5a045e</field_id>
+                                <group>{}</group>
+                                <label>S/N</label>
+                                <type>text</type>
+                            </trigger_field>
+                            <value> </value>
+                        </item>
+                        <item>
+                            <condition>not__empty=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67e2eddf63e826145d5a045f</field_id>
+                                <group>{}</group>
+                                <label>P/N</label>
+                                <type>text</type>
+                            </trigger_field>
+                            <value> </value>
+                        </item>
+                        <item>
+                            <condition>not__empty=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67e2eddf63e826145d5a0460</field_id>
+                                <group>{}</group>
+                                <label>IMEI</label>
+                                <type>text</type>
+                            </trigger_field>
+                            <value> </value>
+                        </item>
+                        <item>
+                            <condition>not__empty=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67e2eddf63e826145d5a0461</field_id>
+                                <group>{}</group>
+                                <label>SIM</label>
+                                <type>text</type>
+                            </trigger_field>
+                            <value> </value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
     </workflows>
 </lkf>

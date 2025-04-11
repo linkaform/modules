@@ -103,9 +103,143 @@
                 </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>
-            <name>Regla 1</name>
+            <name>Ocultar grupo refacciones</name>
             <operator>and</operator>
             <rule_id>7a91b7222da1b58</rule_id>
+            <rule_type>invisible</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>iexact=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>67f92748d0ec2abcff4270e1</field_id>
+                        <group_id>None</group_id>
+                        <id>67f92748d0ec2abcff4270e1</id>
+                        <label>Equipos</label>
+                        <type>radio</type>
+                    </field>
+                    <value>buscar_en_existentes</value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67e2eddf63e826145d5a045d</field_id>
+                    <group_id>None</group_id>
+                    <id>67e2eddf63e826145d5a045d</id>
+                    <label>Mobile ID</label>
+                    <type>text</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67e2eddf63e826145d5a045e</field_id>
+                    <group_id>None</group_id>
+                    <id>67e2eddf63e826145d5a045e</id>
+                    <label>S/N</label>
+                    <type>text</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67e2eddf63e826145d5a045f</field_id>
+                    <group_id>None</group_id>
+                    <id>67e2eddf63e826145d5a045f</id>
+                    <label>P/N</label>
+                    <type>text</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67e2eddf63e826145d5a0460</field_id>
+                    <group_id>None</group_id>
+                    <id>67e2eddf63e826145d5a0460</id>
+                    <label>IMEI</label>
+                    <type>text</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67e2eddf63e826145d5a0461</field_id>
+                    <group_id>None</group_id>
+                    <id>67e2eddf63e826145d5a0461</id>
+                    <label>SIM</label>
+                    <type>text</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Mostrar equipos existentes</name>
+            <operator>and</operator>
+            <rule_id>fd01727f61d75</rule_id>
+            <rule_type>invisible</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>iexact=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>67f935a99b4d7d398a3b3be4</field_id>
+                        <group_id>None</group_id>
+                        <id>67f935a99b4d7d398a3b3be4</id>
+                        <label>Se actualiza SIM?</label>
+                        <type>radio</type>
+                    </field>
+                    <value>no</value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67f9346f8d6298ee9c6792de</field_id>
+                    <group_id>None</group_id>
+                    <id>67f9346f8d6298ee9c6792de</id>
+                    <label>Nueva SIM</label>
+                    <type>text</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Regla 3</name>
+            <operator>and</operator>
+            <rule_id>13224391c27e07</rule_id>
+            <rule_type>invisible</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>not__empty=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>67f92748d0ec2abcff4270e1</field_id>
+                        <group_id>None</group_id>
+                        <id>67f92748d0ec2abcff4270e1</id>
+                        <label>Equipos</label>
+                        <type>radio</type>
+                    </field>
+                    <value> </value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67f935a99b4d7d398a3b3be4</field_id>
+                    <group_id>None</group_id>
+                    <id>67f935a99b4d7d398a3b3be4</id>
+                    <label>Se actualiza SIM?</label>
+                    <type>radio</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Regla 4</name>
+            <operator>and</operator>
+            <rule_id>1b96a315321cd9</rule_id>
             <rule_type>invisible</rule_type>
             <user_conditions>{}</user_conditions>
         </item>

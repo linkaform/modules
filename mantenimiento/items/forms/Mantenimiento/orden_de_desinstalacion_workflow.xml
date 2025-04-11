@@ -80,20 +80,6 @@
                             </trigger_field>
                             <value> </value>
                         </item>
-                        <item>
-                            <condition>not__empty=</condition>
-                            <form_id>None</form_id>
-                            <other_value>None</other_value>
-                            <prefix>answer</prefix>
-                            <trigger_field>
-                                <catalog>{}</catalog>
-                                <field_id>67e2eddf63e826145d5a045d</field_id>
-                                <group>{}</group>
-                                <label>Mobile ID</label>
-                                <type>text</type>
-                            </trigger_field>
-                            <value> </value>
-                        </item>
                     </triggers>
                 </wf_fields>
             </rules>

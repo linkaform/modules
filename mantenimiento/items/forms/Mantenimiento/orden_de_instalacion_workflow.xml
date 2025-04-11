@@ -188,6 +188,8 @@ Ver registro&gt; {{record_url}} {% endraw %}</body>
                     <action_id>7</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
+                        <arguments>{}</arguments>
+                        <integration>None</integration>
                         <script>
                             <created_at>2025-03-24T15:21:47.498140</created_at>
                             <deleted_at>None</deleted_at>
@@ -199,7 +201,33 @@ Ver registro&gt; {{record_url}} {% endraw %}</body>
                             <start_date>2025-03-24T15:21:47.495608</start_date>
                             <updated_at>2025-03-24T17:44:23.226850</updated_at>
                         </script>
+                        <scriptArguments>
+                            <item>
+                                <label>None</label>
+                                <value>None</value>
+                            </item>
+                        </scriptArguments>
+                        <scriptQuery>None</scriptQuery>
+                        <selectedUser>None</selectedUser>
                         <user>SCRIPT_OWNER</user>
+                        <userOptions>
+                            <item>
+                                <id>SCRIPT_OWNER</id>
+                                <name>Dueño del script</name>
+                            </item>
+                            <item>
+                                <id>FORM_OWNER</id>
+                                <name>Dueño de la forma</name>
+                            </item>
+                            <item>
+                                <id>OWNER_ACCOUNT_EMAIL</id>
+                                <name>Dueño de la cuenta</name>
+                            </item>
+                            <item>
+                                <id>RECORD_USER</id>
+                                <name>Usuario que contesta</name>
+                            </item>
+                        </userOptions>
                     </configuration>
                     <name>Se ejecuta el script</name>
                 </item>
@@ -268,6 +296,62 @@ Ver registro&gt; {{record_url}} {% endraw %}</body>
                                 <field_id>67e2eddf63e826145d5a045d</field_id>
                                 <group>{}</group>
                                 <label>Mobile ID</label>
+                                <type>text</type>
+                            </trigger_field>
+                            <value></value>
+                        </item>
+                        <item>
+                            <condition>not__empty=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67e2eddf63e826145d5a045e</field_id>
+                                <group>{}</group>
+                                <label>S/N</label>
+                                <type>text</type>
+                            </trigger_field>
+                            <value></value>
+                        </item>
+                        <item>
+                            <condition>not__empty=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67e2eddf63e826145d5a045f</field_id>
+                                <group>{}</group>
+                                <label>P/N</label>
+                                <type>text</type>
+                            </trigger_field>
+                            <value></value>
+                        </item>
+                        <item>
+                            <condition>not__empty=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67e2eddf63e826145d5a0460</field_id>
+                                <group>{}</group>
+                                <label>IMEI</label>
+                                <type>text</type>
+                            </trigger_field>
+                            <value></value>
+                        </item>
+                        <item>
+                            <condition>not__empty=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67e2eddf63e826145d5a0461</field_id>
+                                <group>{}</group>
+                                <label>SIM</label>
                                 <type>text</type>
                             </trigger_field>
                             <value></value>
