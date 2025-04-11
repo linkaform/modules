@@ -18,13 +18,29 @@ class Stock(Stock):
             'form_id':self.FORM_INVENTORY_ID, 
             'deleted_at': {'$exists': False},
             f"answers.{self.Product.SKU_OBJ_ID}.{self.Product.f['product_code']}":'1468270',
-            f"answers.{self.f['actuals']}":{'$exists':False},
+            f"answers.{self.f['folio_recepcion']}":"SAL-2663",
+            # f"answers.{self.f['actuals']}":{'$exists':False},
              }
-        print('query=',simplejson.dumps(query, indent=3) )
-        records = self.cr.find(query,{'folio':1}).limit(7500)
+        print('query=', simplejson.dumps(query, indent=3))
+        print(d)
+        records = self.cr.find(query,{'folio':1, 'answers':1}).limit(7500)
         update_ids = []
         for rec in records:
-            update_ids.append(str(rec.get('_id')))
+            answers = rec.get('answers',{})
+            if not answers:
+                continue
+            lot_number = answers.get(self.f['lot_number'])
+            rec_id = rec.get('_id')
+            query = {
+            'form_id':self.FORM_INVENTORY_ID,
+            'deleted_at': {'$exists': False},
+            '_id': {'$ne':rec_id},
+            f"answers.{self.Product.SKU_OBJ_ID}.{self.Product.f['product_code']}":'1468270',
+            f"answers.{self.f['lot_number']}":lot_number,
+             }
+            old_rec = self.cr.find(query,{'folio':1})
+            for x in old_rec:
+                update_ids.append(str(x.get('_id')))
         print('Size of updated ids:' , len(update_ids))
         if update_ids:
             answer = {self.f['product_grading_pending']:'auditado'}
