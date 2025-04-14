@@ -1,9 +1,8 @@
 # coding: utf-8
 import sys, simplejson
-from linkaform_api import settings, generar_qr
-from account_settings import *
 
 from base_utils import Base
+from account_settings import *
 
 
 def create_qr(field_id):
