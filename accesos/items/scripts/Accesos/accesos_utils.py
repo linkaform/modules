@@ -3,8 +3,8 @@ from datetime import datetime
 from linkaform_api import base
 from lkf_addons.addons.accesos.app import Accesos
 
-# class Reports(base.LKF_Report, Stock):
-class Accesos(base.LKF_Report, Accesos):
+
+class Accesos( Accesos):
     print('Entra a acceos utils')
 
     def __init__(self, settings, sys_argv=None, use_api=False):
@@ -177,6 +177,8 @@ class Accesos(base.LKF_Report, Accesos):
         else:
             self.LKFException('No se mandarón parametros para actualizar')
 
+   
+
     def get_list_bitacora2(self, location=None, area=None, prioridades=[], dateFrom='', dateTo='', filterDate="this_month"):
         match_query = {
             "deleted_at":{"$exists":False},
@@ -189,27 +191,31 @@ class Accesos(base.LKF_Report, Accesos):
         if prioridades:
             match_query[f"answers.{self.bitacora_fields['status_visita']}"] = {"$in": prioridades}
   
-        if filterDate != "range":
-            dateFrom, dateTo = self.get_period_dates(filterDate)
-            if dateFrom:
-                dateFrom = str(dateFrom)[:10]
-            if dateTo:
-                dateTo = str(dateTo)[:10]
-        if dateFrom and dateTo:
-            match = {
-                f"answers.{self.mf['fecha_entrada']}": {"$gte": dateFrom},
-                f"answers.{self.mf['fecha_salida']}": {"$lte": dateTo}
-            }
-        elif dateFrom:
-            match = {
-                f"answers.{self.mf['fecha_entrada']}": {"$gte": dateFrom}
-            }
-        elif dateTo:
-            match = {
-                f"answers.{self.mf['fecha_salida']}": {"$lte": dateTo}
-            }
+        user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
+        zona = user_data.get('timezone','America/Monterrey')
 
-      
+        if filterDate != "range":
+            dateFrom, dateTo = self.get_range_dates(filterDate,zona)
+
+            if dateFrom:
+                dateFrom = str(dateFrom)
+            if dateTo:
+                dateTo = str(dateTo)
+
+        if dateFrom and dateTo:
+           match_query.update({
+                f"answers.{self.mf['fecha_entrada']}": {"$gte": dateFrom, "$lte": dateTo},
+            })
+        elif dateFrom:
+            match_query.update({
+                f"answers.{self.mf['fecha_entrada']}": {"$gte": dateFrom}
+            })
+        elif dateTo:
+            match_query.update({
+                f"answers.{self.mf['fecha_entrada']}": {"$lte": dateTo}
+            })
+        
+        print("Fechas+++", match_query)
         proyect_fields ={
             '_id': 1,
             'folio': "$folio",
@@ -258,12 +264,13 @@ class Accesos(base.LKF_Report, Accesos):
                 },
                 ],
          'as': 'pase',
-
         }
+       
         query = [
             {'$match': match_query },
             {'$project': proyect_fields},
             {'$lookup': lookup},
+            {"$limit":3}
         ]
         if dateFrom:
             query.append(
@@ -273,6 +280,7 @@ class Accesos(base.LKF_Report, Accesos):
             query.append(
                 {'$sort':{'folio':-1}},
             )
+           
         records = self.format_cr(self.cr.aggregate(query))
         # print( simplejson.dumps(records, indent=4))
         for r in records:
