@@ -179,7 +179,7 @@ class Accesos( Accesos):
 
    
 
-    def get_list_bitacora2(self, location=None, area=None, prioridades=[], dateFrom='', dateTo='', filterDate="this_month"):
+    def get_list_bitacora2(self, location=None, area=None, prioridades=[], dateFrom='', dateTo='', filterDate=""):
         match_query = {
             "deleted_at":{"$exists":False},
             "form_id": self.BITACORA_ACCESOS
@@ -270,8 +270,11 @@ class Accesos( Accesos):
             {'$match': match_query },
             {'$project': proyect_fields},
             {'$lookup': lookup},
-            {"$limit":3}
         ]
+        if not filterDate:
+            query.append(
+                {"$limit":25}
+            )
         if dateFrom:
             query.append(
                 {'$sort':{'folio':1}},
