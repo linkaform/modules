@@ -44,15 +44,15 @@ if __name__ == "__main__":
     area = data.get("area")
     folio = data.get("folio")
     tipo = data.get("tipo","")
-    #-FUNCTIONS
-    #option = 'new_article';
-    #option = 'get_articles';
-    #option = 'update_article';
-    #option = 'delete_article';
+
+    dateFrom = data.get("dateFrom", "")
+    dateTo = data.get("dateTo", "")
+    filterDate = data.get("filterDate", "")
+
     if option == 'nuevo_articulo':
         response = acceso_obj.create_article_lost(data_article)
     elif option == 'get_articles':
-        response = acceso_obj.get_list_article_lost(location, area,status)
+        response = acceso_obj.get_list_article_lost(location, area,status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate)
     elif option == 'update_article':
         response = acceso_obj.update_article_lost(data_article_update, folio)
     elif option == 'delete_article':
@@ -63,7 +63,7 @@ if __name__ == "__main__":
         else:
             response = acceso_obj.catalogo_tipo_articulo()
     elif option == 'catalogo_area_empleado':
-        response = acceso_obj.catalogo_config_area_empleado()
+        response = acceso_obj.catalogo_config_area_empleado(bitacora='Objetos Perdidos')
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})

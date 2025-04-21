@@ -9,11 +9,7 @@ class Accesos(Accesos):
     pass
     
 if __name__ == "__main__":
-    print('/////////')
-    acceso_obj = Accesos(settings, sys_argv=sys.argv)
-    jwt = acceso_obj.lkf_api.get_jwt(user='seguridad@linkaform.com', api_key='58c62328de6b38d6d039122a9f0f7577f6f70ce2')
-    settings.config['JWT_KEY'] = jwt
-    acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
+    acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
     acceso_obj.console_run()
     #-FILTROS
     data = acceso_obj.data.get('data',{})
@@ -30,25 +26,30 @@ if __name__ == "__main__":
     qr_code=data.get("qr_code")
     tab_status=data.get("tab_status")
     pre_sms = data.get("enviar_pre_sms",{})
-
+    update_obj = data.get("update_obj",{})
+    envio = data.get("envio",[])
+    
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
     elif option == 'create_access_pass' or option == 'crear_pase':
         response = acceso_obj.create_access_pass(location, access_pass)
         folio_msj = response.get('json', {}).get('id', '')
-        
-        if pre_sms:
-            pre_sms_response = acceso_obj.create_enviar_msj_pase(data_cel_msj=pre_sms, folio=folio_msj)
     elif option == 'update_pass':
         response = acceso_obj.update_pass(access_pass,folio)
-    elif option == 'catalogos_pase':
-        response = acceso_obj.catalagos_pase(user_id, location)
+    elif option == 'update_full_pass':
+        response = acceso_obj.update_full_pass(access_pass,folio, qr_code, location)
+    elif option == 'update_active_pass':
+        response = acceso_obj.update_active_pass(folio, qr_code, update_obj)
+    elif option == 'catalogos_pase_area':
+        response = acceso_obj.catalogos_pase_area(location)
+    elif option == 'catalogos_pase_location':
+        response = acceso_obj.catalogos_pase_location()
     elif option == 'catalogos_pase_no_jwt':
         response = acceso_obj.catalagos_pase_no_jwt(qr_code)
     elif option == 'enviar_msj':
-        response = acceso_obj.create_enviar_msj_pase(data_cel_msj=data_cel_msj, folio=folio)
+        response = acceso_obj.create_enviar_msj_pase(folio=folio)
     elif option == 'enviar_correo':
-        response = acceso_obj.create_enviar_correo(data_msj=data_msj, folio=folio)
+        response = acceso_obj.create_enviar_correo(data_msj=data_msj, folio=folio, envio=envio)
     elif option == 'catalago_vehiculo':
         if tipo and marca:
             response = acceso_obj.vehiculo_modelo(tipo, marca)
@@ -62,6 +63,12 @@ if __name__ == "__main__":
         response = acceso_obj.get_pass_custom(qr_code)
     elif option == 'get_my_pases':
         response = acceso_obj.get_my_pases(tab_status=tab_status)
+    elif option == 'get_pdf':
+        response = acceso_obj.get_pdf(qr_code)
+    elif option == 'get_user_contacts':
+        response = acceso_obj.get_user_contacts()
+    elif option == 'get_config_modulo_seguridad':
+        response = acceso_obj.get_config_modulo_seguridad(location)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})

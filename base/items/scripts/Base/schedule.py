@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson
 from datetime import datetime, timedelta
-from linkaform_api import settings, network, utils
 from bson import errors, ObjectId
 
 from lkf_addons.addons.base.app import Schedule
