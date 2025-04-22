@@ -13,12 +13,10 @@ from lkf_addons.addons.product.app import Product
 from lkf_addons.addons.product.app import Warehouse
 from lkf_addons.addons.jit.app import JIT
 from lkf_addons.addons.stock.app import Stock
-from itertools import zip_longest
 
 
 class Reports(Reports):
     
-
     def estrucutra_rutas(self):
         estructura = {}
         for p in self.get_rutas_transpaso():
@@ -48,7 +46,6 @@ class Reports(Reports):
         # self.ROUTE_RULES = {x['product_code']:x for x in self.get_rutas_transpaso(sku) if x.get('product_code')}
         
         for sku, data in sku_data.items():
-            print('data>>>>',data)
             standar_pack = self.ROUTE_RULES.get(str(sku),{})
             sku_warehouses = []
             # standar_pack {'product_code': '750200310481', 'sku': '750200310481', 'standar_pack': 1.0, 'warehouse': 'CEDIS GUADALAJARA', 'warehouse_location': 'Almacen CEDIS Guadalajara', 'warehouse_dest': 'ALM MERIDA', 'warehouse_location_dest': 'Almacen Merida'}
@@ -158,7 +155,6 @@ class Reports(Reports):
         data = {}
         # Extraer los nombres de los almacenes dinámicamente desde las claves que contienen 'stock_max_alm_'
         # for key in stock_list[0]:
-        # print('222stock_list=', simplejson.dumps(stock_list, indent=4))
         warehouse_keys = []
         for row in stock_list:
             for key in row:
@@ -205,32 +201,41 @@ class Reports(Reports):
         return data
 
     def eval_procurment(self, proc, procurment_warehouses):
-        print('evaluation.....', proc)
         product_code = proc['product_code']
         sku = proc['sku']
         warehouse = proc['warehouse']
         needed = proc['procurment_qty']
         actuals = self.product_stock_by_wh.get(warehouse).get(product_code,0)
-        print('actuals', actuals)
-        print('product_cproduct_codeproduct_codeod e  product_code=', product_code)
-        print('needed', needed)
+        proc['status'] = 404
+        proc['stock'] = actuals
         for proc_warehouse in procurment_warehouses:
             if needed <= 0:
                 continue
-            print('proc_warehouse', proc_warehouse)
             stock_warehouse = self.product_stock_by_wh.get(proc_warehouse).get(product_code,0)
-            print('stock_warehouse', stock_warehouse)
-            max_stock = self.max_stock_by_warehouse.get(proc_warehouse, {}).get(product_code,0)
-            print('max_stock', max_stock)
+            standar_pack = self.get_procurments_standar_pack(sku, proc_warehouse)
+            print(f'sku: {sku} standar_pack: {standar_pack}')
+            max_stock = self.max_stock_by_warehouse.get(warehouse, {}).get(product_code,0)
+            if max_stock > 0:
+                proc['percentage_start'] = round(actuals / max_stock,2)
             if stock_warehouse > max_stock:
                 available_to_share = stock_warehouse - max_stock
-                needed = needed - available_to_share
-                proc['stock_to_move'] = available_to_share
-                proc['warehouse_from'] =  proc_warehouse
-                proc['stock_final'] = available_to_share + actuals
-                print('proc', proc)
-                print('proc', prdoc)
-
+                proc['from'] = proc_warehouse
+                if available_to_share > needed:
+                    proc['status'] = 200
+                    proc['handover'] = round(self.calc_shipment_pack(needed, standar_pack), 2)
+                    proc['stock_final'] = round(proc['handover'] + actuals,2)
+                    if max_stock > 0:
+                        proc['percentage_finish'] = round(proc['stock_final'] / max_stock,2)
+                    self.product_stock_by_wh[proc_warehouse][product_code] = stock_warehouse - needed
+                    return proc
+                elif available_to_share < needed:
+                    proc['status'] = 200
+                    proc['handover'] = round(self.calc_shipment_pack(needed, standar_pack), 2)
+                    proc['stock_final'] = round(proc['handover'] + actuals,2)
+                    if max_stock > 0:
+                        proc['percentage_finish'] = round(proc['stock_final'] / max_stock,2)
+                    self.product_stock_by_wh[proc_warehouse][product_code] = stock_warehouse - available_to_share
+        return proc
 
     def format_catalog_product(self, data_query, id_field):
         list_response = []
@@ -261,8 +266,6 @@ class Reports(Reports):
         mango_query["selector"]["$and"] = [clause for clause in mango_query["selector"]["$and"] if clause]
 
         # Execute query and return records
-        print('prod_obj.lkf_api',self.lkf_api)
-        print('prod_obj.lkf_api',dir(self.lkf_api))
         record = prod_obj._labels_list(self.lkf_api.search_catalog(prod_obj.PRODUCT_ID, mango_query), prod_obj.f)
         # print('RECORD', record)
         return record
@@ -271,6 +274,7 @@ class Reports(Reports):
         match_query ={ 
                 'form_id': procurment_obj.PROCURMENT,  
                 'deleted_at' : {'$exists':False},
+                # f'answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f["sku"]}':'750200301069'
                 #todo fix balance para q suba con stauts
                 # f'answers.{procurment_obj.mf["jit_procurment_status"]}': status,
             }
@@ -307,7 +311,8 @@ class Reports(Reports):
                     'warehouse':f'$answers.{warehouse_obj.WAREHOUSE_LOCATION_OBJ_ID}.{warehouse_obj.f["warehouse"]}',
                     'warehouse_location':f'$answers.{warehouse_obj.WAREHOUSE_LOCATION_OBJ_ID}.{warehouse_obj.f["warehouse_location"]}',
             }}]
-        print('query=', simplejson.dumps(query, indent=3))
+        # print('query=', simplejson.dumps(query, indent=3))
+        # print('cr',procurment_obj.cr)
         return procurment_obj.format_cr(procurment_obj.cr.aggregate(query))
 
     def get_report_filters(self, filters=[], product_code_aux=None):
@@ -339,7 +344,6 @@ class Reports(Reports):
 
         # Obtener los ids distintos y filtrar los None
         db_ids = [item for item in self.cr.distinct("answers.66dfc4d9a306e1ac7f6cd02c.61ef32bcdf0ec2ba73dec343", query) if item is not None]
-        
         match_query = { 
             'deleted_at':{"$exists":False},
         }
@@ -354,7 +358,7 @@ class Reports(Reports):
             "skip": 0
         }
         
-        res = script_obj.lkf_api.search_catalog(123105, mango_query)
+        res = reorder_obj.lkf_api.search_catalog(123105, mango_query)
         res_format = reorder_obj.format_catalog_product(res, id_field)
         
         return res_format
@@ -362,6 +366,16 @@ class Reports(Reports):
     def get_max_stock(self, data):
         res = {x['warehouse'].lower().replace(' ','_'):x['stock_maximum'] for x in data}
         return res
+
+    def get_procurments_standar_pack(self, sku, procurment_warehouses):
+        standar_pack = self.ROUTE_RULES.get(str(sku),{})
+        #TODO QUITAR CEDIS
+        spack = standar_pack['CEDIS GUADALAJARA']['Almacen CEDIS Guadalajara']
+        location = {
+            'ALM GUADALAJARA':'Almacen Guadalajara',
+            'ALM MONTERREY':'Almacen Monterrey',
+            }
+        return spack.get(procurment_warehouses,{}).get(location[procurment_warehouses],{}).get('standar_pack',1)
 
     def get_stock_by_warehouse(self, product_codes, warehouses):
         res = {}
@@ -382,14 +396,27 @@ class Reports(Reports):
 
     def generate_report_info(self):
         products = reorder_obj.get_product_by_type(product_type=product_family, product_line=product_line)
-        product_dict = {x['product_code']: x for x in products}
-        product_code = list(product_dict.keys())
+        # product_dict = {x['product_code']: x for x in products}
+        product_dict = {}
+        product_code = []
+        for x in products:
+            pcode = x['product_code']
+            product_dict[pcode] = {
+                'sku' : x['product_code'],
+                'desc' : x['product_name'],
+                'product_type' : x['product_type'],
+                'line' : x['product_category'],
+            }
+            product_code.append(x['product_code'])
+
+        # product_code = list(product_dict.keys())
 
         procurment = reorder_obj.get_procurments(product_code=product_code)
         if not procurment:
             return None
         
-        unique_warehouses = sorted({item['warehouse'] for item in procurment})
+        # unique_warehouses = sorted({item['warehouse'] for item in procurment})
+        unique_warehouses = ['ALM GUADALAJARA','ALM MONTERREY']
         self.product_stock_by_wh = self.get_stock_by_warehouse(product_code, unique_warehouses)
         # print('product_stock_by_wh=',product_stock_by_wh)
 
@@ -402,93 +429,107 @@ class Reports(Reports):
         self.max_stock_by_warehouse = self.get_procurment_by_warehouse(res_first)
         stock_dict = {}
 
+        result = {}
         for warehouse in unique_warehouses:
-            print('working on this warehouse', warehouse)
+            procurment_xfer = []
+            procurment_na = []
             stock_dict[warehouse] = stock_dict.get(warehouse,[])
-            procurment_warehouses = [item for item in unique_warehouses if item not in warehouse]
             for proc in procurment:
-                print('proc=', proc)
+                procurment_warehouses = [item for item in unique_warehouses if item not in proc['warehouse']]
+                sku = proc['sku']
+                proc.update(product_dict[sku])
                 p_warehouse = proc.get('warehouse')
-                print('p_warehouse=', p_warehouse)
                 if warehouse == p_warehouse:
-                    proc_rec = self.eval_procurment(proc, procurment_warehouses)
-                    stock_dict[warehouse]
+                    proc = self.eval_procurment(proc, procurment_warehouses)
+                    if proc['status'] == 200:
+                        procurment_xfer.append(proc)
+                    elif proc['status'] == 404:
+                        procurment_na.append(proc)
+            if warehouse == 'ALM MONTERREY':
+                result['tableFirst'] = procurment_xfer
+                result['tableSecond'] = procurment_na
+            elif warehouse == 'ALM GUADALAJARA':
+                result['tableThird'] = procurment_xfer
+                result['tableFourth'] = procurment_na
+            else:
+                result['tableFifth'] = procurment_xfer
+                result['tableSixth'] = procurment_na
 
 
-        print(d)
+        return result
 
-        for item in procurment:
-            print('item=', item)
-            print('item=', itemd)
-            code = item['product_code']
-            warehouse = item['warehouse'].lower().replace(' ', '_')
-            # if item['sku'] == '750200302529':
-            # #     continue
-            if warehouse not in self.warehouses:
-                self.warehouses.append(warehouse)
-            # actuals = stock_cedis_dict.get(code, 0)
-            if not product_dict.get(code):
-                continue
-            product_name = product_dict[code]['product_name']
-            product_category = product_dict[code]['product_category']
-            product_type = product_dict[code]['product_type']
+        # for item in procurment:
+        #     print('item=', item)
+        #     code = item['product_code']
+        #     warehouse = item['warehouse'].lower().replace(' ', '_')
+        #     # if item['sku'] == '750200302529':
+        #     # #     continue
+        #     if warehouse not in self.warehouses:
+        #         self.warehouses.append(warehouse)
+        #     # actuals = stock_cedis_dict.get(code, 0)
+        #     if not product_dict.get(code):
+        #         continue
+        #     product_name = product_dict[code]['product_name']
+        #     product_category = product_dict[code]['product_category']
+        #     product_type = product_dict[code]['product_type']
 
-            # Inicializa el producto en el diccionario de stock si no existe
-            stock_dict[code] = stock_dict.get(code, {
-                'sku': item['sku'],
-                'desc_producto': product_name,
-                'line': product_category,
-                'familia': product_type,
-                'actuals': actuals,  # proviene de stock_cedis_dict
-                'percentage_stock_max': 0,
-                'stock_final': actuals,  # Inicializamos stock_final con los actuales
-            })
-            # Actualiza stock_to_move, asegurándose de no exceder el stock disponible
-            available_stock = stock_dict[code].get('stock_final', 0)
-            # stock_to_move = min(item['procurment_qty'], available_stock)
-            stock_to_move = item['procurment_qty']
-            stock_dict[code].update({f'stock_to_move_{warehouse}': round(stock_to_move, 2)})
-            # if item['sku'] == '750200302529':
-            # #     continue
-            #     print('stock_dict=', stock_dict[code])
-            #vaoms a dejarlo que se vaya a negativo y solo trabajamos con los negativos...
-            stock_dict[code]['stock_final'] = round(stock_dict[code]['stock_final'] - stock_to_move, 2)
+        #     # Inicializa el producto en el diccionario de stock si no existe
+        #     stock_dict[code] = stock_dict.get(code, {
+        #         'sku': item['sku'],
+        #         'desc_producto': product_name,
+        #         'line': product_category,
+        #         'familia': product_type,
+        #         'actuals': item['actuals'],  # proviene de stock_cedis_dict
+        #         'percentage_stock_max': 0,
+        #         'stock_final': item.get()'stock_final'],  # Inicializamos stock_final con los actuales
+        #         'handover': item['handover'],  # Inicializamos stock_final con los actuales
+        #     })
+        #     # Actualiza stock_to_move, asegurándose de no exceder el stock disponible
+        #     available_stock = stock_dict[code].get('stock_final', 0)
+        #     # stock_to_move = min(item['procurment_qty'], available_stock)
+        #     stock_to_move = item['procurment_qty']
+        #     stock_dict[code].update({f'stock_to_move_{warehouse}': round(stock_to_move, 2)})
+        #     # if item['sku'] == '750200302529':
+        #     # #     continue
+        #     #     print('stock_dict=', stock_dict[code])
+        #     #vaoms a dejarlo que se vaya a negativo y solo trabajamos con los negativos...
+        #     stock_dict[code]['stock_final'] = round(stock_dict[code]['stock_final'] - stock_to_move, 2)
 
-            # Verificación para evitar que stock_final sea negativo
-            #if stock_dict[code]['stock_final'] >= item['procurment_qty']:
-                # Si hay suficiente stock para el traspaso
-            #     stock_dict[code]['stock_final'] = round(stock_dict[code]['stock_final'] - item['procurment_qty'], 2)
-            # else:
-            #     # Si no hay suficiente stock, se ajusta a 0
-                # stock_dict[code]['stock_final'] = 0
-        # Ahora actualiza la información de los productos en el stock de los almacenes
-        for x in product_stock:
-            code = x['product_code']
-            warehouse = x['warehouse'].lower().replace(' ', '_')          
-            if stock_dict.get(code):
-                if 'cedis' in warehouse:
-                    warehouse = warehouse.replace('cedis', 'alm')
-                # elif warehouse == 'alm_guadalajara':
-                #     stock_dict[code]['actuals_alm_guadalajara'] = 0
-                else:
-                    stock_dict[code][f'actuals_{warehouse}'] = x['actuals']
+        #     # Verificación para evitar que stock_final sea negativo
+        #     #if stock_dict[code]['stock_final'] >= item['procurment_qty']:
+        #         # Si hay suficiente stock para el traspaso
+        #     #     stock_dict[code]['stock_final'] = round(stock_dict[code]['stock_final'] - item['procurment_qty'], 2)
+        #     # else:
+        #     #     # Si no hay suficiente stock, se ajusta a 0
+        #         # stock_dict[code]['stock_final'] = 0
+        # # Ahora actualiza la información de los productos en el stock de los almacenes
+        # for x in product_stock:
+        #     code = x['product_code']
+        #     warehouse = x['warehouse'].lower().replace(' ', '_')          
+        #     if stock_dict.get(code):
+        #         if 'cedis' in warehouse:
+        #             warehouse = warehouse.replace('cedis', 'alm')
+        #         # elif warehouse == 'alm_guadalajara':
+        #         #     stock_dict[code]['actuals_alm_guadalajara'] = 0
+        #         else:
+        #             stock_dict[code][f'actuals_{warehouse}'] = x['actuals']
                 
-        # Actualiza las reglas de stock máximo para cada producto
-        for x in res_first:
-            code = x['product_code']
-            warehouse = x['warehouse'].lower().replace(' ', '_')
-            if stock_dict.get(code):
-                stock_dict[code][f'stock_max_{warehouse}'] = x['stock_maximum']
-                if x['stock_maximum'] == 0:
-                    stock_dict[code][f'p_stock_max_{warehouse}'] = 0
-                else:
-                    stock_dict[code][f'p_stock_max_{warehouse}'] = round((stock_dict[code].get(f'actuals_{warehouse}', 0) / x['stock_maximum']) * 100, 2)
-                # print('********************* stock dict', simplejson.dumps(stock_dict[code], indent=3))
-        # print('*********************')
-        # print('********************* stock dict', stock_dict)
-        #stock_dict = self.double_check(stock_dict)
-        stock_list = list(stock_dict.values())
-        return stock_list
+        # # Actualiza las reglas de stock máximo para cada producto
+        # for x in res_first:
+        #     code = x['product_code']
+        #     warehouse = x['warehouse'].lower().replace(' ', '_')
+        #     if stock_dict.get(code):
+        #         stock_dict[code][f'stock_max_{warehouse}'] = x['stock_maximum']
+        #         if x['stock_maximum'] == 0:
+        #             stock_dict[code][f'p_stock_max_{warehouse}'] = 0
+        #         else:
+        #             stock_dict[code][f'p_stock_max_{warehouse}'] = round((stock_dict[code].get(f'actuals_{warehouse}', 0) / x['stock_maximum']) * 100, 2)
+        #         # print('********************* stock dict', simplejson.dumps(stock_dict[code], indent=3))
+        # # print('*********************')
+        # # print('********************* stock dict', stock_dict)
+        # #stock_dict = self.double_check(stock_dict)
+        # stock_list = list(stock_dict.values())
+        # return stock_list
     
     def get_stock_data(self, data, idx):
         stock_warehouse = data[idx]
@@ -588,26 +629,21 @@ class Reports(Reports):
         # self.ROUTE_RULES = self.get_rutas_transpaso()
         self.ROUTE_RULES = self.estrucutra_rutas()
         stock_list = self.generate_report_info()  # Lista de productos
-        # print('stock list', stock_list)
         if not stock_list:
             return [{}]
-        data = self.build_data_from_report(stock_list)  # Genera los datos del informe
-        print('------------------------data',data)
-        data = self.almancenes_por_porcentaje(data)
-        # print('daataaa=',data)
-        return self.arrage_data(stock_list, data)
-        # warehouse_percentage_response = self.warehouses_by_percentage()  # Respuesta con almacenes y traspasos
-        # return data                        
+        return stock_list
+        # data = self.build_data_from_report(stock_list)  # Genera los datos del informe
+        # print('------------------------data',data)
+        # data = self.almancenes_por_porcentaje(data)
+        # # print('daataaa=',data)
+        # return self.arrage_data(stock_list, data)
+        # # warehouse_percentage_response = self.warehouses_by_percentage()  # Respuesta con almacenes y traspasos
+        # # return data                        
         
 if __name__ == "__main__":
-    print('MAAAAAAAAIIIIIIIIIIIIIINNNNNNNNNNNNNN------------------')
     reorder_obj = Reports(settings, sys_argv=sys.argv, use_api=True)
-    # script_obj = base.LKF_Base(settings, sys_argv=sys.argv, use_api=True)
     reorder_obj.console_run()
-    prod_obj = Product(settings, sys_argv=sys.argv, use_api=True)
-    stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
-    procurment_obj = JIT(settings, sys_argv=sys.argv, use_api=True)
-    warehouse_obj = Warehouse(settings, sys_argv=sys.argv, use_api=True)
+    # 
 
     data = reorder_obj.data
     data = data.get('data',[])
@@ -616,21 +652,17 @@ if __name__ == "__main__":
     product_family = data.get('product_family', 'TUBOS')
     product_line = data.get('product_line', '')
     warehouse_info = data.get('warehouse', '')
-    warehouse_cedis = 'CEDIS GUADALAJARA'
+    # warehouse_cedis = 'CEDIS GUADALAJARA'
     reorder_obj.warehouses = []
 
-    if option == 'get_report':
-        # reorder_obj.warehouse_transfer_update(),
-        reorder_obj.HttpResponse({
-         # "stockInfo": reorder_obj.warehouse_transfer_update(),
-         "stockInfo": reorder_obj.warehouse_transfer_update2(),
-        })
 
-    elif option == 'get_catalog':
-        warehouse_types_catalog = warehouse_obj.get_all_stock_warehouse()
+    if option == 'get_catalog':
+        warehouse_obj = Warehouse(settings, sys_argv=sys.argv, use_api=True)
+        prod_obj = Product(settings, sys_argv=sys.argv, use_api=True)
+        # warehouse_types_catalog = warehouse_obj.get_all_stock_warehouse()
         product_type = reorder_obj.get_catalog_product_field(id_field=prod_obj.f['product_type'])
-        script_obj.HttpResponse({
-            "dataCatalogWarehouse": warehouse_types_catalog,
+        reorder_obj.HttpResponse({
+            "dataCatalogWarehouse": [],
             "dataCatalogProductFamily": product_type,
         })
 
@@ -639,6 +671,20 @@ if __name__ == "__main__":
         product_code_aux = data.get("product_code")
         products_categorys = reorder_obj.get_report_filters(filters, product_code_aux=product_code_aux)
 
-        script_obj.HttpResponse({
+        reorder_obj.HttpResponse({
             "product_line": products_categorys,
+        })
+    else:
+        # reorder_obj.warehouse_transfer_update(),
+        stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
+        procurment_obj = JIT(settings, sys_argv=sys.argv, use_api=True)
+        prod_obj = stock_obj.Product
+        warehouse_obj = stock_obj.WH
+        # prod_obj = procurment_obj.Product
+        # warehouse_obj = procurment_obj.WH
+        # stock_obj = procurment_obj.Stock
+        # prod_obj = Product(settings, sys_argv=sys.argv, use_api=True)
+        reorder_obj.HttpResponse({
+         # "stockInfo": reorder_obj.warehouse_transfer_update(),
+         "data": reorder_obj.warehouse_transfer_update2(),
         })
