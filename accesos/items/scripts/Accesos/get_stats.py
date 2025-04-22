@@ -13,10 +13,10 @@ if __name__ == "__main__":
     acceso_obj.console_run()
     #-FILTROS
     data = acceso_obj.data.get('data',{})
-    option = data.get("option",'get_stats')
-    area = data.get('area','Caseta Principal')
-    location = data.get('location','Planta Monterrey')
-    page = data.get('page','Turnos')
+    option = data.get("option",'')
+    area = data.get('area','')
+    location = data.get('location','')
+    page = data.get('page','')
     print("data//////////////////", data)
     
     if option == 'get_stats':

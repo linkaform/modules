@@ -4,8 +4,7 @@ from linkaform_api import base
 from lkf_addons.addons.accesos.app import Accesos
 
 
-
-class Accesos(Accesos):
+class Accesos( Accesos):
     print('Entra a acceos utils')
 
     def __init__(self, settings, sys_argv=None, use_api=False):
@@ -121,6 +120,192 @@ class Accesos(Accesos):
         print('/////////records', records)
         return  records
     
+    def get_catalogo_paquetes(self):
+        catalog_id = self.PROVEEDORES_CAT_ID
+        form_id= self.PAQUETERIA
+        return self.lkf_api.catalog_view(catalog_id, form_id) 
+
+    def create_paquete(self, data_paquete):
+        metadata = self.lkf_api.get_metadata(form_id=self.PAQUETERIA)
+        metadata.update({
+            "properties": {
+                "device_properties":{
+                    "System": "Script",
+                    "Module": "Accesos",
+                    "Process": "Creación de Paquetes",
+                    "Action": "nuevo_paquete",
+                    "File": "accesos/app.py"
+                }
+            },
+        })
+        answers = {}
+        for key, value in data_paquete.items():
+            if key == 'ubicacion_paqueteria':
+                answers[self.UBICACIONES_CAT_OBJ_ID] = { self.mf['ubicacion']: value}
+            elif  key == 'area_paqueteria':
+                 answers[self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID] = { self.mf['nombre_area']: value}
+            elif  key == 'guardado_en_paqueteria':
+                answers[self.LOCKERS_CAT_OBJ_ID] ={self.mf['locker_id']:value} 
+            elif key == 'proveedor':
+                answers[self.PROVEEDORES_CAT_OBJ_ID] = {self.paquetes_fields['proveedor']:value}
+            elif key == 'quien_recibe_paqueteria':
+                answers[self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID] = {self.mf['nombre_empleado']:value}
+            else:
+                answers.update({f"{self.paquetes_fields[key]}":value})
+        metadata.update({'answers':answers})
+        res=self.lkf_api.post_forms_answers(metadata)
+        return res
+
+    def update_paquete(self, data_paquete, folio):
+        #---Define Answers
+        answers = {}
+        for key, value in data_paquete.items():
+            if  key == 'ubicacion_perdido':
+                answers[self.consecionados_fields['ubicacion_catalog_concesion']] = { self.mf['ubicacion']: value}
+            elif  key == 'area_paqueteria':
+                 answers[self.consecionados_fields['area_catalog_concesion']] = { self.mf['nombre_area_salida']: value}
+            elif  key == 'guardado_en_paqueteria':
+                answers[self.LOCKERS_CAT_OBJ_ID] ={self.mf['locker_id']:value} 
+            elif key == 'proveedor':
+                answers[self.PROVEEDORES_CAT_OBJ_ID] = {self.paquetes_fields['proveedor']:value}
+            elif key == 'quien_recibe_paqueteria':
+                answers[self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID] = {self.mf['nombre_empleado']:value}
+            else:
+                answers.update({f"{self.paquetes_fields[key]}":value})
+        if answers or folio:
+            return self.lkf_api.patch_multi_record( answers = answers, form_id=self.PAQUETERIA, folios=[folio])
+        else:
+            self.LKFException('No se mandarón parametros para actualizar')
+
+   
+
+    def get_list_bitacora2(self, location=None, area=None, prioridades=[], dateFrom='', dateTo='', filterDate=""):
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id": self.BITACORA_ACCESOS
+        }
+        if location:
+            match_query.update({f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}":location})
+        if area:
+            match_query.update({f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['nombre_area']}":area})
+        if prioridades:
+            match_query[f"answers.{self.bitacora_fields['status_visita']}"] = {"$in": prioridades}
+  
+        user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
+        zona = user_data.get('timezone','America/Monterrey')
+
+        if filterDate != "range":
+            dateFrom, dateTo = self.get_range_dates(filterDate,zona)
+
+            if dateFrom:
+                dateFrom = str(dateFrom)
+            if dateTo:
+                dateTo = str(dateTo)
+
+        if dateFrom and dateTo:
+           match_query.update({
+                f"answers.{self.mf['fecha_entrada']}": {"$gte": dateFrom, "$lte": dateTo},
+            })
+        elif dateFrom:
+            match_query.update({
+                f"answers.{self.mf['fecha_entrada']}": {"$gte": dateFrom}
+            })
+        elif dateTo:
+            match_query.update({
+                f"answers.{self.mf['fecha_entrada']}": {"$lte": dateTo}
+            })
+        
+        print("Fechas+++", match_query)
+        proyect_fields ={
+            '_id': 1,
+            'folio': "$folio",
+            'created_at': "$created_at",
+            'updated_at': "$updated_at",
+            'a_quien_visita':f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_empleado']}",
+            'documento': f"$answers.{self.mf['documento']}",
+            'caseta_entrada':f"$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['nombre_area']}",
+            'codigo_qr':f"$answers.{self.mf['codigo_qr']}",
+            'comentarios':f"$answers.{self.bitacora_fields['grupo_comentario']}",
+            'fecha_salida':f"$answers.{self.mf['fecha_salida']}",
+            'fecha_entrada':f"$answers.{self.mf['fecha_entrada']}",
+            'foto_url': {"$arrayElemAt": [f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['foto']}.file_url", 0]},
+            'equipos':f"$answers.{self.mf['grupo_equipos']}",
+            'grupo_areas_acceso': f"$answers.{self.mf['grupo_areas_acceso']}",
+            'id_gafet': f"$answers.{self.GAFETES_CAT_OBJ_ID}.{self.gafetes_fields['gafete_id']}",
+            'id_locker': f"$answers.{self.LOCKERS_CAT_OBJ_ID}.{self.lockers_fields['locker_id']}",
+            'identificacion':  {"$first":f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['identificacion']}"},
+            'pase_id':{"$toObjectId":f"$answers.{self.mf['codigo_qr']}"},
+            'motivo_visita':f"$answers.{self.CONFIG_PERFILES_OBJ_ID}.{self.mf['motivo']}",
+            'nombre_area_salida':f"$answers.{self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.mf['nombre_area_salida']}",
+            'nombre_visitante':f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['nombre_visita']}",
+            'contratista':f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['empresa']}",
+            'perfil_visita':{'$arrayElemAt': [f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['nombre_perfil']}",0]},
+            'status_gafete':f"$answers.{self.mf['status_gafete']}",
+            'status_visita':f"$answers.{self.mf['tipo_registro']}",
+            'ubicacion':f"$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}",
+            'vehiculos':f"$answers.{self.mf['grupo_vehiculos']}",
+            'visita_a': f"$answers.{self.mf['grupo_visitados']}"
+            }
+        lookup = {
+         'from': 'form_answer',
+         'localField': 'pase_id',
+         'foreignField': '_id',
+         "pipeline": [
+                {'$match':{
+                    "deleted_at":{"$exists":False},
+                    "form_id": self.PASE_ENTRADA,
+                    }
+                },
+                {'$project':{
+                    "_id":0, 
+                    'motivo_visita':f"$answers.{self.CONFIG_PERFILES_OBJ_ID}.{self.mf['motivo']}",
+                    'grupo_areas_acceso': f"$answers.{self.mf['grupo_areas_acceso']}",                    
+                    }
+                },
+                ],
+         'as': 'pase',
+        }
+       
+        query = [
+            {'$match': match_query },
+            {'$project': proyect_fields},
+            {'$lookup': lookup},
+        ]
+        if not filterDate:
+            query.append(
+                {"$limit":25}
+            )
+        if dateFrom:
+            query.append(
+                {'$sort':{'folio':1}},
+            )
+        else:
+            query.append(
+                {'$sort':{'folio':-1}},
+            )
+           
+        records = self.format_cr(self.cr.aggregate(query))
+        # print( simplejson.dumps(records, indent=4))
+        for r in records:
+            pase = r.pop('pase')
+            r.pop('pase_id')
+            if len(pase) > 0 :
+                pase = pase[0]
+                r['motivo_visita'] = self.unlist(pase.get('motivo_visita',''))
+                r['grupo_areas_acceso'] = self._labels_list(pase.get('grupo_areas_acceso',[]), self.mf)
+            r['id_gafet'] = r.get('id_gafet','')
+            r['status_visita'] = r.get('status_visita','').title().replace('_', ' ')
+            r['contratista'] = self.unlist(r.get('contratista',[]))
+            r['status_gafete'] = r.get('status_gafete','').title().replace('_', ' ')
+            r['documento'] = r.get('documento','')
+            r['grupo_areas_acceso'] = self._labels_list(r.pop('grupo_areas_acceso',[]), self.mf)
+            r['comentarios'] = self.format_comentarios(r.get('comentarios',[]))
+            r['vehiculos'] = self.format_vehiculos(r.get('vehiculos',[]))
+            r['equipos'] = self.format_equipos(r.get('equipos',[]))
+            r['visita_a'] = self.format_visita(r.get('visita_a',[]))
+        return  records
+
+
 
     # def get_page_stats(self, booth_area, location, page=''):
     #     print('entra a get_booth_stats')

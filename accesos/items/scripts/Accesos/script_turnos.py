@@ -40,6 +40,11 @@ if __name__ == "__main__":
     id_bitacora = data.get("id_bitacora",[])
     data_gafete = data.get("data_gafete",{})
     tipo_movimiento = data.get("tipo_movimiento",{})
+    dateFrom = data.get("dateFrom", "")
+    dateTo = data.get("dateTo", "")
+    filterDate = data.get("filterDate", "")
+    limit = data.get("limit", 10)
+    offset = data.get("offset", 0)
     #-FUNCTIONS
     print('option', option)
     if option == 'load_shift':
@@ -50,7 +55,9 @@ if __name__ == "__main__":
     elif option == 'assing_gafete':
         response = acceso_obj.assing_gafete(data_gafete, id_bitacora, tipo_movimiento)
     elif option == 'list_bitacora':
-        response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades)
+        response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, limit=limit, offset=offset)
+    elif option == 'list_bitacora2':
+        response = acceso_obj.get_list_bitacora2(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate)
     elif option == 'get_user_booths':
         response = acceso_obj.get_user_booths_availability(turn_areas=turn_areas)
     elif option == 'get_boot_guards' or option == 'guardias_de_apoyo':

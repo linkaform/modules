@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson
-from linkaform_api import settings
-from account_settings import *
 
 
 from lkf_addons.addons.base.app import CargaUniversal
+from account_settings import *
 
 class CargaUniversal(CargaUniversal):
 
