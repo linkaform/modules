@@ -10,7 +10,7 @@ class Stock(Stock):
 
     def contact_center_stock_out(self, **kwargs):
         parts = self.answers.get(self.f['parts_group'])
-        warehouse = self.answers.get(self.WAREHOUSE_OBJ_ID,{}).get(self.f['warehouse'])
+        warehouse = self.answers.get(self.WH.WAREHOUSE_OBJ_ID,{}).get(self.f['warehouse'])
         if parts:
             for part in parts:
                 print('part', part)

@@ -4,7 +4,7 @@ import sys, simplejson
 from datetime import datetime, timedelta, date
 from copy import deepcopy
 
-from lkf_addons.addons.stock.stock_utils import Stock
+from lkf_addons.addons.stock.app import Stock
 
 today = date.today()
 year_week = int(today.strftime('%Y%W'))
@@ -75,7 +75,7 @@ class Stock(Stock):
             match_query.update({"folio": {"$ne":nin_folio }})
 
         if warehouse:
-            match_query.update({f"answers.{self.WAREHOUSE_OBJ_ID}.{self.f['warehouse']}":warehouse})
+            match_query.update({f"answers.{self.WH.WAREHOUSE_OBJ_ID}.{self.f['warehouse']}":warehouse})
         if location:
             unwind_query.update({f"answers.{self.f['parts_group']}.{self.STOCK_INVENTORY_OBJ_ID}.{self.f['warehouse_location']}":location})
        
