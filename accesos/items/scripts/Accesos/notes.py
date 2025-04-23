@@ -15,6 +15,8 @@ if __name__ == "__main__":
     option = data.get("option",'')
     limit = data.get("limit", 10)
     offset = data.get("offset", 0)
+    dateFrom = data.get("dateFrom", "")
+    dateTo = data.get("dateTo", "")
 
     data_notes = data.get("data_notes",{})
     data_update = data.get("data_update",{})
@@ -26,7 +28,7 @@ if __name__ == "__main__":
     if option == 'new_notes':
         response = acceso_obj.create_note(location, area, data_notes)
     elif option == 'get_notes':
-        response = acceso_obj.get_list_notes(location, area, status=status, limit=limit, offset=offset)
+        response = acceso_obj.get_list_notes(location, area, status=status, limit=limit, offset=offset, dateFrom=dateFrom, dateTo=dateTo)
     elif option == 'update_note':
         response = acceso_obj.update_notes(data_update, folio)
     elif option == 'delete_note':
