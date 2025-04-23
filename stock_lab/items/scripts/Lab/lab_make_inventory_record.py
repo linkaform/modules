@@ -44,7 +44,7 @@ class Stock(Stock):
             year = str(year)[:4]
         plant_date = datetime.strptime('%04d-%02d-1' % (int(year), int(week)), '%Y-%W-%w')
         if plant.get(self.f['reicpe_growth_weeks']):
-            grow_weeks = plant.get(self.f['reicpe_growth_weeks'])
+            grow_weeks = int(plant.get(self.f['reicpe_growth_weeks']))
             ready_date = plant_date + timedelta(weeks=grow_weeks)
             self.answers[self.f['product_growth_week']] = grow_weeks
             self.answers[self.f['plant_next_cutweek']] = int(ready_date.strftime('%Y%W'))
