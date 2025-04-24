@@ -134,23 +134,23 @@ class Reports(Reports):
         print('cut_week', cut_week)
         requierd = self.get_S2_requiers(cut_year, cut_week)
         print('requierd', requierd)
-        print('requierd', requierdd)
         planned = self.get_production_plan(cut_year, cut_week)
         produced = self.get_produced(cut_week, cut_year, from_week, to_week)
         produced_plants = self.get_produced_by_plant(cut_year, from_week, to_week)
         produced_plants = self.get_plan_by_plant(cut_year, cut_week, produced_plants)
-        plant_rows = plants_table(produced_plants)
+        plant_rows = self.plants_table(produced_plants)
         hours = self.available_hours()
         hours_w = self.available_hours(yearweek)
         worked_hours = self.get_worked_hours(cut_week, cut_year, from_week, to_week)
         # print('worked_hours=',worked_hours)
         estimated_hours = self.get_estimated_hours(cut_year, cut_week)
-        hours = week_hours(hours, hours_w, worked_hours, estimated_hours)
-        res = arrange_info(planned, produced,)
+        hours = self.week_hours(hours, hours_w, worked_hours, estimated_hours)
+        res = self.arrange_info(planned, produced,)
         return plant_rows, res, hours
 
-    def get_S2_requiers(self, plant_code=None):
-        global req_by_week, cycles
+    def get_S2_requiers(self, cut_year, cut_week, plant_code=None):
+        global cycles
+        year_week = f'{cut_year}{cut_week}'
         match_query = {
             "deleted_at":{"$exists":False},
             "form_id":self.PRODUCTION_PLAN,
@@ -217,8 +217,8 @@ class Reports(Reports):
         cr_result = self.cr.aggregate(query)
 
         result = self.get_starters(cr_result)
-        setup_plants(result, 'stage2', 'req')
-        return query
+        req_by_week = self.setup_plants(result, 'stage2', 'req')
+        return req_by_week
 
 if __name__ == "__main__":
     report_obj = Reports(settings, sys_argv=sys.argv, use_api=True)
@@ -240,7 +240,6 @@ if __name__ == "__main__":
         cut_year = int(str(yearweek)[:4])
         cut_week =   int(str(yearweek)[-2:])
         plant_rows, response, hours = report_obj.get_report(cut_year, cut_week)
-        print('stop',s)
         if not test:
             sys.stdout.write(simplejson.dumps(
                 {"firstElement":{

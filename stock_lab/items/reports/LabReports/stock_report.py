@@ -466,6 +466,27 @@ class Reports(Reports, Stock):
             # print('moves=', moves)
         return result, stock.get('actuals',)
 
+    def get_starters(self, cr_result):
+        global year_week, recipes, cycles
+        result = []
+        for dem in cr_result:
+            yearweek = dem.get('year_week')
+            result.append(dem)
+            plant_code = dem['plant_code']
+            if not plant_code:
+                continue
+            start_plant_code(plant_code)
+            # req_by_week[plant_code]['develop'].append(dem)
+            growth_time = recipes[plant_code]['S2_growth_weeks']
+            if growth_time not in cycles:
+                cycles[growth_time] = {}
+            if yearweek not in cycles[growth_time]:
+                cycles[growth_time][yearweek] = self.get_cycle_group(yearweek, growth_time)
+            dem['cycle'] = cycles[growth_time][yearweek]
+            set_oldest_week(growth_time)
+            #TODO BORRAR ESTA FUNCION Y TODO OLDESWEEK
+        return result
+
     def query_get_stock_by_cutWeek(self, yearWeek_from, yearWeek_to, status='active'):
         global plants, col_stok, columsTable_stock
         stage ='S3'
@@ -772,3 +793,55 @@ class Reports(Reports, Stock):
                 self.plants_by_week[row.get(key)][plant_code] = {}
             self.plants_by_week[row.get(key)][plant_code].update(row)
         return res
+
+    def setup_plants(self, result, stage='stage2', req_key='rec', year_key='year_week'):
+        global recipesS3, year_week
+        total = 0
+        req_by_week = {}
+        for rec in result:
+            plant_code = rec['plant_code']
+            S2_growth_weeks = recipes[plant_code]['S2_growth_weeks']
+            init_week = datetime(today.year, today.month, today.day)
+            max_plant_week = init_week + timedelta(weeks=S2_growth_weeks-1)
+
+            yearweek = str(int(rec[year_key]))
+            max_plant_week = max_plant_week.strftime('%Y%W')
+            if int(yearweek) > int(max_plant_week) and stage != 'stage1':
+                continue
+            if stage == 'stage3':
+                S3_growth_weeks = recipesS3[plant_code]['S3_growth_weeks']
+                until_week = init_week + timedelta(weeks=S3_growth_weeks-1)
+                # until_week = until_week.strftime('%Y%W')
+                init_week = init_week.strftime('%Y%W')
+                until_week = OLDEST_WEEK
+                if int(yearweek) > int(until_week):
+                    continue
+
+            if rec.get(req_key,0) <= 10:
+                if not req_by_week[plant_code]['stage1'].get(yearweek):
+                    req_by_week[plant_code]['stage1'][yearweek] = {'demand':[], 'req':0}
+                    # req_by_week[plant_code]['stage1']['total'] = 0
+                req_by_week[plant_code]['stage1'][yearweek]['req'] += rec[req_key]
+                req_by_week[plant_code]['stage1'][yearweek]['demand'].append(setup_demand(rec, stage))
+                req_by_week[plant_code]['stage1']['total'] += rec[req_key]
+                continue
+        # for rec in result:
+        #     plant_code = rec['plant_code']
+        #     week = str(rec[year_key])
+        #     if int(week) > req_by_week[plant_code]['oldest_week']:
+        #         continue
+        #     if rec.get('starter') == 'yes':
+        #         continue
+        #     if req_by_week[plant_code]['stage1'].get(week):
+        #         continue
+            if not req_by_week[plant_code][stage].get(yearweek):
+                req_by_week[plant_code][stage][yearweek] = {'demand':[], 'req':0}
+                # if stage == 'stage3':
+                #     print('plant_code', plant_code)
+                #     print('stage', stage)
+                #     print('yearweek', yearweek)
+                # req_by_week[plant_code][stage]['total'] = 0
+            req_by_week[plant_code][stage][yearweek]['req'] += rec[req_key]
+            req_by_week[plant_code][stage][yearweek]['demand'].append(setup_demand(rec, stage))
+            req_by_week[plant_code][stage]['total'] += rec[req_key]
+        return req_by_week
