@@ -203,7 +203,7 @@
                 </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>
-            <name>Regla 3</name>
+            <name>Mostrar campo nueva SIM</name>
             <operator>and</operator>
             <rule_id>13224391c27e07</rule_id>
             <rule_type>invisible</rule_type>
@@ -237,10 +237,60 @@
                 </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>
-            <name>Regla 4</name>
+            <name>Ocultar campo de Actualizar SIM</name>
             <operator>and</operator>
             <rule_id>1b96a315321cd9</rule_id>
             <rule_type>invisible</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>not__empty=</condition>
+                    <field>
+                        <catalog_id>67d21521a163d9de897a2546</catalog_id>
+                        <field_id>66beb11907981d4509575056</field_id>
+                        <group_id>None</group_id>
+                        <id>66beb11907981d4509575056</id>
+                        <label>Modelo</label>
+                        <type>catalog-select</type>
+                    </field>
+                    <value> </value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>67d21521a163d9de897a2546</catalog_id>
+                    <field_id>66beb11907981d4509575056</field_id>
+                    <group_id>None</group_id>
+                    <id>66beb11907981d4509575056</id>
+                    <label>Modelo</label>
+                    <type>catalog-select</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67e2eddf63e826145d5a0460</field_id>
+                    <group_id>None</group_id>
+                    <id>67e2eddf63e826145d5a0460</id>
+                    <label>IMEI</label>
+                    <type>text</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67e2eddf63e826145d5a0461</field_id>
+                    <group_id>None</group_id>
+                    <id>67e2eddf63e826145d5a0461</id>
+                    <label>SIM</label>
+                    <type>text</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Requerir datos</name>
+            <operator>and</operator>
+            <rule_id>22e124de1c841831</rule_id>
+            <rule_type>required</rule_type>
             <user_conditions>{}</user_conditions>
         </item>
     </rules>
