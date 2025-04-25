@@ -265,70 +265,6 @@
                 </item>
                 <item>
                     <catalog_id>None</catalog_id>
-                    <field_id>6687f2f37b2c023e187d6252</field_id>
-                    <group_id>None</group_id>
-                    <id>6687f2f37b2c023e187d6252</id>
-                    <label>Razón Social</label>
-                    <type>catalog-detail</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>66bfd647cd15883ed163e9b5</field_id>
-                    <group_id>None</group_id>
-                    <id>66bfd647cd15883ed163e9b5</id>
-                    <label>Email cliente</label>
-                    <type>catalog-detail</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>{{ catalog.contacto.obj_id}}</field_id>
-                    <group_id>None</group_id>
-                    <id>67c9e41b708e33c4ee6aea8f</id>
-                    <label>Dirección de Servicios</label>
-                    <type>catalog</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>663a7e0fe48382c5b1230901</field_id>
-                    <group_id>None</group_id>
-                    <id>663a7e0fe48382c5b1230901</id>
-                    <label>Nombre de Dirección</label>
-                    <type>catalog-select</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>663a7e0fe48382c5b1230902</field_id>
-                    <group_id>None</group_id>
-                    <id>663a7e0fe48382c5b1230902</id>
-                    <label>Direccion</label>
-                    <type>catalog-detail</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>663e5c8cf5b8a7ce8211ed0c</field_id>
-                    <group_id>None</group_id>
-                    <id>663e5c8cf5b8a7ce8211ed0c</id>
-                    <label>Geolocalizacion</label>
-                    <type>catalog-detail</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>663a7ee1e48382c5b1230906</field_id>
-                    <group_id>None</group_id>
-                    <id>663a7ee1e48382c5b1230906</id>
-                    <label>Telefono</label>
-                    <type>catalog-detail</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>663a7ee1e48382c5b1230907</field_id>
-                    <group_id>None</group_id>
-                    <id>663a7ee1e48382c5b1230907</id>
-                    <label>Email</label>
-                    <type>catalog-detail</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
                     <field_id>{{ catalog.empleados.obj_id}}</field_id>
                     <group_id>None</group_id>
                     <id>67c9e532b383a87836981405</id>
@@ -342,30 +278,6 @@
                     <id>62c5ff407febce07043024dd</id>
                     <label>Nombre completo del Técnico</label>
                     <type>catalog-select</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>6759e4a7a9a6e13c7b26da33</field_id>
-                    <group_id>None</group_id>
-                    <id>6759e4a7a9a6e13c7b26da33</id>
-                    <label>Username</label>
-                    <type>catalog-detail</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>638a9a99616398d2e392a9f5</field_id>
-                    <group_id>None</group_id>
-                    <id>638a9a99616398d2e392a9f5</id>
-                    <label>Id de Usuario</label>
-                    <type>catalog-detail</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>638a9a7767c332f5d459fc82</field_id>
-                    <group_id>None</group_id>
-                    <id>638a9a7767c332f5d459fc82</id>
-                    <label>Email del tecnico</label>
-                    <type>catalog-detail</type>
                 </item>
                 <item>
                     <catalog_id>None</catalog_id>
@@ -390,38 +302,6 @@
                     <id>a2c5ff407febce07043024dd</id>
                     <label>Nombre completo</label>
                     <type>catalog-select</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>663bc4ed8a6b120eab4d7f1e</field_id>
-                    <group_id>None</group_id>
-                    <id>663bc4ed8a6b120eab4d7f1e</id>
-                    <label>Nombre del departamento</label>
-                    <type>catalog-detail</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>663bc4c79b8046ce89e97cf4</field_id>
-                    <group_id>None</group_id>
-                    <id>663bc4c79b8046ce89e97cf4</id>
-                    <label>Nombre del puesto</label>
-                    <type>catalog-detail</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>a63bd32d7fb8869bbc4d7f70</field_id>
-                    <group_id>None</group_id>
-                    <id>a63bd32d7fb8869bbc4d7f70</id>
-                    <label>Correo empresarial</label>
-                    <type>catalog-detail</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>a63bd32d7fb8869bbc4d7f6f</field_id>
-                    <group_id>None</group_id>
-                    <id>a63bd32d7fb8869bbc4d7f6f</id>
-                    <label>Correo Personal</label>
-                    <type>catalog-detail</type>
                 </item>
                 <item>
                     <catalog_id>None</catalog_id>
@@ -462,6 +342,14 @@
                     <id>67d9f8efbfe21e488f4f5262</id>
                     <label>Estatus</label>
                     <type>select</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>680ba6738fc3b32d3d6e3819</field_id>
+                    <group_id>None</group_id>
+                    <id>680ba6738fc3b32d3d6e3819</id>
+                    <label>Dirección de Servicios</label>
+                    <type>text</type>
                 </item>
             </fields_ruled>
             <group_conditions>
