@@ -258,7 +258,9 @@ class Oracle(Oracle):
         translated_dict = {}
         for key, value in data.items():
             if schema.get(key) and value:
-                if type(value) in (str, int, float) and self.etl_values.get(value):
+                if key in ('ULTIMO_HOROMETRO','ULTIMO_KILOMETRAJE'):
+                    translated_dict[schema[key]] = value
+                elif type(value) in (str, int, float) and self.etl_values.get(value):
                     translated_dict[schema[key]] = self.etl_values[value]
                 elif isinstance(value, datetime.datetime):
                     value = str(value)
@@ -396,6 +398,7 @@ class Oracle(Oracle):
         res = self.lkf_api.post_catalog_answers(rec)
         res_data = res.get('json',{})
         status_code = res['status_code']
+
         if status_code in (200,201,202,204):
             sync_data['updated_at'] = time.time()
             sync_data['item_id'] = res_data['catalog_id'] if res_data.get('catalog_id') else item_id
