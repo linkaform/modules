@@ -8,7 +8,7 @@ from expense_utils import Expenses
 from account_settings import *
 
 if __name__ == '__main__':
-    exp_obj = Expenses(settings, sys_argv=sys.argv)
+    exp_obj = Expenses(settings, sys_argv=sys.argv, use_api=True)
     exp_obj.console_run()
     answers = exp_obj.current_record['answers']
     exp_obj.current_record['answers'] = exp_obj.get_total(answers)
