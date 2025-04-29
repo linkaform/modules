@@ -11,6 +11,7 @@ from account_settings import *
 class Stock(Stock):
 
     def get_product_info(self, **kwargs):
+        #REVISAR SI ESTO NO SE DEBE DE BORRAR DE MASTER
         try:
             product_code, sku, lot_number, warehouse, location = self.get_product_lot_location()
             # warehouse = self.answers[self.WAREHOUSE_LOCATION_OBJ_ID][self.f['warehouse']]
@@ -19,17 +20,12 @@ class Stock(Stock):
         except Exception as e:
             print('**********************************************')
             self.LKFException('Warehosue and product code are requierd', e)
-        print('getting product tock........', sku)
         a = f'{product_code}_{sku}_{lot_number}_{warehouse}_{location}'
-        print('reading cache...', a)
         values = {
                 '_id': a
                 }
         ccache = self.cache_read(values)
-        print('reading ccache...', ccache)
         product_stock = self.get_product_stock(product_code, sku=sku, lot_number=lot_number, warehouse=warehouse, location=location, kwargs=kwargs.get('kwargs',{}) )
-        print('=== stock de calculate ====', product_stock)
-        print('=== stock de calculate ====', self.answers)
         per_container = self.answers.get(self.f['per_container'],1)
         self.answers[self.f['product_lot_produced']] = product_stock['production']
         self.answers[self.f['product_lot_move_in']] = product_stock['move_in']
@@ -46,7 +42,7 @@ class Stock(Stock):
         else:
             self.answers[self.f['inventory_status']] = 'active'
 
-        wh_type = self.warehouse_type(warehouse)
+        wh_type = self.WH.warehouse_type(warehouse)
         if wh_type.lower() not in  ('stock'):
             self.answers[self.f['inventory_status']] = 'done'
         # self.answers.update({self.f['inv_group']:self.get_grading()})
@@ -55,11 +51,7 @@ class Stock(Stock):
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)
     stock_obj.console_run()
-    values = {'_id': 'CP0001_XX01BS_L1_Almacen Norte_Tecnico 1'}
-    ccache = stock_obj.cache_read(values)
-    print('44444444444444reading ccache...', ccache)
     #stock_obj.merge_stock_records()
-    # print('current_record',current_record)
 
     # if folio:
     #     #si ya existe el registro, no cambio el numero de lote

@@ -3,7 +3,7 @@ import sys, simplejson
 from linkaform_api import settings
 from account_settings import *
 
-from app import Accesos
+from accesos_utils import Accesos
 
 class Accesos(Accesos):
     pass
@@ -31,7 +31,20 @@ if __name__ == "__main__":
     vehiculo = data.get('vehiculo',"")
     visita_a = data.get('visita_a',"")
     gafete_id = data.get('gafete_id',"")
-
+    data_msj=data.get("data_msj", {})
+    data_cel_msj=data.get("data_cel_msj", {})
+    status_visita=data.get("status_visita", "")
+    inActive= data.get("inActive", "")
+    turn_areas= data.get("turn_areas", True)
+    prioridades = data.get("prioridades",[])
+    id_bitacora = data.get("id_bitacora",[])
+    data_gafete = data.get("data_gafete",{})
+    tipo_movimiento = data.get("tipo_movimiento",{})
+    dateFrom = data.get("dateFrom", "")
+    dateTo = data.get("dateTo", "")
+    filterDate = data.get("filterDate", "")
+    limit = data.get("limit", 10)
+    offset = data.get("offset", 0)
     #-FUNCTIONS
     print('option', option)
     if option == 'load_shift':
@@ -39,10 +52,14 @@ if __name__ == "__main__":
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
     elif option == 'assets_access_pass':
         response = acceso_obj.assets_access_pass(location)
+    elif option == 'assing_gafete':
+        response = acceso_obj.assing_gafete(data_gafete, id_bitacora, tipo_movimiento)
     elif option == 'list_bitacora':
-        response = acceso_obj.get_list_bitacora(location,  area)
+        response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, limit=limit, offset=offset)
+    elif option == 'list_bitacora2':
+        response = acceso_obj.get_list_bitacora2(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate)
     elif option == 'get_user_booths':
-        response = acceso_obj.get_user_booths_availability()
+        response = acceso_obj.get_user_booths_availability(turn_areas=turn_areas)
     elif option == 'get_boot_guards' or option == 'guardias_de_apoyo':
         response = acceso_obj.get_booths_guards(location, area, solo_disponibles=True, **{'position':acceso_obj.support_guard})
     elif option == 'catalog_estado':
@@ -56,13 +73,14 @@ if __name__ == "__main__":
         # used
         response = acceso_obj.do_checkout(checkin_id=checkin_id, \
             location=location, area= area, guards=guards, forzar=forzar, comments=comments)
+    elif option == 'get_user_menu':
+        response = acceso_obj.get_config_accesos()
     elif option == 'search_access_pass':
         # used
         response = acceso_obj.search_access_pass(qr_code=qr_code, location=location)
     elif option == 'lista_pases':
         # used
-        response = acceso_obj.get_lista_pase(location=location)
-        #acceso_obj.HttpResponse({"data": response}, indent=4)
+        response = acceso_obj.get_lista_pase(location=location, inActive=inActive)
     elif option == 'do_out':
         # used
         response = acceso_obj.do_out(qr_code, location, area, gafete_id)
@@ -72,6 +90,9 @@ if __name__ == "__main__":
     elif option == 'update_bitacora_entrada':
         # used
         response = acceso_obj.update_bitacora_entrada(data, record_id=record_id)
+    elif option == 'update_bitacora_entrada_many':
+        # used
+        response = acceso_obj.update_bitacora_entrada_many(data, record_id=record_id)
     elif option == 'notes_guard':
         response = acceso_obj.get_guard_notes(location, booth)
     elif option == 'vehiculo_tipo':
@@ -89,6 +110,9 @@ if __name__ == "__main__":
         response = acceso_obj.visita_a(location)
     elif option == 'visita_a_detail':
         response = acceso_obj.visita_a_detail(location, visita_a)
+    elif option == 'enviar_msj':
+        response = acceso_obj.create_enviar_msj(data_msj=data_msj, data_cel_msj=data_cel_msj)
+
     else :
         response = {"msg": "Empty"}
     print('================ END RETURN =================')
