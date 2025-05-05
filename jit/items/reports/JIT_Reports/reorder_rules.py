@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson
-from math import floor
+from math import floor, ceil
 import json
 from datetime import timedelta, datetime
 
@@ -14,6 +14,10 @@ from lkf_addons.addons.product.app import Warehouse
 from lkf_addons.addons.jit.app import JIT
 from lkf_addons.addons.stock.app import Stock
 
+uom_class = {
+    'metro':'lenght',
+    'unidad':'unit',
+        }
 
 class Reports(Reports):
     
@@ -27,7 +31,7 @@ class Reports(Reports):
             wh_loc_dest = p['warehouse_location_dest']
             standar_pack = p['standar_pack']
             sku = p['sku']
-
+            uom = p.get('unit_of_measure','n/d')
             estructura.setdefault(code, {}) \
                       .setdefault(wh, {}) \
                       .setdefault(wh_loc, {}) \
@@ -36,6 +40,7 @@ class Reports(Reports):
                           'product_code': code,
                           'standar_pack': standar_pack,
                           'sku': sku,
+                          'uom': uom,
               })
 
         return estructura
@@ -200,6 +205,29 @@ class Reports(Reports):
             
         return data
 
+    def eval_next_standar_pack_avalilable(self, standar_pack, needed, stock, max_stock, uom='unit'):
+        packs_needed = ceil(needed/standar_pack)
+        stock_packs = stock/standar_pack
+        available_to_share = stock - max_stock
+        max_stock_packs = max_stock/standar_pack
+        if (stock_packs - packs_needed ) > max_stock_packs:
+            return packs_needed * standar_pack
+        if uom_class.get(uom) == 'lenght':
+            max_stock_packs = ceil(max_stock_packs)
+            available_packs = stock_packs - max_stock_packs
+            if available_packs > 0:
+                return available_packs * standar_pack
+            else:
+                return 0
+        else:
+            if needed < available_to_share:
+                return needed
+            elif (stock - needed) < available_to_share:
+                return stock - needed
+            else:
+                return 0
+
+
     def eval_procurment(self, proc, procurment_warehouses):
         product_code = proc['product_code']
         sku = proc['sku']
@@ -212,26 +240,45 @@ class Reports(Reports):
             if needed <= 0:
                 continue
             stock_warehouse = self.product_stock_by_wh.get(proc_warehouse).get(product_code,0)
-            standar_pack = self.get_procurments_standar_pack(sku, proc_warehouse)
+            product_data = self.get_procurments_standar_pack(sku, proc_warehouse)
+            standar_pack = product_data['standar_pack']
+            uom = product_data['uom']
+            proc['standar_pack'] = standar_pack
+            proc['uom'] = uom
+            needed_next_standar_pack = round(self.calc_shipment_pack(needed, standar_pack), 2)
             print(f'sku: {sku} standar_pack: {standar_pack}')
             max_stock = self.max_stock_by_warehouse.get(warehouse, {}).get(product_code,0)
+            proc['from_max_stock'] = max_stock
             if max_stock > 0:
                 proc['percentage_start'] = round(actuals / max_stock,2)
+
+            proc['from_initial_stock'] = round(stock_warehouse ,2)
             if stock_warehouse > max_stock:
                 available_to_share = stock_warehouse - max_stock
                 proc['from'] = proc_warehouse
                 if available_to_share > needed:
+                    
+                    handover = self.eval_next_standar_pack_avalilable(standar_pack, needed, stock_warehouse, max_stock, uom=uom)    
+                    # proc['status'] = 200
+                    proc['handover'] = round(handover, 2)
+                    # self.product_stock_by_wh[proc_warehouse][product_code] = stock_warehouse - handover
+                    
                     proc['status'] = 200
-                    proc['handover'] = round(self.calc_shipment_pack(needed, standar_pack), 2)
+                    #proc['handover'] = round(self.calc_shipment_pack(needed, standar_pack), 2)
                     proc['stock_final'] = round(proc['handover'] + actuals,2)
+                    proc['from_final_stock'] = round(stock_warehouse - handover,2)
+                    
                     if max_stock > 0:
                         proc['percentage_finish'] = round(proc['stock_final'] / max_stock,2)
                     self.product_stock_by_wh[proc_warehouse][product_code] = stock_warehouse - needed
                     return proc
                 elif available_to_share < needed:
                     proc['status'] = 200
-                    proc['handover'] = round(self.calc_shipment_pack(needed, standar_pack), 2)
+                    # proc['handover'] = round(self.calc_shipment_pack(needed, standar_pack), 2)
+                    handover = self.eval_next_standar_pack_avalilable(standar_pack, needed, stock_warehouse, max_stock, uom=uom)   
+                    proc['handover'] = round(handover, 2)
                     proc['stock_final'] = round(proc['handover'] + actuals,2)
+                    proc['from_final_stock'] = round(stock_warehouse - handover,2)
                     if max_stock > 0:
                         proc['percentage_finish'] = round(proc['stock_final'] / max_stock,2)
                     self.product_stock_by_wh[proc_warehouse][product_code] = stock_warehouse - available_to_share
@@ -271,6 +318,7 @@ class Reports(Reports):
         return record
     
     def get_procurments(self, warehouse=None, location=None, product_code=None, sku=None, status='programmed', group_by=False):
+        # sku='750200309290'
         match_query ={ 
                 'form_id': procurment_obj.PROCURMENT,  
                 'deleted_at' : {'$exists':False},
@@ -280,8 +328,8 @@ class Reports(Reports):
             }
         # if product_code:
         #     match_query.update({
-        #         f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['product_code']}": {'$in': product_code}
-        #         })
+        #          f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['product_code']}": {'$in': product_code}
+        #          })
             
         # match_query.update({
         #     f"answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f['product_code']}": "750200301071"})
@@ -375,7 +423,10 @@ class Reports(Reports):
             'ALM GUADALAJARA':'Almacen Guadalajara',
             'ALM MONTERREY':'Almacen Monterrey',
             }
-        return spack.get(procurment_warehouses,{}).get(location[procurment_warehouses],{}).get('standar_pack',1)
+        return {
+            'standar_pack': spack.get(procurment_warehouses,{}).get(location[procurment_warehouses],{}).get('standar_pack',1),
+            'uom':   spack.get(procurment_warehouses,{}).get(location[procurment_warehouses],{}).get('uom',1)
+            }
 
     def get_stock_by_warehouse(self, product_codes, warehouses):
         res = {}
@@ -437,6 +488,9 @@ class Reports(Reports):
             for proc in procurment:
                 procurment_warehouses = [item for item in unique_warehouses if item not in proc['warehouse']]
                 sku = proc['sku']
+                if not product_dict.get(sku):
+                    print('NOT FOUND sku', sku)
+                    continue
                 proc.update(product_dict[sku])
                 p_warehouse = proc.get('warehouse')
                 if warehouse == p_warehouse:

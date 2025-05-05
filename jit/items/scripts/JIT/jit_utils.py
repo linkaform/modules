@@ -185,6 +185,7 @@ class SIPRE:
         self.host = "http://162.215.128.43:808/api/"
         self.token_endpoint = "AuthResponse/GetToken"
         self.stock_endpoint = "WhiReStock/Resumen/{}/{}"
+        self.create_xfer_endpoint = "WhiTransfer/Crear"
         self.user = "katusak"
         self.passcode = "8572"
 
@@ -205,6 +206,23 @@ class SIPRE:
             return response.json()  # Assuming the response is JSON
         except requests.exceptions.RequestException as e:
             return {"error": str(e)}
+
+    def create_xfer_spire(self, ):
+        if not hasattr(self, 'token'):
+            self.get_token()
+        endpoint = self.create_xfer_endpoint
+        data = {
+            "warehouseTarget": "ALM MONTERREY",
+            "warehouseSource":"ALM GUADALAJARA",
+            "productCode": "750200301127",
+            "quantity": 1,
+            "token": self.token
+        }
+        response = self.api_request(f"{self.host}{endpoint}", data=data, method='POST')
+        print('data=', simplejson.dumps(data, indent=3))
+        print('response=', simplejson.dumps(response, indent=3))
+        result = response.get('resultado',{})
+        return result
 
     def get_stock_and_demand(self, familia):
         if not hasattr(self, 'token'):
