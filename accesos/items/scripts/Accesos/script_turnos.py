@@ -112,6 +112,8 @@ if __name__ == "__main__":
         response = acceso_obj.visita_a_detail(location, visita_a)
     elif option == 'enviar_msj':
         response = acceso_obj.create_enviar_msj(data_msj=data_msj, data_cel_msj=data_cel_msj)
+    elif option == 'send_msj_by_access':
+        response = acceso_obj.send_email_and_sms(data=data_msj)
 
     else :
         response = {"msg": "Empty"}
