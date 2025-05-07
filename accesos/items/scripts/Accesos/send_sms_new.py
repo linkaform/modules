@@ -144,7 +144,7 @@ if __name__ == "__main__":
     mensaje, phone_to = acceso_obj.format_pass_sms(data_cel_msj=data_cel_msj, pre_sms=pre_sms, account=cuenta_value)
 
     # msg = 'Test de SMS desde Back'
-    # tel = '528341227834' # => +52 834 000 0000
+    # tel = '528340000000' # => +52 834 000 0000
     print('Mensaje enviado: ', mensaje)
     print('Destinatario: ', phone_to)
 
