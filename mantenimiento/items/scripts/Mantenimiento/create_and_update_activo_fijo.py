@@ -170,17 +170,17 @@ class Mantenimiento(Mantenimiento):
             for key, value in data.items():
                 if key == 'nombre_cliente':
                     answers[self.CLIENTE_CAT_OBJ_ID] = {
-                        self.f['nombre_comercial']: value,
-                        self.f['email']: data.get('email_cliente', ''),
+                        self.f['cliente_instalacion']: value,
+                        self.f['email_contacto']: data.get('email_cliente', ''),
                     }
                 elif key == 'nombre_equipo':
                     answers[self.ActivoFijo.f['nombre_equipo']] = nuevo_nombre_equipo
-                elif key == 'nombre_direccion_contacto':
-                    answers[self.CONTACTO_CAT_OBJ_ID] = {
-                        self.f['address_name']: value,
-                        self.f['address_geolocation']: data.get('geolocalizacion_contacto', ''),
-                        self.f['email']: data.get('email_contacto', '')
-                    }
+                # elif key == 'nombre_direccion_contacto':
+                #     answers[self.CONTACTO_CAT_OBJ_ID] = {
+                #         self.f['address_name']: value,
+                #         self.f['address_geolocation']: data.get('geolocalizacion_contacto', ''),
+                #         self.f['email']: data.get('email_contacto', '')
+                #     }
                 elif key == 'tipo_de_equipo':
                     answers[self.ActivoFijo.TIPO_DE_EQUIPO_OBJ_ID] = {
                         self.ActivoFijo.f['tipo_equipo']: value[0]
@@ -218,7 +218,9 @@ class Mantenimiento(Mantenimiento):
                 else:
                     pass
             metadata.update({'answers':answers})
+            print(simplejson.dumps(metadata, indent=3))
             request = self.lkf_api.post_forms_answers(metadata)
+            print(request)
             status_code = request.get('status_code')
 
             if status_code == 201:
