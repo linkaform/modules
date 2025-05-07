@@ -248,6 +248,282 @@
                 <item>
                     <condition>not__empty=</condition>
                     <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                        <group_id>None</group_id>
+                        <id>67d9f8efbfe21e488f4f5262</id>
+                        <label>Estatus</label>
+                        <type>select</type>
+                    </field>
+                    <value> </value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>{{ catalog.clientes.obj_id}}</field_id>
+                    <group_id>None</group_id>
+                    <id>67c9e431b59043d4bb7a2714</id>
+                    <label>Cliente</label>
+                    <type>catalog</type>
+                </item>
+                <item>
+                    <catalog_id>67c9e431b59043d4bb7a2714</catalog_id>
+                    <field_id>66bfc0accd15883ed163e9b0</field_id>
+                    <group_id>None</group_id>
+                    <id>66bfc0accd15883ed163e9b0</id>
+                    <label>Nombre Comercial</label>
+                    <type>catalog-select</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>680ba6738fc3b32d3d6e3819</field_id>
+                    <group_id>None</group_id>
+                    <id>680ba6738fc3b32d3d6e3819</id>
+                    <label>Dirección de Servicios</label>
+                    <type>text</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>{{ catalog.empleados.obj_id}}</field_id>
+                    <group_id>None</group_id>
+                    <id>67c9e532b383a87836981405</id>
+                    <label>Técnico Asignado</label>
+                    <type>catalog</type>
+                </item>
+                <item>
+                    <catalog_id>67c9e532b383a87836981405</catalog_id>
+                    <field_id>62c5ff407febce07043024dd</field_id>
+                    <group_id>None</group_id>
+                    <id>62c5ff407febce07043024dd</id>
+                    <label>Nombre completo del Técnico</label>
+                    <type>catalog-select</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67d218329d65ba66bf981251</field_id>
+                    <group_id>None</group_id>
+                    <id>67d218329d65ba66bf981251</id>
+                    <label>Técnicos Auxiliares</label>
+                    <type>group</type>
+                </item>
+                <item>
+                    <catalog_id>67d21c6076546d5a61a7d806</catalog_id>
+                    <field_id>a2c5ff407febce07043024dd</field_id>
+                    <group_id>67d218329d65ba66bf981251</group_id>
+                    <id>a2c5ff407febce07043024dd</id>
+                    <label>Nombre completo</label>
+                    <type>catalog-select</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67d218329d65ba66bf981252</field_id>
+                    <group_id>None</group_id>
+                    <id>67d218329d65ba66bf981252</id>
+                    <label>Distribuidor</label>
+                    <type>text</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>{{ catalog.empleados_apoyo.obj_id}}</field_id>
+                    <group_id>67d218329d65ba66bf981251</group_id>
+                    <id>67d21c6076546d5a61a7d806</id>
+                    <label>Tecnico Auxiliar</label>
+                    <type>catalog</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67c8c67734cc8b94bc183eca</field_id>
+                    <group_id>None</group_id>
+                    <id>67c8c67734cc8b94bc183eca</id>
+                    <label>Fecha de Programación del Servicio</label>
+                    <type>datetime</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67d218329d65ba66bf981253</field_id>
+                    <group_id>None</group_id>
+                    <id>67d218329d65ba66bf981253</id>
+                    <label>Fecha de Fin del Servicio</label>
+                    <type>datetime</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67d218329d65ba66bf981254</field_id>
+                    <group_id>None</group_id>
+                    <id>67d218329d65ba66bf981254</id>
+                    <label>Tiempo Total de Servicio(en minutos)</label>
+                    <type>integer</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                    <group_id>None</group_id>
+                    <id>67d9f8efbfe21e488f4f5262</id>
+                    <label>Estatus</label>
+                    <type>select</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>
+                <condition>include</condition>
+                <groups>
+                    <item>
+                        <group_id>301</group_id>
+                        <group_name>Tecnicos</group_name>
+                    </item>
+                </groups>
+            </group_conditions>
+            <name>Deshabilitar pagina inicial tecnicos</name>
+            <operator>and</operator>
+            <rule_id>d021e5069619ab</rule_id>
+            <rule_type>disabled</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>not__empty=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                        <group_id>None</group_id>
+                        <id>67d9f8efbfe21e488f4f5262</id>
+                        <label>Estatus</label>
+                        <type>select</type>
+                    </field>
+                    <value> </value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67dba89b41b0e12677b48e05</field_id>
+                    <group_id>None</group_id>
+                    <id>67dba89b41b0e12677b48e05</id>
+                    <label>Acciones administrador</label>
+                    <type>description</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>
+                <condition>include</condition>
+                <groups>
+                    <item>
+                        <group_id>301</group_id>
+                        <group_name>Tecnicos</group_name>
+                    </item>
+                </groups>
+            </group_conditions>
+            <name>Ocultar botones para tecnicos</name>
+            <operator>and</operator>
+            <rule_id>c484dff0c6a9</rule_id>
+            <rule_type>invisible</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>nin=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                        <group_id>None</group_id>
+                        <id>67d9f8efbfe21e488f4f5262</id>
+                        <label>Estatus</label>
+                        <type>select</type>
+                    </field>
+                    <value>finalizado</value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67d218329d65ba66bf981253</field_id>
+                    <group_id>None</group_id>
+                    <id>67d218329d65ba66bf981253</id>
+                    <label>Fecha de Fin del Servicio</label>
+                    <type>datetime</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67d218329d65ba66bf981254</field_id>
+                    <group_id>None</group_id>
+                    <id>67d218329d65ba66bf981254</id>
+                    <label>Tiempo Total de Servicio(en minutos)</label>
+                    <type>integer</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Ocultar fecha fin y total min</name>
+            <operator>and</operator>
+            <rule_id>12cfe668ba156b</rule_id>
+            <rule_type>invisible</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>in=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                        <group_id>None</group_id>
+                        <id>67d9f8efbfe21e488f4f5262</id>
+                        <label>Estatus</label>
+                        <type>select</type>
+                    </field>
+                    <value>finalizado</value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67d218329d65ba66bf981253</field_id>
+                    <group_id>None</group_id>
+                    <id>67d218329d65ba66bf981253</id>
+                    <label>Fecha de Fin del Servicio</label>
+                    <type>datetime</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67d218329d65ba66bf981254</field_id>
+                    <group_id>None</group_id>
+                    <id>67d218329d65ba66bf981254</id>
+                    <label>Tiempo Total de Servicio(en minutos)</label>
+                    <type>integer</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Deshabilitar fecha fin y total min</name>
+            <operator>and</operator>
+            <rule_id>d0f55856d1d7c</rule_id>
+            <rule_type>disabled</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>iexact=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>67f92748d0ec2abcff4270e1</field_id>
+                        <group_id>None</group_id>
+                        <id>67f92748d0ec2abcff4270e1</id>
+                        <label>Equipos</label>
+                        <type>radio</type>
+                    </field>
+                    <value>dar_de_alta_nuevo_equipo</value>
+                </item>
+                <item>
+                    <condition>not__empty=</condition>
+                    <field>
                         <catalog_id>67d21521a163d9de897a2546</catalog_id>
                         <field_id>66beb11907981d4509575056</field_id>
                         <group_id>None</group_id>
@@ -262,12 +538,28 @@
             <empty>False</empty>
             <fields_ruled>
                 <item>
-                    <catalog_id>67d21521a163d9de897a2546</catalog_id>
-                    <field_id>66beb11907981d4509575056</field_id>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67e2eddf63e826145d5a045d</field_id>
                     <group_id>None</group_id>
-                    <id>66beb11907981d4509575056</id>
-                    <label>Modelo</label>
-                    <type>catalog-select</type>
+                    <id>67e2eddf63e826145d5a045d</id>
+                    <label>Mobile ID</label>
+                    <type>text</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67e2eddf63e826145d5a045e</field_id>
+                    <group_id>None</group_id>
+                    <id>67e2eddf63e826145d5a045e</id>
+                    <label>S/N</label>
+                    <type>text</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67e2eddf63e826145d5a045f</field_id>
+                    <group_id>None</group_id>
+                    <id>67e2eddf63e826145d5a045f</id>
+                    <label>P/N</label>
+                    <type>text</type>
                 </item>
                 <item>
                     <catalog_id>None</catalog_id>
@@ -287,10 +579,204 @@
                 </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>
-            <name>Requerir datos</name>
+            <name>Requerir datos del equipo</name>
             <operator>and</operator>
-            <rule_id>22e124de1c841831</rule_id>
+            <rule_id>20b71a018ba1b5a</rule_id>
             <rule_type>required</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>iexact=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>67f52f6fcfb232a1a94fb9ef</field_id>
+                        <group_id>None</group_id>
+                        <id>67f52f6fcfb232a1a94fb9ef</id>
+                        <label>Requiere refacciones</label>
+                        <type>radio</type>
+                    </field>
+                    <value>si</value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>{{ catalog.warehouse_locations.obj_id}}</field_id>
+                    <group_id>None</group_id>
+                    <id>67c9e49e7a90772f1a98144d</id>
+                    <label>Almacen Refacciones</label>
+                    <type>catalog</type>
+                </item>
+                <item>
+                    <catalog_id>67c9e49e7a90772f1a98144d</catalog_id>
+                    <field_id>6442e4831198daf81456f274</field_id>
+                    <group_id>None</group_id>
+                    <id>6442e4831198daf81456f274</id>
+                    <label>Warehouse Name</label>
+                    <type>catalog-select</type>
+                </item>
+                <item>
+                    <catalog_id>67c9e49e7a90772f1a98144d</catalog_id>
+                    <field_id>65ac6fbc070b93e656bd7fbe</field_id>
+                    <group_id>None</group_id>
+                    <id>65ac6fbc070b93e656bd7fbe</id>
+                    <label>Location</label>
+                    <type>catalog-select</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67f46fcfe48249c786da007f</field_id>
+                    <group_id>None</group_id>
+                    <id>67f46fcfe48249c786da007f</id>
+                    <label>Refacciones</label>
+                    <type>group</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>{{ catalog.stock_inventory.obj_id}}</field_id>
+                    <group_id>67f46fcfe48249c786da007f</group_id>
+                    <id>67d216afdf78c6fb39dcb3f9</id>
+                    <label>Refaccion</label>
+                    <type>catalog</type>
+                </item>
+                <item>
+                    <catalog_id>67d216afdf78c6fb39dcb3f9</catalog_id>
+                    <field_id>61ef32bcdf0ec2ba73dec33d</field_id>
+                    <group_id>67f46fcfe48249c786da007f</group_id>
+                    <id>61ef32bcdf0ec2ba73dec33d</id>
+                    <label>Product Code</label>
+                    <type>catalog-select</type>
+                </item>
+                <item>
+                    <catalog_id>67d216afdf78c6fb39dcb3f9</catalog_id>
+                    <field_id>65dec64a3199f9a040829243</field_id>
+                    <group_id>67f46fcfe48249c786da007f</group_id>
+                    <id>65dec64a3199f9a040829243</id>
+                    <label>SKU</label>
+                    <type>catalog-select</type>
+                </item>
+                <item>
+                    <catalog_id>67d216afdf78c6fb39dcb3f9</catalog_id>
+                    <field_id>620a9ee0a449b98114f61d77</field_id>
+                    <group_id>67f46fcfe48249c786da007f</group_id>
+                    <id>620a9ee0a449b98114f61d77</id>
+                    <label>Lot Number</label>
+                    <type>catalog-select</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67f4703d20b7548769ff9d8a</field_id>
+                    <group_id>67f46fcfe48249c786da007f</group_id>
+                    <id>67f4703d20b7548769ff9d8a</id>
+                    <label>Cantidad</label>
+                    <type>integer</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67f4703d20b7548769ff9d8b</field_id>
+                    <group_id>67f46fcfe48249c786da007f</group_id>
+                    <id>67f4703d20b7548769ff9d8b</id>
+                    <label>Costo Unitario</label>
+                    <type>decimal</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Requerir datos de refacciones</name>
+            <operator>and</operator>
+            <rule_id>9ff259e21951cc3</rule_id>
+            <rule_type>required</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>in=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                        <group_id>None</group_id>
+                        <id>67d9f8efbfe21e488f4f5262</id>
+                        <label>Estatus</label>
+                        <type>select</type>
+                    </field>
+                    <value>finalizado</value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67d25c53891392185401b3fb</field_id>
+                    <group_id>None</group_id>
+                    <id>67d25c53891392185401b3fb</id>
+                    <label>Firma Técnico</label>
+                    <type>signature</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67da06bde33c5a0640a2c609</field_id>
+                    <group_id>None</group_id>
+                    <id>67da06bde33c5a0640a2c609</id>
+                    <label>Firma Cliente</label>
+                    <type>signature</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Requerir firmas</name>
+            <operator>and</operator>
+            <rule_id>ab2426a741460</rule_id>
+            <rule_type>required</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>is__empty=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                        <group_id>None</group_id>
+                        <id>67d9f8efbfe21e488f4f5262</id>
+                        <label>Estatus</label>
+                        <type>select</type>
+                    </field>
+                    <value> </value>
+                </item>
+                <item>
+                    <condition>not__empty=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                        <group_id>None</group_id>
+                        <id>67d9f8efbfe21e488f4f5262</id>
+                        <label>Estatus</label>
+                        <type>select</type>
+                    </field>
+                    <value> </value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                    <group_id>None</group_id>
+                    <id>67d9f8efbfe21e488f4f5262</id>
+                    <label>Estatus</label>
+                    <type>select</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Deshabilitar estatus</name>
+            <operator>or</operator>
+            <rule_id>b11142525f11370</rule_id>
+            <rule_type>disabled</rule_type>
             <user_conditions>{}</user_conditions>
         </item>
     </rules>
