@@ -6,6 +6,7 @@ import requests
 import jwt
 from google.oauth2 import service_account
 from google.auth.transport.requests import Request
+import uuid
 
 from accesos_utils import Accesos
 
@@ -13,10 +14,10 @@ class Accesos(Accesos):
     
     def create_class_google_wallet(self, data={}, qr_code='6810f4026d0667ebf41d9a11'):
         google_wallet_creds = self.lkf_api.get_user_google_wallet(use_api_key=True, jwt_settings_key=False)
-        ISSUER_ID = '3388000000022916692'
-        CLASS_ID = f'{ISSUER_ID}.passClass-01'
+        ISSUER_ID = '3388000000022924601'
+        CLASS_ID = f'{ISSUER_ID}.passClass-08'
         QR_CODE_VALUE = qr_code
-        OBJECT_ID = f'{ISSUER_ID}.pase-entrada-{QR_CODE_VALUE}-01'
+        OBJECT_ID = f'{ISSUER_ID}.pase-entrada-{QR_CODE_VALUE}-{uuid.uuid4()}'
 
         credentials_data = google_wallet_creds.get('data', {})
         private_key = credentials_data.get('private_key')
@@ -36,57 +37,20 @@ class Accesos(Accesos):
             'Content-Type': 'application/json',
         }
 
-        class_url = f'https://walletobjects.googleapis.com/walletobjects/v1/eventTicketClass/{CLASS_ID}'
+        class_url = f'https://walletobjects.googleapis.com/walletobjects/v1/genericClass/{CLASS_ID}'
         class_check = requests.get(class_url, headers={'Authorization': f'Bearer {access_token}'})
         
-
-
         if class_check.status_code != 200:
             class_body = {
                 "id": CLASS_ID,
-                "issuerName": "Pase de Entrada",
-                "hexBackgroundColor": "#FFFFFF",
-                "logo": {
-                    "sourceUri": {
-                        "uri": "https://f001.backblazeb2.com/file/app-linkaform/public-client-126/68600/6076166dfd84fa7ea446b917/2025-04-28T11:11:42.png",
-                    },
-                    "contentDescription": {
-                        "defaultValue": {
-                            "language": "es-MX",
-                            "value": "Logo de la empresa"
-                        }
-                    }
-                },
-                # "eventName": {
-                #     "defaultValue": {
-                #         "language": "es-MX",
-                #         "value": f"Visita a: {visita_a}"
-                #     }
-                # },
-                # "venue": {
-                #     "name": {
-                #         "defaultValue": {
-                #             "language": "es-MX",
-                #             "value": ubicacion
-                #         }
-                #     },
-                #     "address": {
-                #         "defaultValue": {
-                #             "language": "es-MX",
-                #             "value": address
-                #         }
-                #     }
-                # },
-                # "dateTime": {
-                #     "start": "2025-05-05T19:00:00Z"
-                # },
-                "reviewStatus": "UNDER_REVIEW",
             }
-            requests.post(
-                'https://walletobjects.googleapis.com/walletobjects/v1/eventTicketClass',
+            response = requests.post(
+                'https://walletobjects.googleapis.com/walletobjects/v1/genericClass',
                 headers=headers,
                 json=class_body
             )
+            print("Status code:", response.status_code)
+            print("Response text:", response.text)
 
         self.create_pass_google_wallet(OBJECT_ID, CLASS_ID, QR_CODE_VALUE, data, headers, client_email, private_key)
 
@@ -97,6 +61,7 @@ class Accesos(Accesos):
         visita_a = data.get('visita_a', 'Emiliano Zapata')
 
         object_body = {
+            "genericType": "GENERIC_ENTRY_TICKET",
             "id": object_id,
             "classId": class_id,
             "state": "ACTIVE",
@@ -104,29 +69,66 @@ class Accesos(Accesos):
                 "type": "QR_CODE",
                 "value": qr_code,
             },
-            "ticketHolderName": nombre,
-            "ticketNumber": "09-3924",
+            'cardTitle': {
+                'defaultValue': {
+                    'language': 'en-US',
+                    'value': 'Pase de Entrada'
+                }
+            },
+            "subheader": {
+                'defaultValue': {
+                    'language': 'en-US',
+                    'value': f"Visita a: {visita_a}"
+                }
+            },
+            'header': {
+                'defaultValue': {
+                    'language': 'en-US',
+                    'value': nombre
+                }
+            },
+            'logo': {
+                'sourceUri': {
+                    'uri':
+                        'https://f001.backblazeb2.com/file/app-linkaform/public-client-126/68600/6076166dfd84fa7ea446b917/2025-04-28T11:11:42.png'
+                },
+                'contentDescription': {
+                    'defaultValue': {
+                        'language': 'en-US',
+                        'value': 'Generic card logo'
+                    }
+                }
+            },
+            'hexBackgroundColor': '#ffffff',
             "textModulesData": [
                 {
                     "header": "Ubicación",
-                    "body": ubicacion
+                    "body": ubicacion,
+                    "id": "123"
                 },
                 {
                     "header": "Dirección",
-                    "body": address
+                    "body": address,
+                    "id": "124"
                 },
                 {
                     "header": "Visita a",
-                    "body": visita_a
+                    "body": visita_a,
+                    "id": "125"
                 }
             ],
-            "eventDateTime": {
-                "start": data.get("start_time", "2025-05-05T19:00:00Z")
+            "validTimeInterval": {
+                "start": {
+                    "date": data.get("start_time", "2025-05-09T17:00:00Z")
+                },
+                "end": {
+                    "date": data.get("end_time", "2025-05-09T17:40:00Z")
+                }
             }
         }
 
         requests.post(
-            'https://walletobjects.googleapis.com/walletobjects/v1/eventTicketObject',
+            'https://walletobjects.googleapis.com/walletobjects/v1/genericObject',
             headers=headers,
             json=object_body
         )
