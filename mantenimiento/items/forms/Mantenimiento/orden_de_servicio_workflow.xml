@@ -1006,6 +1006,7 @@
                         <sender>RECORD_USER</sender>
                         <subject>{% raw %} Servicio en Proceso {{record.answers.67c9e431b59043d4bb7a2714.667468e3e577b8b98c852aaa}} - Boson TI {% endraw %}</subject>
                         <timer_config>
+                            <expiration>{}</expiration>
                             <seconds_to_expire>None</seconds_to_expire>
                         </timer_config>
                     </configuration>

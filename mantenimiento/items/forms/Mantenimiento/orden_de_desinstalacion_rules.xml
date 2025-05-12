@@ -30,20 +30,12 @@
                     <type>catalog</type>
                 </item>
                 <item>
-                    <catalog_id>67c9e431b59043d4bb7a2714</catalog_id>
+                    <catalog_id>None</catalog_id>
                     <field_id>66bfc0accd15883ed163e9b0</field_id>
                     <group_id>None</group_id>
                     <id>66bfc0accd15883ed163e9b0</id>
                     <label>Nombre Comercial</label>
                     <type>catalog-select</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>680ba6738fc3b32d3d6e3819</field_id>
-                    <group_id>None</group_id>
-                    <id>680ba6738fc3b32d3d6e3819</id>
-                    <label>Direccion de Servicios</label>
-                    <type>text</type>
                 </item>
                 <item>
                     <catalog_id>None</catalog_id>
@@ -54,7 +46,7 @@
                     <type>catalog</type>
                 </item>
                 <item>
-                    <catalog_id>67c9e532b383a87836981405</catalog_id>
+                    <catalog_id>None</catalog_id>
                     <field_id>62c5ff407febce07043024dd</field_id>
                     <group_id>None</group_id>
                     <id>62c5ff407febce07043024dd</id>
@@ -70,9 +62,17 @@
                     <type>group</type>
                 </item>
                 <item>
-                    <catalog_id>67d21c6076546d5a61a7d806</catalog_id>
+                    <catalog_id>None</catalog_id>
+                    <field_id>{{ catalog.empleados_apoyo.obj_id}}</field_id>
+                    <group_id>None</group_id>
+                    <id>67d21c6076546d5a61a7d806</id>
+                    <label>Tecnico Auxiliar</label>
+                    <type>catalog</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
                     <field_id>a2c5ff407febce07043024dd</field_id>
-                    <group_id>67d218329d65ba66bf981251</group_id>
+                    <group_id>None</group_id>
                     <id>a2c5ff407febce07043024dd</id>
                     <label>Nombre completo</label>
                     <type>catalog-select</type>
@@ -84,14 +84,6 @@
                     <id>67d218329d65ba66bf981252</id>
                     <label>Distribuidor</label>
                     <type>text</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>{{ catalog.empleados_apoyo.obj_id}}</field_id>
-                    <group_id>67d218329d65ba66bf981251</group_id>
-                    <id>67d21c6076546d5a61a7d806</id>
-                    <label>Tecnico Auxiliar</label>
-                    <type>catalog</type>
                 </item>
                 <item>
                     <catalog_id>None</catalog_id>
@@ -186,7 +178,7 @@
         <item>
             <conditions>
                 <item>
-                    <condition>in=</condition>
+                    <condition>nin=</condition>
                     <field>
                         <catalog_id>None</catalog_id>
                         <field_id>67d9f8efbfe21e488f4f5262</field_id>
@@ -285,14 +277,6 @@
             <element_ids>[]</element_ids>
             <empty>False</empty>
             <fields_ruled>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>67da06bde33c5a0640a2c609</field_id>
-                    <group_id>None</group_id>
-                    <id>67da06bde33c5a0640a2c609</id>
-                    <label>Firma Cliente</label>
-                    <type>signature</type>
-                </item>
                 <item>
                     <catalog_id>None</catalog_id>
                     <field_id>67d25c53891392185401b3fb</field_id>
