@@ -54,7 +54,7 @@ class Accesos(Accesos):
         return mensaje, phone_to
 
 
-    def send_sms(self, phone_number, message):
+    def send_sms(self, phone_number, message, data_cel_msj=None, pre_sms=None, account=None):
         API_URL = f"http://api.alprotel.com/v1/sms"
         twilio_creds = self.lkf_api.get_user_twilio_creds(use_api_key=True, jwt_settings_key=False)
         alprotel_token = twilio_creds.get('json').get('alprotel_token')
@@ -69,15 +69,18 @@ class Accesos(Accesos):
             'texto': message
         }
 
-        response = requests.post(API_URL, json=data, headers=headers)
+        try:
+            response = requests.post(API_URL, json=data, headers=headers)
 
-        if response.status_code == 200:
-            print('SMS enviado correctamente')
-            return response.json()
-        else:
-            print('Error al enviar SMS')
-            print('Response SMS: ', response.text)
-            return False
+            if response.status_code == 200:
+                print('SMS enviado correctamente')
+                return response.json()
+            
+        except Exception as e:
+            print('Error al enviar SMS', e)
+            print('Enviando nuevamente SMS por alternativa...')
+            self.send_msj_pase(data_cel_msj=data_cel_msj, pre_sms=pre_sms, account=account)
+
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
@@ -147,13 +150,8 @@ if __name__ == "__main__":
     # msg = 'Test de SMS desde Back'
     # tel = '528340000000' # => +52 834 000 0000
 
-    response = acceso_obj.send_sms(phone_number=phone_to, message=mensaje)
-
-    if not response:
-        print('Enviando nuevamente SMS por alternativa...')
-        # tel = '+528340000000' # => +52 834 000 0000
-        data_cel_msj['numero'] = telefono_invitado
-        response = acceso_obj.send_msj_pase(data_cel_msj=data_cel_msj, pre_sms=pre_sms, account=cuenta_value)
+    data_cel_msj['numero'] = telefono_invitado
+    response = acceso_obj.send_sms(phone_number=phone_to, message=mensaje, data_cel_msj=data_cel_msj, pre_sms=pre_sms, account=cuenta_value)
 
     sys.stdout.write(simplejson.dumps({
         'status': 101,
