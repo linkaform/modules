@@ -76,7 +76,8 @@ class Accesos(Accesos):
             return response.json()
         else:
             print('Error al enviar SMS')
-            return response.text
+            print('Response SMS: ', response.text)
+            return False
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
@@ -145,10 +146,14 @@ if __name__ == "__main__":
 
     # msg = 'Test de SMS desde Back'
     # tel = '528340000000' # => +52 834 000 0000
-    print('Mensaje enviado: ', mensaje)
-    print('Destinatario: ', phone_to)
 
     response = acceso_obj.send_sms(phone_number=phone_to, message=mensaje)
+
+    if not response:
+        print('Enviando nuevamente SMS por alternativa...')
+        # tel = '+528340000000' # => +52 834 000 0000
+        data_cel_msj['numero'] = telefono_invitado
+        response = acceso_obj.send_msj_pase(data_cel_msj=data_cel_msj, pre_sms=pre_sms, account=cuenta_value)
 
     sys.stdout.write(simplejson.dumps({
         'status': 101,
