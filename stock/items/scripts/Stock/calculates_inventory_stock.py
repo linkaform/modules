@@ -7,7 +7,6 @@ from stock_utils import Stock
 
 from account_settings import *
 
-
 class Stock(Stock):
 
     def get_product_info(self, **kwargs):
@@ -19,7 +18,9 @@ class Stock(Stock):
             # product_code = self.answers.get(self.f['product_recipe'], {}).get(self.f['product_code'], '')
         except Exception as e:
             print('**********************************************')
-            self.LKFException('Warehosue and product code are requierd', e)
+            self.LKFException( dict_error= {
+                        "msg": ['Warehosue and product code are requierd']} 
+                )
         a = f'{product_code}_{sku}_{lot_number}_{warehouse}_{location}'
         values = {
                 '_id': a
@@ -51,23 +52,20 @@ class Stock(Stock):
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)
     stock_obj.console_run()
-    #stock_obj.merge_stock_records()
 
-    # if folio:
-    #     #si ya existe el registro, no cambio el numero de lote
-    #     kwargs['force_lote'] = True
-    # print('answers = ', stock_obj.answers)
-    stock_obj.get_product_info()
-    query = None
-    if stock_obj.record_id:
-        query = {'_id':ObjectId(stock_obj.record_id)}
-    if not query and stock_obj.folio:
-        query = {'folio':stock_obj.folio, 'form_id':stock_obj.form_id }
-    if query:
-        print('no sera aqui..?????')
-        stock_obj.cr.update_one(query, {'$set': {'answers':stock_obj.answers}})
-    print('print va a hacer el update con...', stock_obj.answers)
-    sys.stdout.write(simplejson.dumps({
-        'status': 101,
-        'replace_ans': stock_obj.answers
-    }))
+    if stock_obj.answers:
+        keeping = stock_obj.merge_stock_records()
+        stock_obj.get_product_info()
+        query = None
+        if stock_obj.record_id:
+            query = {'_id':ObjectId(stock_obj.record_id)}
+        if not query and stock_obj.folio:
+            query = {'folio':stock_obj.folio, 'form_id':stock_obj.form_id }
+        if query:
+            print('no sera aqui..?????')
+            stock_obj.cr.update_one(query, {'$set': {'answers':stock_obj.answers}})
+        print('print va a hacer el update con...', stock_obj.answers)
+        sys.stdout.write(simplejson.dumps({
+            'status': 101,
+            'replace_ans': stock_obj.answers
+        }))

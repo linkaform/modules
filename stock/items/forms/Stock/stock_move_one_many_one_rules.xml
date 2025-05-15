@@ -1,0 +1,69 @@
+<?xml version='1.0' encoding='utf-8'?>
+<lkf>
+    <form_id>{{ form.stock_move_one_many_one.id }}</form_id>
+    <id>669854aafe028fad7f122f19</id>
+    <rules>
+        <item>
+            <conditions>
+                <item>
+                    <condition>not__empty=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>6442e4537775ce64ef72dd6a</field_id>
+                        <group_id>None</group_id>
+                        <id>6442e4537775ce64ef72dd6a</id>
+                        <label>Status</label>
+                        <type>select</type>
+                    </field>
+                    <value> </value>
+                </item>
+                <item>
+                    <condition>is__empty=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>6442e4537775ce64ef72dd6a</field_id>
+                        <group_id>None</group_id>
+                        <id>6442e4537775ce64ef72dd6a</id>
+                        <label>Status</label>
+                        <type>select</type>
+                    </field>
+                    <value> </value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>65e1169689c0e0790f8843f1</field_id>
+                    <group_id>None</group_id>
+                    <id>65e1169689c0e0790f8843f1</id>
+                    <label>Cantidad Solicitada</label>
+                    <type>integer</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>ffff00000000000000000001</field_id>
+                    <group_id>None</group_id>
+                    <id>ffff00000000000000000001</id>
+                    <label>Folio Stock Destino</label>
+                    <type>text</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>66e0cd760cc8e3fb75f23803</field_id>
+                    <group_id>None</group_id>
+                    <id>66e0cd760cc8e3fb75f23803</id>
+                    <label>Excel ERRORES de carga ONTs</label>
+                    <type>files</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Ocultar cantidad solicitada y folio stock</name>
+            <operator>or</operator>
+            <rule_id>eaa1d5ffcbfa1</rule_id>
+            <rule_type>invisible</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+    </rules>
+</lkf>

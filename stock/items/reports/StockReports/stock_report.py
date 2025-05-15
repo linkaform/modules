@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, date
 from copy import deepcopy
 
 print('Arranca Stock - Report en modulo stock....')
-from lkf_addons.addons.stock.stock_report import Reports
+# from lkf_addons.addons.stock.report import Reports
 
 #Se agrega path para que obtenga el archivo de Stock de este modulo
 sys.path.append('/srv/scripts/addons/modules/stock/items/scripts/Stock')
@@ -15,7 +15,7 @@ today = date.today()
 year_week = int(today.strftime('%Y%W'))
 
 
-class Reports(Reports, Stock):
+class Reports(Stock):
 
     def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False):
         #base.LKF_Base.__init__(self, settings, sys_argv=sys_argv, use_api=use_api)
@@ -63,12 +63,14 @@ class Reports(Reports, Stock):
         if date_from:
             date_since = self.date_operation(date_from, '-', 1, 'day', date_format='%Y-%m-%d')
         warehouse = data.get('warehouse',[])
-        if type(warehouse) == str and warehouse != '':
-            warehouse = [warehouse,]
+        # if type(warehouse) == str and warehouse != '':
+        #     warehouse = [warehouse,]
         move_type = None
         if not product_code:
             self.LKFException('prduct code is missing...')
-        stock = self.get_product_stock(product_code, lot_number=lot_number, date_from=date_from, date_to=date_to)
+        print('warehouse', warehouse)
+        stock = self.get_product_stock(product_code, warehouse=warehouse, lot_number=lot_number, date_from=date_from, date_to=date_to)
+        print('stock', stock)
         if not warehouse or warehouse == '':
             warehouse = self.get_warehouse('Stock')
         result = []
@@ -78,8 +80,8 @@ class Reports(Reports, Stock):
         warehouse = self.validate_value(warehouse)
         date_since = self.validate_value(date_since)
         for idx, wh in enumerate(warehouse):
-            # if wh != 'Almacen Central':
-            #     continue
+            if wh != 'Almacen Central':
+                continue
             print(f'============ Warehouse: {wh} ==========================')
 
             if not date_from and not date_since:
@@ -88,8 +90,7 @@ class Reports(Reports, Stock):
                 initial_stock = self.get_product_stock(product_code, warehouse=wh, lot_number=lot_number,  date_to=date_since)
             # print('initial_stock........',initial_stock)
             # print('acrrranca........')
-            moves = {}
-            # moves = self.detail_stock_moves(wh, product_code=product_code, lot_number=lot_number, date_from=date_from, date_to=date_to)
+            moves = self.detail_stock_moves(wh, product_code=product_code, lot_number=lot_number, date_from=date_from, date_to=date_to)
             moves = self.detail_adjustment_moves(wh, product_code=product_code, lot_number=lot_number, \
                 date_from=date_from, date_to=date_to, **{'result':moves})
             moves = self.detail_production_moves(wh, product_code=product_code, lot_number=lot_number, \
@@ -99,9 +100,7 @@ class Reports(Reports, Stock):
             # moves = self.detail_scrap_moves(wh, product_code=product_code, lot_number=lot_number, \
             #     date_from=date_from, date_to=date_to, **{'result':moves})
             # moves = self.detail_many_one_one(wh, product_code=product_code, lot_number=lot_number, \
-            #      date_from=date_from, date_to=date_to, **{'result':moves})
-            moves = self.detail_one_many_one(wh, product_code=product_code, lot_number=lot_number, \
-                  date_from=date_from, date_to=date_to, **{'result':moves})
+            #     date_from=date_from, date_to=date_to, **{'result':moves})
             #todo scrap out many one many
             if moves:
                 warehouse_data = { "id":idx, "warehouse":wh, "qty_out_table":"Initial", 
