@@ -1,0 +1,265 @@
+<?xml version='1.0' encoding='utf-8'?>
+<lkf>
+    <templates>[]</templates>
+    <confirmation>
+        <message>Your info was successfully captured!</message>
+        <redirect_url>default</redirect_url>
+        <button_message>Send</button_message>
+    </confirmation>
+    <description />
+    <_rev>70-4e18ef1e6bb90a58e17dea75cca3efa8</_rev>
+    <updated_at>2024-07-05T16:22:02.222595+00:00Z</updated_at>
+    <sync>
+        <element_request>{}</element_request>
+        <input_parameters>[]</input_parameters>
+    </sync>
+    <filters>
+        <Tecnicos>
+            <amp_and>
+                <item>
+                    <num_65c12749cfed7d3a0e1a341b>
+                        <amp_eq>Cajuela</amp_eq>
+                    </num_65c12749cfed7d3a0e1a341b>
+                </item>
+            </amp_and>
+        </Tecnicos>
+        <AdolfoTorresOcampoDestination>
+            <amp_and>
+                <item>
+                    <num_65bdc71b3e183f49761a33b9>
+                        <amp_eq>Adolfo Torres Ocampo</amp_eq>
+                    </num_65bdc71b3e183f49761a33b9>
+                </item>
+            </amp_and>
+        </AdolfoTorresOcampoDestination>
+        <AlejandroLealDestination>
+            <amp_and>
+                <item>
+                    <num_65bdc71b3e183f49761a33b9>
+                        <amp_eq>Alejandro Leal</amp_eq>
+                    </num_65bdc71b3e183f49761a33b9>
+                </item>
+            </amp_and>
+        </AlejandroLealDestination>
+        <redesqueretaro>
+            <amp_and>
+                <item>
+                    <num_65bdc71b3e183f49761a33b9>
+                        <amp_eq>Almacen Redes</amp_eq>
+                    </num_65bdc71b3e183f49761a33b9>
+                </item>
+                <item>
+                    <num_65c12749cfed7d3a0e1a341b>
+                        <amp_eq>Queretaro</amp_eq>
+                    </num_65c12749cfed7d3a0e1a341b>
+                </item>
+            </amp_and>
+        </redesqueretaro>
+        <EinarCasarrubiasAguilarDestination>
+            <amp_and>
+                <item>
+                    <num_65bdc71b3e183f49761a33b9>
+                        <amp_eq>Einar Casarrubias Aguilar</amp_eq>
+                    </num_65bdc71b3e183f49761a33b9>
+                </item>
+            </amp_and>
+        </EinarCasarrubiasAguilarDestination>
+        <AlejandroLeal>
+            <amp_and>
+                <item>
+                    <num_65bdc71b3e183f49761a33b9>
+                        <amp_eq>Alejandro Leal</amp_eq>
+                    </num_65bdc71b3e183f49761a33b9>
+                </item>
+            </amp_and>
+        </AlejandroLeal>
+        <JuanCarlosSolaresSandovalDestination>
+            <amp_and>
+                <item>
+                    <num_65bdc71b3e183f49761a33b9>
+                        <amp_eq>Juan Carlos Solares Sandoval</amp_eq>
+                    </num_65bdc71b3e183f49761a33b9>
+                </item>
+            </amp_and>
+        </JuanCarlosSolaresSandovalDestination>
+        <iasasc>
+            <amp_and>
+                <item>
+                    <num_65bdc71b3e183f49761a33b9>
+                        <amp_eq>Almacen Redes</amp_eq>
+                    </num_65bdc71b3e183f49761a33b9>
+                </item>
+                <item>
+                    <num_65bdc71b3e183f49761a33b9>
+                        <amp_eq>Almacen Distribuidor</amp_eq>
+                    </num_65bdc71b3e183f49761a33b9>
+                </item>
+                <item>
+                    <num_65bdc71b3e183f49761a33b9>
+                        <amp_eq>Almacen Auxiliar</amp_eq>
+                    </num_65bdc71b3e183f49761a33b9>
+                </item>
+            </amp_and>
+        </iasasc>
+        <AlfredoTenorio>
+            <amp_and>
+                <item>
+                    <num_65bdc71b3e183f49761a33b9>
+                        <amp_eq>Alfredo Tenorio Ponce</amp_eq>
+                    </num_65bdc71b3e183f49761a33b9>
+                </item>
+            </amp_and>
+        </AlfredoTenorio>
+        <TecnicosPCMetroDestination>
+            <amp_and>
+                <item>
+                    <num_65bdc71b3e183f49761a33b9>
+                        <amp_eq>Tecnicos PC Metro</amp_eq>
+                    </num_65bdc71b3e183f49761a33b9>
+                </item>
+            </amp_and>
+        </TecnicosPCMetroDestination>
+        <RosendoAnayaLunaDestination>
+            <amp_and>
+                <item>
+                    <num_65bdc71b3e183f49761a33b9>
+                        <amp_eq>Rosendo Anaya Luna</amp_eq>
+                    </num_65bdc71b3e183f49761a33b9>
+                </item>
+            </amp_and>
+        </RosendoAnayaLunaDestination>
+    </filters>
+    <name>Warehouse Location Destination</name>
+    <edit_public_records>False</edit_public_records>
+    <created_at>2024-07-05T16:22:02.222595+00:00Z</created_at>
+    <advanced_options>
+        <active>True</active>
+        <folio>
+            <config>False</config>
+            <required>False</required>
+            <manual>False</manual>
+        </folio>
+    </advanced_options>
+    <catalog_pages>
+        <item>
+            <page_fields>
+                <item>
+                    <field_type>catalog</field_type>
+                    <properties>{}</properties>
+                    <key>False</key>
+                    <catalog_fields>[]</catalog_fields>
+                    <field_id>{{ catalog.warehouse_destination.obj_id }}</field_id>
+                    <required>False</required>
+                    <fav>None</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
+                    <label>Warehouse</label>
+                    <catalog>
+                        <catalog_fields>[]</catalog_fields>
+                        <view_fields>
+                            <item>65bdc71b3e183f49761a33b9</item>
+                        </view_fields>
+                        <view_index>0</view_index>
+                        <couch_id>{{ catalog.warehouse_destination.obj_id }}</couch_id>
+                        <catalog_field_id>None</catalog_field_id>
+                        <catalog_id>{{ catalog.warehouse_destination.id }}</catalog_id>
+                        <filters>None</filters>
+                        <name>{{ catalog.warehouse_destination.name }}</name>
+                    </catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
+                    <options>[]</options>
+                    <related_catalog>None</related_catalog>
+                </item>
+                <item>
+                    <field_type>catalog-select</field_type>
+                    <properties>{}</properties>
+                    <key>None</key>
+                    <catalog_fields>[]</catalog_fields>
+                    <field_id>65bdc71b3e183f49761a33b9</field_id>
+                    <required>True</required>
+                    <fav>True</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
+                    <label>Warehouse Name</label>
+                    <catalog>
+                        <catalog_fields>[]</catalog_fields>
+                        <last>False</last>
+                        <view_fields>[]</view_fields>
+                        <field_type>text</field_type>
+                        <view_index>1</view_index>
+                        <catalog_field_id>{{ catalog.warehouse_destination.obj_id }}</catalog_field_id>
+                        <catalog_id>{{ catalog.warehouse_destination.id }}</catalog_id>
+                        <filters>None</filters>
+                    </catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
+                    <options>[]</options>
+                    <related_catalog>None</related_catalog>
+                </item>
+                <item>
+                    <field_type>text</field_type>
+                    <properties>
+                        <send_email>False</send_email>
+                        <size>complete</size>
+                        <custom>None</custom>
+                    </properties>
+                    <key>True</key>
+                    <catalog_fields>[]</catalog_fields>
+                    <field_id>65c12749cfed7d3a0e1a341b</field_id>
+                    <required>True</required>
+                    <fav>True</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
+                    <label>Location</label>
+                    <catalog>{}</catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
+                    <options>[]</options>
+                    <related_catalog>None</related_catalog>
+                </item>
+                <item>
+                    <field_type>integer</field_type>
+                    <properties>
+                        <number_of_decimals>2</number_of_decimals>
+                        <custom>None</custom>
+                        <step>1</step>
+                        <size>small</size>
+                    </properties>
+                    <key>None</key>
+                    <catalog_fields>[]</catalog_fields>
+                    <field_id>65c128f249abea352147ee08</field_id>
+                    <required>False</required>
+                    <fav>False</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
+                    <label>Rack Capacity</label>
+                    <catalog>{}</catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
+                    <options>[]</options>
+                    <related_catalog>None</related_catalog>
+                </item>
+                <item>
+                    <field_type>integer</field_type>
+                    <field_id>f1216500a010000000000001</field_id>
+                    <required>False</required>
+                    <fav>True</fav>
+                    <label>NUMERO DE EXPEDIENTE PIC</label>
+                    <properties>
+                        <number_of_decimals>2</number_of_decimals>
+                        <custom>None</custom>
+                        <step>1</step>
+                        <size>small</size>
+                    </properties>
+                </item>
+            </page_fields>
+            <page_description>None</page_description>
+            <page_name>PAGE 1</page_name>
+        </item>
+    </catalog_pages>
+    <sync_last_update>None</sync_last_update>
+    <_id>66881daa15f531ebda59dbf5</_id>
+    <public>False</public>
+    <catalog_id>120821</catalog_id>
+</lkf>
