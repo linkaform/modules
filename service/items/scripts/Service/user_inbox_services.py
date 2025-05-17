@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson, time
 
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from service_utils import Service
 
 from account_settings import *
@@ -33,7 +36,13 @@ class Service(Service):
         answers = inbox.get('doc',{}).get('record_json',{}).get('answers')
         program_date = answers.get(self.f['first_date'])
         due_date = answers.get(self.f['due_date'])
-        today = time.time()
+        
+        today_utc = time.time()
+        print(f"=== today_utc = {today_utc} :: {datetime.fromtimestamp(today_utc)}")
+        dt_mx = datetime.fromtimestamp(today_utc, tz=ZoneInfo("America/Mexico_City"))
+        today = self.date_2_epoch( dt_mx.strftime('%Y-%m-%d %H:%M:%S') ) #dt_mx.timestamp()
+        print(f'=== today mx = {today} :: {dt_mx}')
+        
         epoch_program_date = self.date_2_epoch(program_date)
         if not due_date:
             return None
