@@ -222,38 +222,6 @@ class Stock(Stock):
             #     self.ejecutar_transaccion({} )
         return True
     
-    def move_out_stock(self, new_record):
-        record_data = self.get_record_move_data(new_record)
-        updated_ids = []
-
-        for idx, product_data in record_data['product'].items():
-            product_code = product_data['product_code']
-            sku = product_data['product_sku']
-            product_lot = product_data['product_lot']
-            move_qty = product_data.get('move_qty',0)
-            match_query = self.lot_match(product_code, sku, record_data['warehouse'], record_data['location'], product_lot)
-            product_db_info = self.format_cr(self.cr.find(match_query), get_one=True)
-            print('match_query',match_query)
-            updated_ids.append(product_db_info.get('_id'))
-            print('product_db_info',product_db_info)
-            product_stock = self.get_product_stock(product_code, sku=sku, lot_number=product_lot, warehouse=record_data['warehouse'], location=record_data['location'])
-            acutals = product_stock.get('actuals',0)
-            new_acutals = acutals - move_qty
-            if new_acutals <= 0:
-                status = 'done'
-            else:
-                status = 'active'
-            update_res = self.cr.update_many(match_query, {"$set":{
-                f"answers.{self.f['actual_eaches_on_hand']}":new_acutals,
-                f"answers.{self.f['product_lot_actuals']}":new_acutals,
-                f"answers.{self.f['move_out']}":move_qty,
-                f"answers.{self.f['status']}":status,
-                }})
-        self.cache_set({
-                        'cache_type': 'direct_move_in',
-                        'inserted_ids':updated_ids,
-                        })
-
     def get_record_move_data(self, data):
         move_group = data['answers'].get( self.f['move_group'], [] )
         warehouse_from = data['answers'].get(self.WH.WAREHOUSE_LOCATION_OBJ_ID)
@@ -363,6 +331,19 @@ class Stock(Stock):
             res_share_folder_forms = self.share_item(uri_user, folder_share, "can_share_item")
 
     def validate_move_qty(self, product_code, sku, lot_number, warehouse, location, move_qty, date_to=None, **kwargs):
+        if not lot_number:
+            msg = f"No lot number provided"
+            msg_error_app = {
+                    f"{self.f['product_lot_actuals']}": {
+                        "msg": [msg],
+                        "label": "Please check your lot inventory",
+                        "error":[]
+      
+                    }
+                }
+            #TODO set inventory as done
+            self.LKFException( simplejson.dumps( msg_error_app ) )               
+
         inv = self.get_product_stock(product_code, sku=sku,lot_number=lot_number, warehouse=warehouse, location=location,  
                 date_to=date_to, **kwargs)
         acctual_containers = inv.get('actuals')
@@ -463,12 +444,10 @@ class Stock(Stock):
         stock_size = stock.get('actuals',0)
         return stock_size - lote_size
 
-
-
-
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
     stock_obj.console_run()
+    # print('inv_adjust_status', simplejson.dumps(stock_obj.f, indent=3))
     status = stock_obj.answers[stock_obj.f['inv_adjust_status']]
     if hasattr(stock_obj,'folio'):
         folio = stock_obj.folio
@@ -509,11 +488,9 @@ if __name__ == '__main__':
     stock_obj.current_record['answers'] = stock_obj.answers
     if groups:
         stock_obj.folio = f"{folio}-1/{len(groups)}"
-    response = stock_obj.direct_move_in(stock_obj.current_record)
-    stock_obj.move_out_stock(stock_obj.current_record)
-    # if not stock_obj.proceso_onts:
-    #     response = stock_obj.move_one_many_one()
-    stock_obj.answers[stock_obj.f['inv_adjust_status']] =  'done'
+
+    stock_obj.make_direct_stock_move()
+   
 
     sys.stdout.write(simplejson.dumps({
         'status': 101,

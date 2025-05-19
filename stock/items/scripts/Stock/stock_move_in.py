@@ -333,7 +333,7 @@ if __name__ == '__main__':
     # stock_obj.read_series_ONTs()
     # se tiene que mover el direct move in despues de la injeccion de datos
     stock_obj.current_record['answers'] = stock_obj.answers
-    response = stock_obj.direct_move_in(stock_obj.current_record)
+    response = stock_obj.make_direct_stock_move(move_type='in')
     print('TODO: revisar si un create no estuvo bien y ponerlo en error o algo')
     stock_obj.answers[stock_obj.f['inv_adjust_status']] =  'done'
     sys.stdout.write(simplejson.dumps({
