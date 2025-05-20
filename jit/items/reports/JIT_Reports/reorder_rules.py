@@ -4,15 +4,10 @@ from math import floor, ceil
 import json
 from datetime import timedelta, datetime
 
-from linkaform_api import settings, base
+from jit_report import Reports
 from account_settings import *
 
 
-from jit_report import Reports
-from lkf_addons.addons.product.app import Product
-from lkf_addons.addons.product.app import Warehouse
-from lkf_addons.addons.jit.app import JIT
-from lkf_addons.addons.stock.app import Stock
 
 uom_class = {
     'metro':'lenght',
@@ -227,7 +222,6 @@ class Reports(Reports):
             else:
                 return 0
 
-
     def eval_procurment(self, proc, procurment_warehouses):
         product_code = proc['product_code']
         sku = proc['sku']
@@ -290,7 +284,6 @@ class Reports(Reports):
             wharehouse = item.get(id_field,'')
             if wharehouse not in list_response and wharehouse !='':
                 list_response.append(wharehouse)
-
         list_response.sort()
         return list_response
 
@@ -300,9 +293,9 @@ class Reports(Reports):
         mango_query = {
             "selector": {
                 "$and": [
-                    {"answers." + prod_obj.f['product_type']: {"$eq": product_type}},
+                    {"answers." + self.Product.f['product_type']: {"$eq": product_type}},
                     # Only add the product_line filter if it's not empty
-                    {"answers." + prod_obj.f['product_category']: {"$eq": product_line}} if product_line else {}
+                    {"answers." + self.Product.f['product_category']: {"$eq": product_line}} if product_line else {}
                 ]
             },
             "limit": 10000,
@@ -313,14 +306,17 @@ class Reports(Reports):
         mango_query["selector"]["$and"] = [clause for clause in mango_query["selector"]["$and"] if clause]
 
         # Execute query and return records
-        record = prod_obj._labels_list(self.lkf_api.search_catalog(prod_obj.PRODUCT_ID, mango_query), prod_obj.f)
+        record = self.Product._labels_list(self.lkf_api.search_catalog(self.Product.PRODUCT_ID, mango_query), self.Product.f)
         # print('RECORD', record)
         return record
     
     def get_procurments(self, warehouse=None, location=None, product_code=None, sku=None, status='programmed', group_by=False):
         # sku='750200309290'
+        self.load('Product', module_class='Warehouse', import_as='WH', **self.kwargs)
+        prod_obj = self.Product
+        warehouse_obj = self.WH
         match_query ={ 
-                'form_id': procurment_obj.PROCURMENT,  
+                'form_id': self.PROCURMENT,  
                 'deleted_at' : {'$exists':False},
                 # f'answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f["sku"]}':'750200301069'
                 #todo fix balance para q suba con stauts
@@ -349,19 +345,19 @@ class Reports(Reports):
             {'$match': match_query},
             {'$project':{
                     '_id':0,
-                    'date':f'$answers.{procurment_obj.mf["procurment_date"]}',
-                    'date_schedule':f'$answers.{procurment_obj.mf["procurment_schedule_date"]}',
-                    'procurment_method':f'$answers.{procurment_obj.mf["procurment_method"]}',
-                    'procurment_qty':f'$answers.{procurment_obj.mf["procurment_qty"]}',
+                    'date':f'$answers.{self.mf["procurment_date"]}',
+                    'date_schedule':f'$answers.{self.mf["procurment_schedule_date"]}',
+                    'procurment_method':f'$answers.{self.mf["procurment_method"]}',
+                    'procurment_qty':f'$answers.{self.mf["procurment_qty"]}',
                     'product_code':f'$answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f["product_code"]}',
                     'sku':f'$answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f["sku"]}',
-                    'uom':f'$answers.{procurment_obj.UOM_OBJ_ID}.{procurment_obj.f["uom"]}',
+                    'uom':f'$answers.{self.UOM_OBJ_ID}.{self.f["uom"]}',
                     'warehouse':f'$answers.{warehouse_obj.WAREHOUSE_LOCATION_OBJ_ID}.{warehouse_obj.f["warehouse"]}',
                     'warehouse_location':f'$answers.{warehouse_obj.WAREHOUSE_LOCATION_OBJ_ID}.{warehouse_obj.f["warehouse_location"]}',
             }}]
         # print('query=', simplejson.dumps(query, indent=3))
         # print('cr',procurment_obj.cr)
-        return procurment_obj.format_cr(procurment_obj.cr.aggregate(query))
+        return self.format_cr(self.cr.aggregate(query))
 
     def get_report_filters(self, filters=[], product_code_aux=None):
         mango_query = {
@@ -371,12 +367,12 @@ class Reports(Reports):
             "limit": 10000,
             "skip": 0
         }
-
+        prod_obj = self.Product
         if 'inventory' in filters:
             if product_code_aux:
                 mango_query['selector'] = {f"answers.{prod_obj.f['product_type']}": product_code_aux}
 
-            res = prod_obj.lkf_api.search_catalog(123105, mango_query)
+            res = self.lkf_api.search_catalog(123105, mango_query)
 
             product_categories = []
 
@@ -388,27 +384,19 @@ class Reports(Reports):
         return product_categories
     
     def get_catalog_product_field(self, id_field):
-        query = {"form_id":123150, 'deleted_at':{'$exists':False}}
-
+        query = {"form_id":self.PROCURMENT, 'deleted_at':{'$exists':False}}
+        proc = self.get_procurments()
+        products = [item['product_code'] for item in proc]
         # Obtener los ids distintos y filtrar los None
-        db_ids = [item for item in self.cr.distinct("answers.66dfc4d9a306e1ac7f6cd02c.61ef32bcdf0ec2ba73dec343", query) if item is not None]
-        match_query = { 
-            'deleted_at':{"$exists":False},
-        }
-
         mango_query = {
             "selector": {
-                "answers": {
-                    "$and": [match_query]
-                }
+                f'answers.{self.Product.f["product_code"]}': {'$in': products}
             },
             "limit": 10000,
             "skip": 0
         }
-        
-        res = reorder_obj.lkf_api.search_catalog(123105, mango_query)
-        res_format = reorder_obj.format_catalog_product(res, id_field)
-        
+        res = self.lkf_api.search_catalog(self.Product.PRODUCT_ID, mango_query)
+        res_format = self.format_catalog_product(res, id_field)
         return res_format
     
     def get_max_stock(self, data):
@@ -429,9 +417,10 @@ class Reports(Reports):
             }
 
     def get_stock_by_warehouse(self, product_codes, warehouses):
+        self.load('Stock', **self.kwargs)
         res = {}
         for wh in warehouses:
-            stock_data = stock_obj.get_products_inventory(product_code=product_codes, warehouse=wh)
+            stock_data = self.Stock.get_products_inventory(product_code=product_codes, warehouse=wh)
             res[wh] = {d['product_code']:d['actuals'] for d in stock_data}
         return res
 
@@ -710,11 +699,10 @@ if __name__ == "__main__":
     reorder_obj.warehouses = []
 
 
+    reorder_obj.load(module='Product', **reorder_obj.kwargs)
     if option == 'get_catalog':
-        warehouse_obj = Warehouse(settings, sys_argv=sys.argv, use_api=True)
-        prod_obj = Product(settings, sys_argv=sys.argv, use_api=True)
         # warehouse_types_catalog = warehouse_obj.get_all_stock_warehouse()
-        product_type = reorder_obj.get_catalog_product_field(id_field=prod_obj.f['product_type'])
+        product_type = reorder_obj.get_catalog_product_field(id_field=reorder_obj.Product.f['product_type'])
         reorder_obj.HttpResponse({
             "dataCatalogWarehouse": [],
             "dataCatalogProductFamily": product_type,
@@ -729,16 +717,6 @@ if __name__ == "__main__":
             "product_line": products_categorys,
         })
     else:
-        # reorder_obj.warehouse_transfer_update(),
-        stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
-        procurment_obj = JIT(settings, sys_argv=sys.argv, use_api=True)
-        prod_obj = stock_obj.Product
-        warehouse_obj = stock_obj.WH
-        # prod_obj = procurment_obj.Product
-        # warehouse_obj = procurment_obj.WH
-        # stock_obj = procurment_obj.Stock
-        # prod_obj = Product(settings, sys_argv=sys.argv, use_api=True)
         reorder_obj.HttpResponse({
-         # "stockInfo": reorder_obj.warehouse_transfer_update(),
          "data": reorder_obj.warehouse_transfer_update2(),
         })
