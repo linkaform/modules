@@ -27,7 +27,7 @@ class Stock(Stock):
         })
 
         self.prev_version = {}
-        # self.max_sets = 5000
+        self.max_sets = 2
         self.sku_finds = []
 
     def carga_materiales(self, header, records):
@@ -107,6 +107,13 @@ class Stock(Stock):
         return header_dict, records
 
     def create_records(self, groups):
+        """
+            Se acomoda el grupo repetitivo de la recpcion de ONTs
+            Pone folio segun tamaño de grupo
+            arma sets para continuar con proceso
+        args: 
+            grupos: lista registros de excel
+        """
         move_group = self.answers.get( self.f['move_group'], [] )
         base_row_set = deepcopy(move_group[0])
         self.answers[self.f['move_group']] = []
@@ -117,42 +124,55 @@ class Stock(Stock):
         base_record.update(self.get_complete_metadata(fields = {'voucher_id':ObjectId('6743d90d5f1c35d02395a7cf')}))
         base_record['answers'][self.f['move_group']] = []
         base_record["editable"] = False 
+        series_repetidas = []
+        get_folio = True
+        ########
+        create_new_rec = True
         for idx, records in enumerate(groups):
+            new_record = deepcopy(base_record)
+            new_folio = f"{self.folio}-{idx+1}/{total_groups}"
+            new_record['folio'] = new_folio
+            print('idx', idx)
             folio_serie_record = []
             # self.answers[self.f['move_group']] = []
-            new_record = {}
-            new_folio = f"{self.folio}-{idx+1}/{total_groups}"
-
-            if idx > 0:
-                new_record = deepcopy(base_record)
-                new_record['folio'] = new_folio
-            for num_serie in records:
+            new_record['answers'][self.f['inv_adjust_status']] = 'todo'
+            for idy, num_serie in enumerate(records):
+                get_folio = True
+            #### ONTS
+                print('idy', idy)
+                if get_folio:
+                    folio_ont_inv = f"{self.folio}-{idy+1}/{len(records)}"
                 # num_serie = row[ pos_serie ]
                 num_serie = self.strip_special_characters(num_serie)
+                print('num_serie', num_serie)
                 if not num_serie:
                     continue
                 if num_serie in series_unique:
-                    self.LKFException( '', dict_error= {
-                        f"{self.f['lot_number']}": {
-                        "msg": ['Se encontraron series repetidas en el excel: {}'.format( num_serie )], 
-                        "label": "Serie Repetida", "error": []}}
-                        )
+                    series_repetidas.append(num_serie)
+                    get_folio = False
+                    continue
                 series_unique.append(num_serie)
                 row_set = deepcopy(base_row_set)
                 row_set[self.f['lot_number']] = num_serie
-                row_set[self.f['inv_adjust_grp_status']] = 'done'
-
-                folio_serie_record.append({'folio':new_folio, 'ont_serie':num_serie})
-                if idx == 0:
-                    self.current_record['folio'] = new_folio
-                    self.answers[self.f['move_group']].append(row_set)
-                else:
-                    new_record['answers'][self.f['move_group']].append(row_set)
-                    new_record['answers'][self.f['inv_adjust_status']] = 'done'
-            if new_record:
+                row_set['folio'] = folio_ont_inv
+                row_set[self.f['inv_adjust_grp_status']] = 'todo'
+                folio_serie_record.append({"folio":new_folio, "ont_serie": num_serie, "folio_recepcion":folio_ont_inv})
+                new_record['answers'][self.f['move_group']].append(row_set)
+                self.answers[self.f['move_group']].append(row_set)
+                if idx+1 == len(groups):
+                    create_new_rec = False
+                    print('---------------------------')
+            print('*************groiu************',create_new_rec)
+            if create_new_rec:
                 self.ejecutar_transaccion(new_record, folio_serie_record )
             else:
                 self.ejecutar_transaccion({}, folio_serie_record )
+            if series_repetidas:
+                self.LKFException( '', dict_error= {
+                    f"{self.f['lot_number']}": {
+                    "msg": ['Se encontraron series repetidas en el excel: {}'.format( series_repetidas )], 
+                    "label": "Serie Repetida", "error": []}}
+                )
         return True
 
     def ejecutar_transaccion(self, new_record, folio_serie_record):
@@ -163,8 +183,8 @@ class Stock(Stock):
                 #HACE TRANSACCIONES ACIDAS
                 def write_records(sess):
                     if new_record.get('answers'):
+                        # self.direct_move_in(new_record)
                         self.records_cr.insert_one(new_record, session=sess)
-                        self.direct_move_in(new_record)
                     try:
                         if folio_serie_record:
                             self.ont_cr.insert_many(folio_serie_record, session=sess)
@@ -194,7 +214,7 @@ class Stock(Stock):
                         )
         else:
             try:
-                if folio_serie_record:
+                if folio_serie_record and False:
                     res = self.ont_cr.insert_many(folio_serie_record)
             except Exception as e:
                 self.LKFException( '', dict_error= {
@@ -202,21 +222,24 @@ class Stock(Stock):
                         "msg": [f'Error en la creacion de las onts. Existen Series previamente Cargadas '], 
                         "label": "Serie Repetida", "error": []}}
                         )
-            try:
+            # try:
+            if True:
                 if new_record.get('answers'):
-                    # print('mnew record=', simplejson.dumps(new_record, indent=3))
+                    print('rwreew [[[[[[[[[[[[[[[[ new records]]]]]]]]]]]]]]]]', simplejson.dumps(new_record['answers'], indent=3))
+                    response = stock_obj.make_direct_stock_move(move_type='in')
+                    print('res',response)
                     res = self.records_cr.insert_one(new_record)
-                    self.direct_move_in(new_record)
-            except Exception as e:
-                print('error: ', e)
-                series = [s['ont_serie'] for s in folio_serie_record]
-                res = self.ont_cr.delete_many({'ont_serie':{'$in':series}})
-                print('delete_many: ',series)
-                self.LKFException( '', dict_error= {
-                        f"{self.f['lot_number']}": {
-                        "msg": [f'INTENTA NUEVAMENTE:  Se encontraron series repetidas en el excel. '], 
-                        "label": "Serie Repetida", "error": []}}
-                        )
+                    #self.direct_move_in(new_record)
+            # except Exception as e:
+            #     print('error: ', e)
+            #     series = [s['ont_serie'] for s in folio_serie_record]
+            #     res = self.ont_cr.delete_many({'ont_serie':{'$in':series}})
+            #     print('delete_many: ',series)
+            #     self.LKFException( '', dict_error= {
+            #             f"{self.f['lot_number']}": {
+            #             "msg": [f'INTENTA NUEVAMENTE:  Se encontraron series repetidas en el excel. '], 
+            #             "label": "Serie Repetida", "error": []}}
+            #             )
 
     def read_series_ONTs(self):
         """
@@ -329,11 +352,14 @@ if __name__ == '__main__':
     header, records = stock_obj.read_xls_file()
     if stock_obj.proceso_onts:
         groups = stock_obj.do_groups(header, records)
+        print('groups', groups)
         stock_obj.create_records(groups)
+    else:
+        stock_obj.current_record['answers'] = stock_obj.answers
+        response = stock_obj.make_direct_stock_move(move_type='in', )
     # stock_obj.read_series_ONTs()
     # se tiene que mover el direct move in despues de la injeccion de datos
-    stock_obj.current_record['answers'] = stock_obj.answers
-    response = stock_obj.make_direct_stock_move(move_type='in')
+
     print('TODO: revisar si un create no estuvo bien y ponerlo en error o algo')
     stock_obj.answers[stock_obj.f['inv_adjust_status']] =  'done'
     sys.stdout.write(simplejson.dumps({

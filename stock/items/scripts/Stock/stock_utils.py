@@ -148,6 +148,34 @@ class Stock(Stock):
         return answers
 
     def direct_move_in(self, new_record):
+        """
+        Crea entrda deirecta a stock invetory
+        Se crorren validaciones
+
+        args: Registro del movimeinto
+
+        return: res que puede ser un diccionario con idx de la linea del grupo repetitivo
+        y el resultado de cada movimiento
+        si se creo un nuevo registro regrea
+
+        {idx:
+            {
+            'new_id':true,
+            'folio':xx,
+            }}
+        si es una edicion
+        {idx:
+            {
+            'acknowledged':true,
+            'modified_count':1,
+            'folio':xx,
+            }}
+        si es un proceso de ont
+        {
+            'acknowledged':true,
+            'modified_count':1,
+        }
+        """
         now = datetime.now()
         res = {}
         #solo se usa en pci y en pruebas de exposion de materiales
@@ -181,20 +209,20 @@ class Stock(Stock):
 
         new_records = []
         update_records = []
-
         for idx, this_record in new_stock_records2.items():
             if this_record:
-                print('this_record=', this_record)
+                print('FOLIO=', this_record.get(folio))
                 new_records.append(this_record)
 
         if new_records:
+            print('new_records', new_records)
             res_new_stock = self.cr.insert_many(new_records)
             for idx, rec_idx in enumerate(res_new_stock.inserted_ids):
                 res[list(new_stock_records2.keys())[idx]] = {
                     'new_id':rec_idx,
                     'folio':new_stock_records2[idx]['folio'],
                     }
-                
+        print('res=',res)
         for idx, this_record in update_stock_records.items():
             if this_record:
                 update_records.append(this_record)
@@ -208,19 +236,29 @@ class Stock(Stock):
                     'modified_count': this_res.modified_count, 
                     'folio':record['folio']}
             # res_update_stock = self.cr.update_many(update_stock_records)
-        if self.proceso_onts:
-            print(todo)
-            if new_stock_records2:
-                res = self.cr.insert_many(new_stock_records2)
-                self.cache_set({
-                                'cache_type': 'direct_move_in',
-                                'inserted_ids':res.inserted_ids,
-                                })
-                print('res.inserted_ids', res.inserted_ids)
-                return res.inserted_ids
+        # if self.proceso_onts:
+        #     if new_stock_records2:
+        #         print('new_stock_records2', new_stock_records2)
+        #         print('new_stock_records2', new_stock_records2d)
+        #         res = self.cr.insert_many(new_stock_records2)
+        #         self.cache_set({
+        #                         'cache_type': 'direct_move_in',
+        #                         'inserted_ids':res.inserted_ids,
+        #                         })
+        #         print('res.inserted_ids', res.inserted_ids)
+        #         return res.inserted_ids
         return res
 
     def direct_move_in_line_validations(self, folio, metadata, move_lines):
+        """
+        Realiza validaciones de salida y movimeinto de inventarios y complemente informacion
+        de embarque
+
+        args:
+            folio, es el folio del registro
+            metadata: diccionario con metadata de registro padre
+            move_lines: son las lineas de moviemintos
+        """
         new_stock_records2 = {}
         update_stock_records = {}
         skus = self.get_group_skus(move_lines)
@@ -232,28 +270,28 @@ class Stock(Stock):
         observaciones = self.answers.get(self.f['stock_move_comments'])
         folio_recepcion = self.answers.get(self.f['folio_recepcion'])
         wh_type = self.WH.warehouse_type(warehouse)
-        print('warehouse', warehouse)
-        print('wh_type', wh_type)
         for idx, moves in enumerate(move_lines):
+            print('idex', idx)
+            print('moves', moves)
             update_stock_records[idx] = []
             new_stock_records2[idx] = []
             status = moves.get('inv_adjust_grp_status')
-            print('moves', simplejson.dumps(moves, indent=4))
-            if status == 'done' and not self.proceso_onts:
+            if status == 'done':
                 continue
             move_qty = moves.get('move_group_qty', 0)
-            print('warehouse', warehouse)
             if wh_type == 'stock':
                 #El producto esta ingresando desde un almacen tipo stock se deve de validar su existenica
                 vals = self.validate_move_qty(moves['product_code'], moves['sku'], moves['product_lot'],  warehouse, location, move_qty)
-                print('vals', vals)
+            
             this_metadata = deepcopy(metadata)
-            this_metadata['folio'] = f'{folio}-{idx+1}'
+            if moves.get('folio'):
+                this_metadata['folio'] = moves['folio']
+            else:
+                this_metadata['folio'] = f'{folio}-{idx+1}'
             # records = self.cr.find({'form_id':self.FORM_INVENTORY_ID, 'folio':folio},{'folio':1})
             # folio_exists
-            move_line = self.answers[self.f['move_group']][idx]
+            # move_line = self.answers[self.f['move_group']][idx]
             answers = self.stock_inventory_model(moves, skus[moves['product_code']], labels=True)
-
             answers.update(self.direct_move_math(answers, move_in= moves['move_group_qty']))
             answers.update({
                 self.WH.WAREHOUSE_LOCATION_OBJ_ID:{
@@ -266,33 +304,79 @@ class Stock(Stock):
                     }
                 )
             this_metadata['answers'] = answers
-            if not self.proceso_onts:
-                exists = self.product_stock_exists(
-                                product_code=moves['product_code'], 
-                                sku=moves['sku'], 
-                                lot_number=moves['product_lot'], 
-                                warehouse=warehouse_to, 
-                                location=location_to)
-                if exists:
-                    this_metadata['_id'] = exists['_id']
-                    this_metadata['folio'] = exists['folio']
-                    product_stock = self.get_product_stock(
-                        moves['product_code'], 
-                        sku=moves['sku'], 
-                        lot_number=moves['product_lot'], 
-                        warehouse=warehouse_to, 
-                        location=location_to)
-                    this_metadata['answers'].update(self.direct_move_math(exists['answers'], move_in=move_qty, product_stock=product_stock))
-                    update_stock_records[idx] = this_metadata
-                else:
-                    ##### try to create the inventory
-                    print('no existe.....')
-                    print('this_metadata', this_metadata)
-                    new_stock_records2[idx] = this_metadata
-            else:
+
+            if self.proceso_onts:
                 #ONTS....
-                new_stock_records2.append(this_metadata)
+                new_stock_records2[idx] = this_metadata
+                continue
+            exists = self.product_stock_exists(
+                            product_code=moves['product_code'], 
+                            sku=moves['sku'], 
+                            lot_number=moves['product_lot'], 
+                            warehouse=warehouse_to, 
+                            location=location_to)
+            if exists:
+                this_metadata['_id'] = exists['_id']
+                this_metadata['folio'] = exists['folio']
+                product_stock = self.get_product_stock(
+                    moves['product_code'], 
+                    sku=moves['sku'], 
+                    lot_number=moves['product_lot'], 
+                    warehouse=warehouse_to, 
+                    location=location_to)
+                this_metadata['answers'].update(self.direct_move_math(exists['answers'], move_in=move_qty, product_stock=product_stock))
+                update_stock_records[idx] = this_metadata
+            else:
+                ##### try to create the inventory
+                new_stock_records2[idx] = this_metadata
         return new_stock_records2, update_stock_records
+
+    def get_group_skus(self, products):
+        search_codes = {}
+        for product in products:
+            product_code =  product.get('product_code')
+            if not product_code:
+                product_code = product[self.Product.SKU_OBJ_ID][self.f['product_code']]
+            sku =  self.unlist(product.get('sku'))
+            if not sku:
+                sku = self.unlist(product[self.Product.SKU_OBJ_ID][self.f['sku']])
+            search_codes[product_code] = search_codes.get(product_code, [])
+            search_codes[product_code].append(sku)
+            if sku not in search_codes[product_code]:
+                search_codes[product_code].append(sku)
+        skus = self.get_product_sku(search_codes)
+        return skus
+
+    def get_product_sku(self, all_codes):
+        #borrar solo para debug
+        print('all_codes', all_codes)
+        all_sku = []
+        for sku, product_code in all_codes.items():
+            if sku not in all_sku:
+                all_sku.append(sku.upper())
+        skus = {}
+        mango_query = self.product_sku_query(all_sku)
+        print('mango_query', mango_query)
+        print('self.Product.SKU_ID', self.Product.SKU_ID)
+        sku_finds = self.lkf_api.search_catalog(self.Product.SKU_ID, mango_query)
+        for this_sku in sku_finds:
+                product_code = this_sku.get(self.f['product_code'])
+                skus[product_code] = skus.get(product_code, {})
+                skus[product_code].update({
+                    'sku':this_sku.get(self.f['sku']),
+                    'product_name':this_sku.get(self.f['product_name']),
+                    'product_category':this_sku.get(self.f['product_category']),
+                    'product_type':this_sku.get(self.f['product_type']),
+                    'product_department':this_sku.get(self.f['product_department']),
+                    'sku_color':this_sku.get(self.f['sku_color']),
+                    'sku_image':this_sku.get(self.f['sku_image'],),
+                    'sku_note':this_sku.get(self.f['sku_note'],),
+                    'sku_package':this_sku.get(self.f['sku_package'],),
+                    'sku_per_package':this_sku.get(self.f['reicpe_per_container'],),
+                    'sku_size' : this_sku.get(self.f['sku_size']),
+                    'sku_source' : this_sku.get(self.f['sku_source']),
+                    })
+        return skus
 
     def carga_onts(self, header, records):
         header_dict = self.make_header_dict(header)
@@ -465,20 +549,63 @@ class Stock(Stock):
             #     print('folio not found')
         return max_folio + 1
     
+    def get_record_ids_by_folios(self, response):
+        query_find = {'form_id':self.FORM_INVENTORY_ID}
+        folios = []
+        folio_ids = {}
+        folios = [r['folio'] for idx, r in response.items() if r.get('folio')]
+        if isinstance(folios, list):
+            query_find.update({'folio':{'$in':folios}})
+        elif isinstance(folios, str):
+            query_find.update({'folio':folios})
+
+        res = self.cr.find(query_find,{'folio':1})
+        for r in res:
+            folio_ids[r['folio']] = str(r['_id'])
+        # db_ids = [r['lkf_id'] for r in self.class_cr.find(query)]
+
+        return folio_ids
+
     def make_direct_stock_move(self, move_type='out'):
+        """
+        Crea momimientos de almacen haciendo registros directo a la base de datos
+        1. Crea registro de stock inventary (entrada al amacen)
+        args: move_type
+
+        """
         self.answer_label = self._labels()
         warehouse = self.answer_label['warehouse']
         location = self.answer_label['warehouse_location']
+        #se crea entrada al amcen
         response = self.direct_move_in(self.current_record)
+        folio_ids = self.get_record_ids_by_folios(response)
         for idx, res in response.items():
             moves = self.answers[self.f['move_group']][idx]
             moves_label = self._labels(data=moves)
-            cache_data = self.format_stock_cache(moves_label, 'out', warehouse, location)
+            print('*********************', idx)
+            print('moves', moves)
+            # cache_data = self.format_stock_cache(moves_label, 'out', warehouse, location)
             if res.get('new_id'):
+                # sync_res = self.lkf_api.sync_catalogs_records({
+                #     'catalogs_ids':[self.CATALOG_INVENTORY_ID],
+                #     'form_answer_id':res['new_id'],
+                #     'form_answer_status':'created',
+                #     })
+                # print('sync res', sync_res)
                 self.answers[self.f['move_group']][idx][self.f['inv_adjust_grp_status']] = 'done'
-                self.cache_set(cache_data)
+                # self.cache_set(cache_data)
             elif res.get('acknowledged') and res['acknowledged']:
-                self.cache_set(cache_data)
+                # print('res', {
+                #     'catalogs_ids':[self.CATALOG_INVENTORY_ID],
+                #     'form_answer_id':folio_ids[res['folio']],
+                #     'form_answer_status':'edited',
+                #     })
+                # sync_res = self.lkf_api.sync_catalogs_records({
+                #     'catalogs_ids':[self.CATALOG_INVENTORY_ID],
+                #     'form_answer_id':folio_ids[res['folio']],
+                #     'form_answer_status':'edited',
+                #     })
+                # self.cache_set(cache_data)
                 self.answers[self.f['move_group']][idx][self.f['inv_adjust_grp_status']] = 'done'
             else:
                 self.answers[self.f['move_group']][idx][self.f['inv_adjust_grp_status']] = 'error'
@@ -490,7 +617,8 @@ class Stock(Stock):
             self.move_out_stock(self.current_record)
         # if not self.proceso_onts:
         #     response = self.move_one_many_one()
-        self.answers[self.f['inv_adjust_status']] =  'done'    
+        self.answers[self.f['inv_adjust_status']] =  'done'
+        return response  
 
     def move_out_stock(self, new_record):
         record_data = self.get_record_move_data(new_record)
@@ -510,8 +638,8 @@ class Stock(Stock):
             print('product_db_info',product_db_info)
             product_stock = self.get_product_stock(product_code, sku=sku, lot_number=product_lot, warehouse=record_data['warehouse'], location=record_data['location'])
             acutals = product_stock.get('actuals',0)
-            print('move_qty',move_qty)
             print('acutals',acutals)
+            print('move_qty',move_qty)
             print('product_stock',product_stock)
             product_db_info['answers'].update(self.direct_move_math(product_db_info['answers'],  move_in=0, move_out=move_qty, product_stock=product_stock))
             rec_id = product_db_info.pop('_id')
@@ -753,7 +881,7 @@ class Stock(Stock):
         
         if not header:
             return None, None
-
+        print('header', header)
         if 'serie ont' in [x.lower() for x in header]:
             self.proceso_onts = True
             return self.carga_onts(header, records)
