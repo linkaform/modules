@@ -1,32 +1,15 @@
 # coding: utf-8
 import sys, simplejson
-from linkaform_api import settings
-from account_settings import *
-
-from accesos_utils import Accesos
 from datetime import datetime
 import pytz
 
+from accesos_utils import Accesos
+
+from account_settings import *
+
 class Accesos(Accesos):
 
-    def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False, **kwargs):
-        super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
 
-        self.CONFIGURACION_DE_RECORRIDOS_FORM = self.lkm.form_id('configuracion_de_recorridos','id')
-        self.BITACORA_RONDINES = self.lkm.form_id('bitacora_rondines','id')
-
-        self.f.update({
-            'nombre_del_recorrido': '6645050d873fc2d733961eba',
-            'grupo_de_areas_recorrido': '6645052ef8bc829a5ccafaf5',
-            'nombre_del_recorrido_en_catalog': '6644fb97e14dcb705407e0ef',
-            'estatus_del_recorrido': '6639b2744bb44059fc59eb62',
-            'areas_del_rondin': '66462aa5d4a4af2eea07e0d1',
-            'comentario_area_rondin': '66462b9d7124d1540f962088',
-            'fecha_hora_inspeccion_area': '6760a908a43b1b0e41abad6b',
-            'comentario_check_area': '681144fb0d423e25b42818d4',
-            'foto_evidencia_area': '681144fb0d423e25b42818d2',
-            'foto_evidencia_area_rondin': '66462b9d7124d1540f962087'
-        })
 
     def get_recorridos_by_area(self, area_rondin):
         """
@@ -45,51 +28,20 @@ class Accesos(Accesos):
                     f"answers.{self.f['grupo_de_areas_recorrido']}": {'$exists': True}
                 }
             },
-            {
-                '$addFields': {
-                    'match_areas': {
-                        '$filter': {
-                            'input': f"$answers.{self.f['grupo_de_areas_recorrido']}",
-                            'as': 'item',
-                            'cond': {
-                                '$eq': [
-                                    {
-                                        '$getField': {
-                                            'field': self.f['nombre_area'],
-                                            'input': {
-                                                '$first': {
-                                                    '$map': {
-                                                        'input': {'$objectToArray': '$$item'},
-                                                        'as': 'kv',
-                                                        'in': '$$kv.v'
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    },
-                                    area_rondin
-                                ]
-                            }
-                        }
-                    }
+            {'$unwind':f"$answers.{self.f['grupo_de_areas_recorrido']}"},
+            {'$project':
+                {'area':f"$answers.{self.f['grupo_de_areas_recorrido']}.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area']}",
+                'nombre_recorrido':f"$answers.{self.f['nombre_del_recorrido']}"
                 }
             },
-            {
-                '$match': {
-                    'match_areas': {'$ne': []}
-                }
-            },
-            {
-                '$project': {
-                    '_id': 1,
-                    'nombre_recorrido': f"$answers.{self.f['nombre_del_recorrido']}"
-                }
+            {'$match':
+                {'area':area_rondin}
             }
         ]
-
         recorridos = self.format_cr(self.cr.aggregate(query))
         return recorridos
     
+
     def search_rondin_by_name(self, names=[], status_list=['programado', 'en_proceso']):
         format_names = []
         for name in names:
@@ -104,11 +56,14 @@ class Accesos(Accesos):
             }},
             {'$project': {
                 '_id': 1,
+                'fecha_programacion': f"$answers.{self.f['fecha_programacion']}",
+                'answers': f"$answers"
             }},
+            {'$sort': {'fecha_programacion': 1}},
             {'$limit': 1}
         ]
 
-        rondin = self.format_cr(self.cr.aggregate(query))
+        rondin = self.format_cr(self.cr.aggregate(query), **{'labels_off': True})
         return rondin
     
     def check_area_in_rondin(self, data_rondin, area_rondin, id_rondin):
@@ -137,7 +92,7 @@ class Accesos(Accesos):
             fecha_hora_inspeccion_area = item.get('fecha_hora_inspeccion_area', '')
             obj = {
                 self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
-                    self.mf['nombre_area']: nombre_area
+                    self.f['nombre_area']: nombre_area
                 },
                 self.f['foto_evidencia_area_rondin']: foto_evidencia_area,
                 self.f['comentario_area_rondin']: comentario_area,
@@ -158,10 +113,10 @@ if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
     acceso_obj.console_run()
     print('answers', acceso_obj.answers)
-    
-    cat_area_rondin = acceso_obj.answers.get(acceso_obj.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {})
-    nombre_area_rondin = cat_area_rondin.get(acceso_obj.mf['nombre_area'], [])[0]
-    print(nombre_area_rondin)
+    acceso_obj.load(module='Location', **acceso_obj.kwargs)
+    cat_area_rondin = acceso_obj.answers.get(acceso_obj.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {})
+    nombre_area_rondin = acceso_obj.unlist(cat_area_rondin.get(acceso_obj.f['nombre_area'], []))
+    print('nombre_area_rondin', nombre_area_rondin)
 
     nombres_recorrido = acceso_obj.get_recorridos_by_area(nombre_area_rondin)
     print('nombres_recorrido', nombres_recorrido)
