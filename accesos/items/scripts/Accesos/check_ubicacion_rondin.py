@@ -40,6 +40,11 @@ class Accesos(Accesos):
         return recorridos
 
     def search_rondin_by_name(self, names=[], status_list=['programado', 'en_proceso']):
+        """
+        Recibe: Una lista de nombres de recorridos y una lista de estatus para filtrar los recorridos
+        Retorna: En formato de lista el primer rondin que cumpla con los criterios
+        Error: 
+        """
         format_names = []
         for name in names:
             format_names.append(name.get('nombre_recorrido', ''))
@@ -64,6 +69,11 @@ class Accesos(Accesos):
         return rondin
     
     def check_area_in_rondin(self, data_rondin, area_rondin, rondin):
+        """
+        Recibe: Las answers del check de ubicacion, el area que se hice check de ubicacion y el registro de rondin
+        Retorna: La respuesta de la api al hacer el patch de un registro
+        Error: La respuesta de la api al hacer el patch de un registro
+        """
         tz = pytz.timezone('America/Mexico_City')
         today = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
         rondin = self.unlist(rondin)
@@ -146,6 +156,10 @@ class Accesos(Accesos):
                 return res
             else: 
                 return res
+            
+    def create_rondin(self):
+        #TODO Crear un rondin
+        pass
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
@@ -160,7 +174,11 @@ if __name__ == "__main__":
     # print('nombres_recorrido', nombres_recorrido)
 
     rondin = acceso_obj.search_rondin_by_name(names=nombres_recorrido)
-    # print('rondin', rondin)
+    print('rondin', rondin)
 
-    resultado = acceso_obj.check_area_in_rondin(data_rondin=acceso_obj.answers, area_rondin=nombre_area_rondin, rondin=rondin)
-    print('resultado', resultado)
+    if not rondin:
+        # acceso_obj.create_rondin()
+        print('No se encontro un rondin con el area proporcionada')
+    else:
+        resultado = acceso_obj.check_area_in_rondin(data_rondin=acceso_obj.answers, area_rondin=nombre_area_rondin, rondin=rondin)
+        print('resultado', resultado)
