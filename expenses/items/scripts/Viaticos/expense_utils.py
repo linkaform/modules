@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson
 
-from lkf_addons.addons.expenses.expense_utils import Expenses
+from lkf_addons.addons.expenses.app import Expenses
 
 from account_settings import *
 

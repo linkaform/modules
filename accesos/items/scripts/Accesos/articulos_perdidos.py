@@ -63,7 +63,7 @@ if __name__ == "__main__":
         else:
             response = acceso_obj.catalogo_tipo_articulo()
     elif option == 'catalogo_area_empleado':
-        response = acceso_obj.catalogo_config_area_empleado()
+        response = acceso_obj.catalogo_config_area_empleado(bitacora='Objetos Perdidos')
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})

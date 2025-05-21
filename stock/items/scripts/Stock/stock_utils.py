@@ -27,6 +27,17 @@ class Stock(Stock):
         self.f.update({
             'parts_group':'62c5da67f850f35cc2483346',
             })
+
+        self.sipre2lkf = {
+            'almacen': self.WH.ff['warehouse_location'], 
+            'almacenNombre': self.WH.f['warehouse'], 
+            'producto': self.Product.f['product_code'], 
+            'productoNombre': self.Product.f['product_name'],  
+            'inventario': self.f['actual_eaches_on_hand'], 
+            'familiaProducto': self.Product.f['product_type'], 
+            'lineaProducto':self.Product.f['product_category'],
+        }
+
         self.answer_label = self._labels()
         self.FOLDER_FORMS_ID = self.lkm.item_id('Stock', 'form_folder').get('id')
 
