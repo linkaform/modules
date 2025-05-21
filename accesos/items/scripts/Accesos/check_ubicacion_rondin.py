@@ -157,9 +157,53 @@ class Accesos(Accesos):
             else: 
                 return res
             
-    def create_rondin(self):
-        #TODO Crear un rondin
-        pass
+    def create_rondin(self, data_rondin, area_rondin):
+        metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_RONDINES)
+        metadata.update({
+            "properties": {
+                "device_properties":{
+                    "System": "Script",
+                    "Module": "Accesos",
+                    "Process": "Creación de Rondin",
+                    "Action": "check_ubicacion_rondin",
+                    "File": "accesos/check_ubicacion_rondin.py"
+                }
+            },
+        })
+        answers = {}
+
+        tz = pytz.timezone('America/Mexico_City')
+        today = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
+
+        answers[self.f['fecha_programacion']] = today
+        answers[self.f['fecha_inicio_rondin']] = today
+        ######################################
+        #TODO Cambiar la ubicacion hardcodeada
+        #####################################
+        answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = {
+            self.f['ubicacion_recorrido']: 'Planta Guadalajara',
+            self.f['nombre_del_recorrido_en_catalog']: 'Recorrido Uno'
+        }
+        answers[self.f['estatus_del_recorrido']] = 'en_proceso'
+        answers[self.f['areas_del_rondin']] = [{
+            self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
+                self.f['nombre_area']: area_rondin
+            },
+            self.f['fecha_hora_inspeccion_area']: today,
+            self.f['foto_evidencia_area_rondin']: data_rondin.get(self.f['foto_evidencia_area'], []),
+            self.f['comentario_area_rondin']: data_rondin.get(self.f['comentario_check_area'], '')
+        }]
+
+        metadata.update({'answers':answers})
+        print(simplejson.dumps(metadata, indent=3))
+
+        ##############################
+        #TODO Asignar a usuario
+        ###############################
+
+        # print(stop)
+        res = self.lkf_api.post_forms_answers(metadata)
+        return res
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
@@ -177,8 +221,9 @@ if __name__ == "__main__":
     print('rondin', rondin)
 
     if not rondin:
-        # acceso_obj.create_rondin()
-        print('No se encontro un rondin con el area proporcionada')
+        print('No se encontro un rondin con el area proporcionada. Creando uno nuevo...')
+        response = acceso_obj.create_rondin(acceso_obj.answers, nombre_area_rondin)
+        print('response', response)
     else:
         resultado = acceso_obj.check_area_in_rondin(data_rondin=acceso_obj.answers, area_rondin=nombre_area_rondin, rondin=rondin)
         print('resultado', resultado)
