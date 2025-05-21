@@ -9,8 +9,6 @@ from account_settings import *
 
 class Accesos(Accesos):
 
-
-
     def get_recorridos_by_area(self, area_rondin):
         """
         Recibe: El area que se buscara en la configuracion de recorridos
@@ -40,7 +38,6 @@ class Accesos(Accesos):
         ]
         recorridos = self.format_cr(self.cr.aggregate(query))
         return recorridos
-    
 
     def search_rondin_by_name(self, names=[], status_list=['programado', 'en_proceso']):
         format_names = []
@@ -66,42 +63,83 @@ class Accesos(Accesos):
         rondin = self.format_cr(self.cr.aggregate(query), **{'labels_off': True})
         return rondin
     
-    def check_area_in_rondin(self, data_rondin, area_rondin, id_rondin):
+    def check_area_in_rondin(self, data_rondin, area_rondin, rondin):
         tz = pytz.timezone('America/Mexico_City')
         today = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
-
-        format_id_rondin = id_rondin[0].get('_id', '')
+        rondin = self.unlist(rondin)
+        format_id_rondin = rondin.get('_id', '')
         answers={}
-        answers[self.f['areas_del_rondin']] = {}
-        
-        index=1
-        rondin = {}
-        rondin['grupo_areas'] = [
-            {
-                'nombre_area': area_rondin,
-                'comentario_area': data_rondin.get(self.f['comentario_check_area']),
-                'foto_evidencia_area': data_rondin.get(self.f['foto_evidencia_area']),
-                'fecha_hora_inspeccion_area': today,
-            }
-        ]
 
-        for index, item in enumerate(rondin.get('grupo_areas', [])):
-            nombre_area = item.get('nombre_area', '')
-            comentario_area = item.get('comentario_area', '')
-            foto_evidencia_area = item.get('foto_evidencia_area', '')
-            fecha_hora_inspeccion_area = item.get('fecha_hora_inspeccion_area', '')
-            obj = {
-                self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
-                    self.f['nombre_area']: nombre_area
-                },
-                self.f['foto_evidencia_area_rondin']: foto_evidencia_area,
-                self.f['comentario_area_rondin']: comentario_area,
-                self.f['fecha_hora_inspeccion_area']: fecha_hora_inspeccion_area
-            }
-            answers[self.f['areas_del_rondin']][-index] = obj
-        
+        print('rondinnnnnnnnnnnnnnnnn', simplejson.dumps(rondin, indent=3))
+
+        if not rondin.get('fecha_inicio_rondin'):
+            rondin['fecha_inicio_rondin'] = today
+
+        conf_recorrido = {}
+        for key, value in rondin.items():
+            if key == 'fecha_programacion':
+                answers[self.f['fecha_programacion']] = value
+            elif key == 'fecha_inicio_rondin':
+                answers[self.f['fecha_inicio_rondin']] = value
+            elif key == 'ubicacion_recorrido':
+                conf_recorrido.update({
+                    self.f['ubicacion_recorrido']: value
+                })
+            elif key == 'nombre_del_recorrido_en_catalog':
+                conf_recorrido.update({
+                    self.f['nombre_del_recorrido_en_catalog']: value
+                })
+            elif key == 'estatus_del_recorrido':
+                answers[self.f['estatus_del_recorrido']] = value
+            elif key == 'areas_del_rondin':
+                areas_rondin = {}
+                items = []
+                for index, item in enumerate(value):
+                    if item.get('note_booth', '') == area_rondin:
+                        obj = {
+                            self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
+                                self.f['nombre_area']: area_rondin
+                            },
+                            self.f['fecha_hora_inspeccion_area']: today,
+                            self.f['foto_evidencia_area_rondin']: data_rondin.get(self.f['foto_evidencia_area'], []),
+                            self.f['comentario_area_rondin']: data_rondin.get(self.f['comentario_check_area'], '')
+                        }
+                    else:
+                        obj = {
+                            self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
+                                self.f['nombre_area']: item.get('note_booth', '')
+                            },
+                            self.f['fecha_hora_inspeccion_area']: item.get('fecha_hora_inspeccion_area', ''),
+                            self.f['foto_evidencia_area_rondin']: item.get('foto_evidencia_area_rondin', []),
+                            self.f['comentario_area_rondin']: item.get('comentario_area_rondin', '')
+                        }
+                    items.append(obj)
+
+                items_sorted = sorted(
+                    items,
+                    key=lambda x: not bool(x.get(self.f['fecha_hora_inspeccion_area'], '').strip())
+                )
+
+                rondin_en_progreso = True
+                for idx, obj in enumerate(items_sorted):
+                    if not obj.get(self.f['fecha_hora_inspeccion_area']):
+                        rondin_en_progreso = True
+                    else:
+                        rondin_en_progreso = False
+                    areas_rondin[str(idx)] = obj
+
+                answers[self.f['areas_del_rondin']] = areas_rondin
+                print(rondin_en_progreso)
+            else:
+                pass
+
+        answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = conf_recorrido
+        answers[self.f['estatus_del_recorrido']] = 'en_proceso' if rondin_en_progreso else 'realizado'
+        answers[self.f['fecha_fin_rondin']] = today if not rondin_en_progreso else ''
+
         print("ans", simplejson.dumps(answers, indent=4))
 
+        # print(stop)
         if answers:
             res= self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=[format_id_rondin])
             if res.get('status_code') == 201 or res.get('status_code') == 202:
@@ -116,13 +154,13 @@ if __name__ == "__main__":
     acceso_obj.load(module='Location', **acceso_obj.kwargs)
     cat_area_rondin = acceso_obj.answers.get(acceso_obj.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {})
     nombre_area_rondin = acceso_obj.unlist(cat_area_rondin.get(acceso_obj.f['nombre_area'], []))
-    print('nombre_area_rondin', nombre_area_rondin)
+    # print('nombre_area_rondin', nombre_area_rondin)
 
     nombres_recorrido = acceso_obj.get_recorridos_by_area(nombre_area_rondin)
-    print('nombres_recorrido', nombres_recorrido)
+    # print('nombres_recorrido', nombres_recorrido)
 
     rondin = acceso_obj.search_rondin_by_name(names=nombres_recorrido)
-    print('rondin', rondin)
+    # print('rondin', rondin)
 
-    resultado = acceso_obj.check_area_in_rondin(data_rondin=acceso_obj.answers, area_rondin=nombre_area_rondin, id_rondin=rondin)
+    resultado = acceso_obj.check_area_in_rondin(data_rondin=acceso_obj.answers, area_rondin=nombre_area_rondin, rondin=rondin)
     print('resultado', resultado)
