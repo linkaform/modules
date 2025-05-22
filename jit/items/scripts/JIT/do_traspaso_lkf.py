@@ -15,6 +15,19 @@ class JIT(JIT):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
         self.load(module='Product', module_class='Warehouse', import_as='WH', **self.kwargs)
 
+    def format_locations(self, w_form, w_to):
+        if w_to == 'mty':
+            w_to = 'monterrey'
+        elif w_to == 'gdl':
+            w_to = 'guadalajara'
+        else:
+            w_to = ''
+
+        for w in w_form:
+            w_from = w.get('from', '').split(' ', 1)[1].lower()
+
+        return w_from, w_to
+
     def format_products_traspaso(self, list_of_products):
         formated_list_of_products = []
 
@@ -30,17 +43,18 @@ class JIT(JIT):
         print('FORMATED_LIST_OF_PRODUCTS', simplejson.dumps(formated_list_of_products, indent=3))
         return formated_list_of_products
 
-    def create_salida_mult_prod_a_ubicacion(self, list_of_products):
-        #HARDCODE DE MOMENTO DE LAS UBICACIONES
+    def create_salida_mult_prod_a_ubicacion(self, w_from, w_to, list_of_products):
         almacen_origen = {
-            'warehouse_name': 'ALM GUADALAJARA',
-            'location': 'Almacen Guadalajara'
+            'warehouse_name': 'ALM ' + w_from.upper(),
+            'location': 'Almacen ' + w_from.capitalize()
         }
         almacen_destino = {
-            'warehouse_name': 'ALM MONTERREY',
-            'location': 'Almacen Monterrey'
+            'warehouse_name': 'ALM ' + w_to.upper(),
+            'location': 'Almacen ' + w_to.capitalize()
         }
-        ##########################################
+
+        print('ALMACEN ORIGEN', almacen_origen)
+        print('ALMACEN DESTINO', almacen_destino)
 
         metadata = self.lkf_api.get_metadata(form_id=self.STOCK_ONE_MANY_ONE)
         metadata.update({
@@ -120,8 +134,9 @@ if __name__ == '__main__':
 
     print('ANSWERSSSSSSSSSSSSSSSSS', simplejson.dumps(data, indent=3))
     formated_list_of_products = JIT_obj.format_products_traspaso(list_of_products)
+    w_from, w_to = JIT_obj.format_locations(list_of_products, almacen_destino)
 
-    response = JIT_obj.create_salida_mult_prod_a_ubicacion(formated_list_of_products)
+    response = JIT_obj.create_salida_mult_prod_a_ubicacion(w_from, w_to, formated_list_of_products)
     status_code = 400
     sipre_folio = 'No obtenido'
     if response.get('status_code') in [200, 201, 202]:
