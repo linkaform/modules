@@ -2,6 +2,7 @@
 import sys, simplejson
 from datetime import datetime
 import pytz
+from bson import ObjectId
 
 from accesos_utils import Accesos
 
@@ -28,8 +29,10 @@ class Accesos(Accesos):
             },
             {'$unwind':f"$answers.{self.f['grupo_de_areas_recorrido']}"},
             {'$project':
-                {'area':f"$answers.{self.f['grupo_de_areas_recorrido']}.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area']}",
-                'nombre_recorrido':f"$answers.{self.f['nombre_del_recorrido']}"
+                {
+                    'area':f"$answers.{self.f['grupo_de_areas_recorrido']}.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area']}",
+                    'nombre_recorrido':f"$answers.{self.f['nombre_del_recorrido']}",
+                    'ubicacion_recorrido': f"$answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_recorrido']}"
                 }
             },
             {'$match':
@@ -157,7 +160,37 @@ class Accesos(Accesos):
             else: 
                 return res
             
-    def create_rondin(self, data_rondin, area_rondin):
+    def get_areas_recorrido(self, record_id):
+        query = [
+            {'$match': {
+                "deleted_at": {"$exists": False},
+                "form_id": self.CONFIGURACION_DE_RECORRIDOS_FORM,
+                "_id": ObjectId(record_id)
+            }},
+            {'$project': {
+                '_id': 0,
+                'areas_recorrido': f'$answers.{self.f["grupo_de_areas_recorrido"]}'
+            }},
+            {'$limit': 1}
+        ]
+
+        res = self.format_cr(self.cr.aggregate(query))
+        formatted_res = self.unlist(res)
+        formatted_res = formatted_res.get('areas_recorrido', [])
+        return formatted_res
+
+    def create_rondin(self, data_rondin, area_rondin, nombres_recorrido=[]):
+        nombre_recorrido = ''
+        ubicacion_recorrido = ''
+        record_id = ''
+
+        for nombre in nombres_recorrido:
+            nombre_recorrido = nombre.get('nombre_recorrido', '')
+            ubicacion_recorrido = nombre.get('ubicacion_recorrido', '')
+            record_id = nombre.get('_id', '')
+
+        areas_recorrido = self.get_areas_recorrido(record_id)
+
         metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_RONDINES)
         metadata.update({
             "properties": {
@@ -181,8 +214,8 @@ class Accesos(Accesos):
         #TODO Cambiar la ubicacion hardcodeada
         #####################################
         answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = {
-            self.f['ubicacion_recorrido']: 'Planta Guadalajara',
-            self.f['nombre_del_recorrido_en_catalog']: 'Recorrido Uno'
+            self.f['ubicacion_recorrido']: ubicacion_recorrido,
+            self.f['nombre_del_recorrido_en_catalog']: nombre_recorrido
         }
         answers[self.f['estatus_del_recorrido']] = 'en_proceso'
         answers[self.f['areas_del_rondin']] = [{
@@ -193,6 +226,14 @@ class Accesos(Accesos):
             self.f['foto_evidencia_area_rondin']: data_rondin.get(self.f['foto_evidencia_area'], []),
             self.f['comentario_area_rondin']: data_rondin.get(self.f['comentario_check_area'], '')
         }]
+
+        for area in areas_recorrido:
+            if not area.get('note_booth') == area_rondin:
+                answers[self.f['areas_del_rondin']].append({
+                    self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
+                        self.f['nombre_area']: area.get('note_booth', '')
+                    },
+                })
 
         metadata.update({'answers':answers})
         print(simplejson.dumps(metadata, indent=3))
@@ -222,7 +263,7 @@ if __name__ == "__main__":
 
     if not rondin:
         print('No se encontro un rondin con el area proporcionada. Creando uno nuevo...')
-        response = acceso_obj.create_rondin(acceso_obj.answers, nombre_area_rondin)
+        response = acceso_obj.create_rondin(acceso_obj.answers, nombre_area_rondin, nombres_recorrido)
         print('response', response)
     else:
         resultado = acceso_obj.check_area_in_rondin(data_rondin=acceso_obj.answers, area_rondin=nombre_area_rondin, rondin=rondin)
