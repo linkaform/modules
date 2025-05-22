@@ -108,6 +108,7 @@ class JIT(JIT):
 
         res = self.format_cr(self.cr.aggregate(query))
         formatted_res = self.unlist(res)
+        formatted_res = formatted_res.get('folio_sipre', '')
         return formatted_res
 
 if __name__ == '__main__':
@@ -121,11 +122,18 @@ if __name__ == '__main__':
     formated_list_of_products = JIT_obj.format_products_traspaso(list_of_products)
 
     response = JIT_obj.create_salida_mult_prod_a_ubicacion(formated_list_of_products)
+    status_code = 400
+    sipre_folio = 'No obtenido'
     if response.get('status_code') in [200, 201, 202]:
+        status_code = 200
         print('Se creo la salida multiple de productos a ubicacion exitosamente')
-        print(response)
-        sipre_folio = JIT_obj.get_folio_sipre(response.get('json', {}).get('id', ''))
-        print(sipre_folio)
+        record_id = response.get('json', {}).get('id', '')
+        sipre_folio = JIT_obj.get_folio_sipre(record_id)
     else:
         print(response)
 
+    sys.stdout.write(simplejson.dumps({
+        'response': response,
+        'status': status_code,
+        'sipre_folio': sipre_folio
+    }))
