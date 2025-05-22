@@ -15,20 +15,6 @@ class JIT(JIT):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
         self.load(module='Product', module_class='Warehouse', import_as='WH', **self.kwargs)
 
-        self.f.update({
-            'fecha_salida_multiple': '000000000000000000000111',
-            'wh_name': '6442e4831198daf81456f274',
-            'wh_location': '65ac6fbc070b93e656bd7fbe',
-            'wh_name_dest': '65bdc71b3e183f49761a33b9',
-            'wh_location_dest': '65c12749cfed7d3a0e1a341b',
-            'status_salida_multiple': '6442e4537775ce64ef72dd6a',
-            'grupo_productos_salida_multiple': '6442e4537775ce64ef72dd69',
-            'product_code_salida': '61ef32bcdf0ec2ba73dec33d',
-            'sku_salida': '65dec64a3199f9a040829243',
-            'lot_number_salida': '620a9ee0a449b98114f61d77',
-            'cantidad_salida': '6442e4cc45983bf1778ec17d'
-        })
-
     def format_products_traspaso(self, list_of_products):
         formated_list_of_products = []
 
@@ -105,6 +91,24 @@ class JIT(JIT):
         # print(stop)
         res = self.lkf_api.post_forms_answers(metadata)
         return res
+    
+    def get_folio_sipre(self, record_id):
+        query = [
+            {'$match': {
+                "deleted_at": {"$exists": False},
+                "form_id": self.STOCK_ONE_MANY_ONE,
+                "_id": ObjectId(record_id)
+            }},
+            {'$project': {
+                '_id': 0,
+                'folio_sipre': f'$answers.{self.f["folio_sipre"]}'
+            }},
+            {'$limit': 1}
+        ]
+
+        res = self.format_cr(self.cr.aggregate(query))
+        formatted_res = self.unlist(res)
+        return formatted_res
 
 if __name__ == '__main__':
     JIT_obj = JIT(settings, sys_argv=sys.argv, use_api=True)
@@ -119,6 +123,9 @@ if __name__ == '__main__':
     response = JIT_obj.create_salida_mult_prod_a_ubicacion(formated_list_of_products)
     if response.get('status_code') in [200, 201, 202]:
         print('Se creo la salida multiple de productos a ubicacion exitosamente')
+        print(response)
+        sipre_folio = JIT_obj.get_folio_sipre(response.get('json', {}).get('id', ''))
+        print(sipre_folio)
     else:
         print(response)
 
