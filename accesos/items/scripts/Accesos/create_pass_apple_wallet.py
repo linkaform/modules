@@ -86,101 +86,112 @@ class Accesos(Accesos):
         response.raise_for_status()
         return io.BytesIO(response.content)
 
-    def create_pass_apple_wallet(self, record_id='682f997fe83c71d5f4575fff'):
+    def create_pass_apple_wallet(self, record_id):
+        if not record_id:
+            raise Exception("record_id es requerido")
+
         access_pass = self.get_detail_access_pass(qr_code=record_id)
-        fecha_completa = access_pass.get('fecha_de_caducidad', '')
-        fecha, hora = fecha_completa.split(' ')
-        hora_sin_segundos = hora[:5]
-        foto_url = access_pass.get('foto', [])[0].get('file_url', '')
+        file_url = ''
+        if access_pass.get('apple_wallet_pass', []):
+            for apple_pass in access_pass.get('apple_wallet_pass', []):
+                file_url = apple_pass.get('file_url')
+        else:
+            fecha_completa = access_pass.get('fecha_de_caducidad', '')
+            fecha, hora = fecha_completa.split(' ')
+            hora_sin_segundos = hora[:5]
+            foto_url = access_pass.get('foto', [])[0].get('file_url', '')
 
-        data = {
-            "qr_code": record_id,
-            "nombre": access_pass.get('nombre'),
-            "visita_a": access_pass.get('visita_a', [])[0].get('nombre', ''),
-            "fecha": fecha,
-            "hora": hora_sin_segundos,
-            "ubicacion": access_pass.get('ubicacion', ''),
-            "area": access_pass.get('area', 'Caseta Principal'),
-        }
+            data = {
+                "qr_code": record_id,
+                "nombre": access_pass.get('nombre'),
+                "visita_a": access_pass.get('visita_a', [])[0].get('nombre', ''),
+                "fecha": fecha,
+                "hora": hora_sin_segundos,
+                "ubicacion": access_pass.get('ubicacion', ''),
+                "area": access_pass.get('area', 'Caseta Principal'),
+            }
 
-        pass_json_path = self.crear_pass_json(data)
+            pass_json_path = self.crear_pass_json(data)
 
-        with open(pass_json_path, "r", encoding="utf-8") as f:
-            pass_data = json.load(f)
+            with open(pass_json_path, "r", encoding="utf-8") as f:
+                pass_data = json.load(f)
 
-        card_info = Generic()
-        card_info.headerFields = [Field(**f) for f in pass_data.get("generic", {}).get("headerFields", [])]
-        card_info.primaryFields = [Field(**f) for f in pass_data.get("generic", {}).get("primaryFields", [])]
-        card_info.secondaryFields = [Field(**f) for f in pass_data.get("generic", {}).get("secondaryFields", [])]
-        card_info.auxiliaryFields = [Field(**f) for f in pass_data.get("generic", {}).get("auxiliaryFields", [])]
+            card_info = Generic()
+            card_info.headerFields = [Field(**f) for f in pass_data.get("generic", {}).get("headerFields", [])]
+            card_info.primaryFields = [Field(**f) for f in pass_data.get("generic", {}).get("primaryFields", [])]
+            card_info.secondaryFields = [Field(**f) for f in pass_data.get("generic", {}).get("secondaryFields", [])]
+            card_info.auxiliaryFields = [Field(**f) for f in pass_data.get("generic", {}).get("auxiliaryFields", [])]
 
-        my_pass = MyPass(
-            pass_information=card_info,
-            pass_type_identifier="pass.com.soter.mx",
-            organization_name="Soter",
-            team_identifier="ME623A8A63",
-        )
+            my_pass = MyPass(
+                pass_information=card_info,
+                pass_type_identifier="pass.com.soter.mx",
+                organization_name="Soter",
+                team_identifier="ME623A8A63",
+            )
 
-        my_pass.barcode = Barcode(message='681bf3e3a83be7c3b9cf802f', format='qr', encoding='iso-8859-1', alt_text='')
-        my_pass.serialNumber = str(uuid.uuid4())
-        my_pass.description = "Pase de prueba"
+            my_pass.barcode = Barcode(message='681bf3e3a83be7c3b9cf802f', format='qr', encoding='iso-8859-1', alt_text='')
+            my_pass.serialNumber = str(uuid.uuid4())
+            my_pass.description = "Pase de prueba"
 
-        # print(json.dumps(my_pass.json_dict(), indent=4, ensure_ascii=False))
+            # print(json.dumps(my_pass.json_dict(), indent=4, ensure_ascii=False))
 
-        icon_url = "https://f001.backblazeb2.com/file/app-linkaform/public-client-126/68600/6076166dfd84fa7ea446b917/2025-05-08T08:28:17_1.png"
-        logo_url = "https://f001.backblazeb2.com/file/app-linkaform/public-client-126/68600/6076166dfd84fa7ea446b917/2025-05-22T17:02:16_1.png"
-        thumbnail_url = foto_url
+            icon_url = "https://f001.backblazeb2.com/file/app-linkaform/public-client-126/68600/6076166dfd84fa7ea446b917/2025-05-08T08:28:17_1.png"
+            logo_url = "https://f001.backblazeb2.com/file/app-linkaform/public-client-126/68600/6076166dfd84fa7ea446b917/2025-05-22T17:02:16_1.png"
+            thumbnail_url = foto_url
 
-        my_pass.add_file(name="icon.png", file_handle=self.get_image_file(icon_url))
-        my_pass.add_file(name="logo.png", file_handle=self.get_image_file(logo_url))
-        my_pass.add_file(name="thumbnail.png", file_handle=self.get_image_file(thumbnail_url))
+            my_pass.add_file(name="icon.png", file_handle=self.get_image_file(icon_url))
+            my_pass.add_file(name="logo.png", file_handle=self.get_image_file(logo_url))
+            if thumbnail_url:
+                my_pass.add_file(name="thumbnail.png", file_handle=self.get_image_file(thumbnail_url))
 
-        cert_string = """"""
+            cert_string = """"""
 
-        soter_pass_string = """"""
+            soter_pass_string = """"""
 
-        wwdr_string = """"""
+            wwdr_string = """"""
 
-        key_pem_password = "vB9#tG2r!XwL7@fQ"
+            key_pem_password = ""
 
-        with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix='.pem') as cert_temp:
-            cert_temp.write(cert_string)
-            cert_temp_path = cert_temp.name
+            with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix='.pem') as cert_temp:
+                cert_temp.write(cert_string)
+                cert_temp_path = cert_temp.name
 
-        with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix='.pem') as wwdr_temp:
-            wwdr_temp.write(wwdr_string)
-            wwdr_temp_path = wwdr_temp.name
+            with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix='.pem') as wwdr_temp:
+                wwdr_temp.write(wwdr_string)
+                wwdr_temp_path = wwdr_temp.name
 
-        with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix='.pem') as soter_pass_key_temp:
-            soter_pass_key_temp.write(soter_pass_string)
-            soter_pass_key_temp_path = soter_pass_key_temp.name
+            with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix='.pem') as soter_pass_key_temp:
+                soter_pass_key_temp.write(soter_pass_string)
+                soter_pass_key_temp_path = soter_pass_key_temp.name
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as temp_pkpass:
-            pkpass_path = temp_pkpass.name
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as temp_pkpass:
+                pkpass_path = temp_pkpass.name
 
-        response = my_pass.create(cert_temp_path, soter_pass_key_temp_path, wwdr_temp_path, key_pem_password, pkpass_path)
-        print("Archivo temporal creado:", pkpass_path)
+            response = my_pass.create(cert_temp_path, soter_pass_key_temp_path, wwdr_temp_path, key_pem_password, pkpass_path)
+            print("Archivo temporal creado:", pkpass_path)
 
-        # Lee el archivo en bytes
-        with open(pkpass_path, "rb") as f:
-            zip_bytes = f.read()
+            # Lee el archivo en bytes
+            with open(pkpass_path, "rb") as f:
+                zip_bytes = f.read()
 
-        id_forma_seleccionada = 121736
-        id_field = '682785fbedd82a9104287e25'
-        upload_result = self.upload_zip(id_forma_seleccionada, id_field, zip_bytes, filename="SoterApplePass.zip")
-        print(upload_result)
+            id_forma_seleccionada = self.PASE_ENTRADA_ID
+            id_field = self.pase_entrada_fields['apple_wallet_pass']
+            upload_result = self.upload_zip(id_forma_seleccionada, id_field, zip_bytes, filename="SoterApplePass.zip")
+            file_url = upload_result.get('file_url')
+            print(upload_result)
 
-        data = {
-            'apple_wallet_pass': [
-                {
-                    'file_name': upload_result.get('file_name'),
-                    'file_url': upload_result.get('file_url')
-                }
-            ]
-        }
+            data = {
+                'apple_wallet_pass': [
+                    {
+                        'file_name': upload_result.get('file_name'),
+                        'file_url': file_url
+                    }
+                ]
+            }
 
-        response = self.update_pass(access_pass=data, folio=record_id)
-        return response
+            update_response = self.update_pass(access_pass=data, folio=record_id)
+            print('update_response', update_response)
+        return file_url
     
     def upload_zip(self, id_forma_seleccionada, id_field, zip_bytes, filename="archivo.zip"):
         temp_dir = tempfile.gettempdir()
@@ -215,13 +226,15 @@ class Accesos(Accesos):
 
 
 if __name__ == "__main__":
-    print('Entra en create_apple_wallet_pass')
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
 
-    response = acceso_obj.create_pass_apple_wallet()
+    data = acceso_obj.data.get('data', {})
+    record_id = data.get('record_id', '')
+
+    response = acceso_obj.create_pass_apple_wallet(record_id)
 
     sys.stdout.write(simplejson.dumps({
         'status': 101,
-        'response': response
+        'file_url': response
     }))
