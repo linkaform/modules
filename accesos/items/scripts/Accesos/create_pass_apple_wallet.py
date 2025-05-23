@@ -174,7 +174,7 @@ class Accesos(Accesos):
             with open(pkpass_path, "rb") as f:
                 zip_bytes = f.read()
 
-            id_forma_seleccionada = self.PASE_ENTRADA_ID
+            id_forma_seleccionada = self.PASE_ENTRADA
             id_field = self.pase_entrada_fields['apple_wallet_pass']
             upload_result = self.upload_zip(id_forma_seleccionada, id_field, zip_bytes, filename="SoterApplePass.zip")
             file_url = upload_result.get('file_url')
