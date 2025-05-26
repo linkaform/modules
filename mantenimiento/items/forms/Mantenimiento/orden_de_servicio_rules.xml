@@ -659,5 +659,55 @@
             <rule_type>required</rule_type>
             <user_conditions>{}</user_conditions>
         </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>in=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                        <group_id>None</group_id>
+                        <id>67d9f8efbfe21e488f4f5262</id>
+                        <label>Estatus</label>
+                        <type>select</type>
+                    </field>
+                    <value>en_proceso</value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>6834b5b3f6fa58529e80d24f</field_id>
+                    <group_id>None</group_id>
+                    <id>6834b5b3f6fa58529e80d24f</id>
+                    <label>Foto de Tanque 1 Vista Interna</label>
+                    <type>images</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>6834b5b3f6fa58529e80d250</field_id>
+                    <group_id>None</group_id>
+                    <id>6834b5b3f6fa58529e80d250</id>
+                    <label>Foto de Tanque 2 Vista Interna</label>
+                    <type>images</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>6834b5b3f6fa58529e80d251</field_id>
+                    <group_id>None</group_id>
+                    <id>6834b5b3f6fa58529e80d251</id>
+                    <label>Foto de Tanque 3 Vista Interna</label>
+                    <type>images</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Requerir Fotos en Estatus en Proceso</name>
+            <operator>and</operator>
+            <rule_id>229418bfa1c1ece</rule_id>
+            <rule_type>required</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
     </rules>
 </lkf>
