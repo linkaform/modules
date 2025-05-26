@@ -20,6 +20,7 @@ class JIT(JIT, Stock):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
         # self.load('Product')
         self.load('Product', **self.kwargs)
+        self.load(module='Product', module_class='Warehouse', import_as='WH', **self.kwargs)
 
         self.f.update({
             'fecha_salida_multiple': '000000000000000000000111',
@@ -33,7 +34,8 @@ class JIT(JIT, Stock):
             'sku_salida': '65dec64a3199f9a040829243',
             'lot_number_salida': '620a9ee0a449b98114f61d77',
             'cantidad_salida': '6442e4cc45983bf1778ec17d',
-            'folio_sipre': '682f4a14ba348a104e5a399d'
+            'folio_sipre': '682f4a14ba348a104e5a399d',
+            'product_group': '6442e4537775ce64ef72dd69'
         })
 
     def ave_daily_demand(self, demanda_12_meses):
@@ -222,15 +224,15 @@ class SIPRE:
         except requests.exceptions.RequestException as e:
             return {"error": str(e)}
 
-    def create_xfer_spire(self, ):
+    def create_xfer_spire(self, warehouse_source, warehouse_target, product_code, quantity):
         if not hasattr(self, 'token'):
             self.get_token()
         endpoint = self.create_xfer_endpoint
         data = {
-            "warehouseTarget": "ALM MONTERREY",
-            "warehouseSource":"ALM GUADALAJARA",
-            "productCode": "750200301127",
-            "quantity": 1,
+            "warehouseTarget": warehouse_target,
+            "warehouseSource": warehouse_source,
+            "productCode": product_code,
+            "quantity": quantity,
             "token": self.token
         }
         response = self.api_request(f"{self.host}{endpoint}", data=data, method='POST')

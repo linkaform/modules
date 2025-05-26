@@ -13,7 +13,6 @@ class JIT(JIT):
 
     def __init__(self, settings, sys_argv=None, use_api=False, **kwargs):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
-        self.load(module='Product', module_class='Warehouse', import_as='WH', **self.kwargs)
 
     def format_locations(self, w_form, w_to):
         if w_to == 'mty':
