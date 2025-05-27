@@ -5,7 +5,6 @@ from bson import ObjectId
 from jit_utils import SIPRE, JIT
 
 from account_settings import *
-import random
 
 if __name__ == '__main__':
     JIT_obj = JIT(settings, sys_argv=sys.argv, use_api=True)
@@ -31,15 +30,15 @@ if __name__ == '__main__':
 
     sipre_list = []
 
-    for product in products_group:
+    for idx, product in enumerate(products_group):
         quantity = product.get(JIT_obj.f['cantidad_salida'], 0)
         product_code = product.get(JIT_obj.STOCK_INVENTORY_OBJ_ID, {}).get(JIT_obj.f['product_code_salida'], '')
         
-        product_code = '750200309149' # PRODUCTO DE PRUEBA
-        quantity = random.choice([1, 2, 3])  # CANTIDAD DE PRUEBA ALEATORIA
+        product_code = '750200309149' # PRODUCTO DE PRUEBA, QUITAR LINEA CUANDO SE UTILICEN PRODUCTOS REALES
 
         if product_code and quantity > 0:
             sipre_response = sipre_obj.create_xfer_spire(warehouse_source, warehouse_target, product_code, quantity)
+            JIT_obj.answers[JIT_obj.f['product_group']][idx][JIT_obj.f['renglon_sipre']] = sipre_response.get('renglon', '')
             sipre_folio = sipre_response.get('folio', 'No se obtuvo folio')
             sipre_list.append(sipre_folio)
 

@@ -35,7 +35,8 @@ class JIT(JIT, Stock):
             'lot_number_salida': '620a9ee0a449b98114f61d77',
             'cantidad_salida': '6442e4cc45983bf1778ec17d',
             'folio_sipre': '682f4a14ba348a104e5a399d',
-            'product_group': '6442e4537775ce64ef72dd69'
+            'product_group': '6442e4537775ce64ef72dd69',
+            'renglon_sipre': '6835d529be0b0618ec80d233'
         })
 
     def ave_daily_demand(self, demanda_12_meses):
