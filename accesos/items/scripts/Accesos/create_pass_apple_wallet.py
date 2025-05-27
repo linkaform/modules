@@ -19,7 +19,8 @@ class Accesos(Accesos):
         nombre = data.get('nombre')
         fecha = data.get('fecha')
         hora = data.get('hora')
-        ubicacion = data.get('ubicacion')
+        ubicaciones_list = data.get('ubicacion')
+        format_ubicacion = self.format_ubicaciones_to_google_pass(ubicaciones_list)
         area = data.get('area')
 
         pass_data = {
@@ -59,7 +60,7 @@ class Accesos(Accesos):
                     {
                         "key": "ubication",
                         "label": f"Ubicación",
-                        "value": ubicacion
+                        "value": format_ubicacion
                     },
                     {
                         "key": "area",
@@ -107,7 +108,7 @@ class Accesos(Accesos):
                 "visita_a": access_pass.get('visita_a', [])[0].get('nombre', ''),
                 "fecha": fecha,
                 "hora": hora_sin_segundos,
-                "ubicacion": access_pass.get('ubicacion', ''),
+                "ubicacion": access_pass.get('ubicaciones', []),
                 "area": access_pass.get('area', 'Caseta Principal'),
             }
 
