@@ -117,7 +117,7 @@ if __name__ == "__main__":
 
     else :
         response = {"msg": "Empty"}
-    print('================ END RETURN =================')
-    print(simplejson.dumps(response, indent=3))
+    # print('================ END RETURN =================')
+    # print(simplejson.dumps(response, indent=3))
     acceso_obj.HttpResponse({"data":response})
 
