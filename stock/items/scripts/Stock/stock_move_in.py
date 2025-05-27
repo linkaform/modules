@@ -128,6 +128,7 @@ class Stock(Stock):
         get_folio = True
         ########
         create_new_rec = True
+
         for idx, records in enumerate(groups):
             new_record = deepcopy(base_record)
             new_folio = f"{self.folio}-{idx+1}/{total_groups}"
@@ -135,8 +136,12 @@ class Stock(Stock):
             print('idx', idx)
             folio_serie_record = []
             # self.answers[self.f['move_group']] = []
-            new_record['answers'][self.f['inv_adjust_status']] = 'todo'
+            new_record['answers'][self.f['inv_adjust_status']] = 'done'
             for idy, num_serie in enumerate(records):
+                if idx+1 == len(groups) and create_new_rec:
+                    create_new_rec = False
+                    self.answers[self.f['move_group']] = []
+                    print('---------------------------')
                 get_folio = True
             #### ONTS
                 print('idy', idy)
@@ -155,14 +160,11 @@ class Stock(Stock):
                 row_set = deepcopy(base_row_set)
                 row_set[self.f['lot_number']] = num_serie
                 row_set['folio'] = folio_ont_inv
-                row_set[self.f['inv_adjust_grp_status']] = 'todo'
+                row_set[self.f['inv_adjust_grp_status']] = 'done'
                 folio_serie_record.append({"folio":new_folio, "ont_serie": num_serie, "folio_recepcion":folio_ont_inv})
                 new_record['answers'][self.f['move_group']].append(row_set)
                 self.answers[self.f['move_group']].append(row_set)
-                if idx+1 == len(groups):
-                    create_new_rec = False
-                    print('---------------------------')
-            print('*************groiu************',create_new_rec)
+            print('*************groiu************',self.answers[self.f['move_group']])
             if create_new_rec:
                 self.ejecutar_transaccion(new_record, folio_serie_record )
             else:
@@ -177,6 +179,7 @@ class Stock(Stock):
 
     def ejecutar_transaccion(self, new_record, folio_serie_record):
         # Inicia una sesión
+        print('ejecuta transaccion....', folio_serie_record)
         if self.get_enviroment() == 'prod':
             with self.client.start_session() as session:
                 # Define el bloque de transacción
@@ -225,11 +228,14 @@ class Stock(Stock):
             # try:
             if True:
                 if new_record.get('answers'):
+                    # new_record['answers'][self.f['inv_adjust_status']] =  'done'
                     print('rwreew [[[[[[[[[[[[[[[[ new records]]]]]]]]]]]]]]]]', simplejson.dumps(new_record['answers'], indent=3))
                     response = stock_obj.make_direct_stock_move(move_type='in')
                     print('res',response)
                     res = self.records_cr.insert_one(new_record)
                     #self.direct_move_in(new_record)
+                else:
+                    response = self.direct_move_in(self.current_record)
             # except Exception as e:
             #     print('error: ', e)
             #     series = [s['ont_serie'] for s in folio_serie_record]
