@@ -331,6 +331,33 @@ class Stock(Stock):
                 new_stock_records2[idx] = this_metadata
         return new_stock_records2, update_stock_records
 
+    def get_direct_stock(self, product_code, product_sku, warehouse, location, product_lot):
+        match_query = self.lot_match(product_code, product_sku, warehouse, location, product_lot)
+        query = [
+            {'$match': match_query},
+            {'$project':{
+                '_id':0,
+                'product_code':f"$answers.{self.Product.SKU_OBJ_ID}.{self.f['product_code']}",
+                'warehouse':f"$answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse']}",
+                'actuals':f"$answers.{self.f['actual_eaches_on_hand']}",
+            }},
+            {'$group':{
+                '_id':{
+                    'product_code':'$product_code',
+                    'warehouse':'$warehouse'
+                },
+                'actuals':{'$sum':'$actuals'}
+            }},
+            {"$project":{
+                "_id":0,
+                "product_code":"$_id.product_code",
+                "warehouse":"$_id.warehouse",
+                "actuals": "$actuals",
+            }},
+        ]
+        stock =  self.format_cr(self.cr.aggregate(query), get_one=True)
+        return stock.get('actuals',0)
+
     def get_group_skus(self, products):
         search_codes = {}
         for product in products:
@@ -406,6 +433,22 @@ class Stock(Stock):
         answers[self.f['actual_eaches_on_hand']] = 0
         answers[self.f['status']] = 'active'
         return answers
+
+    def lot_match(self, product_code, product_sku, warehouse, location, product_lot):
+        match_query ={ 
+         'form_id': self.FORM_INVENTORY_ID,  
+         'deleted_at' : {'$exists':False},
+         } 
+        match_query.update({f"answers.{self.Product.SKU_OBJ_ID}.{self.f['product_code']}":product_code})
+        match_query.update({f"answers.{self.Product.SKU_OBJ_ID}.{self.f['product_sku']}":product_sku})
+        match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse']}":warehouse})
+        match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse_location']}":location})
+        if type(product_lot) == str:
+            match_query.update({f"answers.{self.f['product_lot']}": product_lot})
+        elif type(product_lot) == list:
+            match_query.update({f"answers.{self.f['product_lot']}":{"$in": product_lot}})
+
+        return match_query
 
     # def get_product_sku(self, all_codes):
     #     #migrara a branch de magnolia

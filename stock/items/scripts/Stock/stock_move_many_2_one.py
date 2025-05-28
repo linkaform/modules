@@ -83,6 +83,8 @@ class Stock(Stock):
         else:
             # try:
             if True:
+                print('new_record', new_record)
+                print('new_record', new_recordd)
                 if new_record.get('answers'):
                     # Crea los nuevo registro de salida de stock
                     self.records_cr.insert_one(new_record)
@@ -389,60 +391,31 @@ class Stock(Stock):
         warehouse_location = warehouse_from.get( self.WH.f['warehouse_location'])
         product_cat = base_row_set.get(self.CATALOG_INVENTORY_OBJ_ID)
         product_code = product_cat.get(self.Product.f['product_code'])
-        product_sku = product_cat.get(self.Product.f['product_sku'])
+        product_sku = product_cat.get(self.Product.f['product_sku'], "F1468270") #TODO
+        print('product_code', product_code)
+        print('product_sku', product_sku)
+        print('warehouse', warehouse)
+        print('warehouse_location', warehouse_location)
+        print('product_lots', product_lots)
+        print('lot_size', lot_size)
         stock_size = self.validate_lote_size(product_code, product_sku, warehouse, warehouse_location, product_lots, lot_size)
+        print('stock_size', stock_size)
         if stock_size == 0:
             print('valid')
         elif stock_size < 0:
             print('Error hay de menos')
-            self.LKFException(f'ERROR HAY {abs(stock_size)}, de menos')
+            self.LKFException({"msg":f"No hay stock suficiente para mover las {stock_size} unidades.", "title": "Falta de Stock"})
+            # self.LKFException(f'ERROR HAY {abs(stock_size)}, de menos')
         elif stock_size > 0:
             print('valido hay suficientes... pero en este caso no deberia...')
         return True
 
-    def lot_match(self, product_code, product_sku, warehouse, location, product_lot):
-        match_query ={ 
-         'form_id': self.FORM_INVENTORY_ID,  
-         'deleted_at' : {'$exists':False},
-         } 
-        match_query.update({f"answers.{self.Product.SKU_OBJ_ID}.{self.f['product_code']}":product_code})
-        match_query.update({f"answers.{self.Product.SKU_OBJ_ID}.{self.f['product_sku']}":product_sku})
-        match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse']}":warehouse})
-        match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse_location']}":location})
-        if type(product_lot) == str:
-            match_query.update({f"answers.{self.f['product_lot']}": product_lot})
-        elif type(product_lot) == list:
-            match_query.update({f"answers.{self.f['product_lot']}":{"$in": product_lot}})
 
-        return match_query
 
     def validate_lote_size(self, product_code, product_sku, warehouse, location, product_lot, lote_size):
-        match_query = self.lot_match(product_code, product_sku, warehouse, location, product_lot)
-        query = [
-            {'$match': match_query},
-            {'$project':{
-                '_id':0,
-                'product_code':f"$answers.{self.Product.SKU_OBJ_ID}.{self.f['product_code']}",
-                'warehouse':f"$answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse']}",
-                'actuals':f"$answers.{self.f['actual_eaches_on_hand']}",
-            }},
-            {'$group':{
-                '_id':{
-                    'product_code':'$product_code',
-                    'warehouse':'$warehouse'
-                },
-                'actuals':{'$sum':'$actuals'}
-            }},
-            {"$project":{
-                "_id":0,
-                "product_code":"$_id.product_code",
-                "warehouse":"$_id.warehouse",
-                "actuals": "$actuals",
-            }},
-        ]
-        stock =  self.format_cr(self.cr.aggregate(query), get_one=True)
-        stock_size = stock.get('actuals',0)
+        stock_size = self.get_direct_stock(product_code, product_sku, warehouse, location, product_lot)
         return stock_size - lote_size
+
 
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
@@ -472,6 +445,7 @@ if __name__ == '__main__':
     header, records = stock_obj.read_xls_file()
     groups = []
     if stock_obj.proceso_onts:
+        print('proceso_onts')
         groups = stock_obj.validate_onts(records)
         groups = stock_obj.do_groups(header, records)
         stock_obj.create_records(groups)
