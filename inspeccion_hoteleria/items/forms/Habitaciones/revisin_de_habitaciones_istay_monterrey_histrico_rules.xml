@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8'?>
+<lkf>
+    <form_id>{{ form.revisin_de_habitaciones_istay_monterrey_histrico.id }}</form_id>
+    <id>683754e600d0709cd45f114d</id>
+    <rules>
+        <item>
+            <conditions>
+                <item>
+                    <condition>not__empty=</condition>
+                    <field>
+                        <catalog_id>67450f11d18ae4ae9094dcf1</catalog_id>
+                        <field_id>663e5c57f5b8a7ce8211ed0b</field_id>
+                        <group_id>None</group_id>
+                        <id>663e5c57f5b8a7ce8211ed0b</id>
+                        <label>Hotel</label>
+                        <type>catalog-select</type>
+                    </field>
+                    <value> </value>
+                </item>
+                <item>
+                    <condition>is__empty=</condition>
+                    <field>
+                        <catalog_id>67450f11d18ae4ae9094dcf1</catalog_id>
+                        <field_id>663e5c57f5b8a7ce8211ed0b</field_id>
+                        <group_id>None</group_id>
+                        <id>663e5c57f5b8a7ce8211ed0b</id>
+                        <label>Hotel</label>
+                        <type>catalog-select</type>
+                    </field>
+                    <value> </value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67f0844734855c523e139132</field_id>
+                    <group_id>None</group_id>
+                    <id>67f0844734855c523e139132</id>
+                    <label>Status Auditoria</label>
+                    <type>select</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>680bb9ae683baa875e7baa22</field_id>
+                    <group_id>None</group_id>
+                    <id>680bb9ae683baa875e7baa22</id>
+                    <label>Dias en Proceso</label>
+                    <type>integer</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Ocultar estatus</name>
+            <operator>or</operator>
+            <rule_id>15f9185d21c8c3c</rule_id>
+            <rule_type>invisible</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+    </rules>
+</lkf>
