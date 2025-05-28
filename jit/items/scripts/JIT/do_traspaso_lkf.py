@@ -29,17 +29,17 @@ class JIT(JIT):
 
     def format_products_traspaso(self, list_of_products):
         formated_list_of_products = []
-
         for product in list_of_products:
+            qty = product.get('adjust', 0)
+            if not qty:
+                qty = product.get('handover', 0)
             obj = {
                 'product_code': product.get('sku', ''),
                 'sku': product.get('sku', ''),
                 'lot_number': 'lote1',
-                'cantidad': product.get('adjust', 0)
+                'cantidad': qty
             }
             formated_list_of_products.append(obj)
-
-        print('FORMATED_LIST_OF_PRODUCTS', simplejson.dumps(formated_list_of_products, indent=3))
         return formated_list_of_products
 
     def create_salida_mult_prod_a_ubicacion(self, w_from, w_to, list_of_products):
@@ -51,9 +51,6 @@ class JIT(JIT):
             'warehouse_name': 'ALM ' + w_to.upper(),
             'location': 'Almacen ' + w_to.capitalize()
         }
-
-        print('ALMACEN ORIGEN', almacen_origen)
-        print('ALMACEN DESTINO', almacen_destino)
 
         metadata = self.lkf_api.get_metadata(form_id=self.STOCK_ONE_MANY_ONE)
         metadata.update({
@@ -84,7 +81,6 @@ class JIT(JIT):
 
         products = []
         for product in list_of_products:
-            print(product)
             obj = {
                 self.STOCK_INVENTORY_OBJ_ID: {
                     self.f['product_code_salida']: product.get('product_code', ''),

@@ -10,7 +10,6 @@ if __name__ == '__main__':
     JIT_obj = JIT(settings, sys_argv=sys.argv, use_api=True)
     sipre_obj = SIPRE()
     JIT_obj.console_run()
-    print('answerssssssssssssssssss', JIT_obj.answers)
 
     products_group = JIT_obj.answers.get(JIT_obj.f['product_group'], [])
     warehouse_source = JIT_obj.answers.get(JIT_obj.WH.WAREHOUSE_LOCATION_OBJ_ID, {}).get(JIT_obj.f['wh_name'], '')
@@ -34,8 +33,6 @@ if __name__ == '__main__':
         quantity = product.get(JIT_obj.f['cantidad_salida'], 0)
         product_code = product.get(JIT_obj.STOCK_INVENTORY_OBJ_ID, {}).get(JIT_obj.f['product_code_salida'], '')
         
-        product_code = '750200309149' # PRODUCTO DE PRUEBA, QUITAR LINEA CUANDO SE UTILICEN PRODUCTOS REALES
-
         if product_code and quantity > 0:
             sipre_response = sipre_obj.create_xfer_spire(warehouse_source, warehouse_target, product_code, quantity)
             JIT_obj.answers[JIT_obj.f['product_group']][idx][JIT_obj.f['renglon_sipre']] = sipre_response.get('renglon', '')
@@ -45,12 +42,6 @@ if __name__ == '__main__':
     sipre_list_formatted = str(sipre_list[0]) if len(set(sipre_list)) == 1 else ", ".join(str(x) for x in sipre_list)
     sipre_obj.stock = sipre_list_formatted
 
-    # sipre_obj.stock = [
-    #  {'almacen': '01', 'almacenNombre': 'ALM MONTERREY', 'producto': '750200301001', 'productoNombre': 'MTRS TUBO S/C A106B/API5L STD 1/4"', 'ventas': 61.0, 'inventario': 2.7, 'familiaProducto': 'TUBOS', 'lineaProducto': 'A.C.', 'fechaAltaProducto': '2016-06-30T00:00:00', 'renglones': 1, }, 
-    #  {'almacen': '02', 'almacenNombre': 'ALM GUADALAJARA', 'producto': '750200301001', 'productoNombre': 'MTRS TUBO S/C A106B/API5L STD 1/4"', 'ventas': 17.4, 'inventario': 345.8, 'familiaProducto': 'TUBOS', 'lineaProducto': 'A.C.', 'fechaAltaProducto': '2016-06-30T00:00:00', 'renglones': 1} ]
-
-    #HARDCODEADO DE MOMENTO EL FOLIO
-    print(sipre_obj.stock)
 
     JIT_obj.answers[JIT_obj.f['folio_sipre']] = sipre_obj.stock
 

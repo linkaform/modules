@@ -239,6 +239,8 @@ class SIPRE:
         response = self.api_request(f"{self.host}{endpoint}", data=data, method='POST')
         print('data=', simplejson.dumps(data, indent=3))
         print('response=', simplejson.dumps(response, indent=3))
+        if response.get('estatusCode') == 500:
+            raise self.LKFException(response.get('mensaje', "Error al crear el transpaso"))
         result = response.get('resultado',{})
         return result
 
