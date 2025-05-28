@@ -164,7 +164,7 @@ class Stock(Stock):
                 folio_serie_record.append({"folio":new_folio, "ont_serie": num_serie, "folio_recepcion":folio_ont_inv})
                 new_record['answers'][self.f['move_group']].append(row_set)
                 self.answers[self.f['move_group']].append(row_set)
-            print('*************groiu************',self.answers[self.f['move_group']])
+            # print('*************groiu************',self.answers[self.f['move_group']])
             if create_new_rec:
                 self.ejecutar_transaccion(new_record, folio_serie_record )
             else:
@@ -217,8 +217,9 @@ class Stock(Stock):
                         )
         else:
             try:
-                if folio_serie_record and False:
+                if folio_serie_record:
                     res = self.ont_cr.insert_many(folio_serie_record)
+                    print('res', res)
             except Exception as e:
                 self.LKFException( '', dict_error= {
                         f"Error": {
