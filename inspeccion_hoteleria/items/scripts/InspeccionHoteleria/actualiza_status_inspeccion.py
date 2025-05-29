@@ -51,11 +51,11 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
 
 if __name__ == '__main__':
-    module_obj = Inspeccion_Hoteleria(settings, sys_argv=sys.argv, use_api=True)
+    module_obj = Inspeccion_Hoteleria(settings, sys_argv=sys.argv, use_api=False)
     module_obj.console_run()
     print('folio', module_obj.folio)
     starting_status = module_obj.answers[module_obj.field_id_status]
-    status = module_obj.check_pending_answers()
+    status = module_obj.check_pending_answers() 
     module_obj.actualiza_status_habitacion()
     # Todo ver q hacer si no se actualzia bien el status de la habitacion....
     print('Record starting_status', starting_status)
