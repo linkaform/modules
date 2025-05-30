@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from sre_parse import BRANCH
 import sys, simplejson, time
 from bson import ObjectId
 from datetime import datetime, timedelta, date
@@ -144,13 +145,13 @@ class Stock(Stock):
             status = 'done'
         else:
             status = 'active'
-        answers[self.f['status']] = status        
+        answers[self.f['status']] = status   
         return answers
 
     def direct_move_in(self, new_record):
         """
         Crea entrda deirecta a stock invetory
-        Se crorren validaciones
+        Se corren validaciones
 
         args: Registro del movimeinto
 
@@ -192,49 +193,52 @@ class Stock(Stock):
         status_code = 0
         move_locations = []
         folios = []
-        # lots_in = {}
         data_from = {'warehouse':warehouse, 'warehouse_location':location}
         new_records_data = []
-        # metadata = self.lkf_api.get_metadata(self.FORM_INVENTORY_ID)
         metadata = self.get_record_metadata(self.FORM_INVENTORY_ID)
         metadata['created_at'] = now
         metadata['updated_at'] = now
-        # print('1metadata', simplejson.dumps(metadata, indent=4))
-        #if self.proceso_onts:
-        #    metadata.update(self.get_complete_metadata(fields = {'voucher_id':ObjectId('6799c40fff1c2b9ea324bf65')}))
         new_stock_records = []
 
         folio = new_record['folio']
         new_stock_records2, update_stock_records = self.direct_move_in_line_validations(folio, metadata, move_lines)
-
         new_records = []
         update_records = []
         for idx, this_record in new_stock_records2.items():
             if this_record:
-                print('FOLIO=', this_record.get(folio))
                 new_records.append(this_record)
 
         if new_records:
-            print('new_records', new_records)
+            #Se insertan los nuevos registros a la base de datos
             res_new_stock = self.cr.insert_many(new_records)
             for idx, rec_idx in enumerate(res_new_stock.inserted_ids):
                 res[list(new_stock_records2.keys())[idx]] = {
                     'new_id':rec_idx,
                     'folio':new_stock_records2[idx]['folio'],
                     }
-        print('res=',res)
+                self.lkf_api.sync_catalogs_records({
+                    'catalogs_ids':[self.CATALOG_INVENTORY_ID],
+                    'form_answer_id':rec_idx,
+                    'form_answer_status':'created',
+                    })
         for idx, this_record in update_stock_records.items():
             if this_record:
                 update_records.append(this_record)
 
         if update_records:
             for idx, record in update_stock_records.items():
-                print('record', record)
+                #Se actualizan los registros existentes a la base de datos
                 this_res = self.cr.update_one({'_id':record['_id']}, {'$set':record})
                 res[idx] = {
                     'acknowledged': this_res.acknowledged, 
                     'modified_count': this_res.modified_count, 
                     'folio':record['folio']}
+                self.lkf_api.sync_catalogs_records({
+                    'catalogs_ids':[self.CATALOG_INVENTORY_ID],
+                    'form_answer_id':record['_id'],
+                    'form_answer_status':'edited',
+                    })
+
             # res_update_stock = self.cr.update_many(update_stock_records)
         # if self.proceso_onts:
         #     if new_stock_records2:
@@ -271,8 +275,6 @@ class Stock(Stock):
         folio_recepcion = self.answers.get(self.f['folio_recepcion'])
         wh_type = self.WH.warehouse_type(warehouse)
         for idx, moves in enumerate(move_lines):
-            print('idex', idx)
-            print('moves', moves)
             update_stock_records[idx] = []
             new_stock_records2[idx] = []
             status = moves.get('inv_adjust_grp_status')
@@ -280,8 +282,8 @@ class Stock(Stock):
                 continue
             move_qty = moves.get('move_group_qty', 0)
             if wh_type == 'stock':
-                #El producto esta ingresando desde un almacen tipo stock se deve de validar su existenica
-                vals = self.validate_move_qty(moves['product_code'], moves['sku'], moves['product_lot'],  warehouse, location, move_qty)
+                # El producto esta ingresando desde un almacen tipo stock se deve de validar su existenica
+                vals = self.validate_move_qty(moves['product_code'], moves['sku'], moves['product_lot'], warehouse, location, move_qty)
             
             this_metadata = deepcopy(metadata)
             if moves.get('folio'):
@@ -376,15 +378,12 @@ class Stock(Stock):
 
     def get_product_sku(self, all_codes):
         #borrar solo para debug
-        print('all_codes', all_codes)
         all_sku = []
         for sku, product_code in all_codes.items():
             if sku not in all_sku:
                 all_sku.append(sku.upper())
         skus = {}
         mango_query = self.product_sku_query(all_sku)
-        print('mango_query', mango_query)
-        print('self.Product.SKU_ID', self.Product.SKU_ID)
         sku_finds = self.lkf_api.search_catalog(self.Product.SKU_ID, mango_query)
         for this_sku in sku_finds:
                 product_code = this_sku.get(self.f['product_code'])
@@ -617,53 +616,34 @@ class Stock(Stock):
 
         """
         self.answer_label = self._labels()
-        warehouse = self.answer_label['warehouse']
-        location = self.answer_label['warehouse_location']
         #se crea entrada al amcen
         response = self.direct_move_in(self.current_record)
-        folio_ids = self.get_record_ids_by_folios(response)
+        # folio_ids = self.get_record_ids_by_folios(response)
         for idx, res in response.items():
-            moves = self.answers[self.f['move_group']][idx]
-            moves_label = self._labels(data=moves)
-            print('*********************', idx)
-            print('moves', moves)
-            # cache_data = self.format_stock_cache(moves_label, 'out', warehouse, location)
             if res.get('new_id'):
-                # sync_res = self.lkf_api.sync_catalogs_records({
-                #     'catalogs_ids':[self.CATALOG_INVENTORY_ID],
-                #     'form_answer_id':res['new_id'],
-                #     'form_answer_status':'created',
-                #     })
-                # print('sync res', sync_res)
                 self.answers[self.f['move_group']][idx][self.f['inv_adjust_grp_status']] = 'done'
-                # self.cache_set(cache_data)
             elif res.get('acknowledged') and res['acknowledged']:
-                # print('res', {
-                #     'catalogs_ids':[self.CATALOG_INVENTORY_ID],
-                #     'form_answer_id':folio_ids[res['folio']],
-                #     'form_answer_status':'edited',
-                #     })
-                # sync_res = self.lkf_api.sync_catalogs_records({
-                #     'catalogs_ids':[self.CATALOG_INVENTORY_ID],
-                #     'form_answer_id':folio_ids[res['folio']],
-                #     'form_answer_status':'edited',
-                #     })
-                # self.cache_set(cache_data)
                 self.answers[self.f['move_group']][idx][self.f['inv_adjust_grp_status']] = 'done'
             else:
                 self.answers[self.f['move_group']][idx][self.f['inv_adjust_grp_status']] = 'error'
-            
             if res.get('folio'):
                 self.answers[self.f['move_group']][idx][self.f['move_dest_folio']] = res['folio']
 
         if move_type == 'out':
             self.move_out_stock(self.current_record)
-        # if not self.proceso_onts:
-        #     response = self.move_one_many_one()
         self.answers[self.f['inv_adjust_status']] =  'done'
         return response  
 
     def move_out_stock(self, new_record):
+        """
+        Movimiento de salida de stock
+
+        args:
+            new_record: registro con los datos del movimiento
+        return:
+            updated_ids: lista de ids de los registros actualizados
+        
+        """
         record_data = self.get_record_move_data(new_record)
         updated_ids = {}
         for idx, product_data in record_data['product'].items():
@@ -674,16 +654,9 @@ class Stock(Stock):
             match_query = self.lot_match(product_code, sku, record_data['warehouse'], record_data['location'], product_lot)
             cr_data = self.cr.find(match_query)
             product_db_info = cr_data.next()
-            print('product_db_info', product_db_info)
             product_db_info.update(self.get_record_metadata(metadata=product_db_info, pop_common=False))
-            print('match_query',match_query)
-            # updated_ids.append(product_db_info.get('_id'))
-            print('product_db_info',product_db_info)
             product_stock = self.get_product_stock(product_code, sku=sku, lot_number=product_lot, warehouse=record_data['warehouse'], location=record_data['location'])
-            acutals = product_stock.get('actuals',0)
-            print('acutals',acutals)
-            print('move_qty',move_qty)
-            print('product_stock',product_stock)
+            # acutals = product_stock.get('actuals',0)
             product_db_info['answers'].update(self.direct_move_math(product_db_info['answers'],  move_in=0, move_out=move_qty, product_stock=product_stock))
             rec_id = product_db_info.pop('_id')
             this_res = self.cr.update_one({'_id':ObjectId(rec_id)}, {"$set":product_db_info })
@@ -693,15 +666,20 @@ class Stock(Stock):
                     'matched_count': this_res.matched_count, 
                     '_id':rec_id
                     }
-            print('dir', dir(this_res))
-            print('dir', this_res.raw_result)
             # update_res = self.cr.update_many({'_id':product_db_info['_id']}, {"$set":{
             #     f"answers.{self.f['actual_eaches_on_hand']}":new_acutals,
             #     f"answers.{self.f['product_lot_actuals']}":new_acutals,
             #     f"answers.{self.f['move_out']}":move_qty,
             #     f"answers.{self.f['status']}":status,
             #     }})
-            print('update_res',updated_ids)
+            sync_action = 'edited'
+            if product_db_info['answers'][self.f['status']] == 'done':
+                sync_action = 'deleted'
+            sync_res = self.lkf_api.sync_catalogs_records({
+                    'catalogs_ids':[self.CATALOG_INVENTORY_ID],
+                    'form_answer_id':rec_id,
+                    'form_answer_status':sync_action,
+                    })
         return updated_ids    
 
     def move_in(self):

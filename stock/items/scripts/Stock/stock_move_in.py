@@ -218,6 +218,7 @@ class Stock(Stock):
         else:
             try:
                 if folio_serie_record:
+                    #crea onts
                     res = self.ont_cr.insert_many(folio_serie_record)
                     print('res', res)
             except Exception as e:
@@ -230,9 +231,7 @@ class Stock(Stock):
             if True:
                 if new_record.get('answers'):
                     # new_record['answers'][self.f['inv_adjust_status']] =  'done'
-                    print('rwreew [[[[[[[[[[[[[[[[ new records]]]]]]]]]]]]]]]]', simplejson.dumps(new_record['answers'], indent=3))
                     response = stock_obj.make_direct_stock_move(move_type='in')
-                    print('res',response)
                     res = self.records_cr.insert_one(new_record)
                     #self.direct_move_in(new_record)
                 else:

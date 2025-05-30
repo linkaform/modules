@@ -83,8 +83,6 @@ class Stock(Stock):
         else:
             # try:
             if True:
-                print('new_record', new_record)
-                print('new_record', new_recordd)
                 if new_record.get('answers'):
                     # Crea los nuevo registro de salida de stock
                     self.records_cr.insert_one(new_record)
@@ -389,9 +387,8 @@ class Stock(Stock):
         warehouse_from = self.answers.get(self.WH.WAREHOUSE_LOCATION_OBJ_ID)
         warehouse = warehouse_from.get( self.WH.f['warehouse'])
         warehouse_location = warehouse_from.get( self.WH.f['warehouse_location'])
-        product_cat = base_row_set.get(self.CATALOG_INVENTORY_OBJ_ID)
-        product_code = product_cat.get(self.Product.f['product_code'])
-        product_sku = product_cat.get(self.Product.f['product_sku'], "F1468270") #TODO
+        product_code = base_row_set.get(self.Product.f['product_code'])
+        product_sku = base_row_set.get(self.Product.f['product_sku']) 
         print('product_code', product_code)
         print('product_sku', product_sku)
         print('warehouse', warehouse)
@@ -409,8 +406,6 @@ class Stock(Stock):
         elif stock_size > 0:
             print('valido hay suficientes... pero en este caso no deberia...')
         return True
-
-
 
     def validate_lote_size(self, product_code, product_sku, warehouse, location, product_lot, lote_size):
         stock_size = self.get_direct_stock(product_code, product_sku, warehouse, location, product_lot)
@@ -432,7 +427,6 @@ if __name__ == '__main__':
     if not stock_obj.record_id:
         stock_obj.record_id = stock_obj.object_id() 
     stock_obj.folio = folio
-    stock_obj.folio = folio
     stock_obj.current_record['folio'] = folio
     stock_obj.answers[stock_obj.f['folio_recepcion']] = folio
     # if status == 'cargar_onts':
@@ -443,9 +437,11 @@ if __name__ == '__main__':
 
     stock_obj.set_mongo_connections()
     header, records = stock_obj.read_xls_file()
+    if header:
+        if not records:
+            stock_obj.LKFException('El archivo cargado no contiene datos, favor de revisar')
     groups = []
     if stock_obj.proceso_onts:
-        print('proceso_onts')
         groups = stock_obj.validate_onts(records)
         groups = stock_obj.do_groups(header, records)
         stock_obj.create_records(groups)
@@ -453,16 +449,12 @@ if __name__ == '__main__':
     #     print('no hay excel')
     #     header = None
     #     records = None
-    if header:
-        if not records:
-            stock_obj.LKFException('El archivo cargado no contiene datos, favor de revisar')
     # print('answ3rs', stock_obj.answers)
     #stock_obj.share_filter_and_forms_to_connection()
     #response = stock_obj.move_one_many_one(records)
     stock_obj.current_record['answers'] = stock_obj.answers
     if groups:
         stock_obj.folio = f"{folio}-1/{len(groups)}"
-
     stock_obj.make_direct_stock_move()
    
 
