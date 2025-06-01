@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-import pyexcel, openpyxl, os
+import pyexcel, openpyxl, os, requests
+from io import BytesIO
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import NamedStyle, Font, Border, Side, PatternFill, Alignment
 from datetime import datetime, timedelta, date, time
@@ -109,7 +110,7 @@ class PCI_Utils():
                             label_err = info_group['label'].encode('utf8')
                             msg_err_arr.append('SET {0}:: {1} - {2}'.format(i_err, msg_err, label_err))
             if msg_err_arr:
-                data_str_err = self.list_to_str(msg_err_arr)
+                data_str_err = self.lkf_obj.list_to_str(msg_err_arr)
         except Exception as e:
             print('response', response)
             print('Exception =  ', e)
@@ -122,39 +123,6 @@ class PCI_Utils():
     def asignar_registro_a_conexion(self, connection_id, record_assign):
         id_record_assign = f'/api/infosync/form_answer/{record_assign}/'
         return self.lkf_api.assigne_connection_records( connection_id, [id_record_assign,])
-
-    
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     def find_in_lista_tecnicos(self, id_contratista, expediente_telmex, find_by_expediente=False, find_in_admin=False):
         query = {
@@ -192,6 +160,16 @@ class PCI_Utils():
         resp_create_exp = lkf_api.post_forms_answers(metadata_expediente, jwt_settings_key=jwt_settings_key)
         print('resp_create_exp =',resp_create_exp)
         return resp_create_exp
+
+    def calcula_numero_semana(self):
+        hoy = datetime.today()
+        number_week = hoy.isocalendar()[1]
+        week_day = hoy.weekday()
+        if week_day == 6:
+            number_week += 1
+        if hoy.month == 1 and number_week > 50:
+            number_week = 1
+        return number_week
 
     def carga_prod_find_expediente(self, connection_id, parent_connection, numero_expediente, **kwargs):
         # Se busca el expediente para ver si le pertenece al contratista o no
@@ -267,38 +245,6 @@ class PCI_Utils():
                     return True
             
         return False
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     def catch_repeted_keys(self, existing_keys, actual_key):
         if actual_key in existing_keys:
@@ -615,6 +561,22 @@ class PCI_Utils():
     def get_fields_catalog(self, id_catalog):
         catalog_fields = self.lkf_api.get_catalog_id_fields(id_catalog)
         return catalog_fields.get('catalog', {}).get('fields', [])
+
+    def get_id_os(self, division, tecnologia):
+        # Diccionario que mapea las combinaciones de (division, tecnologia) a los valores deseados
+        formas = {
+            ('metro', 'fibra'): ( self.lkf_obj.ORDEN_SERVICIO_FIBRA, self.lkf_obj.FORMA_LIBERACION_FIBRA, self.lkf_obj.FORMA_ORDEN_COMPRA_FIBRA ),
+            ('sur', 'fibra'): ( self.lkf_obj.ORDEN_SERVICIO_FIBRA_SURESTE, self.lkf_obj.FORMA_LIBERACION_FIBRA_SURESTE, self.lkf_obj.FORMA_ORDEN_COMPRA_FIBRA_SURESTE ),
+            ('norte', 'fibra'): ( self.lkf_obj.ORDEN_SERVICIO_FIBRA_NORTE, self.lkf_obj.FORMA_LIBERACION_FIBRA_NORTE, self.lkf_obj.FORMA_ORDEN_COMPRA_FIBRA_NORTE ),
+            ('occidente', 'fibra'): ( self.lkf_obj.ORDEN_SERVICIO_FIBRA_OCCIDENTE, self.lkf_obj.FORMA_LIBERACION_FIBRA_OCCIDENTE, self.lkf_obj.FORMA_ORDEN_COMPRA_FIBRA_OCCIDENTE ),
+            ('metro', 'cobre'): ( self.lkf_obj.ORDEN_SERVICIO_COBRE, self.lkf_obj.FORMA_LIBERACION_COBRE, self.lkf_obj.FORMA_ORDEN_COMPRA_COBRE ),
+            ('sur', 'cobre'): ( self.lkf_obj.ORDEN_SERVICIO_COBRE_SURESTE, self.lkf_obj.FORMA_LIBERACION_COBRE_SURESTE, self.lkf_obj.FORMA_ORDEN_COMPRA_COBRE_SURESTE ),
+            ('norte', 'cobre'): ( self.lkf_obj.ORDEN_SERVICIO_COBRE_NORTE, self.lkf_obj.FORMA_LIBERACION_COBRE_NORTE, self.lkf_obj.FORMA_ORDEN_COMPRA_COBRE_NORTE ),
+            ('occidente', 'cobre'): ( self.lkf_obj.ORDEN_SERVICIO_COBRE_OCCIDENTE, self.lkf_obj.FORMA_LIBERACION_COBRE_OCCIDENTE, self.lkf_obj.FORMA_ORDEN_COMPRA_COBRE_OCCIDENTE ),
+        }
+
+        # Buscar las formas correspondientes en el diccionario
+        return formas.get((division, tecnologia), (None, None))
 
     def get_info_user_from_catalog( self, folio_o_idUser, id_catalogo, filter_by_name={} ):
         # Asignar field_id basado en el catálogo
@@ -1000,7 +962,46 @@ class PCI_Utils():
             cadena = cadena.replace( a, aa )
         return cadena
 
+    def get_num_rows_in_xls(self, xls_url):
+        """
+        Lee la cantidad de renglones que hay un excel
+
+        Args:
+            xls_url (str): URL del excel en backblaze
+
+        Return:
+            num_rows (int): Numero de lineas encontradas en el archivo
+        """
+        # Descargar el archivo
+        response = requests.get(xls_url)
+        response.raise_for_status()
+
+        # Cargar el archivo excel desde la memoria
+        excel_file = BytesIO(response.content)
+        wb = openpyxl.load_workbook(excel_file)
+
+        # Accedemos a la hoja
+        hoja = wb.active
+
+        # Numero de lineas
+        num_rows = hoja.max_row
+        return num_rows
+
     def read_file(self, file_url):
+        """
+        Lee un documento excel y regresa el header y renglones
+
+        Args:
+            file_url (str): URL del excel
+
+        Return:
+            header (list): Primer renglon del excel que se toma como cabecera
+            all_records (list): Renglones del excel
+        """
+        max_row_accepted = 5000
+        if self.get_num_rows_in_xls(file_url) > max_row_accepted:
+            return {'error': f'El excel rebasa el límite de renglones permitidos {max_row_accepted}. Favor de revisar'}, None
+        
         sheet = pyexcel.get_sheet(url = file_url)
         all_records = sheet.array
         header = [h.lower().strip().replace(' ', '_') for h in all_records.pop(0)]
@@ -1097,9 +1098,14 @@ class PCI_Utils():
         }
         res_create_msg_error = self.lkf_api.post_forms_answers(metadata_email_error, jwt_settings_key=jwt_settings_key)
 
-    def set_status_proceso(self, current_record, status_set, field_status='6291068e438a7381b949954c', jwt_settings_key=None):
+    # def set_status_proceso(self, current_record, status_set, field_status='6291068e438a7381b949954c', jwt_settings_key=None):
+    #     current_record['answers'][field_status] = status_set
+    #     self.lkf_api.patch_record(current_record, jwt_settings_key=jwt_settings_key)
+
+    def set_status_proceso(self, current_record, record_id, status_set, msg='', field_status='5f10d2efbcfe0371cb2fbd39', field_msg='5fd05319cd189468810100c9' ):
         current_record['answers'][field_status] = status_set
-        self.lkf_api.patch_record(current_record, jwt_settings_key=jwt_settings_key)
+        current_record['answers'][field_msg] = msg
+        return self.lkf_api.patch_record(current_record, record_id,  jwt_settings_key='USER_JWT_KEY')
 
     def str_to_date(self, val_str, format_to_date='%Y-%m-%d'):
         return datetime.strptime(val_str, format_to_date)
@@ -1107,13 +1113,13 @@ class PCI_Utils():
     def str_to_float(self, val_str):
         return float( val_str.strip().replace(',','').replace('$','') )
 
-    def list_to_str(self, list_to_proccess, separator=', ', show_empty=False):
-        str_return = ''
-        if show_empty:
-            str_return += separator.join([a for a in list_to_proccess])
-        else:
-            str_return += separator.join([a for a in list_to_proccess if a])
-        return str_return
+    # def list_to_str(self, list_to_proccess, separator=', ', show_empty=False):
+    #     str_return = ''
+    #     if show_empty:
+    #         str_return += separator.join([a for a in list_to_proccess])
+    #     else:
+    #         str_return += separator.join([a for a in list_to_proccess if a])
+    #     return str_return
 
     def unlist(self, arg):
         if type(arg) == list and len(arg) > 0:
