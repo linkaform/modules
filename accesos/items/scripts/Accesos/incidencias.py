@@ -43,6 +43,7 @@ if __name__ == "__main__":
     dateFrom = data.get("dateFrom", "")
     dateTo = data.get("dateTo", "")
     filterDate = data.get("filterDate", "")
+    incidencia_grupo_seguimiento = data.get("incidencia_grupo_seguimiento", [])
 
     print('option', option)
     if option == 'nueva_incidencia':
@@ -51,6 +52,8 @@ if __name__ == "__main__":
         response = acceso_obj.get_list_incidences(location, area, prioridades= prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate)
     elif option == 'update_incidence':
         response = acceso_obj.update_incidence(data_incidence_update, folio)
+    elif option == 'update_incidence_seguimiento':
+        response = acceso_obj.update_incidence_seguimiento(folio=folio, incidencia_grupo_seguimiento=incidencia_grupo_seguimiento)
     elif option == 'delete_incidence':
         response = acceso_obj.delete_incidence(folio)
     elif option == 'catalogo_area_empleado':
