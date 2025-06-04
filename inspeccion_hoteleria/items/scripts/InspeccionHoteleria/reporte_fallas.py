@@ -368,8 +368,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             total_inspecciones_y_remodeladas.get('total_inspecciones_completadas', 0) if total_inspecciones_y_remodeladas else 0
         )
         
-        calificacion_x_hotel_grafica = self.get_cuatrimestres_by_hotel()
-
+        calificacion_x_hotel_grafica = self.get_cuatrimestres_by_hotel(hoteles=hoteles, anio=anio, cuatrimestres=cuatrimestres)
 
         cards = {
             'cantidad_si_y_no': cantidad_si_y_no,
