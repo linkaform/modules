@@ -28,6 +28,8 @@ if __name__ == "__main__":
     pre_sms = data.get("enviar_pre_sms",{})
     update_obj = data.get("update_obj",{})
     envio = data.get("envio",[])
+    limit = data.get("limit", 10)
+    skip = data.get("skip", 0)
     
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
@@ -62,7 +64,7 @@ if __name__ == "__main__":
     elif option == 'get_pass':
         response = acceso_obj.get_pass_custom(qr_code)
     elif option == 'get_my_pases':
-        response = acceso_obj.get_my_pases(tab_status=tab_status)
+        response = acceso_obj.get_my_pases(tab_status=tab_status, limit=limit, skip=skip)
     elif option == 'get_pdf':
         response = acceso_obj.get_pdf(qr_code)
     elif option == 'get_user_contacts':
