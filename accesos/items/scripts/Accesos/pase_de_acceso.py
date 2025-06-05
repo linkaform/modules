@@ -30,6 +30,7 @@ if __name__ == "__main__":
     envio = data.get("envio",[])
     limit = data.get("limit", 10)
     skip = data.get("skip", 0)
+    search_name = data.get("search_name", None)
     
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
@@ -64,7 +65,7 @@ if __name__ == "__main__":
     elif option == 'get_pass':
         response = acceso_obj.get_pass_custom(qr_code)
     elif option == 'get_my_pases':
-        response = acceso_obj.get_my_pases(tab_status=tab_status, limit=limit, skip=skip)
+        response = acceso_obj.get_my_pases(tab_status=tab_status, limit=limit, skip=skip, search_name=search_name)
     elif option == 'get_pdf':
         response = acceso_obj.get_pdf(qr_code)
     elif option == 'get_user_contacts':
