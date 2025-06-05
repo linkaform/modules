@@ -32,7 +32,7 @@ class Accesos(Accesos):
         elif len(ubicaciones_nombres) == 2:
             ubicaciones_str = f"{ubicaciones_nombres[0]} y {ubicaciones_nombres[1]}"
         elif len(ubicaciones_nombres) > 2:
-            ubicaciones_str = ', '.join(ubicaciones_nombres[:-1]) + f" y {ubicaciones_nombres[-1]}"
+            ubicaciones_str = f"{ubicaciones_nombres[0]}, {ubicaciones_nombres[1]} y {len(ubicaciones_nombres) - 2} más"
         else:
             ubicaciones_str = ''
 
