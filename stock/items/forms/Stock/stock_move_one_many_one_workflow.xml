@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='utf-8'?>
 <lkf>
     <form_id>{{ form.stock_move_one_many_one.id }}</form_id>
-    <id>66881dc34f425c8ebbf46892</id>
+    <id>6824e65e855ea3d4d1c2e059</id>
     <workflows>
         <item>
             <actions>
                 <item>
-                    <_id>66881dc4dbd1f8dec8056ce9</_id>
+                    <_id>6824e65eaa87c4ed5f18bcad</_id>
                     <action_id>7</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -23,11 +23,11 @@
                         </script>
                         <user>SCRIPT_OWNER</user>
                     </configuration>
-                    <name>Stock Move</name>
+                    <name>None</name>
                 </item>
             </actions>
-            <id>66881dc4dbd1f8dec8056cea</id>
-            <name>Stock Move</name>
+            <id>6824e65eaa87c4ed5f18bcae</id>
+            <name>None</name>
             <rules>
                 <metadata>
                     <connection>[]</connection>
@@ -54,94 +54,8 @@
                     <runtime>before</runtime>
                 </record>
                 <wf_fields>
-                    <operator>any</operator>
-                    <triggers>
-                        <item>
-                            <condition>in=</condition>
-                            <form_id>None</form_id>
-                            <other_value>None</other_value>
-                            <prefix>answer</prefix>
-                            <trigger_field>
-                                <catalog>{}</catalog>
-                                <field_id>6442e4537775ce64ef72dd6a</field_id>
-                                <group>{}</group>
-                                <label>Status</label>
-                                <type>select</type>
-                            </trigger_field>
-                            <value>to_do</value>
-                        </item>
-                    </triggers>
-                </wf_fields>
-            </rules>
-        </item>
-        <item>
-            <actions>
-                <item>
-                    <_id>678bdb5098b7a7b9e589d65a</_id>
-                    <action_id>7</action_id>
-                    <action_settings>{}</action_settings>
-                    <configuration>
-                        <script>
-                            <created_at>2024-12-05T05:54:06.660592</created_at>
-                            <deleted_at>None</deleted_at>
-                            <end_date>None</end_date>
-                            <id>{{ script.update_stock_from_cache.id }}</id>
-                            <is_fileShared>False</is_fileShared>
-                            <itype>script</itype>
-                            <name>{{ script.update_stock_from_cache.name }}</name>
-                            <start_date>2024-12-05T05:54:06.658389</start_date>
-                            <updated_at>2024-12-05T05:54:06.926744</updated_at>
-                        </script>
-                        <user>SCRIPT_OWNER</user>
-                    </configuration>
-                    <name>None</name>
-                </item>
-            </actions>
-            <id>678bdb5098b7a7b9e589d65e</id>
-            <name>Update From Cache</name>
-            <rules>
-                <metadata>
-                    <connection>[]</connection>
-                    <date>
-                        <period>
-                            <month>1</month>
-                            <selected>False</selected>
-                            <year>2014</year>
-                        </period>
-                        <range>
-                            <end>2025-01-19T06:00:00.000Z</end>
-                            <selected>False</selected>
-                            <start>2025-01-18T16:47:46.608Z</start>
-                        </range>
-                    </date>
-                    <grading>{}</grading>
-                    <user>[]</user>
-                </metadata>
-                <record>
-                    <created>True</created>
-                    <deleted>False</deleted>
-                    <edited>True</edited>
-                    <run_multiple_times>False</run_multiple_times>
-                    <runtime>after</runtime>
-                </record>
-                <wf_fields>
                     <operator>all</operator>
-                    <triggers>
-                        <item>
-                            <condition>in=</condition>
-                            <form_id>None</form_id>
-                            <other_value>None</other_value>
-                            <prefix>answer</prefix>
-                            <trigger_field>
-                                <catalog>{}</catalog>
-                                <field_id>6442e4537775ce64ef72dd6a</field_id>
-                                <group>{}</group>
-                                <label>Status</label>
-                                <type>select</type>
-                            </trigger_field>
-                            <value>done</value>
-                        </item>
-                    </triggers>
+                    <triggers>[]</triggers>
                 </wf_fields>
             </rules>
         </item>

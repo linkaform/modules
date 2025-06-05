@@ -27,7 +27,7 @@ class Stock(Stock):
         })
 
         self.prev_version = {}
-        self.max_sets = 2
+        self.max_sets = 10
         self.sku_finds = []
 
     def carga_materiales(self, header, records):
@@ -185,19 +185,18 @@ class Stock(Stock):
                 # Define el bloque de transacción
                 #HACE TRANSACCIONES ACIDAS
                 def write_records(sess):
-                    if new_record.get('answers'):
-                        # self.direct_move_in(new_record)
-                        self.records_cr.insert_one(new_record, session=sess)
                     try:
                         if folio_serie_record:
                             self.ont_cr.insert_many(folio_serie_record, session=sess)
                     except Exception as e:
                         print(f"Error durante la transacción: {e}")
-                        self.LKFException( '', dict_error= {
-                            f"Error": {
-                            "msg": [f'Error en la creacion de las onts. Existen Series previamente Cargadas. {e}'], 
-                            "label": "Serie Repetida", "error": []}}
-                            )
+                        self.LKFException( f'MMMMMMMMMrror en la creacion de las onts. Existen Series previamente Cargadas. {e}')
+                    if new_record.get('answers'):
+                        # self.direct_move_in(new_record)
+                        response = stock_obj.make_direct_stock_move(move_type='in')
+                        res = self.records_cr.insert_one(new_record)
+                    else:
+                        response = self.direct_move_in(self.current_record)
             
                 try:
                     # Comienza la transacción
@@ -210,11 +209,7 @@ class Stock(Stock):
                     print("Transacción completada exitosamente.")
                 except (ConnectionFailure, OperationFailure)  as e:
                     print(f"Error conexion: {e}")
-                    self.LKFException( '', dict_error= {
-                        f"Error": {
-                        "msg": [f'Error en la conexion. {e}'], 
-                        "label": "Serie Repetida", "error": []}}
-                        )
+                    self.LKFException( f'Error en la conexion. {e}' )
         else:
             try:
                 if folio_serie_record:
@@ -222,11 +217,7 @@ class Stock(Stock):
                     res = self.ont_cr.insert_many(folio_serie_record)
                     print('res', res)
             except Exception as e:
-                self.LKFException( '', dict_error= {
-                        f"Error": {
-                        "msg": [f'Error en la creacion de las onts. Existen Series previamente Cargadas '], 
-                        "label": "Serie Repetida", "error": []}}
-                        )
+                self.LKFException(f"EEEEEEEEE Error en la creacion de las onts. Existen Series previamente Cargadas: {e}")
             # try:
             if True:
                 if new_record.get('answers'):
@@ -337,6 +328,7 @@ class Stock(Stock):
 
 
 if __name__ == '__main__':
+    print('stock move in argv=', sys.argv)
     stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
     stock_obj.console_run()
     folio = None

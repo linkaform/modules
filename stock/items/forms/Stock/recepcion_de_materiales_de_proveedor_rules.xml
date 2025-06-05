@@ -1,31 +1,19 @@
 <?xml version='1.0' encoding='utf-8'?>
 <lkf>
     <form_id>{{ form.recepcion_de_materiales_de_proveedor.id }}</form_id>
-    <id>66e07fdd302b4ae049587289</id>
+    <id>6626f08c2a6a044d637176c5</id>
     <rules>
         <item>
             <conditions>
                 <item>
                     <condition>not__empty=</condition>
                     <field>
-                        <catalog_id>None</catalog_id>
-                        <field_id>6442e4537775ce64ef72dd6a</field_id>
+                        <catalog_id>6626ee3d2a6a044d6371751f</catalog_id>
+                        <field_id>6442e4831198daf81456f274</field_id>
                         <group_id>None</group_id>
-                        <id>6442e4537775ce64ef72dd6a</id>
-                        <label>Status</label>
-                        <type>select</type>
-                    </field>
-                    <value> </value>
-                </item>
-                <item>
-                    <condition>is__empty=</condition>
-                    <field>
-                        <catalog_id>None</catalog_id>
-                        <field_id>6442e4537775ce64ef72dd6a</field_id>
-                        <group_id>None</group_id>
-                        <id>6442e4537775ce64ef72dd6a</id>
-                        <label>Status</label>
-                        <type>select</type>
+                        <id>6442e4831198daf81456f274</id>
+                        <label>Warehouse Name</label>
+                        <type>catalog-select</type>
                     </field>
                     <value> </value>
                 </item>
@@ -35,20 +23,66 @@
             <fields_ruled>
                 <item>
                     <catalog_id>None</catalog_id>
-                    <field_id>65e1169689c0e0790f8843f1</field_id>
-                    <group_id>None</group_id>
-                    <id>65e1169689c0e0790f8843f1</id>
-                    <label>Cantidad Solicitada</label>
-                    <type>integer</type>
+                    <field_id>{{ catalog.sku_catalog.obj_id}}</field_id>
+                    <group_id>6442e4537775ce64ef72dd69</group_id>
+                    <id>6824e631aa87c4ed5f18bcaa</id>
+                    <label>Producto</label>
+                    <type>catalog</type>
+                </item>
+                <item>
+                    <catalog_id>6626ee332a6a044d63717517</catalog_id>
+                    <field_id>61ef32bcdf0ec2ba73dec33d</field_id>
+                    <group_id>6442e4537775ce64ef72dd69</group_id>
+                    <id>61ef32bcdf0ec2ba73dec33d</id>
+                    <label>Product Code</label>
+                    <type>catalog-select</type>
                 </item>
                 <item>
                     <catalog_id>None</catalog_id>
-                    <field_id>ffff00000000000000000001</field_id>
-                    <group_id>None</group_id>
-                    <id>ffff00000000000000000001</id>
-                    <label>Folio Stock Destino</label>
-                    <type>text</type>
+                    <field_id>6442e4cc45983bf1778ec17d</field_id>
+                    <group_id>6442e4537775ce64ef72dd69</group_id>
+                    <id>6442e4cc45983bf1778ec17d</id>
+                    <label>Cantidad</label>
+                    <type>integer</type>
                 </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Requerir Producto</name>
+            <operator>and</operator>
+            <rule_id>1dab4b8e9caef</rule_id>
+            <rule_type>required</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>is__empty=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>000000000000000000000111</field_id>
+                        <group_id>None</group_id>
+                        <id>000000000000000000000111</id>
+                        <label>Fecha</label>
+                        <type>datetime</type>
+                    </field>
+                    <value> </value>
+                </item>
+                <item>
+                    <condition>not__empty=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>000000000000000000000111</field_id>
+                        <group_id>None</group_id>
+                        <id>000000000000000000000111</id>
+                        <label>Fecha</label>
+                        <type>datetime</type>
+                    </field>
+                    <value> </value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
                 <item>
                     <catalog_id>None</catalog_id>
                     <field_id>679bd3e1e213a8e4c124c05c</field_id>
@@ -57,11 +91,19 @@
                     <label>Folio de Recepcion</label>
                     <type>text</type>
                 </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>ffff00000000000000000001</field_id>
+                    <group_id>6442e4537775ce64ef72dd69</group_id>
+                    <id>ffff00000000000000000001</id>
+                    <label>Folio Stock Destino</label>
+                    <type>text</type>
+                </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>
-            <name>Regla 1</name>
+            <name>Esconder Campos de Control</name>
             <operator>or</operator>
-            <rule_id>9c416c0c1d770</rule_id>
+            <rule_id>7592114269c2318</rule_id>
             <rule_type>invisible</rule_type>
             <user_conditions>{}</user_conditions>
         </item>

@@ -57,7 +57,7 @@ class Stock(Stock):
                 def write_records(sess):
                     if new_record.get('answers'):
                         # Crea los nuevo registro de salida de stock
-                        self.records_cr.insert_one(new_record, session=sess)
+                        self.records_cr.insert_one(new_record)
                         # Inserta directamente los registros nuevos de invetarios
                         # Pone un cache para que sean calulados los inventarios una
                         # vez dentro del intenvario
@@ -89,7 +89,7 @@ class Stock(Stock):
                     # Inserta directamente los registros nuevos de invetarios
                     # Pone un cache para que sean calulados los inventarios una
                     # vez dentro del intenvario
-                    response = self.direct_move_in(new_record)
+                    self.direct_move_in(new_record)
                     # Pone en 0 el stock de donde salio
                     self.move_out_stock(new_record)
                     #print('response = ', response)
@@ -364,14 +364,14 @@ class Stock(Stock):
         # if False:
             #trying to move more containeres that there are...
             cont_diff = move_qty - acctual_containers
-            msg = f"There actually only {acctual_containers} containers and you are trying to move {move_qty} containers."
-            msg += f"Check this out...! Your are trying to move {cont_diff} more containers than they are. "
+            msg = f"There actually only {acctual_containers} products and you are trying to move {move_qty} products."
+            msg += f"Check this out...! Your are trying to move {cont_diff} more products than they are. "
             msg += f"If this is the case, please frist make an inventory adjustment of {cont_diff} "
             msg += f"On warehouse {warehouse} at location {location} and lot number {lot_number}"
             msg_error_app = {
                     f"{self.f['inv_move_qty']}": {
                         "msg": [msg],
-                        "label": "Please check your Flats to move",
+                        "label": "Please check your products to move",
                         "error":[]
       
                     }
@@ -387,8 +387,8 @@ class Stock(Stock):
         warehouse_from = self.answers.get(self.WH.WAREHOUSE_LOCATION_OBJ_ID)
         warehouse = warehouse_from.get( self.WH.f['warehouse'])
         warehouse_location = warehouse_from.get( self.WH.f['warehouse_location'])
-        product_code = base_row_set.get(self.Product.f['product_code'])
-        product_sku = base_row_set.get(self.Product.f['product_sku']) 
+        product_code = base_row_set.get(self.CATALOG_INVENTORY_OBJ_ID, {}).get(self.Product.f['product_code'])
+        product_sku = base_row_set.get(self.CATALOG_INVENTORY_OBJ_ID, {}).get(self.Product.f['product_sku']) 
         print('product_code', product_code)
         print('product_sku', product_sku)
         print('warehouse', warehouse)

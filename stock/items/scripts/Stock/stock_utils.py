@@ -45,6 +45,8 @@ class Stock(Stock):
 
         # La relacion entre la forma de inventario y el catalogo utilizado para el inventario
         # por default simpre dejar los mismos nombres
+        print('self.FORM_INVENTORY_ID', self.FORM_INVENTORY_ID)
+        print('self.CATALOG_INVENTORY_ID', self.CATALOG_INVENTORY_ID)
         self.FORM_CATALOG_DIR = {
             self.FORM_INVENTORY_ID: self.CATALOG_INVENTORY_ID,
         }
@@ -221,6 +223,7 @@ class Stock(Stock):
                     'form_answer_id':rec_idx,
                     'form_answer_status':'created',
                     })
+
         for idx, this_record in update_stock_records.items():
             if this_record:
                 update_records.append(this_record)
@@ -273,6 +276,7 @@ class Stock(Stock):
         fecha_recepcion = self.answers.get(self.f['fecha_recepcion'])
         observaciones = self.answers.get(self.f['stock_move_comments'])
         folio_recepcion = self.answers.get(self.f['folio_recepcion'])
+        print('warehouse', warehouse)
         wh_type = self.WH.warehouse_type(warehouse)
         for idx, moves in enumerate(move_lines):
             update_stock_records[idx] = []
@@ -281,9 +285,12 @@ class Stock(Stock):
             if status == 'done':
                 continue
             move_qty = moves.get('move_group_qty', 0)
-            if wh_type == 'stock':
+            print('move_qty', move_qty)
+            print('wh_type', wh_type)
+            if wh_type.lower() == 'stock':
                 # El producto esta ingresando desde un almacen tipo stock se deve de validar su existenica
                 vals = self.validate_move_qty(moves['product_code'], moves['sku'], moves['product_lot'], warehouse, location, move_qty)
+                print('vals', vals)
             
             this_metadata = deepcopy(metadata)
             if moves.get('folio'):
