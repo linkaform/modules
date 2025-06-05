@@ -799,7 +799,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
         fallas = self.get_fallas(forms_id_list=forms_id_list, anio=anio, cuatrimestres=cuatrimestres)
 
-        cards = {
+        report_data = {
             'cantidad_si_y_no': cantidad_si_y_no,
             'total_habitaciones': total_habitaciones,
             'total_inspecciones_y_remodeladas': total_inspecciones_y_remodeladas,
@@ -809,7 +809,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'fallas': fallas,
         }
 
-        return cards
+        return report_data
 
 if __name__ == '__main__':
     module_obj = Inspeccion_Hoteleria(settings, sys_argv=sys.argv, use_api=True)
