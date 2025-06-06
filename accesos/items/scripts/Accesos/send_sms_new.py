@@ -20,6 +20,22 @@ class Accesos(Accesos):
         fecha_str_desde = data_cel_msj.get('fecha_desde', '')
         fecha_str_hasta = data_cel_msj.get('fecha_hasta', '')
 
+        ubicaciones = data_cel_msj.get('ubicacion', '')
+        ubicaciones_nombres = []
+        for ubicacion in ubicaciones:
+            nombre_ubicacion = ubicacion.get(self.Location.UBICACIONES_CAT_OBJ_ID, {}).get(self.mf['ubicacion'], '')
+            if nombre_ubicacion:
+                ubicaciones_nombres.append(nombre_ubicacion)
+        
+        if len(ubicaciones_nombres) == 1:
+            ubicaciones_str = ubicaciones_nombres[0]
+        elif len(ubicaciones_nombres) == 2:
+            ubicaciones_str = f"{ubicaciones_nombres[0]} y {ubicaciones_nombres[1]}"
+        elif len(ubicaciones_nombres) > 2:
+            ubicaciones_str = f"{ubicaciones_nombres[0]}, {ubicaciones_nombres[1]} y {len(ubicaciones_nombres) - 2} más"
+        else:
+            ubicaciones_str = ''
+
         fecha_desde = datetime.strptime(fecha_str_desde, "%Y-%m-%d %H:%M:%S")
         if fecha_str_hasta:
             fecha_hasta = datetime.strptime(fecha_str_hasta, "%Y-%m-%d %H:%M:%S")
@@ -27,7 +43,7 @@ class Accesos(Accesos):
         mensaje=''
         if pre_sms:
             msg = f"Hola {data_cel_msj.get('nombre', '')}, {data_cel_msj.get('visita_a', '')} "
-            msg += f"te invita a {data_cel_msj.get('ubicacion', '')} y creo un pase para ti."
+            msg += f"te invita a {ubicaciones_str} y creo un pase para ti."
             msg += f" Completa tus datos de registro aquí: {data_cel_msj.get('link', '')}"
             mensaje = msg
         else:
@@ -41,11 +57,11 @@ class Accesos(Accesos):
 
             if data_cel_msj.get('fecha_desde', '') and not data_cel_msj.get('fecha_hasta', ''):
                 fecha_desde_format = fecha_desde.strftime("%d/%m/%Y a las %H:%M")
-                msg += f", te invita a {data_cel_msj.get('ubicacion', '')} el {fecha_desde_format}."
+                msg += f", te invita a {ubicaciones_str} el {fecha_desde_format}."
             elif data_cel_msj.get('fecha_desde', '') and data_cel_msj.get('fecha_hasta', ''):
                 fecha_desde_format = fecha_desde.strftime("%d/%m/%Y")
                 fecha_hasta_format = fecha_hasta.strftime("%d/%m/%Y")
-                msg += f", te invita a {data_cel_msj.get('ubicacion', '')} "
+                msg += f", te invita a {ubicaciones_str} "
                 msg += f"del {fecha_desde_format} al {fecha_hasta_format}."
 
             msg += f" Descarga tu pase: {get_pdf_url}"
@@ -117,7 +133,7 @@ if __name__ == "__main__":
                 nombre_visita_a += ', '
             nombre_visita_a += nombre
 
-    ubicacion = acceso_obj.answers.get(acceso_obj.Location.UBICACIONES_CAT_OBJ_ID,{}).get(acceso_obj.Location.f['location'], '')
+    ubicacion = acceso_obj.answers.get(acceso_obj.mf['grupo_ubicaciones_pase'], [])
     fecha_desde = acceso_obj.answers.get(acceso_obj.mf['fecha_desde_visita'], '')
     fecha_hasta = acceso_obj.answers.get(acceso_obj.mf['fecha_desde_hasta'], '')
 

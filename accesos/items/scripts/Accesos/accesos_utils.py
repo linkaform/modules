@@ -215,7 +215,6 @@ class Accesos( Accesos):
                 f"answers.{self.mf['fecha_entrada']}": {"$lte": dateTo}
             })
         
-        print("Fechas+++", match_query)
         proyect_fields ={
             '_id': 1,
             'folio': "$folio",
@@ -277,7 +276,7 @@ class Accesos( Accesos):
             )
         if dateFrom:
             query.append(
-                {'$sort':{'folio':1}},
+                {'$sort':{'folio':-1}},
             )
         else:
             query.append(
