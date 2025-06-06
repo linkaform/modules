@@ -57,7 +57,10 @@ class Produccion_PCI(Produccion_PCI):
         self.FORMA_PAGOS_SAP = self.lkm.form_id('pagos_sap_complementos_de_pagos', 'id')
         self.FORMA_CONFIGS_VALIDACIONES = self.lkm.form_id('configuracin_de_validaciones', 'id')
 
-        self.ID_CONTRATISTA_TIPO_MAQTEL = 2823
+        # Script que se ejecuta para pegar el folio de OC en las OS
+        self.SCRIPT_ID_SET_FOLIO_OC = self.lkm.script_id('set_folio_oc_to_os', 'id')
+
+        self.ID_CONTRATISTA_TIPO_MAQTEL = 17798
         self.id_tecnicos_directos = [2071, 2072, 2073]
 
         self.MONTO_MAXIMO_POR_OC = 200000 # Monto maximo por OCs en Cobre

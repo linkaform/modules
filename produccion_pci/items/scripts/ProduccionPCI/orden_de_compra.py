@@ -8,7 +8,7 @@ Uso: Se ejecuta en la forma Generar Liberaciones Fibra Cobre cuando estatus == "
 """
 
 import sys, simplejson
-from datetime import datetime
+from datetime import datetime, timedelta
 from produccion_pci_utils import Produccion_PCI
 
 from account_settings import *
@@ -633,8 +633,29 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             migration_price_list[1] = 0
             excedente = 0
             if is_psr:
+                """
+                === === INCENTIVO PSR
+                    PSRMI = Maqtel
+                    PSRCMI = Contratista Migrado
+                    PSRCI = Contratista
+
+                === === REPARACION DE INSTALACIONES CON INCENTIVO
+                    PSRMCI = Maqtel
+                    PSRCMCI = Contratista Migrado
+                    PSRCCI = Contratista
+
+                === === REPARACIÓN DE INSTALACIONES
+                    PSRM = Maqtel
+                    PSRCM = Contratista Migrado
+                    PSRC = Contratista
+                """
+                codigo_psr = 'PSRC'
+                if payment_connection_id == self.ID_CONTRATISTA_TIPO_MAQTEL:
+                    codigo_psr = 'PSRM'
+                elif payment_connection_id in conn_carso:
+                    codigo_psr = 'PSRCM'
                 # total_incentivo_psr = totales['incentivo_psr'] if not 'incentivo_psr' in conceptos_cobrados_psr else 0
-                total_reparacion_instalaciones = self.get_price(price_list, 'CODIGO_DE_PSR', 'buy_price')
+                total_reparacion_instalaciones = self.get_price(price_list, codigo_psr, 'buy_price')
                 # total_reparacion_instalaciones_con_incentivo = totales['reparacion_instalaciones_con_incentivo'] if not 'reparacion_instalaciones_con_incentivo' in conceptos_cobrados_psr else 0
                 campos_psr = [0, total_reparacion_instalaciones, 0]
             else:
@@ -646,6 +667,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                     nivel_de_pago = 'migracion'
 
                 campos_a4[ 0 ] = price_list_cobre[ nivel_de_pago ][ 'a4' ]
+                name = 'A4'
 
                 # EJEMPLO DE CALCULO EN COBRE ===== columna_total = valor_del_campo * price_list[tipo_trabajo][year][infra][nivel].get(map_product_name,-1)
                 # a4_par_principal = answers_lib.get('5f033e1248598b3eda0e34c4', 0)# PRUEBAS ELÉCTRICAS DE PAR PRINCIPAL
@@ -1037,7 +1059,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         return response
 
     def generate_ocs_fibra(self, current_record, LIBERACION_PAGOS, FORMA_ORDEN_SERVICIO, OC_CONTRATISTA, map_email_connections, descuentos, only_connections, number_week, \
-        price_list_fibra, division, price_list_cobre, retenciones_resico, conn_carso):
+        price_list_fibra, division, price_list_cobre, retenciones_resico, conn_carso, ocs_to_psr):
         #busca los folios que esten como liberados en la forma Liberacion de pagos
         print(f"_____ Se consultan los folios liberados para la forma {LIBERACION_PAGOS} _____")
         registros_liberacion = self.recupera_liberados_forma(LIBERACION_PAGOS, [])
@@ -1151,6 +1173,9 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                             folio_payment.update( { '60231d3a4524c60430be8e17': str_descuentos_pos } )
                         if folio_is_psr:
                             folio_payment['672cfb27388bff96a3650582'] = fila[-2] # Reparacion de Instalaciones
+                            folio_payment['f19620000000000000001fc4'] = 'PSR'
+                            # ocs_to_psr.setdefault(payment_connection_id, []).append(folio_payment)
+                            # continue
                         folios_by_connection_and_forms[payment_connection_id][OC_CONTRATISTA].setdefault(for_oc, {}).update( { payment_folio: folio_payment } )
             if folios_by_connection_and_forms:
                 #print'hasta aqui los folios serian estos', folios
@@ -1193,7 +1218,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                 status_pago_folios['otra_oc'].append(folio)
         return status_pago_folios
     
-    def make_estimacion_row_cobre(self, fields_liberacion, folio_lib, price_list, map_campos, conn_carso, conn_id):
+    def make_estimacion_row_cobre(self, fields_liberacion, folio_lib, price_list, map_campos, conn_carso, conn_id, order_psr):
         print(f'\n=== price_list: {price_list}\n')
         """
         make estimacion row recibe el registro de liberacion y hace el calculo del pago
@@ -1212,6 +1237,9 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             arr_detalle = [0] * len(map_campos)
             
             tipo_trabajo = group_field.pop('f2361400a0100000000000b6', '')
+
+            if tipo_trabajo != 'a4':
+                tipo_trabajo = 'psr' if order_psr else 'a0'
 
             for idx, map_field in enumerate(map_campos):
                 map_field_id = map_field['field_id']
@@ -1242,7 +1270,8 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             conn_id = order.get('connection_id', None)
             response['connection_id'] = conn_id
             type_proyecto = os_answers.get('633d9f63eb936fb6ec9bf580', '')
-            rows = self.make_estimacion_row_cobre(fields_liberacion, folio_lib, price_list, map_campos, conn_carso, conn_id)
+            order_psr = type_proyecto == 'psr'
+            rows = self.make_estimacion_row_cobre(fields_liberacion, folio_lib, price_list, map_campos, conn_carso, conn_id, order_psr)
             if not rows or isinstance(rows, str):
                 return rows
             
@@ -1446,7 +1475,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         return metadata
 
     def generate_ocs_cobre(self, current_record, LIBERACION_PAGOS, FORMA_ORDEN_SERVICIO, OC_CONTRATISTA, map_email_connections, descuentos, only_connections, number_week, \
-        price_list_cobre, division, dict_oc_fecha_nomina, conn_carso):
+        price_list_cobre, division, dict_oc_fecha_nomina, conn_carso, ocs_to_psr):
         map_campos = [{
             'field_id': '681c0e22e3d9bc611e3a5187',
             'name': 'PSR',
@@ -1548,6 +1577,10 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                 '_id_record_liberacion': str(os_liberada['_id'])
             })
 
+            # if folio_is_psr:
+            #     ocs_to_psr.setdefault(connection_id, []).append(fila_dict)
+            #     continue
+
             '''
             Agrupando los folios por año de liquidacion
             '''
@@ -1629,6 +1662,19 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             msg_response = 'No hay registros para OC'
         return msg_response, ocs_creadas
 
+    def run_script_set_folio_oc(self):
+        """
+        Ejecuta script que se encarga de procesar las Ordenes Creadas para pegar el folio en las OS
+        """
+        for_update_hoy = datetime.now()
+        for_update_ayer = for_update_hoy - timedelta(days=1)
+        for_update_maniana = for_update_hoy + timedelta(days=1)
+        res = lkf_api.run_script({
+            "script_id": self.SCRIPT_ID_SET_FOLIO_OC,
+            "desde": datetime.strftime(for_update_ayer, '%Y-%m-%d'),
+            "hasta": datetime.strftime(for_update_maniana, '%Y-%m-%d')
+        })
+
     def inicia_proceso_generar_ocs(self, only_connections, dict_info_connection, conn_carso):
         """
         Se arranca el proceso para generar Órdenes de Compra parar los contratistas
@@ -1665,6 +1711,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         dict_general_msg_ok = {}
         dict_form_connections = {}
         map_users_email, map_email_connections = {}, {}
+        ocs_to_psr = {}
 
         for div in self.all_divisiones:
             tecnologia = div.get('tecnologia')
@@ -1694,16 +1741,49 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             # Se empiezan a procesar las Ordenes de compra según la Tecnologia
             if tecnologia == 'fibra':
                 msg_response, ocs_creadas = self.generate_ocs_fibra(current_record, LIBERACION_PAGOS, FORMA_ORDEN_SERVICIO, OC_CONTRATISTA, map_email_connections, descuentos, \
-                    only_connections, number_week, price_list_fibra, division, price_list_cobre, retenciones_resico, conn_carso)
+                    only_connections, number_week, price_list_fibra, division, price_list_cobre, retenciones_resico, conn_carso, ocs_to_psr)
             elif tecnologia == 'cobre':
                 msg_response, ocs_creadas = self.generate_ocs_cobre(current_record, LIBERACION_PAGOS, FORMA_ORDEN_SERVICIO, OC_CONTRATISTA, map_email_connections, descuentos, \
-                    only_connections, number_week, price_list_cobre, division, retenciones_resico, conn_carso)
+                    only_connections, number_week, price_list_cobre, division, retenciones_resico, conn_carso, ocs_to_psr)
 
             if msg_response:
                 dict_general_msg_error[ tecnologia_division ].append( msg_response )
             if ocs_creadas:
                 dict_general_msg_ok.update( { tecnologia_division: ocs_creadas } )
 
+        
+
+
+
+        # if ocs_to_psr:
+        #     metadata_oc_PSR = lkf_api.get_metadata(self.FORMID_OC_PSR)
+
+        #     for connection_id_for_oc_psr, folios_to_oc_psr in ocs_to_psr.items():
+        #         conexion_psr = int(connection_id_for_oc_psr)
+        #         info_connection = {'id': conexion_psr, 'email': dict_connections.get(conexion_psr, {}).get('email')}
+
+        #         folios_psr_afiliados, folios_psr_no_afiliados = [], []
+
+        #         # Generan las OC de PSR
+        #         if folios_psr_no_afiliados:
+        #             metadata_psr_copy = metadata_oc_PSR.copy()
+                    
+        #             metadata_oc_psr = self.get_oc_contista_metadata(conexion_psr, folios_to_oc_psr, current_record['folio'], [], None, map_email_connections, 0, number_week, metadata_psr_copy, \
+        #                     retenciones_resico, total_20_row=True)
+                    
+        #             if type(metadata_oc_psr) == str:
+        #                 dict_general_msg_error.setdefault('PSR', []).append( metadata_oc_psr )
+        #                 continue
+                    
+        #             res_create_oc_psr = self.create_oc_and_update_status(metadata_oc_psr, conexion_psr, None, None, '', '')
+
+        #             print('\n\n --- res_create_oc_psr =',res_create_oc_psr)
+        #             if not res_create_oc_psr:
+        #                 dict_general_msg_ok.setdefault('PSR', 0)
+        #                 dict_general_msg_ok['PSR'] += 1
+        #             else:
+        #                 dict_general_msg_error.setdefault('PSR', []).append( self.list_to_str(res_create_oc_psr) )
+        
         # Respuestas finales despues de la ejecucion
         print("============= dict_general_msg_error=",dict_general_msg_error)
         print("============= dict_general_msg_ok=",dict_general_msg_ok)
@@ -1725,7 +1805,9 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         if general_msg_ok:
             current_record['answers']['5fd05319cd189468810100c8'] = self.list_to_str(general_msg_ok)
         response = lkf_api.patch_record(current_record, record_id, jwt_settings_key='USER_JWT_KEY')
-
+        
+        # Se ejecuta script para pegar el folio de Orden de Compra en las Ordenes de Servicio
+        self.run_script_set_folio_oc()
     
     def orden_de_compra(self):
         """ Se inicia el proceso para generar las Ordenes de Compra """
