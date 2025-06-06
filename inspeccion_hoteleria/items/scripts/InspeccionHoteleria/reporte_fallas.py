@@ -6,6 +6,7 @@ import sys, simplejson
 from inspeccion_hoteleria_utils import Inspeccion_Hoteleria
 
 from account_settings import *
+from bson import ObjectId
 
 
 class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
@@ -21,6 +22,10 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'tipo_area': '663e5e68f5b8a7ce8211ed18',
             'status_auditoria': '67f0844734855c523e139132',
             'habitacion_remodelada': '67f0844734855c523e1390d7',
+            'tipo_area_habitacion': '663e5e68f5b8a7ce8211ed18',
+            'numero_habitacion': '680977786d022b9bff6e3645',
+            'piso_habitacion': '680977786d022b9bff6e3646',
+            'nombre_area_habitacion': '663e5d44f5b8a7ce8211ed0f',
         })
 
         self.form_ids = {
@@ -67,7 +72,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'colgante_no_molestar': '67f0844734855c523e139114',
             'colgante_greener_stay': '67f0844734855c523e139117',
             'guardapolvo': '67f0844734855c523e13911a',
-            'apagador_de_entrada / Switch maestro': '67f0844734855c523e13911d',
+            'apagador_de_entrada_/_switch_maestro': '67f0844734855c523e13911d',
             'ahorrador_de_energia': '680bb9ae683baa875e7baa1f',
             'luminaria_de_entrada': '67f0844734855c523e139120',
             'plafon_entrada': '67f0844734855c523e139123',
@@ -772,7 +777,8 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             del totales["_id"]
 
         totales_list = [{"falla": k, "total": v} for k, v in totales.items()]
-    
+        totales_list.sort(key=lambda x: x["total"], reverse=True)
+
         return {
             "por_hotel": result_por_hotel,
             "totales": totales_list
@@ -811,6 +817,116 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
         return report_data
 
+    def get_habitaciones_by_hotel(self, hotel_name):
+        hotel_name_list = [hotel_name.lower().replace(' ', '_')]
+        form_id = self.get_forms_id_list(hotel_name_list)
+        form_id = self.unlist(form_id)
+
+        query = [
+            {'$match': {
+                "deleted_at": {"$exists": False},
+                "form_id": self.Location.AREAS_DE_LAS_UBICACIONES,
+                f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_nombre']}": hotel_name,
+                f"answers.{self.Location.TIPO_AREA_OBJ_ID}.{self.f['tipo_area_habitacion']}": "Habitación",
+            }},
+            {'$project': {
+                '_id': 1,
+                'numero_habitacion': f"$answers.{self.f['numero_habitacion']}",
+                'piso_habitacion': f"$answers.{self.f['piso_habitacion']}",
+                'nombre_area_habitacion': f"$answers.{self.f['nombre_area_habitacion']}",
+            }},
+        ]
+
+        habitaciones = self.format_cr(self.cr.aggregate(query))
+
+        list_habitaciones = []
+        for hab in habitaciones:
+            habitacion = hab.get('nombre_area_habitacion', None)
+
+            match_query = {
+                "deleted_at": {"$exists": False},
+                "form_id": form_id,
+                f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_nombre']}": hotel_name,
+                f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area_habitacion']}": habitacion,
+            }
+
+            project_fields = {'_id': 1}
+            for nombre_falla, id_falla in self.fallas_hotel.items():
+                project_fields[nombre_falla] = f"$answers.{id_falla}" # type: ignore
+
+            query = [
+                {'$match': match_query},
+                {'$project': project_fields},
+            ]
+
+            result = self.format_cr(self.cr.aggregate(query))
+            result = self.unlist(result)
+
+            tiene_falla = False
+            falla_detectada = None
+            if result:
+                for nombre_falla, id_falla in self.fallas_hotel.items():
+                    if result.get(nombre_falla) == "sí":
+                        tiene_falla = True
+                        falla_detectada = nombre_falla
+                        break
+
+            list_habitaciones.append({
+                'habitacion': habitacion,
+                'tiene_falla': tiene_falla,
+                'falla_detectada': falla_detectada if tiene_falla else None
+            })
+
+        print(simplejson.dumps(list_habitaciones, indent=3))
+        return {'habitaciones': list_habitaciones}
+    
+    def get_room_data(self, hotel_name, room_id):
+        hotel_name_list = [hotel_name.lower().replace(' ', '_')]
+        form_id = self.get_forms_id_list(hotel_name_list)
+        form_id = self.unlist(form_id)
+
+        project_fields = {
+            '_id': 1,
+        }
+        fallas_si_expr = []
+        for nombre_falla, id_falla in self.fallas_hotel.items():
+            fallas_si_expr.append({
+                "$cond": [
+                    {"$eq": [f"$answers.{id_falla}", "sí"]},
+                    nombre_falla,
+                    None
+                ]
+            })
+
+        query = [
+            {'$match': {
+                "deleted_at": {"$exists": False},
+                "form_id": form_id,
+                "_id": ObjectId(room_id),
+            }},
+            {'$project': {
+                'fallas_si': {
+                    "$filter": {
+                        "input": fallas_si_expr,
+                        "as": "f",
+                        "cond": {"$ne": ["$$f", None]}
+                    }
+                },
+            }},
+            {'$addFields': {
+                'total_fallas_si': {"$size": "$fallas_si"}
+            }}
+        ]
+
+        habitaciones = self.format_cr(self.cr.aggregate(query))
+        habitacion = self.unlist(habitaciones)
+
+        result = {
+            "fallas_si": habitacion.get("fallas_si", []) if habitacion else [],
+            "total_fallas_si": habitacion.get("total_fallas_si", 0) if habitacion else 0
+        }
+        return result
+
 if __name__ == '__main__':
     module_obj = Inspeccion_Hoteleria(settings, sys_argv=sys.argv, use_api=True)
     module_obj.console_run()
@@ -819,11 +935,17 @@ if __name__ == '__main__':
     anio = data.get('anio', None)
     cuatrimestres = data.get('cuatrimestres', None)
     hoteles = data.get('hoteles', [])
+    hotel_name = data.get('hotel_name', 'CROWNE PLAZA MTY')
+    room_id = data.get('room_id', '683f67b637df04721f6b6ddf')
 
     if option == 'get_hoteles':
         response = module_obj.get_hoteles()
     elif option == 'get_cards':
         response = module_obj.get_report(anio=anio, cuatrimestres=cuatrimestres, hoteles=hoteles)
+    elif option == 'get_habitaciones_by_hotel':
+        response = module_obj.get_habitaciones_by_hotel(hotel_name=hotel_name)
+    elif option == 'get_room_data':
+        response = module_obj.get_room_data(hotel_name=hotel_name, room_id=room_id)
 
     print(simplejson.dumps(response, indent=3))
     module_obj.HttpResponse({"data": response})
