@@ -11,4 +11,7 @@ class Custom(Custom):
 
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
+
+        self.FORM_BITACORA = 134089
+        self.CATALOG_CONFIGS = 134765
     
