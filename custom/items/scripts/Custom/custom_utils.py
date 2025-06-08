@@ -14,4 +14,11 @@ class Custom(Custom):
 
         self.FORM_BITACORA = 134089
         self.CATALOG_CONFIGS = 134765
+
+        self.f.update({
+            'fuera_rango_variable': '68376a913f508367405f118f',
+            'fuera_rango_valor_obtenido': '68376a913f508367405f1190',
+            'fuera_rango_rango_referencia': '68376a913f508367405f1191',
+            'group_fuera_de_rango': '68376a3589362d43aac2f3d2',
+        })
     
