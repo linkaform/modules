@@ -28,7 +28,7 @@ if __name__ == "__main__":
     pre_sms = data.get("enviar_pre_sms",{})
     update_obj = data.get("update_obj",{})
     envio = data.get("envio",[])
-    limit = data.get("limit", 10)
+    limit = data.get("limit", 25)
     skip = data.get("skip", 0)
     search_name = data.get("search_name", None)
     
