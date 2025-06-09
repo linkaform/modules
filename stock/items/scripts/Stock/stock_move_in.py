@@ -133,23 +133,20 @@ class Stock(Stock):
             new_record = deepcopy(base_record)
             new_folio = f"{self.folio}-{idx+1}/{total_groups}"
             new_record['folio'] = new_folio
-            print('idx', idx)
             folio_serie_record = []
             # self.answers[self.f['move_group']] = []
             new_record['answers'][self.f['inv_adjust_status']] = 'done'
+            self.answers[self.f['move_group']] = []
             for idy, num_serie in enumerate(records):
                 if idx+1 == len(groups) and create_new_rec:
                     create_new_rec = False
-                    self.answers[self.f['move_group']] = []
                     print('---------------------------')
                 get_folio = True
             #### ONTS
-                print('idy', idy)
                 if get_folio:
-                    folio_ont_inv = f"{self.folio}-{idy+1}/{len(records)}"
+                    folio_ont_inv = f"{self.folio}-{idx+1}-{idy+1}/{len(records)}"
                 # num_serie = row[ pos_serie ]
                 num_serie = self.strip_special_characters(num_serie)
-                print('num_serie', num_serie)
                 if not num_serie:
                     continue
                 if num_serie in series_unique:
@@ -163,6 +160,7 @@ class Stock(Stock):
                 row_set[self.f['inv_adjust_grp_status']] = 'done'
                 folio_serie_record.append({"folio":new_folio, "ont_serie": num_serie, "folio_recepcion":folio_ont_inv})
                 new_record['answers'][self.f['move_group']].append(row_set)
+                #no esta vaciando el move_group
                 self.answers[self.f['move_group']].append(row_set)
             # print('*************groiu************',self.answers[self.f['move_group']])
             if create_new_rec:
@@ -179,7 +177,6 @@ class Stock(Stock):
 
     def ejecutar_transaccion(self, new_record, folio_serie_record):
         # Inicia una sesión
-        print('ejecuta transaccion....', folio_serie_record)
         if self.get_enviroment() == 'prod':
             with self.client.start_session() as session:
                 # Define el bloque de transacción
@@ -215,7 +212,6 @@ class Stock(Stock):
                 if folio_serie_record:
                     #crea onts
                     res = self.ont_cr.insert_many(folio_serie_record)
-                    print('res', res)
             except Exception as e:
                 self.LKFException(f"EEEEEEEEE Error en la creacion de las onts. Existen Series previamente Cargadas: {e}")
             # try:
