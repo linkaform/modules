@@ -2,6 +2,7 @@
 from pickle import NONE
 import re
 import sys, simplejson
+import datetime
 
 from inspeccion_hoteleria_utils import Inspeccion_Hoteleria
 
@@ -943,6 +944,76 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             return {"mensaje": "No hay inspección para esta habitación"}
         return result
 
+    def get_table_habitaciones_inspeccionadas(self, forms_id_list=[]):
+        match_query = {
+            "deleted_at": {"$exists": False},
+        }
+
+        if len(forms_id_list) > 1:
+            match_query["form_id"] = {"$in": forms_id_list}
+        else:
+            match_query["form_id"] = self.unlist(forms_id_list)
+
+        # Prepara los campos de fallas para el project
+        fallas_project = {}
+        for nombre_falla, id_falla in self.fallas_hotel.items():
+            fallas_project[nombre_falla] = f"$answers.{id_falla}"
+
+        query = [
+            {'$match': match_query},
+            {'$project': {
+                '_id': 1,
+                'habitacion': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area_habitacion']}",
+                'hotel': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_nombre']}",
+                'nombre_camarista': f"$answers.{self.f['nombre_camarista']}",
+                'created_at': '$created_at',
+                **fallas_project
+            }},
+            {
+                '$lookup': {
+                    'from': 'inspeccion_hoteleria',
+                    'localField': '_id',
+                    'foreignField': '_id',
+                    'as': 'inspeccion'
+                }
+            },
+            {
+                '$unwind': {
+                    'path': '$inspeccion',
+                    'preserveNullAndEmptyArrays': True
+                }
+            },
+            {
+                '$addFields': {
+                    'grade': '$inspeccion.grade'
+                }
+            }
+        ]
+
+        result = self.format_cr(self.cr.aggregate(query))
+
+        output = []
+        for doc in result:
+            if not doc.get('hotel'):
+                continue
+            total_fallas = 0
+            for nombre_falla in self.fallas_hotel.keys():
+                if doc.get(nombre_falla) == "sí":
+                    total_fallas += 1
+            created_at = doc.get('created_at')
+            if isinstance(created_at, datetime.datetime):
+                created_at = created_at.strftime('%d/%m/%Y')
+            output.append({
+                'habitacion': doc.get('habitacion'),
+                'hotel': doc.get('hotel'),
+                'nombre_camarista': doc.get('nombre_camarista'),
+                'created_at': created_at,
+                'grade': doc.get('grade'),
+                'total_fallas': total_fallas
+            })
+
+        return output
+
     def get_report(self, anio=None, cuatrimestres=None, hoteles=[]):
         forms_id_list = self.get_forms_id_list(hoteles)
         print("forms_id_list", forms_id_list)
@@ -964,6 +1035,8 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
         fallas = self.get_fallas(forms_id_list=forms_id_list, anio=anio, cuatrimestres=cuatrimestres)
 
+        habitaciones_inspeccionadas = self.get_table_habitaciones_inspeccionadas(forms_id_list=forms_id_list)
+
         report_data = {
             'cantidad_si_y_no': cantidad_si_y_no,
             'total_habitaciones': total_habitaciones,
@@ -972,6 +1045,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'porcentaje_propiedades_inspeccionadas': propiedades_inspeccionadas,
             'calificacion_x_hotel_grafica': calificacion_x_hotel_grafica,
             'fallas': fallas,
+            'table_habitaciones_inspeccionadas': habitaciones_inspeccionadas,
         }
 
         return report_data
@@ -985,7 +1059,7 @@ if __name__ == '__main__':
     cuatrimestres = data.get('cuatrimestres', None)
     hoteles = data.get('hoteles', [])
     hotel_name = data.get('hotel_name', 'CROWNE PLAZA MTY')
-    room_id = data.get('room_id', '683f67b637df04721f6b6ddf')
+    room_id = data.get('room_id', 'Habitación 326')
     fallas = data.get('fallas', ['plafon_fuera_de_la_habitacion'])
 
     if option == 'get_hoteles':
