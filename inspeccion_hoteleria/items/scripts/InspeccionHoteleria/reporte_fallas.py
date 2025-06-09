@@ -21,11 +21,11 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'ubicacion_nombre': '663e5c57f5b8a7ce8211ed0b',
             'tipo_area': '663e5e68f5b8a7ce8211ed18',
             'status_auditoria': '67f0844734855c523e139132',
-            'habitacion_remodelada': '67f0844734855c523e1390d7',
             'tipo_area_habitacion': '663e5e68f5b8a7ce8211ed18',
             'numero_habitacion': '680977786d022b9bff6e3645',
             'piso_habitacion': '680977786d022b9bff6e3646',
             'nombre_area_habitacion': '663e5d44f5b8a7ce8211ed0f',
+            'nombre_camarista': '67f0844734855c523e1390d6'
         })
 
         self.form_ids = {
@@ -784,6 +784,165 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             "totales": totales_list
         }
 
+    def get_habitaciones_by_hotel(self, hotel_name, fallas=None):
+        hotel_name_list = [hotel_name.lower().replace(' ', '_')]
+        form_id = self.get_forms_id_list(hotel_name_list)
+        form_id = self.unlist(form_id)
+
+        query = [
+            {'$match': {
+                "deleted_at": {"$exists": False},
+                "form_id": self.Location.AREAS_DE_LAS_UBICACIONES,
+                f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_nombre']}": hotel_name,
+                f"answers.{self.Location.TIPO_AREA_OBJ_ID}.{self.f['tipo_area_habitacion']}": "Habitación",
+            }},
+            {'$project': {
+                '_id': 1,
+                'numero_habitacion': f"$answers.{self.f['numero_habitacion']}",
+                'piso_habitacion': f"$answers.{self.f['piso_habitacion']}",
+                'nombre_area_habitacion': f"$answers.{self.f['nombre_area_habitacion']}",
+            }},
+        ]
+
+        habitaciones = self.format_cr(self.cr.aggregate(query))
+
+        list_habitaciones = []
+        fallas_a_revisar = fallas if fallas else list(self.fallas_hotel.keys())
+
+        for hab in habitaciones:
+            habitacion = hab.get('nombre_area_habitacion', None)
+            piso_habitacion = hab.get('piso_habitacion', None)
+            habitacion_id = hab.get('_id')
+
+            match_query = {
+                "deleted_at": {"$exists": False},
+                "form_id": form_id,
+                f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_nombre']}": hotel_name,
+                f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area_habitacion']}": habitacion,
+            }
+
+            project_fields = {'_id': 1}
+            for nombre_falla in fallas_a_revisar:
+                id_falla = self.fallas_hotel.get(nombre_falla)
+                if id_falla:
+                    project_fields[nombre_falla] = f"$answers.{id_falla}" # type: ignore
+
+            query = [
+                {'$match': match_query},
+                {'$project': project_fields},
+            ]
+
+            result = self.format_cr(self.cr.aggregate(query))
+            result = self.unlist(result)
+            tiene_inspeccion = bool(result)
+
+            if fallas is None:
+                # Revisar todas, detenerse en la primera que encuentre
+                tiene_falla = False
+                falla_detectada = None
+                if result:
+                    for nombre_falla in fallas_a_revisar:
+                        if result.get(nombre_falla) == "sí":
+                            tiene_falla = True
+                            falla_detectada = nombre_falla
+                            break
+                list_habitaciones.append({
+                    'id': habitacion_id,
+                    'habitacion': habitacion,
+                    'piso_habitacion': piso_habitacion,
+                    'tiene_falla': tiene_falla,
+                    'falla_detectada': falla_detectada if tiene_falla else None,
+                    'tiene_inspeccion': tiene_inspeccion
+                })
+            else:
+                # Revisar solo las fallas indicadas, mostrar el estado de cada una
+                fallas_estado = {}
+                if result:
+                    for nombre_falla in fallas_a_revisar:
+                        fallas_estado[nombre_falla] = result.get(nombre_falla) == "sí"
+                else:
+                    for nombre_falla in fallas_a_revisar:
+                        fallas_estado[nombre_falla] = False
+                list_habitaciones.append({
+                    'id': habitacion_id,
+                    'habitacion': habitacion,
+                    'piso_habitacion': piso_habitacion,
+                    'fallas_estado': fallas_estado,
+                    'tiene_falla': any(fallas_estado.values()),
+                    'tiene_inspeccion': tiene_inspeccion
+                })
+
+        print(simplejson.dumps(list_habitaciones, indent=3))
+        return {'habitaciones': list_habitaciones}
+    
+    def get_room_data(self, hotel_name, room_id):
+        hotel_name_list = [hotel_name.lower().replace(' ', '_')]
+        form_id = self.get_forms_id_list(hotel_name_list)
+        form_id = self.unlist(form_id)
+
+        query = [
+            {
+                '$match': {
+                    "deleted_at": {"$exists": False},
+                    "form_id": form_id,
+                    f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area_habitacion']}": room_id,
+                }
+            },
+            {
+              '$sort': {
+                   'created_at': -1
+                }
+            },
+            {
+                '$limit': 1
+            },
+            {
+                '$project': {
+                    '_id': 1,
+                    'habitacion': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area_habitacion']}",
+                    'habitacion_remodelada': f"$answers.{self.f['habitacion_remodelada']}",
+                    'nombre_camarista': f"$answers.{self.f['nombre_camarista']}",
+                    'created_by_name': "$created_by_name",
+                    'updated_at': "$updated_at",
+                }
+            },
+            {
+                '$lookup': {
+                    'from': 'inspeccion_hoteleria',
+                    'localField': '_id',
+                    'foreignField': '_id',
+                    'as': 'inspeccion'
+                }
+            },
+            {
+                '$unwind': {
+                    'path': '$inspeccion',
+                    'preserveNullAndEmptyArrays': True
+                }
+            },
+            {
+                '$replaceRoot': {
+                    'newRoot': {
+                        '$mergeObjects': [
+                            { '$ifNull': [ '$inspeccion', {} ] },
+                            {
+                                'habitacion': '$habitacion',
+                                'habitacion_remodelada': '$habitacion_remodelada',
+                                'nombre_camarista': '$nombre_camarista',
+                                'created_by_name': '$created_by_name',
+                                'updated_at': '$updated_at',
+                            }
+                        ]
+                    }
+                }
+            }
+        ]
+
+        result = self.format_cr(self.cr.aggregate(query))
+        if not result:
+            return {"mensaje": "No hay inspección para esta habitación"}
+        return result
+
     def get_report(self, anio=None, cuatrimestres=None, hoteles=[]):
         forms_id_list = self.get_forms_id_list(hoteles)
         print("forms_id_list", forms_id_list)
@@ -817,133 +976,24 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
         return report_data
 
-    def get_habitaciones_by_hotel(self, hotel_name):
-        hotel_name_list = [hotel_name.lower().replace(' ', '_')]
-        form_id = self.get_forms_id_list(hotel_name_list)
-        form_id = self.unlist(form_id)
-
-        query = [
-            {'$match': {
-                "deleted_at": {"$exists": False},
-                "form_id": self.Location.AREAS_DE_LAS_UBICACIONES,
-                f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_nombre']}": hotel_name,
-                f"answers.{self.Location.TIPO_AREA_OBJ_ID}.{self.f['tipo_area_habitacion']}": "Habitación",
-            }},
-            {'$project': {
-                '_id': 1,
-                'numero_habitacion': f"$answers.{self.f['numero_habitacion']}",
-                'piso_habitacion': f"$answers.{self.f['piso_habitacion']}",
-                'nombre_area_habitacion': f"$answers.{self.f['nombre_area_habitacion']}",
-            }},
-        ]
-
-        habitaciones = self.format_cr(self.cr.aggregate(query))
-
-        list_habitaciones = []
-        for hab in habitaciones:
-            habitacion = hab.get('nombre_area_habitacion', None)
-
-            match_query = {
-                "deleted_at": {"$exists": False},
-                "form_id": form_id,
-                f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_nombre']}": hotel_name,
-                f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area_habitacion']}": habitacion,
-            }
-
-            project_fields = {'_id': 1}
-            for nombre_falla, id_falla in self.fallas_hotel.items():
-                project_fields[nombre_falla] = f"$answers.{id_falla}" # type: ignore
-
-            query = [
-                {'$match': match_query},
-                {'$project': project_fields},
-            ]
-
-            result = self.format_cr(self.cr.aggregate(query))
-            result = self.unlist(result)
-
-            tiene_falla = False
-            falla_detectada = None
-            if result:
-                for nombre_falla, id_falla in self.fallas_hotel.items():
-                    if result.get(nombre_falla) == "sí":
-                        tiene_falla = True
-                        falla_detectada = nombre_falla
-                        break
-
-            list_habitaciones.append({
-                'habitacion': habitacion,
-                'tiene_falla': tiene_falla,
-                'falla_detectada': falla_detectada if tiene_falla else None
-            })
-
-        print(simplejson.dumps(list_habitaciones, indent=3))
-        return {'habitaciones': list_habitaciones}
-    
-    def get_room_data(self, hotel_name, room_id):
-        hotel_name_list = [hotel_name.lower().replace(' ', '_')]
-        form_id = self.get_forms_id_list(hotel_name_list)
-        form_id = self.unlist(form_id)
-
-        project_fields = {
-            '_id': 1,
-        }
-        fallas_si_expr = []
-        for nombre_falla, id_falla in self.fallas_hotel.items():
-            fallas_si_expr.append({
-                "$cond": [
-                    {"$eq": [f"$answers.{id_falla}", "sí"]},
-                    nombre_falla,
-                    None
-                ]
-            })
-
-        query = [
-            {'$match': {
-                "deleted_at": {"$exists": False},
-                "form_id": form_id,
-                "_id": ObjectId(room_id),
-            }},
-            {'$project': {
-                'fallas_si': {
-                    "$filter": {
-                        "input": fallas_si_expr,
-                        "as": "f",
-                        "cond": {"$ne": ["$$f", None]}
-                    }
-                },
-            }},
-            {'$addFields': {
-                'total_fallas_si': {"$size": "$fallas_si"}
-            }}
-        ]
-
-        habitaciones = self.format_cr(self.cr.aggregate(query))
-        habitacion = self.unlist(habitaciones)
-
-        result = {
-            "fallas_si": habitacion.get("fallas_si", []) if habitacion else [],
-            "total_fallas_si": habitacion.get("total_fallas_si", 0) if habitacion else 0
-        }
-        return result
-
 if __name__ == '__main__':
     module_obj = Inspeccion_Hoteleria(settings, sys_argv=sys.argv, use_api=True)
     module_obj.console_run()
     data = module_obj.data.get('data', {})
-    option = data.get('option', 'get_cards')
+    option = data.get('option', 'get_report')
     anio = data.get('anio', None)
     cuatrimestres = data.get('cuatrimestres', None)
     hoteles = data.get('hoteles', [])
     hotel_name = data.get('hotel_name', 'CROWNE PLAZA MTY')
     room_id = data.get('room_id', '683f67b637df04721f6b6ddf')
+    fallas = data.get('fallas', ['plafon_fuera_de_la_habitacion'])
 
     if option == 'get_hoteles':
         response = module_obj.get_hoteles()
-    elif option == 'get_cards':
+    elif option == 'get_report':
         response = module_obj.get_report(anio=anio, cuatrimestres=cuatrimestres, hoteles=hoteles)
     elif option == 'get_habitaciones_by_hotel':
-        response = module_obj.get_habitaciones_by_hotel(hotel_name=hotel_name)
+        response = module_obj.get_habitaciones_by_hotel(hotel_name=hotel_name, fallas=fallas)
     elif option == 'get_room_data':
         response = module_obj.get_room_data(hotel_name=hotel_name, room_id=room_id)
 
