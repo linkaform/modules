@@ -49,6 +49,10 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'holiday_inn_tijuana': self.HOLIDAY_INN_TIJUANA,
         }
 
+        self.hotel_name_abreviatura = {
+            'HILTON GARDEN SILAO': 'HGI SILAO'
+        }
+
         self.fallas_hotel = {
             'foco_de_pasillo_afuera_de_la_habitacion': '67f0844734855c523e1390d8',
             'plafon_fuera_de_la_habitacion': '67f0844734855c523e1390db',
@@ -789,6 +793,9 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         hotel_name_list = [hotel_name.lower().replace(' ', '_')]
         form_id = self.get_forms_id_list(hotel_name_list)
         form_id = self.unlist(form_id)
+
+        if hotel_name in self.hotel_name_abreviatura:
+            hotel_name = self.hotel_name_abreviatura[hotel_name]
 
         query = [
             {'$match': {
