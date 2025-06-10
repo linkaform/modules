@@ -213,17 +213,16 @@ class Stock(Stock):
         if new_records:
             #Se insertan los nuevos registros a la base de datos
             res_new_stock = self.cr.insert_many(new_records)
-            for idx, rec_idx in enumerate(res_new_stock.inserted_ids):
-                res[list(new_stock_records2.keys())[idx]] = {
-                    'new_id':rec_idx,
-                    'folio':new_stock_records2[idx]['folio'],
-                    }
-                self.lkf_api.sync_catalogs_records({
-                    'catalogs_ids':[self.CATALOG_INVENTORY_ID],
-                    'form_answer_id':rec_idx,
-                    'form_answer_status':'created',
-                    })
-
+            print('res_new_stock', res_new_stock.inserted_ids)
+        sync_ids = []
+        for idx, rec_idx in enumerate(res_new_stock.inserted_ids):
+            res[list(new_stock_records2.keys())[idx]] = {
+                'new_id':rec_idx,
+                'folio':new_stock_records2[idx]['folio'],
+                }
+            sync_ids.append(str(rec_idx))
+        print('sync_ids=', sync_ids)
+        self.lkf_api.sync_catalogs_records({"catalogs_ids":  [self.CATALOG_INVENTORY_ID],"form_answers_ids":  sync_ids,"status": "created"})
         for idx, this_record in update_stock_records.items():
             if this_record:
                 update_records.append(this_record)
