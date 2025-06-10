@@ -15,6 +15,7 @@ if __name__ == "__main__":
     data = acceso_obj.data.get('data',{})
     option = data.get("option",'')
     location = data.get("location",'')
+    locations = data.get("locations",[])
     folio = data.get("folio",'')
     access_pass = data.get("access_pass",{})
     data_msj=data.get("data_msj", {})
@@ -72,7 +73,7 @@ if __name__ == "__main__":
     elif option == 'get_user_contacts':
         response = acceso_obj.get_user_contacts()
     elif option == 'get_config_modulo_seguridad':
-        response = acceso_obj.get_config_modulo_seguridad(location)
+        response = acceso_obj.get_config_modulo_seguridad(ubicaciones=locations)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
