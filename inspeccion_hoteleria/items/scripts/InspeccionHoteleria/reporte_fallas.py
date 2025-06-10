@@ -911,6 +911,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                     'habitacion_remodelada': f"$answers.{self.f['habitacion_remodelada']}",
                     'nombre_camarista': f"$answers.{self.f['nombre_camarista']}",
                     'created_by_name': "$created_by_name",
+                    'created_at': "$created_at",
                     'updated_at': "$updated_at",
                 }
             },
@@ -922,34 +923,54 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                     'as': 'inspeccion'
                 }
             },
-            {
-                '$unwind': {
-                    'path': '$inspeccion',
-                    'preserveNullAndEmptyArrays': True
+            {'$project': {
+                    '_id': 1,
+                    'habitacion': '$habitacion',
+                    'habitacion_remodelada': '$habitacion_remodelada',
+                    'nombre_camarista': '$nombre_camarista',
+                    'created_by_name': '$created_by_name',
+                    'created_at': '$created_at',
+                    'updated_at': '$updated_at',
+                    'inspeccion': {'$first': '$inspeccion'}
                 }
             },
-            {
-                '$replaceRoot': {
-                    'newRoot': {
-                        '$mergeObjects': [
-                            { '$ifNull': [ '$inspeccion', {} ] },
-                            {
-                                'habitacion': '$habitacion',
-                                'habitacion_remodelada': '$habitacion_remodelada',
-                                'nombre_camarista': '$nombre_camarista',
-                                'created_by_name': '$created_by_name',
-                                'updated_at': '$updated_at',
-                            }
-                        ]
-                    }
-                }
-            }
+            # {
+            #     '$unwind': {
+            #         'path': '$inspeccion',
+            #         'preserveNullAndEmptyArrays': True
+            #     }
+            # },
+            # {
+            #     '$replaceRoot': {
+            #         'newRoot': {
+            #             '$mergeObjects': [
+            #                 { '$ifNull': [ '$inspeccion', {} ] },
+            #                 {
+            #                     'habitacion': '$habitacion',
+            #                     'habitacion_remodelada': '$habitacion_remodelada',
+            #                     'nombre_camarista': '$nombre_camarista',
+            #                     'created_by_name': '$created_by_name',
+            #                     'updated_at': '$updated_at',
+            #                 }
+            #             ]
+            #         }
+            #     }
+            # }
         ]
-
-        result = self.format_cr(self.cr.aggregate(query))
+        print('query=', query)
+        result = self.cr.aggregate(query)
         if not result:
             return {"mensaje": "No hay inspección para esta habitación"}
-        return result
+        # result['_id'] = str(result['_id'])
+        for x in result:
+            print('-----------------------')
+            x['_id'] = str(x['_id'])
+            x['inspeccion'].pop('_id', None)
+            x['created_at'] = self.get_date_str(x['created_at'])
+            x['updated_at'] = self.get_date_str(x['updated_at'])
+            if x['inspeccion'].get('created_at'):
+                x['inspeccion'].pop('created_at', None)
+        return x
 
     def get_table_habitaciones_inspeccionadas(self, forms_id_list=[]):
         match_query = {
@@ -1193,7 +1214,13 @@ if __name__ == '__main__':
     elif option == 'get_habitaciones_by_hotel':
         response = module_obj.get_habitaciones_by_hotel(hotel_name=hotel_name, fallas=fallas)
     elif option == 'get_room_data':
+        module_obj.cr_inspeccion = module_obj.net.get_collections(collection='inspeccion_hoteleria')
+        res = module_obj.cr_inspeccion.find({'_id':ObjectId('683df32bb8b89a5fc4c8b867')})
+        print('module_obj.cr_inspeccion', module_obj.cr_inspeccion)
+        for x in res:
+            print('x', x)
         response = module_obj.get_room_data(hotel_name=hotel_name, room_id=room_id)
 
+    # print('response=', response)
     print(simplejson.dumps(response, indent=3))
     module_obj.HttpResponse({"data": response})
