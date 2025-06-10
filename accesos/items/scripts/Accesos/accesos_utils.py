@@ -19,6 +19,27 @@ class Accesos( Accesos):
         #     "catalogo_ubicacion_concesion": "66a83a74de752e12018fbc3c",
         # })
 
+        self.CONFIGURACION_DE_RECORRIDOS_FORM = self.lkm.form_id('configuracion_de_recorridos','id')
+        self.BITACORA_RONDINES = self.lkm.form_id('bitacora_rondines','id')
+
+        self.f.update({
+            'areas_del_rondin': '66462aa5d4a4af2eea07e0d1',
+            'comentario_area_rondin': '66462b9d7124d1540f962088',
+            'comentario_check_area': '681144fb0d423e25b42818d4',
+            'estatus_del_recorrido': '6639b2744bb44059fc59eb62',
+            'fecha_hora_inspeccion_area': '6760a908a43b1b0e41abad6b',
+            'fecha_programacion':'6760a8e68cef14ecd7f8b6fe',
+            'foto_evidencia_area': '681144fb0d423e25b42818d2',
+            'foto_evidencia_area_rondin': '66462b9d7124d1540f962087',
+            'grupo_de_areas_recorrido': '6645052ef8bc829a5ccafaf5',
+            'nombre_area':'663e5d44f5b8a7ce8211ed0f',
+            'nombre_del_recorrido': '6645050d873fc2d733961eba',
+            'nombre_del_recorrido_en_catalog': '6644fb97e14dcb705407e0ef',
+            'ubicacion_recorrido': '663e5c57f5b8a7ce8211ed0b',
+            'fecha_inicio_rondin': '6818ea068a7f3446f1bae3b3',
+            'fecha_fin_rondin': '6760a8e68cef14ecd7f8b6ff'
+        })
+
 
     def get_cantidades_de_pases(self, x_empresa=False):
         print('entra a get_cantidades_de_pases')

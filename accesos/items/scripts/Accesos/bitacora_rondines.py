@@ -25,6 +25,8 @@ class Accesos(Accesos):
             fecha_inspeccion = self.date_2_epoch(fecha_inspeccion)
             print('epoch fecha_inspeccion', fecha_inspeccion)
             print('area', area)
+            if not fecha_inspeccion:
+                continue
             duracion = fecha_inspeccion - fecha_inicio
             print('duracion', duracion)
             area[self.f['duracion_traslado_area']] = round(duracion / 60,2)

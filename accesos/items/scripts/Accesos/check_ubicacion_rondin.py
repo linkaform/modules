@@ -81,6 +81,7 @@ class Accesos(Accesos):
         today = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
         rondin = self.unlist(rondin)
         format_id_rondin = rondin.get('_id', '')
+        rondin_en_progreso = True
         answers={}
 
         print('rondinnnnnnnnnnnnnnnnn', simplejson.dumps(rondin, indent=3))
@@ -189,6 +190,10 @@ class Accesos(Accesos):
             ubicacion_recorrido = nombre.get('ubicacion_recorrido', '')
             record_id = nombre.get('_id', '')
 
+        # Validar record_id antes de continuar
+        if not record_id:
+            raise Exception("No se encontró un record_id válido para obtener las áreas del recorrido.")
+
         areas_recorrido = self.get_areas_recorrido(record_id)
 
         metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_RONDINES)
@@ -262,9 +267,12 @@ if __name__ == "__main__":
     print('rondin', rondin)
 
     if not rondin:
-        print('No se encontro un rondin con el area proporcionada. Creando uno nuevo...')
-        response = acceso_obj.create_rondin(acceso_obj.answers, nombre_area_rondin, nombres_recorrido)
-        print('response', response)
+        if not nombres_recorrido:
+            print('No se encontro ningun recorrido con el area proporcionada.')
+        else:
+            print('No se encontro un rondin con el area proporcionada. Creando uno nuevo...')
+            response = acceso_obj.create_rondin(acceso_obj.answers, nombre_area_rondin, nombres_recorrido)
+            print('response', response)
     else:
         resultado = acceso_obj.check_area_in_rondin(data_rondin=acceso_obj.answers, area_rondin=nombre_area_rondin, rondin=rondin)
         print('resultado', resultado)
