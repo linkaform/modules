@@ -1206,10 +1206,55 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             r_id = r['_id']
             r['hotel'] = hotel_by_id.get(r_id, None)
 
-        print("res", res)
-
         return {
             'radar_data': res
+        }
+
+    def get_fotografias(self, forms_id_list=None):
+        query = {}
+        projection = {"_id": 1, "media": 1}
+        res = list(self.cr_inspeccion.find(query, projection))
+        list_of_ids = [r['_id'] for r in res]
+
+        match_query = {
+            "deleted_at": {"$exists": False},
+            "_id": {"$in": list_of_ids}
+        }
+
+        if len(forms_id_list) > 1: # type: ignore
+            match_query.update({
+                "form_id": {"$in": forms_id_list}, # type: ignore
+            }) # type: ignore
+        else:
+            match_query.update({
+                "form_id": self.unlist(forms_id_list),
+            })
+
+        query = [
+            {'$match': match_query},
+            {'$project': {
+                '_id': 1,
+                'hotel': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_nombre']}",
+            }},
+        ]
+
+        result = self.format_cr(self.cr.aggregate(query))
+
+        hotel_by_id = {str(item['_id']): item['hotel'] for item in result}
+        for r in res:
+            r['_id'] = str(r['_id'])
+            r_id = r['_id']
+            r['hotel'] = hotel_by_id.get(r_id, None)
+            # Formatea media: solo deja el id y los file_url
+            media = r.get('media', {})
+            new_media = {}
+            for key, files in media.items():
+                # Solo file_url en cada diccionario
+                new_media[key] = [{'file_url': f['file_url']} for f in files if 'file_url' in f]
+            r['media'] = new_media
+
+        return {
+            'hoteles_fotografias': res
         }
 
     def get_report(self, anio=None, cuatrimestres=None, hoteles=[]):
@@ -1239,6 +1284,8 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
         graph_radar = self.get_graph_radar(forms_id_list=forms_id_list)
 
+        hoteles_fotografias = self.get_fotografias(forms_id_list=forms_id_list)
+
         report_data = {
             'cantidad_si_y_no': cantidad_si_y_no,
             'total_habitaciones': total_habitaciones,
@@ -1250,6 +1297,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'table_habitaciones_inspeccionadas': habitaciones_inspeccionadas,
             'mejor_y_peor_habitacion': mejor_y_peor_habitacion,
             'graph_radar': graph_radar,
+            'hoteles_fotografias': hoteles_fotografias,
         }
 
         return report_data
