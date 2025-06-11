@@ -75,7 +75,7 @@ class Accesos(Accesos):
                 'ubicacion': f"$answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.configuracion_area['ubicacion']}",
                 'area': f"$answers.{self.configuracion_area['area']}",
                 'tag_id_area': f"$answers.{self.area_update['tag_id_area']}",
-                'foto_area': f"$answers.{self.area_update['foto_area']}",
+                'foto_area': {'$ifNull': [f"$answers.{self.area_update['foto_area']}", []]},
                 'tipo_area': f"$answers.{self.TIPO_AREA_OBJ_ID}.{self.area_update['tipo_area']}",
                 'nombre_direccion': f"$answers.{self.CONTACTO_CAT_OBJ_ID}.{self.area_update['nombre_direccion']}",
                 'estatus_area': f"$answers.{self.area_update['estatus_area']}",
@@ -87,6 +87,8 @@ class Accesos(Accesos):
         ]
         res = self.format_cr(self.cr.aggregate(query))
         res = self.unlist(res)
+        if not res and data.get('option') == 'actualizar_foto_con_scann_de_qr':
+            raise Exception("No se encontró un registro de área para el QR proporcionado. Intenta asignandole uno nuevo.")
         return res
 
     def update_area(self, data):
