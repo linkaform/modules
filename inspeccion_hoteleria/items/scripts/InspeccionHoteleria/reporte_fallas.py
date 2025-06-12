@@ -1258,10 +1258,9 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         }
     
     def get_comentarios(self, forms_id_list=None):
-        #TODO Agregar la falla y la habitaicon para que el comentairo tenga sentido
         query = {}
-        projection = {"_id": 1, "media": 1, "comments": 1}
-        res = list(self.cr_inspeccion.find(query, projection))
+        res = list(self.cr_inspeccion.find(query))
+        print('res', res[3])
         list_of_ids = [r['_id'] for r in res]
 
         match_query = {
@@ -1283,16 +1282,26 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             {'$project': {
                 '_id': 1,
                 'hotel': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_nombre']}",
+                'habitacion': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area_habitacion']}",
             }},
         ]
 
         result = self.format_cr(self.cr.aggregate(query))
 
         hotel_by_id = {str(item['_id']): item['hotel'] for item in result}
+        info_by_id = {
+            str(item['_id']): {
+                'hotel': item.get('hotel'),
+                'habitacion': item.get('habitacion')
+            }
+            for item in result
+        }
         for r in res:
             r['_id'] = str(r['_id'])
-            r_id = r['_id']
-            r['hotel'] = hotel_by_id.get(r_id, None)
+            info = info_by_id.get(r['_id'], {})
+            r['hotel'] = info.get('hotel')
+            r['habitacion'] = info.get('habitacion')
+            r.pop('created_at', None)  # Elimina created_at si existe
             # Formatea media: solo deja el id y los file_url
             media = r.get('media', {})
             new_media = {}
