@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from ast import mod
 from pickle import NONE
 import re
 import sys, simplejson
@@ -1362,6 +1363,9 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
         return report_data
 
+    def get_pdf(self, record_id, template_id=131835, name_pdf='Inspeccion de Habitacion'):
+        return self.lkf_api.get_pdf_record(record_id, template_id=template_id, name_pdf=name_pdf, send_url=True)
+
 if __name__ == '__main__':
     module_obj = Inspeccion_Hoteleria(settings, sys_argv=sys.argv, use_api=True)
     module_obj.console_run()
@@ -1373,6 +1377,7 @@ if __name__ == '__main__':
     hotel_name = data.get('hotel_name', 'CROWNE PLAZA MTY')
     room_id = data.get('room_id', 'Habitación 326')
     fallas = data.get('fallas', ['plafon_fuera_de_la_habitacion'])
+    record_id = data.get('record_id', None)
 
     if option == 'get_hoteles':
         response = module_obj.get_hoteles()
@@ -1382,6 +1387,8 @@ if __name__ == '__main__':
         response = module_obj.get_habitaciones_by_hotel(hotel_name=hotel_name, fallas=fallas)
     elif option == 'get_room_data':
         response = module_obj.get_room_data(hotel_name=hotel_name, room_id=room_id)
+    elif option == 'get_room_pdf':
+        response = module_obj.get_pdf(record_id=record_id)
 
     # print('response=', response)
     print(simplejson.dumps(response, indent=3))
