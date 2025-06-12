@@ -61,12 +61,12 @@ class Custom(Custom):
             str_unidad_medida = var_data.get('help_text') or ""
             
             if min_var and not max_var:
-                str_rango = f"< {min_var} {str_unidad_medida}"
+                str_rango = f"> {min_var} {str_unidad_medida}"
                 # Se evalúa solo el mínimo
                 if value_var < min_var:
                     list_items_to_group.append( self.prepare_data_to_group(var_data, value_var, str_rango) )
             elif max_var and not min_var:
-                str_rango = f"> {max_var} {str_unidad_medida}"
+                str_rango = f"< {max_var} {str_unidad_medida}"
                 # Se evalúa solo el máximo
                 if value_var > max_var:
                     list_items_to_group.append( self.prepare_data_to_group(var_data, value_var, str_rango) )
