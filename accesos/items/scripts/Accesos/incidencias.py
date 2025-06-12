@@ -39,7 +39,8 @@ if __name__ == "__main__":
     area = data.get("area","")
     prioridades = data.get("prioridades",[])
     folio = data.get("folio")
-
+    sub_cat = data.get("sub_cat")
+    cat = data.get("cat")
     dateFrom = data.get("dateFrom", "")
     dateTo = data.get("dateTo", "")
     filterDate = data.get("filterDate", "")
@@ -59,7 +60,7 @@ if __name__ == "__main__":
     elif option == 'catalogo_area_empleado':
         response = acceso_obj.catalogo_config_area_empleado(bitacora='Incidencias', location=location)
     elif option == 'catalogo_incidencias':
-        response = acceso_obj.catalogo_incidencias()
+        response = acceso_obj.catalogo_incidencias(cat=cat,sub_cat=sub_cat)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
