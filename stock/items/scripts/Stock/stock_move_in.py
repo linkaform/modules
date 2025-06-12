@@ -131,7 +131,7 @@ class Stock(Stock):
 
         for idx, records in enumerate(groups):
             new_record = deepcopy(base_record)
-            new_folio = f"{self.folio}-{idx+1}/{total_groups}"
+            new_folio = f"{self.base_folio}-{idx+2}/{total_groups}"
             new_record['folio'] = new_folio
             folio_serie_record = []
             # self.answers[self.f['move_group']] = []
@@ -144,7 +144,7 @@ class Stock(Stock):
                 get_folio = True
             #### ONTS
                 if get_folio:
-                    folio_ont_inv = f"{self.folio}-{idx+1}-{idy+1}/{len(records)}"
+                    folio_ont_inv = f"{self.base_folio}-{idx+1}-{idy+1}/{len(records)}"
                 # num_serie = row[ pos_serie ]
                 num_serie = self.strip_special_characters(num_serie)
                 if not num_serie:
@@ -187,9 +187,9 @@ class Stock(Stock):
                             self.ont_cr.insert_many(folio_serie_record, session=sess)
                     except Exception as e:
                         print(f"Error durante la transacción: {e}")
-                        self.LKFException( f'MMMMMMMMMrror en la creacion de las onts. Existen Series previamente Cargadas. {e}')
+                        print('e.keys')
+                        self.LKFException( f'MMMMMMMMMrror en la creacion de las onts. Existen Series previamente Cargadas')
                     if new_record.get('answers'):
-                        # self.direct_move_in(new_record)
                         response = stock_obj.make_direct_stock_move(move_type='in')
                         res = self.records_cr.insert_one(new_record)
                     else:
@@ -213,6 +213,7 @@ class Stock(Stock):
                     #crea onts
                     res = self.ont_cr.insert_many(folio_serie_record)
             except Exception as e:
+                print('e.keys', e.keys())
                 self.LKFException(f"EEEEEEEEE Error en la creacion de las onts. Existen Series previamente Cargadas: {e}")
             # try:
             if True:
@@ -324,18 +325,26 @@ class Stock(Stock):
 
 
 if __name__ == '__main__':
-    print('stock move in argv=', sys.argv)
     stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
     stock_obj.console_run()
     folio = None
-    if hasattr(stock_obj,'folio'):
+    stock_obj.base_folio = None
+    header, records = stock_obj.read_xls_file()
+    groups = []
+    if stock_obj.proceso_onts:
+        groups = stock_obj.do_groups(header, records)
+    if hasattr(stock_obj,'folio') and stock_obj.folio:
         folio = stock_obj.folio
     if not folio:
         today = stock_obj.get_today_format()
         # folio = f"REC{datetime.strftime(today, '%y%m%d')}"
         folio = "REC"
         next_folio = stock_obj.get_record_folio(stock_obj.STOCK_IN_ONE_MANY_ONE, folio)
-        folio = f"{folio}-{next_folio}"
+        stock_obj.base_folio = f"{folio}-{next_folio}"
+        if len(groups) > 1:
+            folio = f"{stock_obj.base_folio}-1/{len(groups)}"
+        else:
+            folio = stock_obj.base_folio
 
 
     stock_obj.folio = folio
@@ -343,10 +352,7 @@ if __name__ == '__main__':
     stock_obj.answers[stock_obj.f['folio_recepcion']] = folio
     stock_obj.current_record['answers'] = stock_obj.answers
     stock_obj.set_mongo_connections()
-    header, records = stock_obj.read_xls_file()
     if stock_obj.proceso_onts:
-        groups = stock_obj.do_groups(header, records)
-        print('groups', groups)
         stock_obj.create_records(groups)
     else:
         stock_obj.current_record['answers'] = stock_obj.answers

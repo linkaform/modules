@@ -6,6 +6,11 @@ from bson import ObjectId
 from datetime import datetime, timedelta, date
 from copy import deepcopy
 
+from pymongo.errors import ConnectionFailure, OperationFailure
+from pymongo.read_concern import ReadConcern
+from pymongo.write_concern import WriteConcern
+from pymongo.read_preferences import ReadPreference
+
 from lkf_addons.addons.stock.app import Stock
 
 today = date.today()
@@ -209,27 +214,53 @@ class Stock(Stock):
         for idx, this_record in new_stock_records2.items():
             if this_record:
                 new_records.append(this_record)
-
         if new_records:
-            #Se insertan los nuevos registros a la base de datos
-            res_new_stock = self.cr.insert_many(new_records)
-            print('res_new_stock', res_new_stock.inserted_ids)
-        sync_ids = []
-        for idx, rec_idx in enumerate(res_new_stock.inserted_ids):
-            res[list(new_stock_records2.keys())[idx]] = {
-                'new_id':rec_idx,
-                'folio':new_stock_records2[idx]['folio'],
-                }
-            sync_ids.append(str(rec_idx))
-        print('sync_ids=', sync_ids)
-        self.lkf_api.sync_catalogs_records({"catalogs_ids":  [self.CATALOG_INVENTORY_ID],"form_answers_ids":  sync_ids,"status": "created"})
+            if self.get_enviroment() == 'prod':
+                with self.client.start_session() as session:
+                    # Define el bloque de transacción
+                    #HACE TRANSACCIONES ACIDAS
+                    def write_records(sess):
+                        try:
+                            return self.cr.insert_many(new_records)
+                        except Exception as e:
+                            print(f"Error en la creacion de registros de Stock: {e}")
+                            self.LKFException(f" Error en la creacion de registros de Stock.")
+                    try:
+                        # Comienza la transacción
+                        res_new_stock = session.with_transaction(
+                            write_records,
+                            read_concern=ReadConcern("snapshot"),  
+                            write_concern=WriteConcern("majority"),  
+                            read_preference=ReadPreference.PRIMARY  
+                        )
+                        print("Transacción completada exitosamente.")
+                    except (ConnectionFailure, OperationFailure)  as e:
+                        print(f"Error conexion: {e}")
+                        self.LKFException( f'Error en la conexion. {e}' )
+
+            else:
+                #Se insertan los nuevos registros a la base de datos
+                try:
+                    res_new_stock = self.cr.insert_many(new_records)
+                    print('res_new_stock', res_new_stock)
+                except Exception as e:
+                    self.LKFException(f" Error en la creacion de registros de Stock.")
+            sync_ids = []
+            for idx, rec_idx in enumerate(res_new_stock.inserted_ids):
+                res[idx] = {
+                    'new_id':rec_idx,
+                    'folio':new_records[idx]['folio'],
+                    }
+                sync_ids.append(str(rec_idx))
+            self.lkf_api.sync_catalogs_records({"catalogs_ids":  [self.CATALOG_INVENTORY_ID],"form_answers_ids":  sync_ids,"status": "created"})
         for idx, this_record in update_stock_records.items():
             if this_record:
                 update_records.append(this_record)
 
         if update_records:
             for idx, record in update_stock_records.items():
-                #Se actualizan los registros existentes a la base de datos
+                if not record:
+                    continue
                 this_res = self.cr.update_one({'_id':record['_id']}, {'$set':record})
                 res[idx] = {
                     'acknowledged': this_res.acknowledged, 
@@ -518,16 +549,16 @@ class Stock(Stock):
     def get_complete_metadata(self, fields={}):
         now = datetime.now()
         format_date = int(now.timestamp())  # Converting to timestamp
-        fields['user_id'] = self.user['user_id']
-        fields['user_name'] = self.user['username']
+        fields['user_id'] = self.current_record['user_id']
+        fields['user_name'] = self.current_record['user_name']
         fields['assets'] = {
             "template_conf" : None,
             "followers" : [ 
                 {
-                    "asset_id" : self.user['user_id'],
-                    "email" : self.user['email'],
-                    "name" : "PCI Automatico",
-                    "username" : None,
+                    "asset_id" : self.current_record['user_id'],
+                    "email" :  self.current_record['created_by_email'],
+                    "name" : self.current_record['user_name'],
+                    "username" : self.user['username'],
                     "rtype" : "user",
                     "rules" : None
                 }
@@ -544,9 +575,9 @@ class Stock(Stock):
         fields['start_date'] = now
         fields['end_date'] = now
         fields['duration'] = 0
-        fields['created_by_id'] = self.user['user_id']
-        fields['created_by_name'] = self.user['username']
-        fields['created_by_email'] = "linkaform@operacionpci.com.mx"
+        fields['created_by_id'] = self.current_record['user_id']
+        fields['created_by_name'] = self.current_record['user_name']
+        fields['created_by_email'] = self.current_record['created_by_email']
         fields['timezone'] = "America/Monterrey"
         fields['tz_offset'] = -360
         fields['other_versions'] = []  
