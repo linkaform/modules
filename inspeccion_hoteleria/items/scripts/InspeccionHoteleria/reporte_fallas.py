@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from ast import mod
+import enum
 from pickle import NONE
 import re
 import sys, simplejson
@@ -311,6 +312,9 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         ]
 
         result = self.format_cr(self.cr.aggregate(query))
+        # TODO
+        # Temp se quita mcallen de la lista porque no es un hotel valido
+        result = [h for h in result if h.get('nombre_hotel', '').strip().upper() != 'MCALLEN']
         
         hoteles = {
             'hoteles': result
@@ -1316,6 +1320,23 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         }
 
     def get_report(self, anio=None, cuatrimestres=None, hoteles=[]):
+        # Normaliza los nombres de hoteles usando las abreviaturas si corresponde
+        if hoteles:
+            hoteles_actualizados = []
+            for hotel in hoteles:
+                encontrado = False
+                hotel_norm = hotel.lower().replace(' ', '_')
+                for k, v in self.hotel_name_abreviatura.items():
+                    v_norm = v.lower().replace(' ', '_')
+                    k_norm = k.lower().replace(' ', '_')
+                    if v_norm == hotel_norm:
+                        hoteles_actualizados.append(k_norm)
+                        encontrado = True
+                        break
+                if not encontrado:
+                    hoteles_actualizados.append(hotel_norm)
+            hoteles = hoteles_actualizados
+
         forms_id_list = self.get_forms_id_list(hoteles)
         print("forms_id_list", forms_id_list)
 
