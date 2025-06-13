@@ -74,7 +74,7 @@ class Accesos(Accesos):
                 '_id': 1,
                 'ubicacion': f"$answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.configuracion_area['ubicacion']}",
                 'area': f"$answers.{self.configuracion_area['area']}",
-                'tag_id_area': f"$answers.{self.area_update['tag_id_area']}",
+                'tag_id_area': {'$ifNull': [f"$answers.{self.area_update['tag_id_area']}", '']},
                 'foto_area': {'$ifNull': [f"$answers.{self.area_update['foto_area']}", []]},
                 'tipo_area': f"$answers.{self.TIPO_AREA_OBJ_ID}.{self.area_update['tipo_area']}",
                 'nombre_direccion': f"$answers.{self.CONTACTO_CAT_OBJ_ID}.{self.area_update['nombre_direccion']}",
