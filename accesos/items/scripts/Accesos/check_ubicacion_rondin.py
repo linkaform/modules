@@ -68,7 +68,7 @@ class Accesos(Accesos):
             {'$limit': 1}
         ]
 
-        rondin = self.format_cr(self.cr.aggregate(query), **{'labels_off': True})
+        rondin = self.format_cr(self.cr.aggregate(query))
         return rondin
     
     def check_area_in_rondin(self, data_rondin, area_rondin, rondin):
