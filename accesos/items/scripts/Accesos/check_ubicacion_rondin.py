@@ -153,7 +153,6 @@ class Accesos(Accesos):
 
         print("ans", simplejson.dumps(answers, indent=4))
 
-        # print(stop)
         if answers:
             res= self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=[format_id_rondin])
             if res.get('status_code') == 201 or res.get('status_code') == 202:
@@ -215,9 +214,7 @@ class Accesos(Accesos):
 
         answers[self.f['fecha_programacion']] = today
         answers[self.f['fecha_inicio_rondin']] = today
-        ######################################
-        #TODO Cambiar la ubicacion hardcodeada
-        #####################################
+
         answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = {
             self.f['ubicacion_recorrido']: ubicacion_recorrido,
             self.f['nombre_del_recorrido_en_catalog']: nombre_recorrido
@@ -247,7 +244,6 @@ class Accesos(Accesos):
         #TODO Asignar a usuario
         ###############################
 
-        # print(stop)
         res = self.lkf_api.post_forms_answers(metadata)
         return res
 
