@@ -314,7 +314,10 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         result = self.format_cr(self.cr.aggregate(query))
         # TODO
         # Temp se quita mcallen de la lista porque no es un hotel valido
-        result = [h for h in result if h.get('nombre_hotel', '').strip().upper() != 'MCALLEN']
+        result = [
+            h for h in result
+            if h.get('nombre_hotel', '').strip().upper() not in ('MCALLEN', 'CORPORATIVO MEXICO')
+        ]
         
         hoteles = {
             'hoteles': result
