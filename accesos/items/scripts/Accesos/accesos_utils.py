@@ -37,7 +37,8 @@ class Accesos( Accesos):
             'nombre_del_recorrido_en_catalog': '6644fb97e14dcb705407e0ef',
             'ubicacion_recorrido': '663e5c57f5b8a7ce8211ed0b',
             'fecha_inicio_rondin': '6818ea068a7f3446f1bae3b3',
-            'fecha_fin_rondin': '6760a8e68cef14ecd7f8b6ff'
+            'fecha_fin_rondin': '6760a8e68cef14ecd7f8b6ff',
+            'check_status': '681fa6a8d916c74b691e174b'
         })
 
 

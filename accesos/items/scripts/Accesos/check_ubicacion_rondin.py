@@ -56,7 +56,7 @@ class Accesos(Accesos):
             {'$match': {
                 "deleted_at": {"$exists": False},
                 "form_id": self.BITACORA_RONDINES,
-                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.f['nombre_del_recorrido_en_catalog']}": {"$in": format_names},
+                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.f['nombre_del_recorrido']}": {"$in": format_names},
                 f"answers.{self.f['estatus_del_recorrido']}": {"$in": status_list},
             }},
             {'$project': {
@@ -99,9 +99,9 @@ class Accesos(Accesos):
                 conf_recorrido.update({
                     self.f['ubicacion_recorrido']: value
                 })
-            elif key == 'nombre_del_recorrido_en_catalog':
+            elif key == 'nombre_del_recorrido':
                 conf_recorrido.update({
-                    self.f['nombre_del_recorrido_en_catalog']: value
+                    self.f['nombre_del_recorrido']: value
                 })
             elif key == 'estatus_del_recorrido':
                 answers[self.f['estatus_del_recorrido']] = value
@@ -143,13 +143,15 @@ class Accesos(Accesos):
                     areas_rondin[str(idx)] = obj
 
                 answers[self.f['areas_del_rondin']] = areas_rondin
-                print(rondin_en_progreso)
             else:
                 pass
 
         answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = conf_recorrido
         answers[self.f['estatus_del_recorrido']] = 'en_proceso' if rondin_en_progreso else 'realizado'
         answers[self.f['fecha_fin_rondin']] = today if not rondin_en_progreso else ''
+
+        if data_rondin.get(self.f['check_status']) == 'finalizado':
+            answers[self.f['estatus_del_recorrido']] = 'realizado'
 
         print("ans", simplejson.dumps(answers, indent=4))
 
@@ -217,7 +219,7 @@ class Accesos(Accesos):
 
         answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = {
             self.f['ubicacion_recorrido']: ubicacion_recorrido,
-            self.f['nombre_del_recorrido_en_catalog']: nombre_recorrido
+            self.f['nombre_del_recorrido']: nombre_recorrido
         }
         answers[self.f['estatus_del_recorrido']] = 'en_proceso'
         answers[self.f['areas_del_rondin']] = [{
