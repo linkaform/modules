@@ -27,7 +27,12 @@ class Accesos(Accesos):
             'nombre_direccion': '663a7e0fe48382c5b1230901',
             'estatus_area': '663e5e4bf5b8a7ce8211ed15',
             'estatus': '663e5e4bf5b8a7ce8211ed14',
-            'qr_area': '663e5e4bf5b8a7ce8211ed13'
+            'qr_area': '663e5e4bf5b8a7ce8211ed13',
+            'pais_area': '663a7ca6e48382c5b12308fa',
+            'ciudad_area': '6654187fc85ce22aaf8bb070',
+            'colonia_area': '663a7f79e48382c5b123090a',
+            'direccion_area': '663a7e0fe48382c5b1230902',
+            'geolocalizacion_area': '663e5c8cf5b8a7ce8211ed0c',
         }
 
     def format_data_area(self, data):
@@ -78,6 +83,11 @@ class Accesos(Accesos):
                 'foto_area': {'$ifNull': [f"$answers.{self.area_update['foto_area']}", []]},
                 'tipo_area': f"$answers.{self.TIPO_AREA_OBJ_ID}.{self.area_update['tipo_area']}",
                 'nombre_direccion': f"$answers.{self.CONTACTO_CAT_OBJ_ID}.{self.area_update['nombre_direccion']}",
+                'pais_area': f"$answers.{self.CONTACTO_CAT_OBJ_ID}.{self.area_update['pais_area']}",
+                'ciudad_area': f"$answers.{self.CONTACTO_CAT_OBJ_ID}.{self.area_update['ciudad_area']}",
+                'colonia_area': f"$answers.{self.CONTACTO_CAT_OBJ_ID}.{self.area_update['colonia_area']}",
+                'direccion_area': f"$answers.{self.CONTACTO_CAT_OBJ_ID}.{self.area_update['direccion_area']}",
+                'geolocalizacion_area': f"$answers.{self.CONTACTO_CAT_OBJ_ID}.{self.area_update['geolocalizacion_area']}",
                 'estatus_area': f"$answers.{self.area_update['estatus_area']}",
                 'estatus': f"$answers.{self.area_update['estatus']}",
                 'qr_area': f"$answers.{self.area_update['qr_area']}"
@@ -117,7 +127,12 @@ class Accesos(Accesos):
                 }
             elif key == 'nombre_direccion':
                 answers[self.CONTACTO_CAT_OBJ_ID] = {
-                    self.area_update['nombre_direccion']: value # type: ignore
+                    self.area_update['nombre_direccion']: value,
+                    self.area_update['pais_area']: area_ubicacion_data.get('pais_area', []),
+                    self.area_update['ciudad_area']: area_ubicacion_data.get('ciudad_area', []),
+                    self.area_update['colonia_area']: area_ubicacion_data.get('colonia_area', []),
+                    self.area_update['direccion_area']: area_ubicacion_data.get('direccion_area', []),
+                    self.area_update['geolocalizacion_area']: area_ubicacion_data.get('geolocalizacion_area', [])
                 }
             elif key == 'estatus_area':
                 answers[self.area_update['estatus_area']] = value
