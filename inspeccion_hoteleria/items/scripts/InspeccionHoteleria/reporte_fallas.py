@@ -1150,6 +1150,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             }
         ]
     
+        # ! TODO: Falta cambiar este result, no utilizar format_cr para consultar bien la coleccion de inspeccion hoteleria
         result = self.format_cr(self.cr.aggregate(pipeline))
     
         mejor = None
