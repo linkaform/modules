@@ -56,7 +56,8 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
         self.hotel_name_abreviatura = {
             'HILTON GARDEN SILAO': 'HGI SILAO',
-            'HOLIDAY INN TIJUANA': 'HI TIJUANA ZONA RIO'
+            'HOLIDAY INN TIJUANA': 'HI TIJUANA ZONA RIO',
+            'WYNDHAM GARDEN MCALLEN': 'MCALLEN',
         }
 
         self.fallas_hotel = {
@@ -313,11 +314,16 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
         result = self.format_cr(self.cr.aggregate(query))
         # TODO
-        # Temp se quita mcallen de la lista porque no es un hotel valido
+        # Temp se descarta corporativo mexico porque no cuenta con una forma de inspeccion
         result = [
             h for h in result
-            if h.get('nombre_hotel', '').strip().upper() not in ('MCALLEN', 'CORPORATIVO MEXICO')
+            if h.get('nombre_hotel', '').strip().upper() != 'CORPORATIVO MEXICO'
         ]
+
+        # * Cambia MCALLEN por WYNDHAM GARDEN MCALLEN para que sea el nombre valido en la inspeccion
+        for h in result:
+            if h.get('nombre_hotel', '').strip().upper() == 'MCALLEN':
+                h['nombre_hotel'] = 'WYNDHAM GARDEN MCALLEN'
         
         hoteles = {
             'hoteles': result
@@ -405,19 +411,27 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 "form_id": self.unlist(forms_id_list)
             })
 
+        # ! Se consideran todos los status de inspeccion, cambio a considerar si permanece
+        status_validos = ["completada", "proceso", "incompleta"]
+
         query = [
             {'$match': match_query},
             {'$project': {
                 'status_completada': {
                     '$cond': [
-                        { '$eq': [f"$answers.{self.f['status_auditoria']}", "completada"] },
+                        { '$in': [f"$answers.{self.f['status_auditoria']}", status_validos] },
                         1,
                         0
                     ]
                 },
                 'habitacion_remodelada_si': {
                     '$cond': [
-                        { '$eq': [f"$answers.{self.f['habitacion_remodelada']}", "sí"] },
+                        {
+                            '$and': [
+                                { '$eq': [f"$answers.{self.f['habitacion_remodelada']}", "sí"] },
+                                { '$eq': [f"$answers.{self.f['status_auditoria']}", "completada"] }
+                            ]
+                        },
                         1,
                         0
                     ]
