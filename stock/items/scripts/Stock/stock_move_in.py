@@ -27,7 +27,7 @@ class Stock(Stock):
         })
 
         self.prev_version = {}
-        self.max_sets = 10
+        self.max_sets = 2500
         self.sku_finds = []
 
     def carga_materiales(self, header, records):
