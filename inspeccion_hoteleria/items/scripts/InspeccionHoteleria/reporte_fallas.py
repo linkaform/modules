@@ -371,6 +371,18 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         return result
     
     def get_cantidad_habitaciones(self, ubicaciones_list=[]):
+
+        if isinstance(ubicaciones_list, list):
+            ubicaciones_list = [
+                str(u).replace('_', ' ').upper() for u in ubicaciones_list
+            ]
+
+        if isinstance(ubicaciones_list, list):
+            ubicaciones_list = [
+                self.hotel_name_abreviatura.get(u.replace('_', ' ').upper(), u)
+                for u in ubicaciones_list
+            ]
+
         match_query = {
             "deleted_at": {"$exists": False},
             f"answers.{self.Location.TIPO_AREA_OBJ_ID}.{self.f['tipo_area']}": "Habitación",
@@ -790,7 +802,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             group_fields[nombre_falla] = { # type: ignore
                 "$sum": {
                     "$cond": [
-                        {"$eq": [f"$answers.{id_falla}", "sí"]},
+                        {"$eq": [f"$answers.{id_falla}", "no"]},
                         1,
                         0
                     ]
@@ -799,7 +811,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             total_fields[nombre_falla] = { # type: ignore
                 "$sum": {
                     "$cond": [
-                        {"$eq": [f"$answers.{id_falla}", "sí"]},
+                        {"$eq": [f"$answers.{id_falla}", "no"]},
                         1,
                         0
                     ]
