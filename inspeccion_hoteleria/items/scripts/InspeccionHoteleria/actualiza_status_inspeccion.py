@@ -152,7 +152,7 @@ if __name__ == '__main__':
     print('folio', module_obj.folio)
     score_per_page = module_obj.get_grading_obj()
     res = module_obj.save_results(score_per_page)
-    starting_status = module_obj.answers[module_obj.field_id_status]
+    starting_status = module_obj.answers.get(module_obj.field_id_status)
     status = module_obj.check_pending_answers() 
     # module_obj.actualiza_status_habitacion()
     # Todo ver q hacer si no se actualzia bien el status de la habitacion....
