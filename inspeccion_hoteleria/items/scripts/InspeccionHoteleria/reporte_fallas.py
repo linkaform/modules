@@ -1101,20 +1101,14 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         else:
             match_query["form_id"] = self.unlist(forms_id_list)
     
-        fallas_project = {}
-        for nombre_falla, id_falla in self.fallas_hotel.items():
-            fallas_project[nombre_falla] = f"$answers.{id_falla}"
-    
         pipeline = [
             {'$match': match_query},
             {'$project': {
-                '_id': 1,
-                'habitacion': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area_habitacion']}",
-                'hotel': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_nombre']}",
-                'nombre_camarista': f"$answers.{self.f['nombre_camarista']}",
-                'created_at': '$created_at',
-                **fallas_project
-            }},
+                    '_id': 1,
+                    'habitacion': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area_habitacion']}",
+                    'hotel': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_nombre']}",
+                }
+            },
             {
                 '$lookup': {
                     'from': 'inspeccion_hoteleria',
@@ -1131,74 +1125,40 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             },
             {
                 '$addFields': {
-                    'grade': '$inspeccion.grade'
+                    'max_points': '$inspeccion.max_points',
+                    'obtained_points': '$inspeccion.obtained_points',
+                    'grade': '$inspeccion.grade',
+                    'fallas': '$inspeccion.fallas',
+                    'aciertos': '$inspeccion.aciertos',
                 }
             },
-            # Calcula el total de fallas en cada inspección
-            {
-                '$addFields': {
-                    'total_fallas': {
-                        '$size': {
-                            '$filter': {
-                                'input': [f"${k}" for k in self.fallas_hotel.keys()],
-                                'as': 'falla',
-                                'cond': { '$eq': ['$$falla', 'sí'] }
-                            }
-                        }
-                    }
-                }
-            },
-            # Agrupa por habitación y hotel
             {
                 '$group': {
                     '_id': {
                         'habitacion': '$habitacion',
                         'hotel': '$hotel'
                     },
-                    'grades': { '$push': '$grade' },
-                    'fallas': { '$push': '$total_fallas' },
-                    'total_inspecciones': { '$sum': 1 }
+                    'grades': {'$push': '$grade'},
+                    'fallas': {'$push': '$fallas'},
+                    'max_points': {'$push': '$max_points'},
+                    'obtained_points': {'$push': '$obtained_points'},
+                    'aciertos': {'$push': '$aciertos'},
+                    'total_inspecciones': {'$sum': 1},
                 }
             }
         ]
     
-        # ! TODO: Falta cambiar este result, no utilizar format_cr para consultar bien la coleccion de inspeccion hoteleria
-        result = self.format_cr(self.cr.aggregate(pipeline))
-    
-        mejor = None
-        peor = None
-        for hab in result:
-            grades = [g for g in hab.get('grades', []) if g is not None]
-            fallas = hab.get('fallas', [])
-            promedio_grade = sum(grades) / len(grades) if grades else 0
-            max_fallas = max(fallas) if fallas else 0
+        result = self.cr.aggregate(pipeline)
 
-            # Usa los campos directos, o busca en _id si no existen
-            habitacion = hab.get('habitacion') or (hab.get('_id', {}) or {}).get('habitacion')
-            hotel = hab.get('hotel') or (hab.get('_id', {}) or {}).get('hotel')
-            total_inspecciones = hab.get('total_inspecciones', 0)
+        inspecciones_validas = [i for i in result if i.get('grades') and len(i['grades']) > 0]
 
-            if not habitacion or not hotel:
-                continue
-
-            # Mejor: mayor promedio de grade
-            if not mejor or promedio_grade > mejor['grade']:
-                mejor = {
-                    'habitacion': habitacion,
-                    'hotel': hotel,
-                    'total_inspecciones': total_inspecciones,
-                    'grade': round(promedio_grade, 2),
-                    'total_fallas': min(fallas) if fallas else 0
-                }
-            # Peor: mayor cantidad de fallas
-            if not peor or max_fallas > peor['total_fallas']:
-                peor = {
-                    'habitacion': habitacion,
-                    'hotel': hotel,
-                    'total_inspecciones': total_inspecciones,
-                    'grade': round(min(grades), 2) if grades else 0,
-                    'total_fallas': max_fallas
-                }
+        if not inspecciones_validas:
+            mejor = peor = None
+        else:
+            # Mejor: la de mayor grade
+            mejor = max(inspecciones_validas, key=lambda x: max(x['grades']))
+            # Peor: la de menor grade
+            peor = min(inspecciones_validas, key=lambda x: min(x['grades']))
     
         return {
             'mejor_habitacion': mejor,
