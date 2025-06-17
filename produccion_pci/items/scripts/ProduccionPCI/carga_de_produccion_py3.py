@@ -131,7 +131,7 @@ class Produccion_PCI( Produccion_PCI ):
         cr_contratista = colection_connection.get_collections_connection()
 
         query_to_restore, select_columns = p_utils.query_folio_preorder(form_id, folio, telefono, area)
-        rmv_contratista = cr_contratista.remove(query_to_restore)
+        rmv_contratista = cr_contratista.delete_one(query_to_restore)
         print('+++ rmv_contratista',rmv_contratista)
         unset_conn = cr_admin.update_one(query_to_restore,{"$unset":{'connection_id':''}})
         print('+++ unset_conn:',unset_conn)

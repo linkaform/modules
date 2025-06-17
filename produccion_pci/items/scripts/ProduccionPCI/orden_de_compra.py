@@ -1372,7 +1372,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         dict_oc_fecha_nomina, total_20_row=False):
         oc_count += 1 #get_folios_num(OC_CONTRATISTA, folio_oc)
 
-        metadata['properties'] = p_utils.get_metadata_properties('orden_de_compra.py', 'GENERA OC CONTRATISTA', process='PROCESO CARGA ORDEN COMPRA CONTRATISTA', folio_carga=folio_oc)
+        metadata['properties'] = self.get_metadata_properties('orden_de_compra.py', 'GENERA OC CONTRATISTA', process='PROCESO CARGA ORDEN COMPRA CONTRATISTA', folio_carga=folio_oc)
         
         metadata['connection_id'] = connection_id
         if FORMA_ORDEN_SERVICIO:

@@ -98,19 +98,19 @@ class PCI_Utils():
                 info_json = response['json'][msg_fin]
                 msgs = info_json.get('msg', [])
                 if msgs:
-                    msg_err = str(msgs[0]).encode('utf8')
-                    label_err = info_json.get('label').encode('utf8')
+                    msg_err = str(msgs[0])
+                    label_err = info_json.get('label')
                     msg_err_arr.append(str(msg_err+':'+label_err))
                 else:
                     for i_err in info_json:
                         info_i = info_json[i_err]
                         for id_group in info_i:
                             info_group = info_i[id_group]
-                            msg_err = str(info_group['msg'][0]).encode('utf8')
-                            label_err = info_group['label'].encode('utf8')
+                            msg_err = str(info_group['msg'][0])
+                            label_err = info_group['label']
                             msg_err_arr.append('SET {0}:: {1} - {2}'.format(i_err, msg_err, label_err))
             if msg_err_arr:
-                data_str_err = self.lkf_obj.list_to_str(msg_err_arr)
+                data_str_err = list_to_str(msg_err_arr)
         except Exception as e:
             print('response', response)
             print('Exception =  ', e)
@@ -300,6 +300,21 @@ class PCI_Utils():
             "perm": permissions
         }
         return self.lkf_api.share_form(objects, jwt_settings_key=jwt_settings_key)
+
+    def complementos_cuentas_contratistas(self, cuentas_contratistas, autorizacion_facturar):
+        for cuenta_contratista in cuentas_contratistas:
+            contratista = cuenta_contratista.get(self.lkf_obj.CATALOGO_CONTRATISTAS_OBJ_ID, {}).get('5f344a0476c82e1bebc991d7', '')
+            mango_query = {"selector": {"answers": {"$and":[ {'5f344a0476c82e1bebc991d7': {'$eq': contratista}} ]} }, "limit": 1, "skip": 0}
+            row_catalog = self.lkf_api.search_catalog( self.lkf_obj.CATALOGO_CONTRATISTAS_ID, mango_query )
+            if row_catalog:
+                info_row = row_catalog[0]
+
+                print('+++ data to update= ', {'619e7a46c79af2f6eaf888c5': autorizacion_facturar} )
+                print('+++ id catalog= ', self.lkf_obj.CATALOGO_CONTRATISTAS_ID )
+                print('+++ record_id= ', info_row[ '_id' ])
+
+                res_update = self.lkf_api.update_catalog_multi_record({'619e7a46c79af2f6eaf888c5': autorizacion_facturar}, self.lkf_obj.CATALOGO_CONTRATISTAS_ID, record_id=[ info_row[ '_id' ], ])
+                print('res_update =',res_update)
 
     def delete_record(self, id_record='', jwt_settings_key=None):
         response_delete = self.lkf_api.patch_record_list({
@@ -619,21 +634,21 @@ class PCI_Utils():
 
     def get_metadata_for_create_record(self, form_id, name_script, process='', folio_carga='', accion='Crear Registro'):
         metadata = self.lkf_api.get_metadata(form_id)
-        metadata.update({ 'properties': self.get_metadata_properties(name_script, accion, process=process, folio_carga=folio_carga) })
+        metadata.update({ 'properties': self.lkf_obj.get_metadata_properties(name_script, accion, process=process, folio_carga=folio_carga) })
         return metadata
 
-    def get_metadata_properties(self, name_script, accion, process='', folio_carga=''):
-        dict_properties = {
-            'device_properties': {
-                'system': 'SCRIPT',
-                'process': process,
-                'accion': accion,
-                'archive': name_script
-            }
-        }
-        if folio_carga:
-            dict_properties['device_properties']['folio carga'] = folio_carga
-        return dict_properties
+    # def get_metadata_properties(self, name_script, accion, process='', folio_carga=''):
+    #     dict_properties = {
+    #         'device_properties': {
+    #             'system': 'SCRIPT',
+    #             'process': process,
+    #             'accion': accion,
+    #             'archive': name_script
+    #         }
+    #     }
+    #     if folio_carga:
+    #         dict_properties['device_properties']['folio carga'] = folio_carga
+    #     return dict_properties
 
     def get_nombre_tecnico(self, folio_tecnico, id_lkf=None):
         query = {'form_id':self.FORM_ID_LISTADO_TECNICOS, 'deleted_at' : {'$exists':False}, 'folio': str(folio_tecnico)}
@@ -1091,7 +1106,7 @@ class PCI_Utils():
 
     def send_notification_email(self, name_process, msg, name_script='', folio_carga='', jwt_settings_key=None):
         metadata_email_error = self.lkf_api.get_metadata( form_id=self.FORM_ID_EMAIL_ERRORES )
-        metadata_email_error['properties'] = self.get_metadata_properties(name_script, '', process=name_process, folio_carga=folio_carga)
+        metadata_email_error['properties'] = self.lkf_obj.get_metadata_properties(name_script, '', process=name_process, folio_carga=folio_carga)
         metadata_email_error['answers'] = {
             '668ff5ef62f58d0b8dca8ba7': name_process,
             '668ff5ef62f58d0b8dca8ba8': msg
