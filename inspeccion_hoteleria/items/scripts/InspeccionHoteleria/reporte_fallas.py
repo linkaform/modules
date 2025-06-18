@@ -919,11 +919,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             }
         ]
 
-        habitaciones = self.format_cr(self.cr.aggregate(query))
-        habitaciones_id = [hab.get('inspeccion_id') for hab in habitaciones]
-        query = {"_id": {"$in": habitaciones_id}}
-        res = self.cr_inspeccion.find(query)
-
+        habitaciones = list(self.cr.aggregate(query))
         habitaciones_id = [hab.get('inspeccion_id') for hab in habitaciones if hab.get('inspeccion_id') is not None]
         if habitaciones_id:
             query = {"_id": {"$in": habitaciones_id}}
