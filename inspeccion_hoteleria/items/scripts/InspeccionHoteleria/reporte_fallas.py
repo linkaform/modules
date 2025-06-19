@@ -1027,11 +1027,6 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         else:
             match_query["form_id"] = self.unlist(forms_id_list)
 
-        # Prepara los campos de fallas para el project
-        fallas_project = {}
-        for nombre_falla, id_falla in self.fallas_hotel.items():
-            fallas_project[nombre_falla] = f"$answers.{id_falla}"
-
         query = [
             {'$match': match_query},
             {'$project': {
@@ -1040,7 +1035,6 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 'hotel': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_nombre']}",
                 'nombre_camarista': f"$answers.{self.f['nombre_camarista']}",
                 'created_at': '$created_at',
-                **fallas_project
             }},
             {
                 '$lookup': {
@@ -1058,33 +1052,23 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             },
             {
                 '$addFields': {
-                    'grade': '$inspeccion.grade'
+                    'inspeccion': '$inspeccion'
                 }
             }
         ]
 
-        result = self.format_cr(self.cr.aggregate(query))
+        result = self.cr.aggregate(query)
 
         output = []
         for doc in result:
-            if not doc.get('hotel'):
-                continue
-            total_fallas = 0
-            for nombre_falla in self.fallas_hotel.keys():
-                if doc.get(nombre_falla) == "sí":
-                    total_fallas += 1
-            created_at = doc.get('created_at')
-            if isinstance(created_at, datetime.datetime):
-                created_at = created_at.strftime('%d/%m/%Y')
+            inspeccion = doc.get('inspeccion', {})
             output.append({
                 'habitacion': doc.get('habitacion'),
                 'hotel': doc.get('hotel'),
                 'nombre_camarista': doc.get('nombre_camarista'),
-                'created_at': created_at,
-                'grade': doc.get('grade'),
-                'total_fallas': total_fallas
+                'grade': inspeccion.get('grade'),
+                'total_fallas': inspeccion.get('fallas')
             })
-
         return output
     
     def get_mejor_y_peor_habitacion(self, forms_id_list=[]):
@@ -1144,17 +1128,17 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             }
         ]
     
-        result = self.cr.aggregate(pipeline)
+        result = list(self.cr.aggregate(pipeline))
 
-        inspecciones_validas = [i for i in result if i.get('grades') and len(i['grades']) > 0]
+        inspecciones_validas = [i for i in result if i.get('fallas') and len(i['fallas']) > 0]
 
         if not inspecciones_validas:
             mejor = peor = None
         else:
-            # Mejor: la de mayor grade
-            mejor = max(inspecciones_validas, key=lambda x: max(x['grades']))
-            # Peor: la de menor grade
-            peor = min(inspecciones_validas, key=lambda x: min(x['grades']))
+            # Mejor: la de menor cantidad de fallas
+            mejor = min(inspecciones_validas, key=lambda x: min(x['fallas']))
+            # Peor: la de mayor cantidad de fallas
+            peor = max(inspecciones_validas, key=lambda x: max(x['fallas']))
     
         return {
             'mejor_habitacion': mejor,
