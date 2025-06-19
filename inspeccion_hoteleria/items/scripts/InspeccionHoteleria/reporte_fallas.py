@@ -948,6 +948,11 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                     if not any(falla in labels_normalizadas for falla in fallas_normalizadas):
                         hab['inspeccion_habitacion'] = None # type: ignore
 
+        # Segundo for: quitar inspeccion_id si no hay inspeccion_habitacion
+        for hab in habitaciones:
+            if not hab.get('inspeccion_habitacion'): # type: ignore
+                hab['inspeccion_id'] = None # type: ignore
+
         return {
             'habitaciones': habitaciones,
         }
@@ -1250,7 +1255,6 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
     def get_comentarios(self, forms_id_list=None):
         query = {}
         res = list(self.cr_inspeccion.find(query))
-        print('res', res[3])
         list_of_ids = [r['_id'] for r in res]
 
         match_query = {
@@ -1304,6 +1308,91 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'hoteles_comentarios': res
         }
 
+    def get_cards(self, forms_id_list=[]):
+        match_query = {
+            "deleted_at": {"$exists": False},
+        }
+
+        if len(forms_id_list) > 1:
+            match_query.update({
+                "form_id": {"$in": forms_id_list},
+            })
+        else:
+            match_query.update({
+                "form_id": self.unlist(forms_id_list),
+            })
+
+        query = [
+            {'$match': match_query},
+            {'$project': {
+                '_id': 1,
+                'habitacion_remodelada': f"$answers.{self.f['habitacion_remodelada']}",
+                'habitacion': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area_habitacion']}",
+            }},
+            {
+            '$lookup': {
+                'from': 'inspeccion_hoteleria',
+                'localField': '_id',
+                'foreignField': '_id',
+                'as': 'inspeccion'
+            }
+            },
+            {
+            '$unwind': {
+                'path': '$inspeccion',
+                'preserveNullAndEmptyArrays': True
+            }
+            },
+            {
+            '$group': {
+                '_id': '$habitacion',
+                'remodelada': {
+                '$max': {
+                    '$cond': [
+                    {'$eq': ['$habitacion_remodelada', 'sí']},
+                    1,
+                    0
+                    ]
+                }
+                },
+                'fallas': {'$max': '$inspeccion.fallas'},
+                'aciertos': {'$max': '$inspeccion.aciertos'},
+                'grade_max': {'$max': '$inspeccion.grade'},
+                'grade_min': {'$min': '$inspeccion.grade'},
+                'grade_avg': {'$avg': '$inspeccion.grade'}
+            }
+            },
+            {
+            '$group': {
+                '_id': None,
+                'habitaciones_remodeladas': {'$sum': '$remodelada'},
+                'inspecciones_realizadas': {'$sum': 1},
+                'total_fallas': {'$sum': '$fallas'},
+                'total_aciertos': {'$sum': '$aciertos'},
+                'grade_max': {'$max': '$grade_max'},
+                'grade_min': {'$min': '$grade_min'},
+                'grade_avg': {'$avg': '$grade_avg'}
+            }
+            },
+            {
+            '$project': {
+                '_id': 0,
+                'habitaciones_remodeladas': 1,
+                'inspecciones_realizadas': 1,
+                'total_fallas': 1,
+                'total_aciertos': 1,
+                'grade_max': 1,
+                'grade_min': 1,
+                'grade_avg': {'$round': ['$grade_avg', 2]}
+            }
+            }
+        ]
+
+        result = self.cr.aggregate(query)
+        result = list(result)
+        
+        return result
+    
     def get_report(self, anio=None, cuatrimestres=None, hoteles=[]):
         # Normaliza los nombres de hoteles usando las abreviaturas si corresponde
         if hoteles:
@@ -1351,6 +1440,10 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         hoteles_fotografias = self.get_fotografias(forms_id_list=forms_id_list)
 
         hoteles_comentarios = self.get_comentarios(forms_id_list=forms_id_list)
+
+        # * Probable cambio de las cards
+        cards = self.get_cards(forms_id_list=forms_id_list)
+        cards = self.unlist(cards)
 
         report_data = {
             'cantidad_si_y_no': cantidad_si_y_no,
