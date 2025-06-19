@@ -1067,13 +1067,23 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         output = []
         for doc in result:
             inspeccion = doc.get('inspeccion', {})
-            output.append({
-                'habitacion': doc.get('habitacion'),
-                'hotel': doc.get('hotel'),
-                'nombre_camarista': doc.get('nombre_camarista'),
-                'grade': inspeccion.get('grade'),
-                'total_fallas': inspeccion.get('fallas')
-            })
+            created_at = doc.get('created_at')
+            if isinstance(created_at, datetime.datetime):
+                fecha_str = created_at.strftime('%d/%m/%Y')
+            else:
+                fecha_str = ""
+
+            if inspeccion:
+                output.append({
+                    'habitacion': doc.get('habitacion'),
+                    'hotel': doc.get('hotel'),
+                    'nombre_camarista': doc.get('nombre_camarista'),
+                    'grade': inspeccion.get('grade'),
+                    'total_aciertos': inspeccion.get('aciertos'),
+                    'total_fallas': inspeccion.get('fallas'),
+                    'created_at': fecha_str
+                })
+
         return output
     
     def get_mejor_y_peor_habitacion(self, forms_id_list=[]):
