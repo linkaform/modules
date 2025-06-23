@@ -56,12 +56,12 @@ class Stock(Stock):
                 #HACE TRANSACCIONES ACIDAS
                 def write_records(sess):
                     if new_record.get('answers'):
-                        # Crea los nuevo registro de salida de stock
-                        self.records_cr.insert_one(new_record)
                         # Inserta directamente los registros nuevos de invetarios
                         # Pone un cache para que sean calulados los inventarios una
                         # vez dentro del intenvario
                         self.direct_move_in(new_record)
+                        # Crea los nuevo registro de salida de stock
+                        self.records_cr.insert_one(new_record)
                         # Pone en 0 el stock de donde salio
                         self.move_out_stock(new_record)
                 try:
@@ -84,12 +84,12 @@ class Stock(Stock):
             # try:
             if True:
                 if new_record.get('answers'):
-                    # Crea los nuevo registro de salida de stock
-                    self.direct_move_in(new_record)
-                    self.records_cr.insert_one(new_record)
                     # Inserta directamente los registros nuevos de invetarios
                     # Pone un cache para que sean calulados los inventarios una
                     # vez dentro del intenvario
+                    self.direct_move_in(new_record)
+                    # Crea los nuevo registro de salida de stock
+                    self.records_cr.insert_one(new_record)
                     # Pone en 0 el stock de donde salio
                     self.move_out_stock(new_record)
                     #print('response = ', response)
