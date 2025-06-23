@@ -85,11 +85,11 @@ class Stock(Stock):
             if True:
                 if new_record.get('answers'):
                     # Crea los nuevo registro de salida de stock
+                    self.direct_move_in(new_record)
                     self.records_cr.insert_one(new_record)
                     # Inserta directamente los registros nuevos de invetarios
                     # Pone un cache para que sean calulados los inventarios una
                     # vez dentro del intenvario
-                    self.direct_move_in(new_record)
                     # Pone en 0 el stock de donde salio
                     self.move_out_stock(new_record)
                     #print('response = ', response)
@@ -213,7 +213,6 @@ class Stock(Stock):
                 else:
                     new_record['answers'][self.f['move_group']].append(row_set)
                     new_record['answers'][self.f['inv_adjust_status']] = 'done'
-            
             if new_record:
                 self.ejecutar_transaccion(new_record)
                 product_lot = [x['ont_serie'] for x in folio_serie_record]
@@ -455,6 +454,7 @@ if __name__ == '__main__':
     stock_obj.current_record['answers'] = stock_obj.answers
     if groups:
         stock_obj.folio = f"{folio}-1/{len(groups)}"
+
     stock_obj.make_direct_stock_move()
    
 

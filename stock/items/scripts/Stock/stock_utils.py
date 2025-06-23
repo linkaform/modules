@@ -164,7 +164,7 @@ class Stock(Stock):
 
         return: res que puede ser un diccionario con idx de la linea del grupo repetitivo
         y el resultado de cada movimiento
-        si se creo un nuevo registro regrea
+        si se creo un nuevo registro regresa
 
         {idx:
             {
@@ -194,7 +194,6 @@ class Stock(Stock):
         location = self.answer_label['warehouse_location']
         warehouse_to = self.answer_label['warehouse_dest']
         location_to = self.answer_label['warehouse_location_dest']
-        move_lines = self.answer_label['move_group'] 
         move_lines = answers['move_group'] 
         # Información original del Inventory Flow
         status_code = 0
@@ -252,12 +251,13 @@ class Stock(Stock):
                     'folio':new_records[idx]['folio'],
                     }
                 sync_ids.append(str(rec_idx))
-            self.lkf_api.sync_catalogs_records({"catalogs_ids":  [self.CATALOG_INVENTORY_ID],"form_answers_ids":  sync_ids,"status": "created"})
+            self.lkf_api.sync_catalogs_records({"catalogs_ids":  [self.CATALOG_INVENTORY_ID],"form_answers_ids":  sync_ids, "status": "created"})
         for idx, this_record in update_stock_records.items():
             if this_record:
                 update_records.append(this_record)
 
         if update_records:
+            sync_ids = []
             for idx, record in update_stock_records.items():
                 if not record:
                     continue
@@ -266,11 +266,12 @@ class Stock(Stock):
                     'acknowledged': this_res.acknowledged, 
                     'modified_count': this_res.modified_count, 
                     'folio':record['folio']}
-                self.lkf_api.sync_catalogs_records({
-                    'catalogs_ids':[self.CATALOG_INVENTORY_ID],
-                    'form_answer_id':record['_id'],
-                    'form_answer_status':'edited',
-                    })
+                sync_ids.append(str(record['_id']))
+            self.lkf_api.sync_catalogs_records({
+                'catalogs_ids':[self.CATALOG_INVENTORY_ID],
+                'form_answers_ids':sync_ids,
+                'status':'edited',
+                })
 
             # res_update_stock = self.cr.update_many(update_stock_records)
         # if self.proceso_onts:
@@ -683,6 +684,8 @@ class Stock(Stock):
         """
         record_data = self.get_record_move_data(new_record)
         updated_ids = {}
+        deleted_sync_ids = []
+        edited_sync_ids = []
         for idx, product_data in record_data['product'].items():
             product_code = product_data['product_code']
             sku = product_data['product_sku']
@@ -712,10 +715,22 @@ class Stock(Stock):
             sync_action = 'edited'
             if product_db_info['answers'][self.f['status']] == 'done':
                 sync_action = 'deleted'
+            if sync_action == 'deleted':
+                deleted_sync_ids.append(str(rec_id))
+            else:
+                edited_sync_ids.append(str(rec_id))
+        
+        if deleted_sync_ids:
             sync_res = self.lkf_api.sync_catalogs_records({
                     'catalogs_ids':[self.CATALOG_INVENTORY_ID],
-                    'form_answer_id':rec_id,
-                    'form_answer_status':sync_action,
+                    'form_answers_ids':deleted_sync_ids,
+                    'status':'deleted',
+                    })
+        if edited_sync_ids:
+            sync_res = self.lkf_api.sync_catalogs_records({
+                    'catalogs_ids':[self.CATALOG_INVENTORY_ID],
+                    'form_answers_ids':edited_sync_ids,
+                    'status':'edited',
                     })
         return updated_ids    
 
@@ -939,7 +954,6 @@ class Stock(Stock):
         
         if not header:
             return None, None
-        print('header', header)
         if 'serie ont' in [x.lower() for x in header]:
             self.proceso_onts = True
             return self.carga_onts(header, records)
@@ -948,7 +962,7 @@ class Stock(Stock):
 
     def read_xls(self, id_field_xls):
         file_url_xls = self.answers.get( id_field_xls )
-        if not file_url_xls:
+        if not file_url_xls: 
             print(f'no hay excel de carga {id_field_xls}')
             return False
         file_url_xls = file_url_xls[0].get('file_url')
