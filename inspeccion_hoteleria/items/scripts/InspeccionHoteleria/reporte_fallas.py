@@ -946,11 +946,6 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                     if not any(falla in labels_normalizadas for falla in fallas_normalizadas):
                         hab['inspeccion_habitacion'] = None # type: ignore
 
-        # Segundo for: quitar inspeccion_id si no hay inspeccion_habitacion
-        for hab in habitaciones:
-            if not hab.get('inspeccion_habitacion'): # type: ignore
-                hab['inspeccion_id'] = None # type: ignore
-
         return {
             'habitaciones': habitaciones,
         }
@@ -1352,7 +1347,8 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             },
             {
             '$group': {
-                '_id': '$habitacion',
+                '_id': '$_id',
+                'habitacion': {'$first': '$habitacion'},
                 'remodelada': {
                 '$max': {
                     '$cond': [
@@ -1421,13 +1417,9 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         forms_id_list = self.get_forms_id_list(hoteles)
         print("forms_id_list", forms_id_list)
 
-        cantidad_si_y_no = self.get_cantidad_si_y_no(forms_id_list=forms_id_list)
-
         total_habitaciones = self.get_cantidad_habitaciones(ubicaciones_list=hoteles)
 
         total_inspecciones_y_remodeladas = self.get_cantidad_inspecciones_y_remodeladas(forms_id_list=forms_id_list)
-
-        calificaciones = self.get_calificaciones(forms_id_list=forms_id_list, anio=anio, cuatrimestres=cuatrimestres)
 
         propiedades_inspeccionadas = self.porcentaje_propiedades_inspeccionadas(
            total_habitaciones.get('totalHabitaciones', 0) if total_habitaciones else 0,
@@ -1452,10 +1444,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         cards = self.unlist(cards)
 
         report_data = {
-            'cantidad_si_y_no': cantidad_si_y_no,
-            'total_habitaciones': total_habitaciones,
-            'total_inspecciones_y_remodeladas': total_inspecciones_y_remodeladas,
-            'calificaciones': calificaciones,
+            'cards': cards,
             'porcentaje_propiedades_inspeccionadas': propiedades_inspeccionadas,
             'calificacion_x_hotel_grafica': calificacion_x_hotel_grafica,
             'fallas': fallas,
