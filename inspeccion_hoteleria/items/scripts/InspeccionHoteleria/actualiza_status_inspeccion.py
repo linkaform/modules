@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys
-
+from bson import ObjectId
 from inspeccion_hoteleria_utils import Inspeccion_Hoteleria
 
 from account_settings import *
@@ -43,10 +43,8 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         return status
 
     def update_status_record(self,  status, msg_comentarios='' ):
-        print('status...', status)
-        answers = {self.field_id_status:status}
-        res = self.lkf_api.patch_multi_record( answers = answers, form_id=self.form_id, record_id=[self.record_id])
-        print('res',res)
+        print('UPDATING status...', status)
+        res = self.cr.update_one({'_id': ObjectId(self.record_id)}, {'$set': {f"answers.{self.field_id_status}":status}})
         return res
 
     def set_comentarios(self):
@@ -136,7 +134,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         data = {}
         data.update(score_per_page)
         data.update({
-            '_id': self.record_id,
+            '_id': ObjectId(self.record_id),
             'folio': self.folio,
             'form_id': self.form_id,
             'comments': self.comments,
@@ -149,20 +147,14 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 if __name__ == '__main__':
     module_obj = Inspeccion_Hoteleria(settings, sys_argv=sys.argv, use_api=False)
     module_obj.console_run()
-    print('folio', module_obj.folio)
     score_per_page = module_obj.get_grading_obj()
     res = module_obj.save_results(score_per_page)
     starting_status = module_obj.answers.get(module_obj.field_id_status)
     status = module_obj.check_pending_answers() 
     # module_obj.actualiza_status_habitacion()
     # Todo ver q hacer si no se actualzia bien el status de la habitacion....
-    print('Record starting_status', starting_status)
-    print('status to update', status)
-    if starting_status != status:
+    if starting_status != status or True:
         res = module_obj.update_status_record(status)
-        print('r1111es',res['status_code'])
-        if res.get('status_code') in (200, 201):
-            print('updating')
+        if res.acknowledged:
             update_res = module_obj.cr.update_one({'folio':module_obj.folio}, {'$set':{'editable': False}})
-            print('updating',module_obj.cr)
 
