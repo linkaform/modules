@@ -23,20 +23,21 @@ class JIT(JIT, Stock):
         self.load(module='Product', module_class='Warehouse', import_as='WH', **self.kwargs)
 
         self.f.update({
+            'cantidad_salida': '6442e4cc45983bf1778ec17d',
             'fecha_salida_multiple': '000000000000000000000111',
+            'folio_sipre': '682f4a14ba348a104e5a399d',
+            'grupo_productos_salida_multiple': '6442e4537775ce64ef72dd69',
+            'lot_number_salida': '620a9ee0a449b98114f61d77',
+            'peso':'68590322a36cc9e84ba64740',
+            'product_code_salida': '61ef32bcdf0ec2ba73dec33d',
+            'product_group': '6442e4537775ce64ef72dd69',
+            'renglon_sipre': '6835d529be0b0618ec80d233',
+            'status_salida_multiple': '6442e4537775ce64ef72dd6a',
+            'sku_salida': '65dec64a3199f9a040829243',
             'wh_name': '6442e4831198daf81456f274',
             'wh_location': '65ac6fbc070b93e656bd7fbe',
             'wh_name_dest': '65bdc71b3e183f49761a33b9',
             'wh_location_dest': '65c12749cfed7d3a0e1a341b',
-            'status_salida_multiple': '6442e4537775ce64ef72dd6a',
-            'grupo_productos_salida_multiple': '6442e4537775ce64ef72dd69',
-            'product_code_salida': '61ef32bcdf0ec2ba73dec33d',
-            'sku_salida': '65dec64a3199f9a040829243',
-            'lot_number_salida': '620a9ee0a449b98114f61d77',
-            'cantidad_salida': '6442e4cc45983bf1778ec17d',
-            'folio_sipre': '682f4a14ba348a104e5a399d',
-            'product_group': '6442e4537775ce64ef72dd69',
-            'renglon_sipre': '6835d529be0b0618ec80d233'
         })
 
     def ave_daily_demand(self, demanda_12_meses):

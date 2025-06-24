@@ -306,8 +306,7 @@ class Reports(Reports):
         mango_query["selector"]["$and"] = [clause for clause in mango_query["selector"]["$and"] if clause]
 
         # Execute query and return records
-        record = self.Product._labels_list(self.lkf_api.search_catalog(self.Product.PRODUCT_ID, mango_query), self.Product.f)
-        # print('RECORD', record)
+        record = self.Product._labels_list(self.lkf_api.search_catalog(self.Product.SKU_ID, mango_query), self.Product.f)
         return record
     
     def get_procurments(self, warehouse=None, location=None, product_code=None, sku=None, status='programmed', group_by=False):
@@ -446,6 +445,7 @@ class Reports(Reports):
                 'desc' : x['product_name'],
                 'product_type' : x['product_type'],
                 'line' : x['product_category'],
+                'peso' : x.get('peso',0)
             }
             product_code.append(x['product_code'])
 
@@ -484,6 +484,7 @@ class Reports(Reports):
                 p_warehouse = proc.get('warehouse')
                 if warehouse == p_warehouse:
                     proc = self.eval_procurment(proc, procurment_warehouses)
+                    proc['peso_subtotal'] = round(proc.get('peso',1) * proc.get('handover',1),2)
                     if proc['status'] == 200:
                         procurment_xfer.append(proc)
                     elif proc['status'] == 404:
@@ -497,7 +498,6 @@ class Reports(Reports):
             else:
                 result['tableFifth'] = procurment_xfer
                 result['tableSixth'] = procurment_na
-
 
         return result
 
