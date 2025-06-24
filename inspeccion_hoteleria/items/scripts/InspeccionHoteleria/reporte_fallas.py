@@ -918,13 +918,8 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 }
             }
         ]
-
         habitaciones = self.format_cr(self.cr.aggregate(query))
-        habitaciones_id = [hab.get('inspeccion_id') for hab in habitaciones]
-        query = {"_id": {"$in": habitaciones_id}}
-        res = self.cr_inspeccion.find(query)
-
-        habitaciones_id = [hab.get('inspeccion_id') for hab in habitaciones if hab.get('inspeccion_id') is not None]
+        habitaciones_id = [hab.get('inspeccion_id') for hab in habitaciones if hab.get('inspeccion_id')]
         if habitaciones_id:
             query = {"_id": {"$in": habitaciones_id}}
             res = self.cr_inspeccion.find(query)
@@ -932,16 +927,14 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             inspecciones_dict = {x['_id']: x for x in inspecciones}
         else:
             inspecciones_dict = {}
-
         for hab in habitaciones:
             inspeccion_id = hab.get('inspeccion_id')
-            if inspeccion_id and inspeccion_id in inspecciones_dict:
+            if inspecciones_dict.get(inspeccion_id):
                 hab['inspeccion_habitacion'] = inspecciones_dict[inspeccion_id]
             else:
                 hab['inspeccion_habitacion'] = None
 
         habitaciones = self.normalize_types(habitaciones)
-
         if fallas:
             fallas_normalizadas = set(self.normaliza_texto(f) for f in fallas)
             for hab in habitaciones:
@@ -1066,7 +1059,6 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 }
             }
         ]
-
         result = self.format_cr(self.cr.aggregate(query))
 
         output = []
@@ -1354,14 +1346,13 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         calificaciones = self.get_calificaciones(forms_id_list=forms_id_list, anio=anio, cuatrimestres=cuatrimestres)
 
         propiedades_inspeccionadas = self.porcentaje_propiedades_inspeccionadas(
-            total_habitaciones.get('totalHabitaciones', 0) if total_habitaciones else 0,
-            total_inspecciones_y_remodeladas.get('total_inspecciones_completadas', 0) if total_inspecciones_y_remodeladas else 0
+           total_habitaciones.get('totalHabitaciones', 0) if total_habitaciones else 0,
+           total_inspecciones_y_remodeladas.get('total_inspecciones_completadas', 0) if total_inspecciones_y_remodeladas else 0
         )
         
         calificacion_x_hotel_grafica = self.get_cuatrimestres_by_hotel(hoteles=hoteles, anio=anio, cuatrimestres=cuatrimestres)
 
         fallas = self.get_fallas(forms_id_list=forms_id_list, anio=anio, cuatrimestres=cuatrimestres)
-
         habitaciones_inspeccionadas = self.get_table_habitaciones_inspeccionadas(forms_id_list=forms_id_list)
 
         mejor_y_peor_habitacion = self.get_mejor_y_peor_habitacion(forms_id_list=forms_id_list)
@@ -1404,7 +1395,6 @@ if __name__ == '__main__':
     room_id = data.get('room_id', 'Habitación 326')
     fallas = data.get('fallas', ['plafon_fuera_de_la_habitacion'])
     record_id = data.get('record_id', None)
-
     if option == 'get_hoteles':
         response = module_obj.get_hoteles()
     elif option == 'get_report':
@@ -1417,5 +1407,8 @@ if __name__ == '__main__':
         response = module_obj.get_pdf(record_id=record_id)
 
     # print('response=', response)
-    print(simplejson.dumps(response, indent=3))
-    module_obj.HttpResponse({"data": response})
+    if data.get('test'):
+        print('end')
+    else:
+        print(simplejson.dumps(response, indent=3))
+        module_obj.HttpResponse({"data": response})
