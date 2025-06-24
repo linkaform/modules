@@ -83,12 +83,15 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
     def set_comments(self, question_id, label, field):
         field_type = field.get('field_type')
         field_id = field.get('field_id')
+
+        question = self.answers.get(question_id)
+        if question == 'no':
+            self.field_label[question_id] = label
+            
         if field_type == 'textarea' and self.answers.get(field_id):
             self.comments[question_id] = self.answers[field_id]
-            self.field_label[question_id] = label
         elif field_type == 'images' and self.answers.get(field_id):
             self.media[question_id] = self.answers[field_id]
-            self.field_label[question_id] = label
 
     def get_grading_obj(self):
         points_per_page = []
