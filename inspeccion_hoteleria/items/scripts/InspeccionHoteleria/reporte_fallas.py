@@ -78,7 +78,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'buen_olor': '67f0844734855c523e139102',
             'mirilla': '67f0844734855c523e139105',
             'plano_evacuacion': '67f0844734855c523e139108',
-            'hueso_de_pollo_/_gomita': '67f0844734855c523e13910b',
+            'hueso_de_pollo__/_gomita': '67f0844734855c523e13910b',
             'chapa_interior_-_pasador': '67f0844734855c523e13910e',
             'tope_de_puerta_de_entrada': '67f0844734855c523e139111',
             'colgante_no_molestar': '67f0844734855c523e139114',
@@ -939,12 +939,26 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         if fallas:
             fallas_normalizadas = set(self.normaliza_texto(f) for f in fallas)
             for hab in habitaciones:
-                inspeccion = hab.get('inspeccion_habitacion') # type: ignore
-                if inspeccion and 'field_label' in inspeccion:
-                    labels = inspeccion['field_label'].values() # type: ignore
-                    labels_normalizadas = set(self.normaliza_texto(l) for l in labels)
-                    if not any(falla in labels_normalizadas for falla in fallas_normalizadas):
-                        hab['inspeccion_habitacion'] = None # type: ignore
+                inspeccion_habitacion = hab.get('inspeccion_habitacion') # type: ignore
+                if inspeccion_habitacion and inspeccion_habitacion.get('fallas') == 0:  # type: ignore
+                    hab['inspeccion_habitacion'] = None # type: ignore
+                    hab['sin_fallas'] = True # type: ignore
+                else:
+                    inspeccion = hab.get('inspeccion_habitacion') # type: ignore
+                    if inspeccion and 'field_label' in inspeccion:
+                        labels = inspeccion['field_label'].values() # type: ignore
+                        labels_normalizadas = set(self.normaliza_texto(l) for l in labels)
+                        if not any(falla in labels_normalizadas for falla in fallas_normalizadas):
+                            hab['inspeccion_habitacion'] = None # type: ignore
+        else:
+            #TODO Mejorar este proceso, se repite el mismo proceso que arriba solo que lo hace cuando no hay fallas
+            for hab in habitaciones:
+                inspeccion_habitacion = hab.get('inspeccion_habitacion') # type: ignore
+                if inspeccion_habitacion and inspeccion_habitacion.get('fallas') == 0:  # type: ignore
+                    hab['inspeccion_habitacion'] = None # type: ignore
+                    hab['sin_fallas'] = True # type: ignore
+                else:
+                    hab['inspeccion_habitacion'] = None # type: ignore
 
         return {
             'habitaciones': habitaciones,
