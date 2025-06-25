@@ -47,11 +47,11 @@ class Stock(Stock):
         super().__init__(settings, folio_solicitud=folio_solicitud, sys_argv=sys_argv, use_api=use_api)
         self.load('JIT', **self.kwargs)
         self.proceso_onts = False
+        self.warehouse_from = None
+        self.location_from = None
 
         # La relacion entre la forma de inventario y el catalogo utilizado para el inventario
         # por default simpre dejar los mismos nombres
-        print('self.FORM_INVENTORY_ID', self.FORM_INVENTORY_ID)
-        print('self.CATALOG_INVENTORY_ID', self.CATALOG_INVENTORY_ID)
         self.FORM_CATALOG_DIR = {
             self.FORM_INVENTORY_ID: self.CATALOG_INVENTORY_ID,
         }
@@ -191,7 +191,11 @@ class Stock(Stock):
         answers = self._labels(data=new_record)
         self.answer_label = self._labels()
         warehouse = self.answer_label['warehouse']
+        if not self.warehouse_from:
+            self.warehouse_from = warehouse
         location = self.answer_label['warehouse_location']
+        if not self.location_from:
+            self.location_from = location
         warehouse_to = self.answer_label['warehouse_dest']
         location_to = self.answer_label['warehouse_location_dest']
         move_lines = answers['move_group'] 
@@ -251,6 +255,7 @@ class Stock(Stock):
                     'folio':new_records[idx]['folio'],
                     }
                 sync_ids.append(str(rec_idx))
+            print('syncing catalogs.... =', len(sync_ids))
             self.lkf_api.sync_catalogs_records({"catalogs_ids":  [self.CATALOG_INVENTORY_ID],"form_answers_ids":  sync_ids, "status": "created"})
         for idx, this_record in update_stock_records.items():
             if this_record:
@@ -267,6 +272,7 @@ class Stock(Stock):
                     'modified_count': this_res.modified_count, 
                     'folio':record['folio']}
                 sync_ids.append(str(record['_id']))
+            print('updating syncing catalogs.... =', len(sync_ids))
             self.lkf_api.sync_catalogs_records({
                 'catalogs_ids':[self.CATALOG_INVENTORY_ID],
                 'form_answers_ids':sync_ids,
@@ -286,6 +292,39 @@ class Stock(Stock):
         #         print('res.inserted_ids', res.inserted_ids)
         #         return res.inserted_ids
         return res
+
+
+    def validate_move_qty_onts(self, warehouse, location, move_lines, move_type='out'):
+        """
+        Realiza validaciones de salida y movimeinto de inventarios y complemente informacion
+        de embarque
+
+        args:
+            folio, es el folio del registro
+            metadata: diccionario con metadata de registro padre
+            move_lines: son las lineas de moviemintos
+        """
+        product_lots = []
+        for moves in move_lines:
+            product_code = moves['product_code']
+            product_sku = moves['sku']
+            product_lot = moves['product_lot']
+            product_lots.append(product_lot)
+        stock_size = self.get_direct_stock(product_code, product_sku, warehouse, location, product_lots)
+        
+        if stock_size != len(product_lots) and move_type == 'out':
+            msg = f"La cantidad de series de salida con coincide con la cantidad en inventario"
+            msg_error_app = {
+                    f"{self.f['product_lot_actuals']}": {
+                        "msg": [msg],
+                        "label": "Please check your lot inventory",
+                        "error":[]
+      
+                    }
+                }
+            #TODO set inventory as done
+            self.LKFException( simplejson.dumps( msg_error_app ) )  
+        
 
     def direct_move_in_line_validations(self, folio, metadata, move_lines):
         """
@@ -307,8 +346,9 @@ class Stock(Stock):
         fecha_recepcion = self.answers.get(self.f['fecha_recepcion'])
         observaciones = self.answers.get(self.f['stock_move_comments'])
         folio_recepcion = self.answers.get(self.f['folio_recepcion'])
-        print('warehouse', warehouse)
         wh_type = self.WH.warehouse_type(warehouse)
+        if self.proceso_onts:
+            self.validate_move_qty_onts(warehouse, location, move_lines, move_type='in')
         for idx, moves in enumerate(move_lines):
             update_stock_records[idx] = []
             new_stock_records2[idx] = []
@@ -316,12 +356,9 @@ class Stock(Stock):
             if status == 'done':
                 continue
             move_qty = moves.get('move_group_qty', 0)
-            print('move_qty', move_qty)
-            print('wh_type', wh_type)
-            if wh_type.lower() == 'stock':
+            if wh_type.lower() == 'stock' and self.proceso_onts == False:
                 # El producto esta ingresando desde un almacen tipo stock se deve de validar su existenica
                 vals = self.validate_move_qty(moves['product_code'], moves['sku'], moves['product_lot'], warehouse, location, move_qty)
-                print('vals', vals)
             
             this_metadata = deepcopy(metadata)
             if moves.get('folio'):
@@ -395,6 +432,8 @@ class Stock(Stock):
                 "actuals": "$actuals",
             }},
         ]
+        print('query=', query)
+        print('self.cr', self.cr)
         stock =  self.format_cr(self.cr.aggregate(query), get_one=True)
         return stock.get('actuals',0)
 
@@ -668,7 +707,10 @@ class Stock(Stock):
                 self.answers[self.f['move_group']][idx][self.f['move_dest_folio']] = res['folio']
 
         if move_type == 'out':
-            self.move_out_stock(self.current_record)
+            if self.proceso_onts:
+                self.move_out_stock_ont(self.current_record)
+            else:
+                self.move_out_stock(self.current_record)
         self.answers[self.f['inv_adjust_status']] =  'done'
         return response  
 
@@ -686,20 +728,26 @@ class Stock(Stock):
         updated_ids = {}
         deleted_sync_ids = []
         edited_sync_ids = []
+        print('va a mover uno por uno en move_out_stock')
+        print(stop)
+
         for idx, product_data in record_data['product'].items():
             product_code = product_data['product_code']
             sku = product_data['product_sku']
             product_lot = product_data['product_lot']
             move_qty = product_data.get('move_qty',0)
+            print('moving 1')
             match_query = self.lot_match(product_code, sku, record_data['warehouse'], record_data['location'], product_lot)
             cr_data = self.cr.find(match_query)
             product_db_info = cr_data.next()
+            print('moving 2')
             product_db_info.update(self.get_record_metadata(metadata=product_db_info, pop_common=False))
             product_stock = self.get_product_stock(product_code, sku=sku, lot_number=product_lot, warehouse=record_data['warehouse'], location=record_data['location'])
             # acutals = product_stock.get('actuals',0)
             product_db_info['answers'].update(self.direct_move_math(product_db_info['answers'],  move_in=0, move_out=move_qty, product_stock=product_stock))
             rec_id = product_db_info.pop('_id')
             this_res = self.cr.update_one({'_id':ObjectId(rec_id)}, {"$set":product_db_info })
+            print('moving 3')
             updated_ids[idx] = {
                     'acknowledged': this_res.acknowledged, 
                     'modified_count': this_res.modified_count, 
@@ -713,13 +761,15 @@ class Stock(Stock):
             #     f"answers.{self.f['status']}":status,
             #     }})
             sync_action = 'edited'
+            print('moving 4')
             if product_db_info['answers'][self.f['status']] == 'done':
                 sync_action = 'deleted'
             if sync_action == 'deleted':
                 deleted_sync_ids.append(str(rec_id))
             else:
                 edited_sync_ids.append(str(rec_id))
-        
+        print('deleted catalogs.... =', len(deleted_sync_ids))
+        print('edited catalogs.... =', len(edited_sync_ids))
         if deleted_sync_ids:
             sync_res = self.lkf_api.sync_catalogs_records({
                     'catalogs_ids':[self.CATALOG_INVENTORY_ID],
@@ -732,6 +782,7 @@ class Stock(Stock):
                     'form_answers_ids':edited_sync_ids,
                     'status':'edited',
                     })
+        print('moving 5')
         return updated_ids    
 
     def move_in(self):

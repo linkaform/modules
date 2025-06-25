@@ -63,7 +63,10 @@ class Stock(Stock):
                         # Crea los nuevo registro de salida de stock
                         self.records_cr.insert_one(new_record)
                         # Pone en 0 el stock de donde salio
-                        self.move_out_stock(new_record)
+                        if self.proceso_onts:
+                            self.move_out_stock_ont(new_record)
+                        else:
+                            self.move_out_stock(new_record)
                 try:
                     # Comienza la transacción
                     session.with_transaction(
@@ -91,7 +94,12 @@ class Stock(Stock):
                     # Crea los nuevo registro de salida de stock
                     self.records_cr.insert_one(new_record)
                     # Pone en 0 el stock de donde salio
-                    self.move_out_stock(new_record)
+                    print('moving out stock.....')  
+                    if self.proceso_onts:
+                        self.move_out_stock_ont(new_record)
+                    else:
+                        self.move_out_stock(new_record)
+                    print('done moving out stock')
                     #print('response = ', response)
 
             # except Exception as e:
@@ -182,6 +190,8 @@ class Stock(Stock):
         base_record['answers'][self.f['move_group']] = []
         base_record["editable"] = False 
         for idx, records in enumerate(groups):
+            print('----------------grupo ---------------------',idx)
+            print('self.proceso_onts=', self.proceso_onts)
             folio_serie_record = []
             # self.answers[self.f['move_group']] = []
             new_record = {}
@@ -214,6 +224,7 @@ class Stock(Stock):
                     new_record['answers'][self.f['move_group']].append(row_set)
                     new_record['answers'][self.f['inv_adjust_status']] = 'done'
             if new_record:
+                print('22self.proceso_onts=', self.proceso_onts)
                 self.ejecutar_transaccion(new_record)
                 product_lot = [x['ont_serie'] for x in folio_serie_record]
             # else:
@@ -227,9 +238,7 @@ class Stock(Stock):
         warehouse = warehouse_from.get( self.WH.f['warehouse'])
         warehouse_location = warehouse_from.get( self.WH.f['warehouse_location'])
         product_by_set = {}
-        print('move_group', move_group)
         for idx, rec_set in enumerate(move_group):
-            print('record_set=', rec_set)
             product_cat = rec_set.get(self.CATALOG_INVENTORY_OBJ_ID)
             product_code = product_cat.get(self.Product.f['product_code'])
             product_sku = product_cat.get(self.Product.f['product_sku'])
@@ -245,6 +254,53 @@ class Stock(Stock):
 
     def load_onts(self):
         self.read_xls_onts()
+
+    def move_out_stock_ont(self, new_record):
+        """
+        Movimiento de salida de stock para ONTs
+
+        args:
+            new_record: registro con los datos del movimiento
+        return:
+            updated_ids: lista de ids de los registros actualizados
+        
+        """
+        record_data = self.get_record_move_data(new_record)
+        updated_ids = {}
+        deleted_sync_ids = []
+        product_lots = []
+        for idx, product_data in record_data['product'].items():
+            product_code = product_data['product_code']
+            sku = product_data['product_sku']
+            product_lot = product_data['product_lot']
+            product_lots.append(product_lot)
+            move_qty = product_data.get('move_qty',0)
+            if move_qty != 1:
+                msg = 'Este movimiento esta limitado a 1'
+                self.LKFException(msg)
+        product_stock = {'actuals':1,'production':0, 'stock_in':1, 'stock_out':0, 'scrapped':0, 'cuarentin':0}
+        answers = {}
+        answers = self.direct_move_math(answers,  move_in=0, move_out=1, product_stock=product_stock)
+        set_fields = {f"answers.{key}": value for key, value in answers.items()}
+        update_query = {
+            'form_id':self.FORM_INVENTORY_ID,
+            f'answers.{self.Product.SKU_OBJ_ID}.{self.f["product_lot"]}': {'$in': product_lots},
+            f'answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f["warehouse"]}': self.warehouse_from,
+            f'answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f["warehouse_location"]}': self.location_from
+        }
+        print('udpate_query=', update_query)
+        res = self.cr.update_many(update_query, {'$set':set_fields} )
+        if res.acknowledged:
+            updated_ids = self.cr.find(update_query, {'_id':1})
+            updated_ids = [x['_id'] for x in updated_ids]
+        sync_ids = [str(x) for x in updated_ids]
+        self.lkf_api.sync_catalogs_records({
+            'catalogs_ids':[self.CATALOG_INVENTORY_ID],
+            'form_answers_ids':sync_ids,
+            'status':'deleted',
+            })
+
+        return updated_ids 
 
     def show_error_app(self, field_id, label, msg):
         raise Exception( simplejson.dumps({
@@ -385,14 +441,18 @@ class Stock(Stock):
         lot_size = len(records)
         warehouse_from = self.answers.get(self.WH.WAREHOUSE_LOCATION_OBJ_ID)
         warehouse = warehouse_from.get( self.WH.f['warehouse'])
+        if not self.warehouse_from:
+            self.warehouse_from = warehouse
         warehouse_location = warehouse_from.get( self.WH.f['warehouse_location'])
+        if not self.location_from:
+            self.location_from = warehouse_location
         product_code = base_row_set.get(self.CATALOG_INVENTORY_OBJ_ID, {}).get(self.Product.f['product_code'])
         product_sku = base_row_set.get(self.CATALOG_INVENTORY_OBJ_ID, {}).get(self.Product.f['product_sku']) 
         print('product_code', product_code)
         print('product_sku', product_sku)
         print('warehouse', warehouse)
         print('warehouse_location', warehouse_location)
-        print('product_lots', product_lots)
+        # print('product_lots', product_lots)
         print('lot_size', lot_size)
         stock_size = self.validate_lote_size(product_code, product_sku, warehouse, warehouse_location, product_lots, lot_size)
         print('stock_size', stock_size)
