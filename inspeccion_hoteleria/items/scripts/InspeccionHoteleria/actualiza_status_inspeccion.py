@@ -129,7 +129,13 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                     self.set_comments(field_id, field_label, fields[idx+2])
                 else:
                     continue
-            score_per_page['sections'][page_name]['grade'] = round(score_per_page['sections'][page_name]['obtained_points'] / score_per_page['sections'][page_name]['max_points'], 2)
+            max_points = score_per_page['sections'][page_name]['max_points']
+            if max_points:
+                score_per_page['sections'][page_name]['grade'] = round(
+                    score_per_page['sections'][page_name]['obtained_points'] / max_points, 2
+                )
+            else:
+                score_per_page['sections'][page_name]['grade'] = 0
             score_per_page['grade'] = round(score_per_page['obtained_points'] / score_per_page['max_points'], 2)
         return score_per_page
 
