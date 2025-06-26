@@ -96,7 +96,9 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
     def get_grading_obj(self):
         points_per_page = []
         score_per_page = {'max_points': 0, 'obtained_points': 0, 'grade': 0,'fallas':0, 'aciertos':0, 'sections':{}}
-        form_data = self.lkf_api.get_form_id_fields(self.form_id)
+        if not self.form_data.get(self.form_id):
+            self.form_data[self.form_id] = self.lkf_api.get_form_id_fields(self.form_id)
+        form_data = self.form_data[self.form_id]
         if form_data:
             form_data = form_data[0]
         else:
@@ -162,8 +164,8 @@ if __name__ == '__main__':
     status = module_obj.check_pending_answers() 
     # module_obj.actualiza_status_habitacion()
     # Todo ver q hacer si no se actualzia bien el status de la habitacion....
-    if starting_status != status or True:
+    if starting_status != status:
         res = module_obj.update_status_record(status)
         if res.acknowledged:
-            update_res = module_obj.cr.update_one({'folio':module_obj.folio}, {'$set':{'editable': False}})
+            update_res = module_obj.cr.update_one({'form_id':module_obj.form_id,'folio':module_obj.folio}, {'$set':{'editable': False}})
 

@@ -38,4 +38,6 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'dias_proceso':'680bb9ae683baa875e7baa22',
             'status':'67f0844734855c523e139132'
             })
+
+        self.form_data = {}
         
