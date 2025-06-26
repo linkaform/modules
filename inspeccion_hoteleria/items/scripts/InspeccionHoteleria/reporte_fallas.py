@@ -27,7 +27,9 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'Fotografía',
             'Comentarios',
             '¿La habitación es suite?',
-            'Comentarios Generales'
+            'Comentarios Generales',
+            'STATUS AUDITORIA',
+            'DIAS EN PROCESO',
         ]
         
         self.ids_to_exclude = [
@@ -60,7 +62,6 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         })
 
         self.form_ids = {
-            'revison_habitacion': self.REVISON_HABITACION,
             'hi_parque_fundidora': self.HI_PARQUE_FUNDIDORA,
             'crowne_plaza_torreon': self.CROWNE_PLAZA_TORREN,
             'travo': self.TRAVO,
