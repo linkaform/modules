@@ -154,10 +154,10 @@ class PCI_Utils():
         }
     
     def create_record_expediente(self, answers_to_expediente, properties_expediente, form_id_expediente, jwt_settings_key=False):
-        metadata_expediente = lkf_api.get_metadata( form_id_expediente )
+        metadata_expediente = self.lkf_api.get_metadata( form_id_expediente )
         metadata_expediente['properties'] = properties_expediente
         metadata_expediente['answers'] = answers_to_expediente
-        resp_create_exp = lkf_api.post_forms_answers(metadata_expediente, jwt_settings_key=jwt_settings_key)
+        resp_create_exp = self.lkf_api.post_forms_answers(metadata_expediente, jwt_settings_key=jwt_settings_key)
         print('resp_create_exp =',resp_create_exp)
         return resp_create_exp
 
@@ -678,8 +678,8 @@ class PCI_Utils():
             tec = record[col]
         return tec
 
-    def get_parent_id(self, user_id, all_info=False):
-        info_user = self.lkf_api.get_user_by_id(user_id, jwt_settings_key='USER_JWT_KEY')
+    def get_parent_id(self, user_id, all_info=False, jwt_settings_key='USER_JWT_KEY'):
+        info_user = self.lkf_api.get_user_by_id(user_id, jwt_settings_key=jwt_settings_key)
         parent_info = info_user.get('parent_info',{})
         if all_info:
             return parent_info
