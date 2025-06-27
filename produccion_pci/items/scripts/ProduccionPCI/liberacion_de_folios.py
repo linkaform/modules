@@ -869,7 +869,7 @@ class Produccion_PCI( Produccion_PCI ):
                 cableado_interior_modem_infinitum = ans.get('5f1721afa63c9a750b820489',0)
                 # Cuando es solo PIC (que ya paso más de un mes) poner en metros bajante un aleatorio de entre 20 y 50
                 if not connection_id or os_has_minimo:
-                    if (proceso == 'liberaciones' and not all_contratistas_1_0.get(connection_id, {}).get('socio_comercial', '')) or not connection_id:
+                    if not all_contratistas_1_0.get(connection_id, {}).get('socio_comercial', '') or not connection_id:
                         metros_bajante = random.randint(20, 50)
                     tipo_instalacion = 'aerea'
                     # plusvalia_tramo_adicional = 2
@@ -961,7 +961,7 @@ class Produccion_PCI( Produccion_PCI ):
                 if not connection_id or os_has_minimo:
                     if not tipo_instalacion:
                         tipo_instalacion = random.choice( ['aerea', 'subterranea'] )
-                    if not metros_bajante or (proceso == 'liberaciones' and not all_contratistas_1_0.get(connection_id, {}).get('socio_comercial', '')):
+                    if not metros_bajante or not all_contratistas_1_0.get(connection_id, {}).get('socio_comercial', ''):
                         metros_bajante = random.choice( ['25', '50', '75'] )
 
                 if not metros_bajante and connection_id > 0:
