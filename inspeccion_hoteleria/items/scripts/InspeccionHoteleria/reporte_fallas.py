@@ -6,6 +6,7 @@ import re
 import sys, simplejson
 import datetime
 import unicodedata
+from copy import deepcopy
 
 from inspeccion_hoteleria_utils import Inspeccion_Hoteleria
 
@@ -607,7 +608,6 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             match_query["form_id"] = self.unlist(forms_id_list)
     
         group_fields = {"_id": "$form_id"}
-        total_fields = {"_id": None}
         fallas_dict_without_dots = self.limpia_keys_dict(self.fallas_dict)
         for nombre_falla, id_falla in fallas_dict_without_dots.items():
             group_fields[nombre_falla] = { # type: ignore
@@ -619,37 +619,21 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                     ]
                 }
             }
-            total_fields[nombre_falla] = { # type: ignore
-                "$sum": {
-                    "$cond": [
-                        {"$eq": [f"$answers.{id_falla}", "no"]},
-                        1,
-                        0
-                    ]
-                }
-            }
-
         query_por_hotel = [
             {"$match": match_query},
             {"$group": group_fields}
         ]
-
+        # print('query_por_hotel=', simplejson.dumps(query_por_hotel, indent=4))
         result_por_hotel = self.format_cr(self.cr.aggregate(query_por_hotel))
-    
+        result_totales = deepcopy(result_por_hotel)
         form_id_to_hotel = {str(v): k for k, v in self.form_ids.items()}
         for item in result_por_hotel:
             item["hotel"] = form_id_to_hotel.get(str(item["_id"]), item["_id"])
             del item["_id"]
     
-        query_totales = [
-            {"$match": match_query},
-            {"$group": total_fields}
-        ]
-        result_totales = self.format_cr(self.cr.aggregate(query_totales))
         totales = result_totales[0] if result_totales else {}
         if "_id" in totales:
             del totales["_id"]
-
         totales_list = [{"falla": k, "total": v} for k, v in totales.items()]
         totales_list.sort(key=lambda x: x["total"], reverse=True)
 
@@ -1215,7 +1199,6 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             }
             }
         ]
-
         result = self.cr.aggregate(query)
         result = list(result)
         

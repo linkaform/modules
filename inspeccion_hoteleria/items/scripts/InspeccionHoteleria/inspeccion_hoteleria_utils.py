@@ -40,4 +40,9 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             })
 
         self.form_data = {}
+
+        self.exclude_field_ids =[
+            '67ffed2115a48b68c37ba99e',
+            '67f0844734855c523e1390d7'
+        ]
         

@@ -56,6 +56,8 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
     def is_question(self, field):
         field_type = field.get('field_type')
+        if field.get('field_id') in self.exclude_field_ids:
+            return False
         if field_type == 'radio':
             if field.get('options'):
                 for option in field.get('options'):
