@@ -23,9 +23,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         """
         self.load(module='Location', **self.kwargs)
         name = self.answers[self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID][self.Location.f['area']]
-        print('nombre de habitacion', name)
         res = self.Location.update_status_habitacion(name, 'inactiva')
-        print('nombre de res', res)
         if res.get('status_code') == 202:
             return True
         else:
