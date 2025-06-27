@@ -101,7 +101,8 @@ class Produccion_PCI(Produccion_PCI):
         ]
 
         self.f.update({
-            'xls_email_contratistas': '60105b997b3c64bb35043c3c'
+            'xls_email_contratistas': '60105b997b3c64bb35043c3c',
+            'field_id_cargado_desde_script': '5e17674c50f45bac939c932e'
         })
 
     def get_contratista_complemento( self, id_contratista, get_full_records=False ):
