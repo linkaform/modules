@@ -92,6 +92,18 @@ class Custom(Custom):
             return False
 
         group_vars_fuera_de_rango = []
+
+        # Para la forma Bitácora de Energía (134982) se requiere realizar un cálculo para el Total de Niveles de Tanque
+        if self.form_id == self.FORM_BITACORA_ENERGIA:
+
+            total_niveles_tanque = sum([ 
+                answers.get( self.f[ field_tanque ], 0 ) 
+                for field_tanque in [
+                    'nivel_tanque_1', 'nivel_tanque_2', 'nivel_tanque_3', 'nivel_tanque_4', 'nivel_tanque_5', 'nivel_tanque_6', 'nivel_tanque_7', 'nivel_tanque_8', 'nivel_tanque_9'
+                ]
+            ])
+
+            answers[ self.f['total_niveles_tanque'] ] = total_niveles_tanque
         
         # Se procesan las variables que están dentro de grupo repetitivo para armar la estructura que necesito
         for field_group, fields_variables in fields_to_group.items():
