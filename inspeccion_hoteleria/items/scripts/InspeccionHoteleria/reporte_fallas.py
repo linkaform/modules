@@ -7,6 +7,7 @@ import sys, simplejson
 import datetime
 import unicodedata
 from copy import deepcopy
+from collections import Counter
 
 from inspeccion_hoteleria_utils import Inspeccion_Hoteleria
 
@@ -31,6 +32,8 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'Comentarios Generales',
             'STATUS AUDITORIA',
             'DIAS EN PROCESO',
+            'status_auditoria',
+            'dias_en_proceso'
         ]
         
         self.ids_to_exclude = [
@@ -220,7 +223,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
         return result
 
-    def get_cantidad_inspecciones_y_remodeladas(self, forms_id_list=[]):
+    def get_cantidad_inspecciones_y_remodeladas(self, forms_id_list=[], anio=None, cuatrimestres=None):
         match_query = {
             "deleted_at": {"$exists": False},
         }
@@ -233,12 +236,33 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             match_query.update({
                 "form_id": self.unlist(forms_id_list)
             })
-
-        # ! Se consideran todos los status de inspeccion, cambio a considerar si permanece
-        status_validos = ["completada", "proceso", "incompleta"]
-
-        query = [
+    
+        # Pipeline para agregar año y cuatrimestre
+        pipeline = [
             {'$match': match_query},
+            {'$addFields': {
+                "_anio": {"$year": "$created_at"},
+                "_mes": {"$month": "$created_at"}
+            }},
+            {'$addFields': {
+                "_cuatrimestre": {
+                    "$ceil": {"$divide": ["$_mes", 4]}
+                }
+            }},
+        ]
+    
+        # Filtro por año y cuatrimestre si se pasan como parámetro
+        match_cuatrimestre = {}
+        if anio is not None:
+            match_cuatrimestre["_anio"] = anio
+        if cuatrimestres:
+            match_cuatrimestre["_cuatrimestre"] = {"$in": cuatrimestres}
+        if match_cuatrimestre:
+            pipeline.append({"$match": match_cuatrimestre})
+    
+        status_validos = ["completada", "proceso", "incompleta"]
+    
+        pipeline += [
             {'$project': {
                 'status_completada': {
                     '$cond': [
@@ -275,10 +299,10 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 }
             }
         ]
-
-        result = self.format_cr(self.cr.aggregate(query))
+    
+        result = self.format_cr(self.cr.aggregate(pipeline))
         result = self.unlist(result)
-
+    
         return result
     
     def resumen_cuatrimestres(self, calificaciones_dict):
@@ -619,21 +643,45 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                     ]
                 }
             }
-        query_por_hotel = [
+    
+        # Pipeline con año y cuatrimestre
+        pipeline = [
             {"$match": match_query},
-            {"$group": group_fields}
+            {"$addFields": {
+                "_anio": {"$year": "$created_at"},
+                "_mes": {"$month": "$created_at"}
+            }},
+            {"$addFields": {
+                "_cuatrimestre": {
+                    "$ceil": {"$divide": ["$_mes", 4]}
+                }
+            }},
         ]
-        # print('query_por_hotel=', simplejson.dumps(query_por_hotel, indent=4))
-        result_por_hotel = self.format_cr(self.cr.aggregate(query_por_hotel))
+    
+        # Filtro por año y cuatrimestre si se pasan como parámetro
+        match_cuatrimestre = {}
+        if anio is not None:
+            match_cuatrimestre["_anio"] = anio
+        if cuatrimestres:
+            match_cuatrimestre["_cuatrimestre"] = {"$in": cuatrimestres}
+        if match_cuatrimestre:
+            pipeline.append({"$match": match_cuatrimestre})
+    
+        pipeline.append({"$group": group_fields})
+    
+        result_por_hotel = self.format_cr(self.cr.aggregate(pipeline))
         result_totales = deepcopy(result_por_hotel)
         form_id_to_hotel = {str(v): k for k, v in self.form_ids.items()}
         for item in result_por_hotel:
             item["hotel"] = form_id_to_hotel.get(str(item["_id"]), item["_id"])
             del item["_id"]
     
-        totales = result_totales[0] if result_totales else {}
-        if "_id" in totales:
-            del totales["_id"]
+        totales = Counter()
+        for item in result_totales:
+            for k, v in item.items():
+                if k != "_id":
+                    totales[k] += v
+
         totales_list = [{"falla": k, "total": v} for k, v in totales.items()]
         totales_list.sort(key=lambda x: x["total"], reverse=True)
 
@@ -887,7 +935,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
         return output
     
-    def get_mejor_y_peor_habitacion(self, forms_id_list=[]):
+    def get_mejor_y_peor_habitacion(self, forms_id_list=[], anio=None, cuatrimestres=None):
         match_query = {
             "deleted_at": {"$exists": False},
         }
@@ -899,6 +947,27 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
     
         pipeline = [
             {'$match': match_query},
+            {'$addFields': {
+                "_anio": {"$year": "$created_at"},
+                "_mes": {"$month": "$created_at"}
+            }},
+            {'$addFields': {
+                "_cuatrimestre": {
+                    "$ceil": {"$divide": ["$_mes", 4]}
+                }
+            }},
+        ]
+    
+        # Filtro por año y cuatrimestre si se pasan como parámetro
+        match_cuatrimestre = {}
+        if anio is not None:
+            match_cuatrimestre["_anio"] = anio
+        if cuatrimestres:
+            match_cuatrimestre["_cuatrimestre"] = {"$in": cuatrimestres}
+        if match_cuatrimestre:
+            pipeline.append({"$match": match_cuatrimestre})
+    
+        pipeline += [
             {'$project': {
                     '_id': 1,
                     'habitacion': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area_habitacion']}",
@@ -961,17 +1030,17 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'habitacion_mas_fallas': peor
         }
     
-    def get_graph_radar(self, forms_id_list=None):
-        query = {}
-        projection = {"_id": 1, "sections": 1}
+    def get_graph_radar(self, forms_id_list=None, anio=None, cuatrimestres=None):
+        query = {"form_id": {"$in": forms_id_list}}
+        projection = {"_id": 1, "sections": 1, "created_at": 1}
         res = list(self.cr_inspeccion.find(query, projection))
         list_of_ids = [r['_id'] for r in res]
-
+    
         match_query = {
             "deleted_at": {"$exists": False},
             "_id": {"$in": list_of_ids}
         }
-
+    
         if len(forms_id_list) > 1: # type: ignore
             match_query.update({
                 "form_id": {"$in": forms_id_list}, # type: ignore
@@ -980,23 +1049,42 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             match_query.update({
                 "form_id": self.unlist(forms_id_list),
             })
-
-        query = [
+    
+        pipeline = [
             {'$match': match_query},
-            {'$project': {
-                '_id': 1,
-                'hotel': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_nombre']}",
+            {'$addFields': {
+                "_anio": {"$year": "$created_at"},
+                "_mes": {"$month": "$created_at"}
+            }},
+            {'$addFields': {
+                "_cuatrimestre": {
+                    "$ceil": {"$divide": ["$_mes", 4]}
+                }
             }},
         ]
-
-        result = self.format_cr(self.cr.aggregate(query))
-
+    
+        # Filtro por año y cuatrimestre si se pasan como parámetro
+        match_cuatrimestre = {}
+        if anio is not None:
+            match_cuatrimestre["_anio"] = anio
+        if cuatrimestres:
+            match_cuatrimestre["_cuatrimestre"] = {"$in": cuatrimestres}
+        if match_cuatrimestre:
+            pipeline.append({"$match": match_cuatrimestre})
+    
+        pipeline.append({'$project': {
+            '_id': 1,
+            'hotel': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_nombre']}",
+        }})
+    
+        result = self.format_cr(self.cr.aggregate(pipeline))
+    
         hotel_by_id = {str(item['_id']): item['hotel'] for item in result}
         for r in res:
             r['_id'] = str(r['_id'])
             r_id = r['_id']
             r['hotel'] = hotel_by_id.get(r_id, None)
-
+    
         return {
             'radar_data': res
         }
@@ -1119,11 +1207,11 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'hoteles_comentarios': res
         }
 
-    def get_cards(self, forms_id_list=[]):
+    def get_cards(self, forms_id_list=[], anio=None, cuatrimestres=None):
         match_query = {
             "deleted_at": {"$exists": False},
         }
-
+    
         if len(forms_id_list) > 1:
             match_query.update({
                 "form_id": {"$in": forms_id_list},
@@ -1132,9 +1220,31 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             match_query.update({
                 "form_id": self.unlist(forms_id_list),
             })
-
+    
+        # Pipeline para agregar año y cuatrimestre
         query = [
             {'$match': match_query},
+            {'$addFields': {
+                "_anio": {"$year": "$created_at"},
+                "_mes": {"$month": "$created_at"}
+            }},
+            {'$addFields': {
+                "_cuatrimestre": {
+                    "$ceil": {"$divide": ["$_mes", 4]}
+                }
+            }},
+        ]
+    
+        # Filtro por año y cuatrimestre si se pasan como parámetro
+        match_cuatrimestre = {}
+        if anio is not None:
+            match_cuatrimestre["_anio"] = anio
+        if cuatrimestres:
+            match_cuatrimestre["_cuatrimestre"] = {"$in": cuatrimestres}
+        if match_cuatrimestre:
+            query.append({"$match": match_cuatrimestre})
+    
+        query += [
             {'$project': {
                 '_id': 1,
                 'habitacion_remodelada': f"$answers.{self.f['habitacion_remodelada']}",
@@ -1229,28 +1339,30 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
         total_habitaciones = self.get_cantidad_habitaciones(ubicaciones_list=hoteles)
 
-        total_inspecciones_y_remodeladas = self.get_cantidad_inspecciones_y_remodeladas(forms_id_list=forms_id_list)
+        total_inspecciones_y_remodeladas = self.get_cantidad_inspecciones_y_remodeladas(forms_id_list=forms_id_list, anio=anio, cuatrimestres=cuatrimestres)
 
         propiedades_inspeccionadas = self.porcentaje_propiedades_inspeccionadas(
            total_habitaciones.get('totalHabitaciones', 0) if total_habitaciones else 0,
            total_inspecciones_y_remodeladas.get('total_inspecciones_completadas', 0) if total_inspecciones_y_remodeladas else 0
         )
         
-        calificacion_x_hotel_grafica = self.get_cuatrimestres_by_hotel(hoteles=hoteles, anio=anio, cuatrimestres=cuatrimestres)
+        calificacion_x_hotel_grafica = self.get_cuatrimestres_by_hotel(hoteles=hoteles, anio=anio, cuatrimestres=[1, 2, 3])
 
         fallas = self.get_fallas(forms_id_list=forms_id_list, anio=anio, cuatrimestres=cuatrimestres)
+        
         habitaciones_inspeccionadas = self.get_table_habitaciones_inspeccionadas(forms_id_list=forms_id_list)
 
-        mejor_y_peor_habitacion = self.get_mejor_y_peor_habitacion(forms_id_list=forms_id_list)
+        mejor_y_peor_habitacion = self.get_mejor_y_peor_habitacion(forms_id_list=forms_id_list, anio=anio, cuatrimestres=cuatrimestres)
 
-        graph_radar = self.get_graph_radar(forms_id_list=forms_id_list)
+        graph_radar = self.get_graph_radar(forms_id_list=forms_id_list, anio=anio, cuatrimestres=cuatrimestres)
 
         hoteles_fotografias = self.get_fotografias(forms_id_list=forms_id_list)
 
         hoteles_comentarios = self.get_comentarios(forms_id_list=forms_id_list)
+        
+        rooms_details = self.get_rooms_details(forms_id_list=forms_id_list, anio=anio, cuatrimestres=cuatrimestres)
 
-        # * Probable cambio de las cards
-        cards = self.get_cards(forms_id_list=forms_id_list)
+        cards = self.get_cards(forms_id_list=forms_id_list, anio=anio, cuatrimestres=cuatrimestres)
         cards = self.unlist(cards)
 
         report_data = {
@@ -1263,6 +1375,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'graph_radar': graph_radar,
             'hoteles_fotografias': hoteles_fotografias,
             'hoteles_comentarios': hoteles_comentarios,
+            'rooms_details': rooms_details,
         }
 
         return report_data
@@ -1282,6 +1395,81 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                         self.fallas_dict.update({
                             self.normaliza_texto(field.get('label')): field.get('field_id')
                         })
+                        
+    def get_rooms_details(self, forms_id_list=None, anio=None, cuatrimestres=None):
+        query = {"form_id": {"$in": forms_id_list}}
+        res = list(self.cr_inspeccion.find(query))
+        list_of_ids = [r['_id'] for r in res]
+
+        match_query = {
+            "deleted_at": {"$exists": False},
+            "_id": {"$in": list_of_ids}
+        }
+
+        if len(forms_id_list) > 1: # type: ignore
+            match_query.update({
+                "form_id": {"$in": forms_id_list}, # type: ignore
+            }) # type: ignore
+        else:
+            match_query.update({
+                "form_id": self.unlist(forms_id_list),
+            })
+
+        pipeline = [
+            {'$match': match_query},
+            {'$addFields': {
+                "_anio": {"$year": "$created_at"},
+                "_mes": {"$month": "$created_at"}
+            }},
+            {'$addFields': {
+                "_cuatrimestre": {
+                    "$ceil": {"$divide": ["$_mes", 4]}
+                }
+            }},
+        ]
+
+        match_cuatrimestre = {}
+        if anio is not None:
+            match_cuatrimestre["_anio"] = anio
+        if cuatrimestres:
+            match_cuatrimestre["_cuatrimestre"] = {"$in": cuatrimestres}
+        if match_cuatrimestre:
+            pipeline.append({"$match": match_cuatrimestre})
+
+        pipeline.append({
+            '$project': {
+                '_id': 1,
+                'hotel': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_nombre']}",
+                'habitacion': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area_habitacion']}",
+            }
+        })
+
+        result = self.format_cr(self.cr.aggregate(pipeline))
+
+        info_by_id = {
+            str(item['_id']): {
+                'hotel': item.get('hotel'),
+                'habitacion': item.get('habitacion')
+            }
+            for item in result
+        }
+
+        filtered_ids = set(info_by_id.keys())
+        filtered_res = [r for r in res if str(r['_id']) in filtered_ids]
+
+        for r in filtered_res:
+            r['_id'] = str(r['_id'])
+            info = info_by_id.get(r['_id'], {})
+            r['hotel'] = info.get('hotel')
+            r['habitacion'] = info.get('habitacion')
+            r.pop('created_at', None)
+            media = r.get('media', {})
+            new_media = {}
+            for key, files in media.items():
+                new_media[key] = [{'file_url': f['file_url']} for f in files if 'file_url' in f]
+            r['media'] = new_media
+
+        return filtered_res
 
 if __name__ == '__main__':
     module_obj = Inspeccion_Hoteleria(settings, sys_argv=sys.argv, use_api=True)
