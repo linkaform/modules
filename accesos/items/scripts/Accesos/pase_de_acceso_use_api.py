@@ -51,7 +51,7 @@ if __name__ == "__main__":
     elif option == 'enviar_msj':
         response = acceso_obj.create_enviar_msj_pase(folio=folio)
     elif option == 'enviar_correo':
-        response = acceso_obj.create_enviar_correo(data_msj=data_msj, folio=folio, envio=envio)
+        response = acceso_obj.create_enviar_correo(folio=folio, envio=envio)
     elif option == 'catalago_vehiculo':
         if tipo and marca:
             response = acceso_obj.vehiculo_modelo(tipo, marca)
