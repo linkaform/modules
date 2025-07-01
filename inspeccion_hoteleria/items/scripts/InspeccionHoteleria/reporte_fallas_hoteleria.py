@@ -177,11 +177,11 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         #     h for h in result
         #     if h.get('nombre_hotel', '').strip().upper() != 'CORPORATIVO MEXICO'
         # ]
-        filtered_form_ids = {
-            'nombre_hotel': name.upper().replace('_', ' ')
+        filtered_form_ids = [
+            {'nombre_hotel': name.upper().replace('_', ' ')}
             for name, form_id in self.form_ids.items()
             if form_id in my_hotels_set
-        }
+        ]
         # * Cambia MCALLEN por WYNDHAM GARDEN MCALLEN para que sea el nombre valido en la inspeccion
         # for h in filtered_form_ids:
         #     if h.get('nombre_hotel', '').strip().upper() == 'MCALLEN':
