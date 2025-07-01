@@ -293,7 +293,6 @@ class Stock(Stock):
         #         return res.inserted_ids
         return res
 
-
     def validate_move_qty_onts(self, warehouse, location, move_lines, move_type='out'):
         """
         Realiza validaciones de salida y movimeinto de inventarios y complemente informacion
@@ -325,7 +324,6 @@ class Stock(Stock):
             #TODO set inventory as done
             self.LKFException( simplejson.dumps( msg_error_app ) )  
         
-
     def direct_move_in_line_validations(self, folio, metadata, move_lines):
         """
         Realiza validaciones de salida y movimeinto de inventarios y complemente informacion
@@ -345,7 +343,7 @@ class Stock(Stock):
         location_to = self.answer_label['warehouse_location_dest']
         fecha_recepcion = self.answers.get(self.f['fecha_recepcion'])
         observaciones = self.answers.get(self.f['stock_move_comments'])
-        folio_recepcion = self.answers.get(self.f['folio_recepcion'])
+        folio_recepcion = self.base_folio #self.answers.get(self.f['folio_recepcion'])
         wh_type = self.WH.warehouse_type(warehouse)
         if self.proceso_onts:
             self.validate_move_qty_onts(warehouse, location, move_lines, move_type='in')
@@ -1046,7 +1044,6 @@ class Stock(Stock):
             else:
                 print('Ya tiene folio pero aun no hay mas versiones... revisando el current_record en la BD')
                 prev_version = self.get_record_from_db(self.form_id, self.folio, select_columns=[ 'answers.{}'.format(self.mf['xls_file']), 'answers.{}'.format(self.mf['xls_onts']) ])
-            print('prev_version=',prev_version)
         if prev_version.get('answers', {}).get( id_field_xls ):
             print( 'ya hay un excel previamente cargado... se ignora en esta ejecucion =',prev_version.get('answers', {}).get( id_field_xls ) )
             return False
