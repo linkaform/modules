@@ -53,8 +53,8 @@
                     <affecting_rules>
                         <item>
                             <applied>False</applied>
-                            <rule_id>7592114269c2318</rule_id>
-                            <rule_index>1</rule_index>
+                            <rule_id>c3b66b16bb627</rule_id>
+                            <rule_index>0</rule_index>
                             <rule_type>invisible</rule_type>
                         </item>
                     </affecting_rules>
@@ -186,8 +186,8 @@
                     </properties>
                     <required>True</required>
                     <rules>
-                        <item>7592114269c2318</item>
-                        <item>7592114269c2318</item>
+                        <item>c3b66b16bb627</item>
+                        <item>c3b66b16bb627</item>
                     </rules>
                     <show_for_rule>True</show_for_rule>
                     <validations>{}</validations>
@@ -352,9 +352,7 @@
                         <watermark_enable>False</watermark_enable>
                     </properties>
                     <required>True</required>
-                    <rules>
-                        <item>1dab4b8e9caef</item>
-                    </rules>
+                    <rules>[]</rules>
                     <show_for_rule>True</show_for_rule>
                     <validations>{}</validations>
                     <visible>True</visible>
@@ -1202,14 +1200,7 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>
-                        <item>
-                            <applied>False</applied>
-                            <rule_id>1dab4b8e9caef</rule_id>
-                            <rule_index>0</rule_index>
-                            <rule_type>required</rule_type>
-                        </item>
-                    </affecting_rules>
+                    <affecting_rules>[]</affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
                         <catalog_field_id>None</catalog_field_id>
@@ -1298,14 +1289,7 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>
-                        <item>
-                            <applied>False</applied>
-                            <rule_id>1dab4b8e9caef</rule_id>
-                            <rule_index>0</rule_index>
-                            <rule_type>required</rule_type>
-                        </item>
-                    </affecting_rules>
+                    <affecting_rules>[]</affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>
                         <catalog_field_id>{{ catalog.sku_catalog.obj_id }}</catalog_field_id>
@@ -1775,14 +1759,7 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>
-                        <item>
-                            <applied>False</applied>
-                            <rule_id>1dab4b8e9caef</rule_id>
-                            <rule_index>0</rule_index>
-                            <rule_type>required</rule_type>
-                        </item>
-                    </affecting_rules>
+                    <affecting_rules>[]</affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -1855,8 +1832,8 @@
                     <affecting_rules>
                         <item>
                             <applied>False</applied>
-                            <rule_id>7592114269c2318</rule_id>
-                            <rule_index>1</rule_index>
+                            <rule_id>c3b66b16bb627</rule_id>
+                            <rule_index>0</rule_index>
                             <rule_type>invisible</rule_type>
                         </item>
                     </affecting_rules>
@@ -2067,5 +2044,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1748929446.0</updated_at>
+    <updated_at>1751398126.0</updated_at>
 </lkf>
