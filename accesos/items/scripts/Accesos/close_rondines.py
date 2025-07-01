@@ -61,7 +61,7 @@ class Accesos(Accesos):
         for rondin in rondines_expirados:
             rondines_ids.append(rondin.get('_id'))
 
-        answers[self.f['estatus_del_recorrido']] = 'cancelado'
+        answers[self.f['estatus_del_recorrido']] = 'cerrado'
 
         # print(stop)
         if answers:
