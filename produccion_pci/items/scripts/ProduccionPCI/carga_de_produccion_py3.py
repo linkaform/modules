@@ -293,7 +293,7 @@ class Produccion_PCI( Produccion_PCI ):
                         fecha_actual = datetime.datetime.now()
                         diff_dates = fecha_actual - date_fecha_liquidada
                         dias_transcurridos = diff_dates.days
-                        if dias_transcurridos > 15 and not autorizaciones_carga_folio:
+                        if dias_transcurridos > self.dias_para_marcar_desfase and not autorizaciones_carga_folio:
                             descuento15dias = True
                             msg_error_folio_vencido = 'Folio cargado correctamente, recuerda que tienes 14 días después de la fecha de liquidación para cargar tu folio, de lo contrario tendrá un descuento del 20% por gastos administrativos por cargas desfasadas'
                 else:

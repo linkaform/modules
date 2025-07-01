@@ -69,6 +69,8 @@ class Produccion_PCI(Produccion_PCI):
         self.id_tecnicos_directos = [2071, 2072, 2073]
 
         self.MONTO_MAXIMO_POR_OC = 200000 # Monto maximo por OCs en Cobre
+        self.dias_para_marcar_desfase = 7 # Maximo de dias permitidos para carga antes de marcar como cobro minimo
+        self.porcentaje_descuento_x_desfase = 0.1 # Porcentaje de descuento por folios marcados con desfase en carga
 
         # Equivalencias de las formas de orden de servicio en las cuentas de SC y en Admin
         self.dict_equivalences_forms_id = { 
