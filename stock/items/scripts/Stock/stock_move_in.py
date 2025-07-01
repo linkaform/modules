@@ -158,11 +158,12 @@ class Stock(Stock):
                 row_set[self.f['lot_number']] = num_serie
                 row_set['folio'] = folio_ont_inv
                 row_set[self.f['inv_adjust_grp_status']] = 'done'
-                folio_serie_record.append({"folio":new_folio, "ont_serie": num_serie, "folio_recepcion":folio_ont_inv})
+                folio_serie_record.append({"folio":folio_ont_inv, "ont_serie": num_serie, "folio_recepcion":new_folio})
                 new_record['answers'][self.f['move_group']].append(row_set)
                 #no esta vaciando el move_group
                 self.answers[self.f['move_group']].append(row_set)
             # print('*************groiu************',self.answers[self.f['move_group']])
+            # print('folio_serie_record', folio_serie_record)
             if create_new_rec:
                 self.ejecutar_transaccion(new_record, folio_serie_record )
             else:
@@ -188,7 +189,7 @@ class Stock(Stock):
                     except Exception as e:
                         print(f"Error durante la transacción: {e}")
                         print('e.keys')
-                        self.LKFException( f'MMMMMMMMMrror en la creacion de las onts. Existen Series previamente Cargadas')
+                        self.LKFException( f'Error en la creacion de las onts. Existen Series previamente Cargadas')
                     if new_record.get('answers'):
                         response = stock_obj.make_direct_stock_move(move_type='in')
                         res = self.records_cr.insert_one(new_record)
@@ -315,6 +316,11 @@ class Stock(Stock):
                     })
         return skus
 
+    def lookup_onts(self, onts):
+        cr_onts = self.ont_cr.find({'ont_serie':{'$in':onts}},{'ont_serie':1})
+        onts = [x['ont_serie'] for x in cr_onts]
+        return onts
+
     def set_mongo_connections(self):
         self.client = self.get_mongo_client()
         dbname = 'infosync_answers_client_{}'.format(self.account_id)
@@ -332,7 +338,18 @@ if __name__ == '__main__':
     header, records = stock_obj.read_xls_file()
     groups = []
     if stock_obj.proceso_onts:
+        stock_obj.set_mongo_connections()
         groups = stock_obj.do_groups(header, records)
+        onts = [x[0] for x in records]
+        exist_onts = stock_obj.lookup_onts(onts)
+        if exist_onts:
+            stock_obj.LKFException( '', dict_error= {
+                "msg": f'Existen ONTs previamente cargados: {exist_onts}'
+            } )
+        if len(onts) > 12500:
+            stock_obj.LKFException( '', dict_error= {
+                "msg": f'Limite de carga de series superado. Solo se pueden cargar 12500 series por recepcion y se estan cargando {len(onts)} series'
+            } )
     if hasattr(stock_obj,'folio') and stock_obj.folio:
         folio = stock_obj.folio
     if not folio:
@@ -351,7 +368,6 @@ if __name__ == '__main__':
     stock_obj.current_record['folio'] = folio
     stock_obj.answers[stock_obj.f['folio_recepcion']] = folio
     stock_obj.current_record['answers'] = stock_obj.answers
-    stock_obj.set_mongo_connections()
     if stock_obj.proceso_onts:
         stock_obj.create_records(groups)
     else:
