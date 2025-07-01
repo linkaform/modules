@@ -437,6 +437,11 @@ class Stock(Stock):
     def validate_onts(self, records):
         move_group = self.answers.get( self.f['move_group'], [] )
         product_lots = [r[0] for r in records]
+        if len(move_group) == 0:
+            self.LKFException( '', dict_error= {
+                    "msg": ['No se especifico ningun producto para mover, favor de espeficar numero de producto'], 
+                    "label": "No se especifico ningun producto para mover", "error": []}
+                    )
         base_row_set = deepcopy(move_group[0])
         lot_size = len(records)
         warehouse_from = self.answers.get(self.WH.WAREHOUSE_LOCATION_OBJ_ID)
@@ -463,6 +468,7 @@ class Stock(Stock):
             self.LKFException({"msg":f"No hay stock suficiente para mover las {stock_size} unidades.", "title": "Falta de Stock"})
             # self.LKFException(f'ERROR HAY {abs(stock_size)}, de menos')
         elif stock_size > 0:
+            self.LKFException({"msg":f"Se estan intentando sacar mas unidades de las que hay en stock.", "title": "ONT no Existente."})
             print('valido hay suficientes... pero en este caso no deberia...')
         return True
 
@@ -483,6 +489,7 @@ if __name__ == '__main__':
         folio = "SAL"
         next_folio = stock_obj.get_record_folio(stock_obj.STOCK_ONE_MANY_ONE, folio)
         folio = f"{folio}-{next_folio}"
+        stock_obj.base_folio = folio
     if not stock_obj.record_id:
         stock_obj.record_id = stock_obj.object_id() 
     stock_obj.folio = folio
@@ -501,6 +508,11 @@ if __name__ == '__main__':
             stock_obj.LKFException('El archivo cargado no contiene datos, favor de revisar')
     groups = []
     if stock_obj.proceso_onts:
+        onts = [x[0] for x in records]
+        if len(onts) > 5000:
+            stock_obj.LKFException( '', dict_error= {
+                    "msg": f'Limite de salida de ONTs superado. Solo se pueden dar salida a  5000 ONTs por documento y se estan cargando {len(onts)} ONTs'
+                } )
         groups = stock_obj.validate_onts(records)
         groups = stock_obj.do_groups(header, records)
         stock_obj.create_records(groups)
