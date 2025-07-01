@@ -869,7 +869,7 @@ class Produccion_PCI( Produccion_PCI ):
                 cableado_interior_modem_infinitum = ans.get('5f1721afa63c9a750b820489',0)
                 # Cuando es solo PIC (que ya paso más de un mes) poner en metros bajante un aleatorio de entre 20 y 50
                 if not connection_id or os_has_minimo:
-                    if (proceso == 'liberaciones' and not all_contratistas_1_0.get(connection_id, {}).get('socio_comercial', '')) or not connection_id:
+                    if not all_contratistas_1_0.get(connection_id, {}).get('socio_comercial', '') or not connection_id:
                         metros_bajante = random.randint(20, 50)
                     tipo_instalacion = 'aerea'
                     # plusvalia_tramo_adicional = 2
@@ -961,7 +961,7 @@ class Produccion_PCI( Produccion_PCI ):
                 if not connection_id or os_has_minimo:
                     if not tipo_instalacion:
                         tipo_instalacion = random.choice( ['aerea', 'subterranea'] )
-                    if not metros_bajante or (proceso == 'liberaciones' and not all_contratistas_1_0.get(connection_id, {}).get('socio_comercial', '')):
+                    if not metros_bajante or not all_contratistas_1_0.get(connection_id, {}).get('socio_comercial', ''):
                         metros_bajante = random.choice( ['25', '50', '75'] )
 
                 if not metros_bajante and connection_id > 0:
@@ -1223,6 +1223,36 @@ class Produccion_PCI( Produccion_PCI ):
             file_libs['60148b838ca35fcf1a055854'].update({'file_name':'Folios Liberados Correctamente.xlsx'})
             current_record['answers'].update(file_libs)
         response = lkf_api.patch_record(current_record, record_id, jwt_settings_key='USER_JWT_KEY')
+
+        # Avanza al siguiente paso si es del proceso Automatizado
+        automatico_contratistas = current_record['answers'].get('61eff4589ee4743986088809', 'no') != 'no'
+        if automatico_contratistas:
+            # Se pasa al proceso de Orden de Compra
+            self.pass_orden_compra_process()
+
+    def get_record_for_ocs(self):
+        record_4_ocs = self.cr.find({
+            'form_id': self.FORMA_GENERAR_LIBERACIONES_Y_OCS,
+            'deleted_at': {'$exists': False},
+            'answers.5f10d2efbcfe0371cb2fbd39': 'en_espera_de_proceso_orden_de_compra',
+            'answers.f2362800a0100000000000b2': {'$exists': True}
+        }, {'answers': 1, 'form_id': 1, 'folio': 1, '_id': 1}).sort('created_at',-1).limit(1)
+        try:
+            return record_4_ocs.next()
+        except:
+            return {}
+
+    def pass_orden_compra_process(self):
+        record_for_ocs = self.get_record_for_ocs()
+        if record_for_ocs:
+            record_for_ocs['properties'] = self.get_metadata_properties('liberacion_de_folios.py', "Generar Orden de Compra", process='Liberaciones automatizadas', folio_carga=self.folio)
+            record_for_ocs['answers'].update({
+                '5f10d2efbcfe0371cb2fbd39': 'generar_orden_de_compra'
+            })
+            res_update_process_ocs = lkf_api.patch_record(record_for_ocs, jwt_settings_key='USER_JWT_KEY')
+            print('res_update_process_ocs=',res_update_process_ocs)
+        else:
+            print('NOOOOO hay registro para procesar las OC automatizadas')
 
 if __name__ == '__main__':
     print("--- --- --- Se empieza la liberacion de folios --- --- ---")

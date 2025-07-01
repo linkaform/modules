@@ -412,7 +412,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             return total_excedente, precio_excedente
         return 0, 0
 
-    def get_product_name(self, answers, price_list, payment_connection_id, conn_carso):
+    def get_product_name(self, answers, price_list, payment_connection_id, conn_carso, answers_lib):
         """
         Se procesan los precios para obtener el que corresponda segun el código
 
@@ -432,7 +432,14 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         precio_excedente = 0
         code = 'B'
         name = ''
-        metraje_to_product = int(answers.get('f1054000a02000000000007a', answers.get('f1054000a0200000000000d7', 0)))
+        
+        # metraje_to_product = int(answers.get('f1054000a02000000000007a', answers.get('f1054000a0200000000000d7', 0)))
+
+        # cambio el metraje de obtenerlo de la OS a la Liberacion
+        metraje_to_product = int( answers_lib.get('f2361400a010000000000002', 0) )
+        if metraje_to_product > 300:
+            metraje_to_product = 300
+        
         '''
         # Para los folios que son de acapulco se va a cobrar por default aerea de 100
         '''
@@ -582,7 +589,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         # record_is_for_acapulco = self.folio_aplica_contingencia(answers)
         record_is_for_acapulco = False
 
-        code, name, excedente, precio_excedente = self.get_product_name(answers, price_list, payment_connection_id, conn_carso)
+        code, name, excedente, precio_excedente = self.get_product_name(answers, price_list, payment_connection_id, conn_carso, answers_lib)
 
         # Determinar el precio de bajante y actualizar migration_price_list según el tipo de cargo
         bajante_price = 0
@@ -1372,7 +1379,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         dict_oc_fecha_nomina, total_20_row=False):
         oc_count += 1 #get_folios_num(OC_CONTRATISTA, folio_oc)
 
-        metadata['properties'] = p_utils.get_metadata_properties('orden_de_compra.py', 'GENERA OC CONTRATISTA', process='PROCESO CARGA ORDEN COMPRA CONTRATISTA', folio_carga=folio_oc)
+        metadata['properties'] = self.get_metadata_properties('orden_de_compra.py', 'GENERA OC CONTRATISTA', process='PROCESO CARGA ORDEN COMPRA CONTRATISTA', folio_carga=folio_oc)
         
         metadata['connection_id'] = connection_id
         if FORMA_ORDEN_SERVICIO:

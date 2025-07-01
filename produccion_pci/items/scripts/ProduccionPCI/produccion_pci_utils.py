@@ -4,6 +4,9 @@ import sys, simplejson
 from datetime import datetime, timedelta, date
 from copy import deepcopy
 
+import urllib.request
+import xml.etree.ElementTree as ET
+
 from lkf_addons.addons.produccion_pci.app import Produccion_PCI
 
 
@@ -52,6 +55,8 @@ class Produccion_PCI(Produccion_PCI):
         self.FORM_ID_PRECIOS_FTTH = self.lkm.form_id('precios_fibra_socio', 'id')
         self.FORM_ID_PRECIOS_COBRE = self.lkm.form_id('precios_cobre_socio', 'id')
 
+        self.FORMA_GENERAR_LIBERACIONES_Y_OCS = self.lkm.form_id('generar_liberaciones_fibra_y_cobre_socio', 'id')
+
         # Formas complemento para la validacion de facturas
         self.FORMA_COMPLEMENTOS_PAGO = self.lkm.form_id('contratistas_para_complementos_de_pago', 'id')
         self.FORMA_PAGOS_SAP = self.lkm.form_id('pagos_sap_complementos_de_pagos', 'id')
@@ -96,8 +101,35 @@ class Produccion_PCI(Produccion_PCI):
         ]
 
         self.f.update({
-            'xls_email_contratistas': '60105b997b3c64bb35043c3c'
+            'xls_email_contratistas': '60105b997b3c64bb35043c3c',
+            'field_id_cargado_desde_script': '5e17674c50f45bac939c932e'
         })
+
+    def get_contratista_complemento( self, id_contratista, get_full_records=False ):
+        """
+        Consulta en la forma Contratistas para Complementos de Pago filtrando por el id del contratista
+        se obtiene el dato para Contratista formato de complemento
+
+        Args:
+            id_contratista (int): ID de la conexion
+
+        Return:
+            lista de formato de complemento segun los registros encontrados
+        """
+        record_contratistas_complemento = self.get_records(
+            self.FORMA_COMPLEMENTOS_PAGO, 
+            query_answers={ f'answers.62d071173eeb3a67815c74fe.{self.CATALOGO_CONTRATISTAS_OBJ_ID}.5f344a0476c82e1bebc991d6': [ str(id_contratista) ] },
+            select_columns=['folio', 'answers']
+        )
+
+        if get_full_records:
+            return record_contratistas_complemento
+
+        contratista_complemento = []
+        for r in record_contratistas_complemento:
+            print('Contratista complemento',r['folio'])
+            contratista_complemento.append(r['answers'].get('62d071930a1b1ff9eaa3c0f4', ''))
+        return contratista_complemento
 
     def get_only_connections(self):
         """ Se lee excel de emails con las conexiones a las que se va a liberar y crear OC """
@@ -128,3 +160,104 @@ class Produccion_PCI(Produccion_PCI):
             return {'error': emails_not_exists}
 
         return {'result': emails_connections, 'info_connections': dict_info_connection}
+
+    def get_metadata_properties(self, name_script, accion, process='', folio_carga=''):
+        dict_properties = {
+            'device_properties': {
+                'system': 'SCRIPT',
+                'process': process,
+                'accion': accion,
+                'archive': name_script
+            }
+        }
+        if folio_carga:
+            dict_properties['device_properties']['folio carga'] = folio_carga
+        return dict_properties
+
+    def get_xml_root(self, file_url, get_all_root=False, xml_downloaded=False):
+        """
+        Obtiene la raíz de un archivo XML, ya sea desde una URL o desde un objeto XML ya descargado.
+
+        Args:
+            file_url (str): URL o ruta del archivo XML. Si `xml_downloaded` es True, se espera que sea el objeto XML.
+            get_all_root (bool, optional): Si True, retorna también el objeto raíz del XML. Default es False.
+            xml_downloaded (bool, optional): Si True, indica que `file_url` ya es un archivo abierto u objeto similar. Default es False.
+
+        Returns:
+            Atributos y objeto raíz (si get_all_root es True)
+        """
+        xmlobj = file_url if xml_downloaded else urllib.request.urlopen(file_url)
+        
+        try:
+            tree = ET.parse(xmlobj)
+            root = tree.getroot()
+            dict_attribs = {a.lower():b for a,b  in root.attrib.items()}
+            
+            if get_all_root:
+                return dict_attribs, root
+            return dict_attribs
+        
+        except Exception as e:
+            error_msg = f'XML dañado, favor de revisar: {e}'
+            return (error_msg, None) if get_all_root else error_msg
+
+    def integration_get_dict_node(self, node_to_process):
+        """
+        Se procesan los elementos que componen el xml de la factura para regresar un diccionario con el nombre y valor del elemento
+
+        Args:
+            node_to_process : Nodos del xml de la factura
+
+        Return:
+            Diccionario de elementos y valor
+        """
+        dict_attribs = {a.lower():b for a,b  in node_to_process.attrib.items()}
+        for r in node_to_process:
+            name_tag = r.tag.lower().replace('{http://www.sat.gob.mx/cfd/3}', '')
+            name_tag = name_tag.replace('{http://www.sat.gob.mx/cfd/4}', '')
+
+            list_nodes = []
+            if 'pagos' in name_tag:
+                dict_info_pago = {a.lower():b for a,b  in r.attrib.items()}
+                if dict_info_pago:
+                    list_nodes.append(dict_info_pago)
+            for rr in r:
+                dict_parent = {a.lower():b for a,b  in r.attrib.items()}
+                dict_node = self.integration_get_dict_node(rr)
+                dict_node.update({'info_parent': dict_parent})
+                list_nodes.append(dict_node)
+            if not list_nodes:
+                list_nodes = {a.lower():b for a,b  in r.attrib.items()}
+            if 'percepciones' in name_tag:
+                dict_list_nodes = {a.lower():b for a,b  in r.attrib.items()}
+                dict_list_nodes.update({
+                    'percepciones': list_nodes
+                })
+                list_nodes = dict_list_nodes
+            if dict_attribs.get(name_tag) and type(dict_attribs.get(name_tag)) == list and type(list_nodes) == list:
+                dict_attribs[name_tag] += list_nodes
+            else:
+                dict_attribs[name_tag] = list_nodes
+        return dict_attribs
+
+    def next_step_process(self, accion="Generar Liberaciones", name_script="ejecuta_liberacion_de_folios.py", status_pass='generar_liberaciones'):
+        metadata = self.lkf_api.get_metadata(self.FORMA_GENERAR_LIBERACIONES_Y_OCS)
+        metadata['properties'] = self.get_metadata_properties(name_script, accion, "Proceso automatizado para liberación de folios", self.folio)
+        metadata['answers'] = {
+            '5f10d2efbcfe0371cb2fbd39': status_pass,
+            '61eff4589ee4743986088809': 'sí'
+        }
+        res_create_est = self.lkf_api.post_forms_answers(metadata)
+        print('res_create_est=',res_create_est)
+        return res_create_est
+
+    def notify_error(self, field_id, lbl, msg):
+        """
+        Marca error al enviar el registro
+
+        Args:
+            field_id (str): Id del campo donde se marca el error
+            lbl (str): Label del campo en la forma
+            msg (str): Mensaje de error que se presenta al usuario
+        """
+        raise Exception( simplejson.dumps({field_id: {'msg': [msg], 'label': lbl, 'error': []}}) )
