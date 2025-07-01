@@ -97,7 +97,7 @@ class Accesos(Accesos):
                 answers[self.f['fecha_programacion']] = value
             elif key == 'fecha_inicio_rondin':
                 answers[self.f['fecha_inicio_rondin']] = value
-            elif key == 'ubicacion_recorrido':
+            elif key == 'incidente_location':
                 conf_recorrido.update({
                     self.f['ubicacion_recorrido']: value
                 })
@@ -111,14 +111,15 @@ class Accesos(Accesos):
                 areas_rondin = {}
                 items = []
                 for index, item in enumerate(value):
-                    if item.get('note_booth', '') == area_rondin:
+                    if item.get('incidente_area', '') == area_rondin:
                         obj = {
                             self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
                                 self.f['nombre_area']: area_rondin
                             },
                             self.f['fecha_hora_inspeccion_area']: today,
                             self.f['foto_evidencia_area_rondin']: data_rondin.get(self.f['foto_evidencia_area'], []),
-                            self.f['comentario_area_rondin']: data_rondin.get(self.f['comentario_check_area'], '')
+                            self.f['comentario_area_rondin']: data_rondin.get(self.f['comentario_check_area'], ''),
+                            self.f['url_registro_rondin']: f"https://app.linkaform.com/#/records/detail/{record_id}"
                         }
                     else:
                         obj = {
