@@ -56,7 +56,7 @@ class Accesos(Accesos):
             {'$match': {
                 "deleted_at": {"$exists": False},
                 "form_id": self.BITACORA_RONDINES,
-                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.f['nombre_del_recorrido_en_catalog']}": {"$in": format_names},
+                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.f['nombre_del_recorrido']}": {"$in": format_names},
                 f"answers.{self.f['estatus_del_recorrido']}": {"$in": status_list},
             }},
             {'$project': {
@@ -68,7 +68,7 @@ class Accesos(Accesos):
             {'$limit': 1}
         ]
 
-        rondin = self.format_cr(self.cr.aggregate(query), **{'labels_off': True})
+        rondin = self.format_cr(self.cr.aggregate(query))
         return rondin
     
     def check_area_in_rondin(self, data_rondin, area_rondin, rondin):
@@ -81,6 +81,7 @@ class Accesos(Accesos):
         today = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
         rondin = self.unlist(rondin)
         format_id_rondin = rondin.get('_id', '')
+        rondin_en_progreso = True
         answers={}
 
         print('rondinnnnnnnnnnnnnnnnn', simplejson.dumps(rondin, indent=3))
@@ -98,9 +99,9 @@ class Accesos(Accesos):
                 conf_recorrido.update({
                     self.f['ubicacion_recorrido']: value
                 })
-            elif key == 'nombre_del_recorrido_en_catalog':
+            elif key == 'nombre_del_recorrido':
                 conf_recorrido.update({
-                    self.f['nombre_del_recorrido_en_catalog']: value
+                    self.f['nombre_del_recorrido']: value
                 })
             elif key == 'estatus_del_recorrido':
                 answers[self.f['estatus_del_recorrido']] = value
@@ -142,7 +143,6 @@ class Accesos(Accesos):
                     areas_rondin[str(idx)] = obj
 
                 answers[self.f['areas_del_rondin']] = areas_rondin
-                print(rondin_en_progreso)
             else:
                 pass
 
@@ -150,9 +150,11 @@ class Accesos(Accesos):
         answers[self.f['estatus_del_recorrido']] = 'en_proceso' if rondin_en_progreso else 'realizado'
         answers[self.f['fecha_fin_rondin']] = today if not rondin_en_progreso else ''
 
+        if data_rondin.get(self.f['check_status']) == 'finalizado':
+            answers[self.f['estatus_del_recorrido']] = 'realizado'
+
         print("ans", simplejson.dumps(answers, indent=4))
 
-        # print(stop)
         if answers:
             res= self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=[format_id_rondin])
             if res.get('status_code') == 201 or res.get('status_code') == 202:
@@ -189,6 +191,10 @@ class Accesos(Accesos):
             ubicacion_recorrido = nombre.get('ubicacion_recorrido', '')
             record_id = nombre.get('_id', '')
 
+        # Validar record_id antes de continuar
+        if not record_id:
+            raise Exception("No se encontró un record_id válido para obtener las áreas del recorrido.")
+
         areas_recorrido = self.get_areas_recorrido(record_id)
 
         metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_RONDINES)
@@ -210,12 +216,10 @@ class Accesos(Accesos):
 
         answers[self.f['fecha_programacion']] = today
         answers[self.f['fecha_inicio_rondin']] = today
-        ######################################
-        #TODO Cambiar la ubicacion hardcodeada
-        #####################################
+
         answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = {
             self.f['ubicacion_recorrido']: ubicacion_recorrido,
-            self.f['nombre_del_recorrido_en_catalog']: nombre_recorrido
+            self.f['nombre_del_recorrido']: nombre_recorrido
         }
         answers[self.f['estatus_del_recorrido']] = 'en_proceso'
         answers[self.f['areas_del_rondin']] = [{
@@ -242,7 +246,6 @@ class Accesos(Accesos):
         #TODO Asignar a usuario
         ###############################
 
-        # print(stop)
         res = self.lkf_api.post_forms_answers(metadata)
         return res
 
@@ -262,9 +265,12 @@ if __name__ == "__main__":
     print('rondin', rondin)
 
     if not rondin:
-        print('No se encontro un rondin con el area proporcionada. Creando uno nuevo...')
-        response = acceso_obj.create_rondin(acceso_obj.answers, nombre_area_rondin, nombres_recorrido)
-        print('response', response)
+        if not nombres_recorrido:
+            print('No se encontro ningun recorrido con el area proporcionada.')
+        else:
+            print('No se encontro un rondin con el area proporcionada. Creando uno nuevo...')
+            response = acceso_obj.create_rondin(acceso_obj.answers, nombre_area_rondin, nombres_recorrido)
+            print('response', response)
     else:
         resultado = acceso_obj.check_area_in_rondin(data_rondin=acceso_obj.answers, area_rondin=nombre_area_rondin, rondin=rondin)
         print('resultado', resultado)

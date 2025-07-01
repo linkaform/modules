@@ -131,11 +131,11 @@ class Produccion_PCI( Produccion_PCI ):
         cr_contratista = colection_connection.get_collections_connection()
 
         query_to_restore, select_columns = p_utils.query_folio_preorder(form_id, folio, telefono, area)
-        rmv_contratista = cr_contratista.remove(query_to_restore)
+        rmv_contratista = cr_contratista.delete_one(query_to_restore)
         print('+++ rmv_contratista',rmv_contratista)
-        unset_conn = cr_admin.update(query_to_restore,{"$unset":{'connection_id':''}})
+        unset_conn = cr_admin.update_one(query_to_restore,{"$unset":{'connection_id':''}})
         print('+++ unset_conn:',unset_conn)
-        reset_pci = cr_admin.update(query_to_restore,{"$set":{'user_id':user_id_old}})
+        reset_pci = cr_admin.update_one(query_to_restore,{"$set":{'user_id':user_id_old}})
         print('+++ reset_pci',reset_pci)
 
     def check_os_cobre(self, folio, telefono):
@@ -817,7 +817,7 @@ class Produccion_PCI( Produccion_PCI ):
                             if not is_in_listado_tecnicos:
                                 list_expediente_not_found.append( f'Expediente {num_expediente} no encontrado en Expedientes de Técnicos IASA' )
                             if list_expediente_not_found:
-                                error.append( p_utils.list_to_str(list_expediente_not_found) )
+                                error.append( self.list_to_str(list_expediente_not_found) )
 
                             # stop
 
@@ -896,7 +896,7 @@ class Produccion_PCI( Produccion_PCI ):
             for connection in form_connections['connections']:
                 if connection['id'] == user_id:
                     return {'connection_id': int(connection['id']), 'user_of_connection':{}}
-            for connection_id, coworkers in form_connections['coworkers'].iteritems():
+            for connection_id, coworkers in form_connections['coworkers'].items():
                 if coworkers:
                     for worker in coworkers:
                         if worker['id'] == user_id:
@@ -1223,7 +1223,7 @@ class Produccion_PCI( Produccion_PCI ):
                         # Mensajes en el excel
                         msg_exitoso = 'Folio CREADO con éxito'
                         if this_record['create'].get('alerts', []):
-                            msg_exitoso = '{} :: {}'.format(msg_exitoso, p_utils.list_to_str( this_record['create'].get('alerts', []) ))
+                            msg_exitoso = '{} :: {}'.format(msg_exitoso, self.list_to_str( this_record['create'].get('alerts', []) ))
                         records_ok.append(record+[msg_exitoso,])
 
                     elif this_record['update']:
@@ -1289,7 +1289,7 @@ class Produccion_PCI( Produccion_PCI ):
                                 create_json.update(p_utils.update_create_json(create_json, this_record))
                                 msg_exitoso = "Folio MODIFICADO con éxito"
                                 if this_record['update'].get('alerts', []):
-                                    msg_exitoso = '{} :: {}'.format(msg_exitoso, p_utils.list_to_str( this_record['update'].get('alerts', []) ))
+                                    msg_exitoso = '{} :: {}'.format(msg_exitoso, self.list_to_str( this_record['update'].get('alerts', []) ))
                                 records_ok.append(record+[msg_exitoso,])
                                 resp_copy = self.make_copy_os( this_record['update']['answers'], form_id_turno, current_record['folio'], folio, connection_id )
                                 if not resp_copy:
@@ -1344,7 +1344,7 @@ class Produccion_PCI( Produccion_PCI ):
                             records_to_assign[ connection_id_for_record_creado ].append(new_record)
                         msg_exitoso = 'Folio CREADO con éxito'
                         if records_with_alerts.get(folio_creado, []):
-                            msg_exitoso = '{} :: {}'.format(msg_exitoso, p_utils.list_to_str( records_with_alerts.get(folio_creado, []) ))
+                            msg_exitoso = '{} :: {}'.format(msg_exitoso, self.list_to_str( records_with_alerts.get(folio_creado, []) ))
                         records_ok.append(records[dict_pos_record[create_record['folio']]] + [msg_exitoso,])
                         fols_psr_to_update.append( records_to_psr.get(folio_creado) )
                 else:
@@ -1406,7 +1406,7 @@ class Produccion_PCI( Produccion_PCI ):
     def upload_bolsa_hibrido(self, current_record, form_id, header, records, RECORDS_PASSED=0):
         bonificaciones_not_found = self.get_cols_bonificaciones(header)
         if bonificaciones_not_found:
-            return self.set_status_proceso( current_record, record_id, 'error', msg='El archivo no lleva las columnas: ' + p_utils.list_to_str([nf.replace('_', ' ').capitalize() for nf in bonificaciones_not_found]) )
+            return self.set_status_proceso( current_record, record_id, 'error', msg='El archivo no lleva las columnas: ' + self.list_to_str([nf.replace('_', ' ').capitalize() for nf in bonificaciones_not_found]) )
 
         different_copes = self.verify_same_cope(header, records)
         if different_copes.get('error'):
@@ -1493,7 +1493,7 @@ class Produccion_PCI( Produccion_PCI ):
         duplicated_folios = [item for item, count in collections.Counter(all_folios_in_file).items() if count > 1]
         print("duplicated_folios=",duplicated_folios)
         if duplicated_folios:
-            return self.set_status_proceso( current_record, record_id, 'error', msg='No se permiten folios duplicados en un mismo proceso {}'.format(p_utils.list_to_str(duplicated_folios)) )
+            return self.set_status_proceso( current_record, record_id, 'error', msg='No se permiten folios duplicados en un mismo proceso {}'.format(self.list_to_str(duplicated_folios)) )
         
 
         records_for_cambio_tec = p_utils.get_cambios_tecnologia()
@@ -1582,6 +1582,9 @@ class Produccion_PCI( Produccion_PCI ):
             print('[ERROR] al leer el excel =',e)
             return self.set_status_proceso( current_record, record_id, 'error', msg='El formato del archivo adjunto esta mal o puede tener fechas con año 1900. Favor de revisar que el formato sea xlsx o csv. Recuerda actualizar el estatus a Por Cargar' )
 
+        if isinstance(header, dict) and header.get('error'):
+            return self.set_status_proceso( current_record, record_id, 'error', msg=header['error'] )
+
         if not records:
             return self.set_status_proceso( current_record, record_id, 'error', msg='No Existen registros en el archivo' )
 
@@ -1611,8 +1614,10 @@ class Produccion_PCI( Produccion_PCI ):
 
 if __name__ == '__main__':
     print("--- --- --- Se empieza la carga de produccion --- --- ---")
+    
     # lkf_obj = base.LKF_Base(settings, sys_argv=sys.argv, use_api=True)
     lkf_obj = Produccion_PCI(settings, sys_argv=sys.argv, use_api=True)
+    lkf_obj.console_run()
 
 
 

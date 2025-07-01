@@ -14,6 +14,9 @@ class Accesos( Accesos):
         self.CONFIGURACION_DE_RECORRIDOS_FORM = self.lkm.form_id('configuracion_de_recorridos','id')
         self.BITACORA_RONDINES = self.lkm.form_id('bitacora_rondines','id')
 
+        self.CONFIGURACION_DE_RECORRIDOS_FORM = self.lkm.form_id('configuracion_de_recorridos','id')
+        self.BITACORA_RONDINES = self.lkm.form_id('bitacora_rondines','id')
+
         self.f.update({
             'areas_del_rondin': '66462aa5d4a4af2eea07e0d1',
             'comentario_area_rondin': '66462b9d7124d1540f962088',
@@ -29,8 +32,10 @@ class Accesos( Accesos):
             'nombre_del_recorrido_en_catalog': '6644fb97e14dcb705407e0ef',
             'ubicacion_recorrido': '663e5c57f5b8a7ce8211ed0b',
             'fecha_inicio_rondin': '6818ea068a7f3446f1bae3b3',
-            'fecha_fin_rondin': '6760a8e68cef14ecd7f8b6ff'
+            'fecha_fin_rondin': '6760a8e68cef14ecd7f8b6ff',
+            'check_status': '681fa6a8d916c74b691e174b'
         })
+
 
     def get_cantidades_de_pases(self, x_empresa=False):
         print('entra a get_cantidades_de_pases')
@@ -227,7 +232,6 @@ class Accesos( Accesos):
                 f"answers.{self.mf['fecha_entrada']}": {"$lte": dateTo}
             })
         
-        print("Fechas+++", match_query)
         proyect_fields ={
             '_id': 1,
             'folio': "$folio",
@@ -289,7 +293,7 @@ class Accesos( Accesos):
             )
         if dateFrom:
             query.append(
-                {'$sort':{'folio':1}},
+                {'$sort':{'folio':-1}},
             )
         else:
             query.append(
