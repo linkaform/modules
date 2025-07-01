@@ -38,7 +38,15 @@ class Accesos( Accesos):
             'ubicacion_recorrido': '663e5c57f5b8a7ce8211ed0b',
             'fecha_inicio_rondin': '6818ea068a7f3446f1bae3b3',
             'fecha_fin_rondin': '6760a8e68cef14ecd7f8b6ff',
-            'check_status': '681fa6a8d916c74b691e174b'
+            'check_status': '681fa6a8d916c74b691e174b',
+            'grupo_incidencias_check': '681144fb0d423e25b42818d3',
+            'incidente_open': '6811455664dc22ecae83f75b',
+            'incidente_comentario': '681145323d9b5fa2e16e35cc',
+            'incidente_area': '663e5d44f5b8a7ce8211ed0f',
+            'incidente_location': '663e5c57f5b8a7ce8211ed0b',
+            'incidente_evidencia': '681145323d9b5fa2e16e35cd',
+            'incidente_documento': '685063ba36910b2da9952697',
+            'url_registro_rondin': '6750adb2936622aecd075607'
         })
 
 
