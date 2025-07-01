@@ -89,6 +89,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'HOLIDAY INN TIJUANA': 'HI TIJUANA ZONA RIO',
             'WYNDHAM GARDEN MCALLEN': 'MCALLEN',
         }
+        self.my_hotels_ids = []
 
     def normalize_types(self, obj):
         if isinstance(obj, list):
@@ -113,36 +114,50 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
     def limpia_keys_dict(self, dic):
         return {k.replace('.', '_'): v for k, v in dic.items()}
 
-    def get_hoteles(self):
-        query = [
-            {'$match': {
-                "deleted_at": {"$exists": False},
-                "form_id": self.Location.UBICACIONES,
-                f"answers.{self.f['tipo_ubicacion']}": "hotel",
-            }},
-            {'$project': {
-                '_id': 0,
-                'nombre_hotel': f"$answers.{self.Location.f['location']}",
-            }},
-        ]
+    @property
+    def my_hotels(self):
+        if not self.my_hotels_ids:
+            forms = self.lkf_api.get_all_forms()
+            my_hotels = [f['form_id'] for f in forms if f.get('form_id')]
+            self.my_hotels_ids = my_hotels
+        return self.my_hotels_ids
 
-        result = self.format_cr(self.cr.aggregate(query))
+
+    def get_hoteles(self):
+        # print('mis hoteles', self.my_hotels)
+        # query = [
+        #     {'$match': {
+        #         "deleted_at": {"$exists": False},
+        #         "form_id": self.Location.UBICACIONES,
+        #         f"answers.{self.f['tipo_ubicacion']}": "hotel",
+        #     }},
+        #     {'$project': {
+        #         '_id': 0,
+        #         'nombre_hotel': f"$answers.{self.Location.f['location']}",
+        #     }},
+        # ]
+
+        # result = self.format_cr(self.cr.aggregate(query))
         # TODO
         # Temp se descarta corporativo mexico porque no cuenta con una forma de inspeccion
-        result = [
-            h for h in result
-            if h.get('nombre_hotel', '').strip().upper() != 'CORPORATIVO MEXICO'
-        ]
-
+        my_hotels_set = set(self.my_hotels)
+        # result = [
+        #     h for h in result
+        #     if h.get('nombre_hotel', '').strip().upper() != 'CORPORATIVO MEXICO'
+        # ]
+        filtered_form_ids = {
+            'nombre_hotel': name.upper().replace('_', ' ')
+            for name, form_id in self.form_ids.items()
+            if form_id in my_hotels_set
+        }
         # * Cambia MCALLEN por WYNDHAM GARDEN MCALLEN para que sea el nombre valido en la inspeccion
-        for h in result:
-            if h.get('nombre_hotel', '').strip().upper() == 'MCALLEN':
-                h['nombre_hotel'] = 'WYNDHAM GARDEN MCALLEN'
+        # for h in filtered_form_ids:
+        #     if h.get('nombre_hotel', '').strip().upper() == 'MCALLEN':
+        #         h['nombre_hotel'] = 'WYNDHAM GARDEN MCALLEN'
         
         hoteles = {
-            'hoteles': result
+            'hoteles': filtered_form_ids
         }
-
         return hoteles
     
     def get_cantidad_si_y_no(self, forms_id_list=[]):
@@ -458,8 +473,13 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         return round(porcentaje, 2)
 
     def get_forms_id_list(self, hoteles=None):
+        print("hoteles", hoteles)
+        
         if not hoteles:
-            return list(self.form_ids.values())
+            my_hotels_set = set(self.my_hotels)
+            filtered_ids = [fid for fid in self.form_ids.values() if fid in my_hotels_set]
+
+            return filtered_ids
 
         hoteles_normalizados = [
             hotel.lower().replace(' ', '_') for hotel in hoteles
@@ -1333,8 +1353,6 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             hoteles = hoteles_actualizados
 
         forms_id_list = self.get_forms_id_list(hoteles)
-        print("forms_id_list", forms_id_list)
-        
         self.get_labels(forms_id_list=forms_id_list)
 
         total_habitaciones = self.get_cantidad_habitaciones(ubicaciones_list=hoteles)
@@ -1384,17 +1402,15 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         return self.lkf_api.get_pdf_record(record_id, template_id=template_id, name_pdf=name_pdf, send_url=True)
     
     def get_labels(self, forms_id_list=[]):
-        if len(forms_id_list) > 1:
-            forms_id_list = [self.REVISON_HABITACION] # * Toma el id de la forma maestro para no demorar tanto
-        for form_id in forms_id_list:
-            form_data = self.lkf_api.get_form_id_fields(form_id)
-            fields = form_data[0].get('fields', [])
-            for field in fields:
-                if not field.get('catalog'):
-                    if not field.get('label') in self.labels_to_exclude and not field.get('field_id') in self.ids_to_exclude:
-                        self.fallas_dict.update({
-                            self.normaliza_texto(field.get('label')): field.get('field_id')
-                        })
+        form_id = [self.REVISON_HABITACION] # * Toma el id de la forma maestro para no demorar tanto
+        form_data = self.lkf_api.get_form_for_answer(self.REVISON_HABITACION)
+        fields = form_data[0].get('fields', [])
+        for field in fields:
+            if not field.get('catalog'):
+                if not field.get('label') in self.labels_to_exclude and not field.get('field_id') in self.ids_to_exclude:
+                    self.fallas_dict.update({
+                        self.normaliza_texto(field.get('label')): field.get('field_id')
+                    })
                         
     def get_rooms_details(self, forms_id_list=None, anio=None, cuatrimestres=None):
         query = {"form_id": {"$in": forms_id_list}}
@@ -1472,7 +1488,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         return filtered_res
 
 if __name__ == '__main__':
-    module_obj = Inspeccion_Hoteleria(settings, sys_argv=sys.argv, use_api=True)
+    module_obj = Inspeccion_Hoteleria(settings, sys_argv=sys.argv, use_api=False)
     module_obj.console_run()
     data = module_obj.data.get('data', {})
     option = data.get('option', 'get_report')
