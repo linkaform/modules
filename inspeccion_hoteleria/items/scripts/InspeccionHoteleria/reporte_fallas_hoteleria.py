@@ -91,6 +91,27 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         }
         self.my_hotels_ids = []
 
+        #TODO variable temporal para obtener el nombre del hotel segun el nombre de la forma
+        self.form_name_hotel_name = {
+            'Revisión de Habitaciones HIE Guanajuato': self.HIE_GUANAJUATO,
+            'Revisión de Habitaciones Crowne Plaza Torreón': self.CROWNE_PLAZA_TORREN,
+            'Revisión de Habitaciones HI Parque Fundidora': self.HI_PARQUE_FUNDIDORA,
+            'Revisión de Habitaciones HIE Galerias': self.HIE_GALERIAS,
+            'Revisión de Habitaciones Crowne Plaza Monterrey': self.CROWNE_PLAZA_MONTERREY,
+            'Revisión de Habitaciones HIE Silao': self.HIE_SILAO,
+            'Revisión de Habitaciones HIE Tecnológico': self.HIE_TECNOLGICO,
+            'Revisión de Habitaciones HIE Torreón': self.HIE_TORREN,
+            'Revisión de Habitaciones Hilton Garden Silao': self.HILTON_GARDEN_SILAO,
+            'Revisión de Habitaciones Holiday Inn Tijuana': self.HOLIDAY_INN_TIJUANA,
+            'Revisión de Habitaciones ISTAY Ciudad Juárez': self.ISTAY_CIUDAD_JUREZ,
+            'Revisión de Habitaciones ISTAY Monterrey Histórico': self.ISTAY_MONTERREY_HISTRICO,
+            'Revisión de Habitaciones ISTAY Victoria': self.ISTAY_VICTORIA,
+            'Revisión de Habitaciones MS Milenium': self.MS_MILENIUM,
+            'Revisión de Habitaciones TRAVO': self.TRAVO,
+            'Revisión de Habitaciones WYNDHAM GARDEN MCALLEN': self.WYNDHAM_GARDEN_MCALLEN,
+        }
+
+
     def normalize_types(self, obj):
         if isinstance(obj, list):
             return [self.normalize_types(x) for x in obj]
@@ -117,8 +138,19 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
     @property
     def my_hotels(self):
         if not self.my_hotels_ids:
-            forms = self.lkf_api.get_all_forms()
-            my_hotels = [f['form_id'] for f in forms if f.get('form_id')]
+            # forms = self.lkf_api.get_all_forms()
+            user_id = self.user.get('user_id')
+            # user_id = 7742
+            forms = self.lkf_api.get_user_forms(user_id)
+            all_forms = forms.get('data')
+            #TODO cambiar a obtener ids de la forma
+            forms = [f['name'] for f in all_forms if f.get('name')]
+            my_hotels = []
+            # for f in forms:
+            #     if self.form_name_hotel_name.get(f):
+            #     my_hotels.append(self.form_name_hotel_name.get(f))
+            my_hotels = [self.form_name_hotel_name[f] for f in forms if self.form_name_hotel_name.get(f)]
+            # my_hotels = [f['form_id'] for f in forms if f.get('form_id')]
             self.my_hotels_ids = my_hotels
         return self.my_hotels_ids
 
