@@ -1,4 +1,6 @@
 # coding: utf-8
+import json
+from math import e
 import sys, simplejson
 from datetime import datetime
 import pytz
@@ -70,8 +72,8 @@ class Accesos(Accesos):
 
         rondin = self.format_cr(self.cr.aggregate(query))
         return rondin
-    
-    def check_area_in_rondin(self, data_rondin, area_rondin, rondin):
+
+    def check_area_in_rondin(self, data_rondin, area_rondin, rondin, record_id):
         """
         Recibe: Las answers del check de ubicacion, el area que se hice check de ubicacion y el registro de rondin
         Retorna: La respuesta de la api al hacer el patch de un registro
@@ -248,10 +250,80 @@ class Accesos(Accesos):
 
         res = self.lkf_api.post_forms_answers(metadata)
         return res
+    
+    def get_employee_name(self, user_id):
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.CONF_AREA_EMPLEADOS,
+                f"answers.{self.EMPLOYEE_OBJ_ID}.{self.mf['id_usuario']}": user_id
+            }},
+            {"$project": {
+                "_id": 0,
+                "employee_name": f"$answers.{self.EMPLOYEE_OBJ_ID}.{self.mf['nombre_empleado']}"
+            }},
+            {"$limit": 1}
+        ]
+
+        employee_name = self.unlist(self.format_cr(self.cr.aggregate(query)))
+        employee_name = employee_name.get('employee_name', '')
+        if not employee_name:
+            employee_name = 'Nombre no registrado'
+        return employee_name
+    
+    def format_grupo_incidencias(self, grupo_incidencias):
+        format_grupo_incidencias = []
+        employee_name = self.get_employee_name(self.user.get('user_id', ''))
+        tz = pytz.timezone('America/Mexico_City')
+        fecha_actual = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
+        for incidencia in grupo_incidencias:
+            if incidencia.get(self.LISTA_INCIDENCIAS_CAT_OBJ_ID):
+                incidente = incidencia.get(self.LISTA_INCIDENCIAS_CAT_OBJ_ID, {}).get(self.incidence_fields['incidencia'], '')
+            else:
+                incidente = incidencia.get(self.f['incidente_open'], '')
+            format_grupo_incidencias.append({
+                self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID: {
+                    self.mf['nombre_empleado']: employee_name
+                },
+                self.incidence_fields['fecha_hora_incidencia']: fecha_actual,
+                self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
+                    self.f['incidente_location']: self.answers.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['incidente_location'], 'Plaza las Brisas'),
+                    self.f['incidente_area']: self.unlist(self.answers.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['incidente_area'], []))
+                },
+                self.incidence_fields['tipo_incidencia']: incidente,
+                self.incidence_fields['comentario_incidencia']: incidencia.get(self.f['incidente_comentario'], ''),
+                self.incidence_fields['evidencia_incidencia']: incidencia.get(self.f['incidente_evidencia'], []),
+                self.incidence_fields['documento_incidencia']: incidencia.get(self.f['incidente_documento'], []),
+                self.incidence_fields['prioridad_incidencia']: incidencia.get(self.incidence_fields['prioridad_incidencia'], 'baja'),
+                self.incidence_fields['notificacion_incidencia']: incidencia.get(self.incidence_fields['notificacion_incidencia'], 'no'),
+            })
+        return format_grupo_incidencias
+    
+    def create_incidence(self, answers):
+        """
+        Crea una incidencia en la bitacora de incidencias
+        """
+        metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_INCIDENCIAS)
+        metadata.update({
+            "properties": {
+                "device_properties":{
+                    "System": "Script",
+                    "Module": "Accesos",
+                    "Process": "Creación de Incidencia",
+                    "Action": "check_ubicacion_rondin",
+                    "File": "accesos/check_ubicacion_rondin.py"
+                }
+            },
+            'answers': answers
+        })
+        res = self.lkf_api.post_forms_answers(metadata)
+        return res
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
     acceso_obj.console_run()
+    record_id = json.loads(sys.argv[1])
+    record_id = record_id.get('_id', '').get('$oid', '')
     print('answers', acceso_obj.answers)
     acceso_obj.load(module='Location', **acceso_obj.kwargs)
     cat_area_rondin = acceso_obj.answers.get(acceso_obj.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {})
@@ -272,5 +344,11 @@ if __name__ == "__main__":
             response = acceso_obj.create_rondin(acceso_obj.answers, nombre_area_rondin, nombres_recorrido)
             print('response', response)
     else:
-        resultado = acceso_obj.check_area_in_rondin(data_rondin=acceso_obj.answers, area_rondin=nombre_area_rondin, rondin=rondin)
+        resultado = acceso_obj.check_area_in_rondin(data_rondin=acceso_obj.answers, area_rondin=nombre_area_rondin, rondin=rondin, record_id=record_id)
         print('resultado', resultado)
+
+    grupo_incidencias = acceso_obj.answers.get(acceso_obj.f['grupo_incidencias_check'], [])
+    if grupo_incidencias:
+        format_grupo_incidencias = acceso_obj.format_grupo_incidencias(grupo_incidencias)
+        for incidencia in format_grupo_incidencias:
+            acceso_obj.create_incidence(answers=incidencia)
