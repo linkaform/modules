@@ -22,6 +22,8 @@ class JIT(JIT, Stock):
         self.load('Product', **self.kwargs)
         self.load(module='Product', module_class='Warehouse', import_as='WH', **self.kwargs)
 
+        self.BALANCEO_DE_INVENTARIOS = self.lkm.form_id('balanceo_de_inventarios','id')
+        
         self.f.update({
             'cantidad_salida': '6442e4cc45983bf1778ec17d',
             'fecha_salida_multiple': '000000000000000000000111',
@@ -38,6 +40,7 @@ class JIT(JIT, Stock):
             'wh_location': '65ac6fbc070b93e656bd7fbe',
             'wh_name_dest': '65bdc71b3e183f49761a33b9',
             'wh_location_dest': '65c12749cfed7d3a0e1a341b',
+            'families_list': '68647f867ac81846e75a58e5',
         })
 
     def ave_daily_demand(self, demanda_12_meses):
