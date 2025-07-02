@@ -24,6 +24,7 @@ class JIT(JIT):
                 self.Product.PRODUCT_OBJ_ID: {
                     self.Product.f['product_type']: family
                 },
+                self.f['estatus_balanceo']: 'cargar_documentos',
                 self.f['borrar_historial']: borrar_historial
             })
             response = self.create_register(

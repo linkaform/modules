@@ -41,6 +41,7 @@ class JIT(JIT, Stock):
             'wh_name_dest': '65bdc71b3e183f49761a33b9',
             'wh_location_dest': '65c12749cfed7d3a0e1a341b',
             'families_list': '68647f867ac81846e75a58e5',
+            'estatus_balanceo': '5e32fbb498849f475cfbdca2',
         })
 
     def ave_daily_demand(self, demanda_12_meses):
