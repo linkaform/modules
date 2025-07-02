@@ -629,12 +629,23 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         ]
 
         match_filter = {}
-        if anio is not None:
-            match_filter["anio"] = anio
-        if cuatrimestres:
-            match_filter["cuatrimestre"] = {"$in": cuatrimestres}
-        if match_filter:
-            query.append({"$match": match_filter})
+        # Si pides los 3 cuatrimestres, ajusta el año del cuatrimestre 3
+        if anio is not None and cuatrimestres and set(cuatrimestres) == {1, 2, 3}:
+            query.append({
+                "$match": {
+                    "$or": [
+                        {"anio": anio, "cuatrimestre": {"$in": [1, 2]}},
+                        {"anio": anio - 1, "cuatrimestre": 3}
+                    ]
+                }
+            })
+        else:
+            if anio is not None:
+                match_filter["anio"] = anio
+            if cuatrimestres:
+                match_filter["cuatrimestre"] = {"$in": cuatrimestres}
+            if match_filter:
+                query.append({"$match": match_filter})
 
         query.append({
             "$sort": {
