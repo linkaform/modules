@@ -46,7 +46,9 @@ class Accesos( Accesos):
             'incidente_location': '663e5c57f5b8a7ce8211ed0b',
             'incidente_evidencia': '681145323d9b5fa2e16e35cd',
             'incidente_documento': '685063ba36910b2da9952697',
-            'url_registro_rondin': '6750adb2936622aecd075607'
+            'url_registro_rondin': '6750adb2936622aecd075607',
+            'bitacora_rondin_incidencias': '686468a637d014b9e0ab5090',
+            'tipo_de_incidencia': '663973809fa65cafa759eb97'
         })
 
 

@@ -152,7 +152,28 @@ class Accesos(Accesos):
         answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = conf_recorrido
         answers[self.f['estatus_del_recorrido']] = 'en_proceso' if rondin_en_progreso else 'realizado'
         answers[self.f['fecha_fin_rondin']] = today if not rondin_en_progreso else ''
-
+        
+        format_list_incidencias = []
+        for incidencia in rondin.get('bitacora_rondin_incidencias', []):
+            inc = incidencia.get(self.f['tipo_de_incidencia'])
+            if inc:
+                incidencia.pop(self.f['tipo_de_incidencia'], None)
+                incidencia.update({
+                    self.LISTA_INCIDENCIAS_CAT_OBJ_ID: {
+                        self.f['tipo_de_incidencia']: inc
+                    }
+                })
+                format_list_incidencias.append(incidencia)
+            
+        rondin['bitacora_rondin_incidencias'] = format_list_incidencias
+             
+        for incidencia in data_rondin.get(self.f['grupo_incidencias_check'], []):
+            rondin['bitacora_rondin_incidencias'].append(incidencia)
+        
+        incidencias_list = rondin['bitacora_rondin_incidencias']
+        incidencias_dict = {str(idx): incidencia for idx, incidencia in enumerate(incidencias_list)}
+        answers[self.f['bitacora_rondin_incidencias']] = incidencias_dict
+        
         if data_rondin.get(self.f['check_status']) == 'finalizado':
             answers[self.f['estatus_del_recorrido']] = 'realizado'
 
@@ -184,7 +205,7 @@ class Accesos(Accesos):
         formatted_res = formatted_res.get('areas_recorrido', [])
         return formatted_res
 
-    def create_rondin(self, data_rondin, area_rondin, nombres_recorrido=[]):
+    def create_rondin(self, data_rondin, area_rondin, register_id, nombres_recorrido=[]):
         nombre_recorrido = ''
         ubicacion_recorrido = ''
         record_id = ''
@@ -231,7 +252,8 @@ class Accesos(Accesos):
             },
             self.f['fecha_hora_inspeccion_area']: today,
             self.f['foto_evidencia_area_rondin']: data_rondin.get(self.f['foto_evidencia_area'], []),
-            self.f['comentario_area_rondin']: data_rondin.get(self.f['comentario_check_area'], '')
+            self.f['comentario_area_rondin']: data_rondin.get(self.f['comentario_check_area'], ''),
+            self.f['url_registro_rondin']: f"https://app.linkaform.com/#/records/detail/{register_id}"
         }]
 
         for area in areas_recorrido:
@@ -241,6 +263,8 @@ class Accesos(Accesos):
                         self.f['nombre_area']: area.get('note_booth', '')
                     },
                 })
+
+        answers[self.f['bitacora_rondin_incidencias']] = self.answers.get(self.f['grupo_incidencias_check'], [])
 
         metadata.update({'answers':answers})
         print(simplejson.dumps(metadata, indent=3))
@@ -288,7 +312,7 @@ class Accesos(Accesos):
                 },
                 self.incidence_fields['fecha_hora_incidencia']: fecha_actual,
                 self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
-                    self.f['incidente_location']: self.answers.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['incidente_location'], 'Plaza las Brisas'),
+                    self.f['incidente_location']: self.unlist(self.answers.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['incidente_location'], [])),
                     self.f['incidente_area']: self.unlist(self.answers.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['incidente_area'], []))
                 },
                 self.incidence_fields['tipo_incidencia']: incidente,
@@ -325,7 +349,7 @@ if __name__ == "__main__":
     acceso_obj.console_run()
     record_id = json.loads(sys.argv[1])
     record_id = record_id.get('_id', '').get('$oid', '')
-    print('answers', acceso_obj.answers)
+    print('answers', simplejson.dumps(acceso_obj.answers, indent=3))
     acceso_obj.load(module='Location', **acceso_obj.kwargs)
     cat_area_rondin = acceso_obj.answers.get(acceso_obj.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {})
     nombre_area_rondin = acceso_obj.unlist(cat_area_rondin.get(acceso_obj.f['nombre_area'], []))
@@ -342,7 +366,7 @@ if __name__ == "__main__":
             print('No se encontro ningun recorrido con el area proporcionada.')
         else:
             print('No se encontro un rondin con el area proporcionada. Creando uno nuevo...')
-            response = acceso_obj.create_rondin(acceso_obj.answers, nombre_area_rondin, nombres_recorrido)
+            response = acceso_obj.create_rondin(acceso_obj.answers, nombre_area_rondin, record_id, nombres_recorrido)
             print('response', response)
     else:
         resultado = acceso_obj.check_area_in_rondin(data_rondin=acceso_obj.answers, area_rondin=nombre_area_rondin, rondin=rondin, record_id=record_id)
