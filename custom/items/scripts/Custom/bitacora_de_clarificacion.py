@@ -58,6 +58,9 @@ class Custom(Custom):
             if not value_var or not any( [min_var, max_var] ):
                 continue
 
+            if isinstance(value_var, str):
+                value_var = float(value_var)
+
             str_unidad_medida = var_data.get('help_text') or ""
             
             if min_var and not max_var:
