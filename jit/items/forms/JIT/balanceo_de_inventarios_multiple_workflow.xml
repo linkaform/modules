@@ -1,0 +1,63 @@
+<?xml version='1.0' encoding='utf-8'?>
+<lkf>
+    <form_id>{{ form.balanceo_de_inventarios_multiple.id }}</form_id>
+    <id>6865501f52b7eeb7a68f6f41</id>
+    <workflows>
+        <item>
+            <actions>
+                <item>
+                    <_id>68655c5f935f7ad4c0eb1852</_id>
+                    <action_id>7</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <script>
+                            <created_at>2025-07-02T16:20:31.775337</created_at>
+                            <deleted_at>None</deleted_at>
+                            <end_date>None</end_date>
+                            <id>{{ script.create_mult_inventory_balance.id }}</id>
+                            <is_fileShared>False</is_fileShared>
+                            <itype>script</itype>
+                            <name>{{ script.create_mult_inventory_balance.name }}</name>
+                            <start_date>2025-07-02T16:20:31.773373</start_date>
+                            <updated_at>2025-07-02T16:20:31.785141</updated_at>
+                        </script>
+                        <user>SCRIPT_OWNER</user>
+                    </configuration>
+                    <name>Se ejecuta script</name>
+                </item>
+            </actions>
+            <id>68655c5f935f7ad4c0eb1853</id>
+            <name>Creacion de balanceo de inventarios</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-07-03T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-07-02T15:27:28.893Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>True</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>[]</triggers>
+                </wf_fields>
+            </rules>
+        </item>
+    </workflows>
+</lkf>
