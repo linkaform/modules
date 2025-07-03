@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import sys, simplejson
+import sys, simplejson, json
 from bson import ObjectId
 from inspeccion_hoteleria_utils import Inspeccion_Hoteleria
 
@@ -158,20 +158,28 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 if __name__ == '__main__':
     module_obj = Inspeccion_Hoteleria(settings, sys_argv=sys.argv, use_api=False)
     module_obj.console_run()
-    score_per_page = module_obj.get_grading_obj()
-    res = module_obj.save_results(score_per_page)
+    
     starting_status = module_obj.answers.get(module_obj.field_id_status)
     status = module_obj.check_pending_answers() 
-    # module_obj.actualiza_status_habitacion()
-    # Todo ver q hacer si no se actualzia bien el status de la habitacion....
-    if starting_status != status:
-        # res = module_obj.update_status_record(status)
-        # module_obj.answers[module_obj.f['status']] = status
-        # if res.acknowledged:
-        #     update_res = module_obj.cr.update_one({'form_id':module_obj.form_id,'folio':module_obj.folio}, {'$set':{'editable': False}})
-        module_obj.answers[module_obj.f['status']] = 'completada'
+    data_raw = json.loads(sys.argv[2])
+    option = data_raw.get('option', '')
     
-    sys.stdout.write(simplejson.dumps({
-        'status': 101,
-        'replace_ans': module_obj.answers,
-    }))
+    if option == 'before':
+        # module_obj.actualiza_status_habitacion()
+        # Todo ver q hacer si no se actualzia bien el status de la habitacion....
+        if starting_status != status:
+            # res = module_obj.update_status_record(status)
+            # if res.acknowledged:
+            #     update_res = module_obj.cr.update_one({'form_id':module_obj.form_id,'folio':module_obj.folio}, {'$set':{'editable': False}})
+            module_obj.answers[module_obj.f['status']] = 'completada'
+        
+        sys.stdout.write(simplejson.dumps({
+            'status': 101,
+            'replace_ans': module_obj.answers,
+        }))
+    elif option == 'after':
+        module_obj.cr_inspeccion = module_obj.net.get_collections(collection='inspeccion_hoteleria')
+        score_per_page = module_obj.get_grading_obj()
+        res = module_obj.save_results(score_per_page)
+        doc = module_obj.cr_inspeccion.find_one({'_id': ObjectId(module_obj.record_id)})
+        print('FOUND DOC:', doc)
