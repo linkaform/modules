@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import sys
+import sys, simplejson
 from bson import ObjectId
 from inspeccion_hoteleria_utils import Inspeccion_Hoteleria
 
@@ -165,7 +165,13 @@ if __name__ == '__main__':
     # module_obj.actualiza_status_habitacion()
     # Todo ver q hacer si no se actualzia bien el status de la habitacion....
     if starting_status != status:
-        res = module_obj.update_status_record(status)
-        if res.acknowledged:
-            update_res = module_obj.cr.update_one({'form_id':module_obj.form_id,'folio':module_obj.folio}, {'$set':{'editable': False}})
-
+        # res = module_obj.update_status_record(status)
+        # module_obj.answers[module_obj.f['status']] = status
+        # if res.acknowledged:
+        #     update_res = module_obj.cr.update_one({'form_id':module_obj.form_id,'folio':module_obj.folio}, {'$set':{'editable': False}})
+        module_obj.answers[module_obj.f['status']] = 'completada'
+    
+    sys.stdout.write(simplejson.dumps({
+        'status': 101,
+        'replace_ans': module_obj.answers,
+    }))
