@@ -254,7 +254,9 @@ if __name__ == '__main__':
     if not familia:
         class_obj.LKFException('Familia {ans_familia} no econtrada')
     print('familia', familia)
-    jit_obj.borrar_historial()
+    if jit_obj.answers.get(jit_obj.f['borrar_historial']) == 'si':
+        print('borrando historial...')
+        jit_obj.borrar_historial()
     sipre_obj.stock = sipre_obj.get_stock_and_demand(familia)
     # sipre_obj.stock = [
     #  {'almacen': '01', 'almacenNombre': 'ALM MONTERREY', 'producto': '750200301001', 'productoNombre': 'MTRS TUBO S/C A106B/API5L STD 1/4"', 'ventas': 61.0, 'inventario': 2.7, 'familiaProducto': 'TUBOS', 'lineaProducto': 'A.C.', 'fechaAltaProducto': '2016-06-30T00:00:00', 'renglones': 1, }, 
