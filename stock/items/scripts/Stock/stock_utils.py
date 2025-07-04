@@ -7,9 +7,8 @@ from copy import deepcopy
 from lkf_addons.addons.stock.app import Stock
 
 today = date.today()
-year_week = int(today.strftime('%Y%W'))
-
-
+year, week_num, iso_weekday = today.isocalendar()
+year_week = int(f'{year}{week_num}')
 
 class Stock(Stock):
 

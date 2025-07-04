@@ -12,7 +12,6 @@ sys.path.append('/srv/scripts/addons/modules/stock/items/scripts/Stock')
 from stock_utils import Stock
 
 today = date.today()
-year_week = int(today.strftime('%Y%W'))
 
 
 class Reports(Reports, Stock):

@@ -100,10 +100,12 @@ if __name__ == '__main__':
     tnow = time.time()
     tnow = datetime.fromtimestamp(tnow)
 
-    yearWeek_from = data.get("year_week_from", tnow.strftime('%Y%W'))
+    year, week_num, iso_weekday = tnow.isocalendar()
+    yearWeek_from_default = int(f'{year}{week_num}')
+    yearWeek_from = data.get("year_week_from", yearWeek_from_default)
     tnow = tnow + timedelta(weeks=2)
 
-    yearWeek_to = data.get("year_week_to", tnow.strftime('%Y%W'))
+    yearWeek_to = data.get("year_week_to", yearWeek_from_default)
     test = False
     # yearweek = 202304
     report_obj.get_requierd_plan(yearWeek_from, yearWeek_to)

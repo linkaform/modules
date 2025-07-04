@@ -40,7 +40,9 @@ tabledata = []
 req_by_week = {}
 cycles = {}
 today = date.today()
-year_week = int(today.strftime('%Y%W'))
+# year_week = int(today.strftime('%Y%W'))
+year, week_num, iso_weekday = today.isocalendar()
+year_week = int(f'{year}{week_num}')
 OLDEST_WEEK = year_week
 all_due_actuals = {}
 

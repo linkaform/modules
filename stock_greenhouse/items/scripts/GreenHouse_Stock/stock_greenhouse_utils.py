@@ -7,7 +7,6 @@ from copy import deepcopy
 from lkf_addons.addons.stock_greenhouse.app import Stock
 
 today = date.today()
-year_week = int(today.strftime('%Y%W'))
 
 
 

@@ -10,7 +10,9 @@ from lkf_addons.addons.stock_greenhouse.app import Stock
 # from lkf_addons.addons.product.product_utils import Product, Warehouse
 
 today = date.today()
-year_week = int(today.strftime('%Y%W'))
+#year_week = int(today.strftime('%Y%W'))
+year, week_num, iso_weekday = today.isocalendar()
+today_week = int(f'{year}{week_num}')
 
 
 class Stock(Stock):
@@ -877,13 +879,15 @@ class Stock(Stock):
 
     def create_proudction_lot_number(self, prod_date=None, group=None, cycle=None):
         if not prod_date:
-            year = today.strftime('%Y')
-            day_num = today.strftime('%j')
-            week_num = today.strftime('%W')
+            year, week_num, iso_weekday = today.isocalendar()
+            # year = today.strftime('%Y')
+            # day_num = today.strftime('%j')
+            # week_num = today.strftime('%W')
         else:
-            year = prod_date.strftime('%Y')
-            day_num = prod_date.strftime('%j')
-            week_num = prod_date.strftime('%W')
+            year, week_num, iso_weekday = prod_date.isocalendar()
+            # year = prod_date.strftime('%Y')
+            # day_num = prod_date.strftime('%j')
+            # week_num = prod_date.strftime('%W')
         if not group:
             group = self.answers.get(self.f['production_working_group'])
         if not cycle:
@@ -893,13 +897,16 @@ class Stock(Stock):
 
     def create_proudction_lot_number_by_cutday(self, prod_date=None, group=None, cycle=None):
         if not prod_date:
-            year = today.strftime('%Y')
+            year, week_num, iso_weekday = today.isocalendar()
+            # year = today.strftime('%Y')
             day_num = today.strftime('%j')
-            week_num = today.strftime('%W')
+            # week_num = today.strftime('%W')
+            # week_num = today.strftime('%W')
         else:
-            year = prod_date.strftime('%Y')
+            year, week_num, iso_weekday = prod_date.isocalendar()
+            #year = prod_date.strftime('%Y')
             day_num = prod_date.strftime('%j')
-            week_num = prod_date.strftime('%W')
+            #week_num = prod_date.strftime('%W')
         if not group:
             group = self.answers.get(self.f['production_working_group'])
         if not cycle:
@@ -1100,8 +1107,9 @@ class Stock(Stock):
 
         res[self.f['set_production_date']] = str(production_date.strftime('%Y-%m-%d'))
         # prod_date = self.date_from_str(production_date)
-        res[self.f['plant_cut_year']] = int(production_date.strftime('%Y'))
-        res[self.f['production_cut_week']] = int(production_date.strftime('%W'))
+        year, week_num, iso_weekday = production_date.isocalendar()
+        res[self.f['plant_cut_year']] = int(year)
+        res[self.f['production_cut_week']] = int(week_num)
         res[self.f['production_cut_day']] = int(production_date.strftime('%j'))
         res[self.f['plant_group']] = self.answers.get(self.f['production_working_group'])
         res[self.f['plant_cycle']] = self.answers.get(self.f['production_working_cycle'])

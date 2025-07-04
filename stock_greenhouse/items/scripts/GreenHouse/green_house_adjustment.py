@@ -195,7 +195,8 @@ class Stock(Stock):
                         week = str(ready_date)[4:]
                         plant_ready_date = datetime.strptime('%04d-%02d-1'%(int(year), int(week)), '%Y-%W-%w')
                         yearWeek = plant_ready_date - timedelta(weeks=growth_weeks)
-                        yearWeek = int(yearWeek.strftime('%Y%W'))
+                        year, week_num, iso_weekday = yearWeek.isocalendar()
+                        yearWeek = int(f'{year}{week_num}')
 
                     else:
                         not_found.append(product_code)

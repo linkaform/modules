@@ -20,7 +20,7 @@ class Stock(Stock):
             print('**********************************************')
             self.LKFException('Warehosue and product code are requierd')
         print(f'*******************{product_code}***************************')
-        yearWeek = str(self.answers[self.f['product_lot_created_week']])
+        yearWeek = str(self.answers[self.f['product_lot_created_weekproduct_lot_created_week']])
         if len(str(yearWeek)) <=5:
             week = self.answers[self.f['production_cut_week']]
             yearWeek = f'{str(yearWeek)[:4]}{week:02}'
@@ -29,9 +29,13 @@ class Stock(Stock):
         if growth_week > 0 :
             date_yearweek = datetime.strptime(f'{yearWeek}-1', '%Y%W-%w')
             cutweek = date_yearweek + timedelta(weeks=growth_week)
-            nextcut_week = cutweek.strftime('%Y%W')
+            #nextcut_week = cutweek.strftime('%Y%W')
+            year, week_num, iso_weekday = cutweek.isocalendar()
+            nextcut_week = int(f'{year}{week_num}')
             self.answers[self.f['next_cutweek']] = int(nextcut_week)
-        per_container = self.answers.get(self.PRODUCT_RECIPE_OBJ_ID,{}).get(self.f['reicpe_per_container'],0)
+        per_container = self.answers.get(self.PRODUCT_RECIPE_OBJ_ID,{}).get(self.f['reicpe_per_container'],1)
+        if not per_container:
+            per_container = 1
         product_stock = self.get_product_stock(product_code, lot_number=lot_number, warehouse=warehouse, location=location, kwargs=kwargs.get('kwargs',{}) )
         self.answers[self.f['product_lot_produced']] = product_stock['production']
         self.answers[self.f['product_lot_move_in']] = product_stock['move_in']

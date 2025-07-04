@@ -109,8 +109,9 @@ def calculations(current_record):
 
 
 
-
-            s['63f8f4cad090912501be306a'] = int(ready_date.strftime('%Y%W'))
+            year, week_num, iso_weekday = ready_date.isocalendar()
+            # s['63f8f4cad090912501be306a'] = int(ready_date.strftime('%Y%W'))
+            s['63f8f4cad090912501be306b'] = int(f'{year}{week_num}')
             # print('=== plant',simplejson.dumps(plant, indent=4))
             s['61ef32bcdf0ec2ba73dec33c'].update({
                 '6205f73281bb36a6f1573358': start_size,

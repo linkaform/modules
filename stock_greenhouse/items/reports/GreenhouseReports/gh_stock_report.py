@@ -14,7 +14,8 @@ from lkf_addons.addons.stock_greenhouse.app import Stock
 # from stock_utils import Stock
 
 today = date.today()
-year_week = int(today.strftime('%Y%W'))
+year, week_num, iso_weekday = today.isocalendar()
+year_week = int(f'{year}{week_num}')
 
 
 class Reports(Reports, Stock):
@@ -243,9 +244,12 @@ class Reports(Reports, Stock):
             ready_week = product_lot[4:]
             d = f'{ready_year}-W{ready_week}'
             harvest_date = datetime.strptime(d + '-1', "%Y-W%W-%w")
-            r['havest_week'] = int(harvest_date.strftime('%W'))
+            year, week_num, iso_weekday = harvest_date.isocalendar()
+            #r['havest_week'] = int(harvest_date.strftime('%W'))
+            r['havest_week'] = int(week_num)
             r['havest_month'] = int(harvest_date.strftime('%m'))
-            r['havest_year'] = int(harvest_date.strftime('%Y'))
+            #r['havest_year'] = int(harvest_date.strftime('%Y'))
+            r['havest_year'] = int(year)
             r['from'] = 'GreenHouse'
             r['total_harvest'] = r['total_planting'] * 72
             result.append(r)

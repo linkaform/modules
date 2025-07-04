@@ -11,7 +11,9 @@ sys.path.append('/srv/scripts/addons/modules/stock_lab/items/scripts/Lab')
 from lab_stock_utils import Stock
 
 today = date.today()
-year_week = int(today.strftime('%Y%W'))
+# year_week = int(today.strftime('%Y%W'))
+year, week_num, iso_weekday = today.isocalendar()
+today_week = int(f'{year}{week_num}')
 
 
 class Reports(Reports, Stock):
@@ -676,9 +678,11 @@ class Reports(Reports, Stock):
             ready_week = product_lot[4:]
             d = f'{ready_year}-W{ready_week}'
             harvest_date = datetime.strptime(d + '-1', "%Y-W%W-%w")
-            r['havest_week'] = int(harvest_date.strftime('%W'))
+            year, week_num, iso_weekday = harvest_date.isocalendar()
+            #r['havest_week'] = int(harvest_date.strftime('%W'))
+            r['havest_week'] = int(week_num)
             r['havest_month'] = int(harvest_date.strftime('%m'))
-            r['havest_year'] = int(harvest_date.strftime('%Y'))
+            r['havest_year'] = int(year)
             r['from'] = 'GreenHouse'
             r['total_harvest'] = r['total_planting'] * 72
             result.append(r)
@@ -805,14 +809,20 @@ class Reports(Reports, Stock):
             max_plant_week = init_week + timedelta(weeks=S2_growth_weeks-1)
 
             yearweek = str(int(rec[year_key]))
-            max_plant_week = max_plant_week.strftime('%Y%W')
+            #max_plant_week = max_plant_week.strftime('%Y%W')
+            year, week_num, iso_weekday = max_plant_week.isocalendar()
+            max_plant_week = int(f'{year}{week_num}')
             if int(yearweek) > int(max_plant_week) and stage != 'stage1':
                 continue
             if stage == 'stage3':
                 S3_growth_weeks = recipesS3[plant_code]['S3_growth_weeks']
                 until_week = init_week + timedelta(weeks=S3_growth_weeks-1)
                 # until_week = until_week.strftime('%Y%W')
-                init_week = init_week.strftime('%Y%W')
+                year, week_num, iso_weekday = until_week.isocalendar()
+                until_week = int(f'{year}{week_num}')
+                #init_week = init_week.strftime('%Y%W')
+                year, week_num, iso_weekday = init_week.isocalendar()
+                init_week = int(f'{year}{week_num}')
                 until_week = OLDEST_WEEK
                 if int(yearweek) > int(until_week):
                     continue

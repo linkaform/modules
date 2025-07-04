@@ -19,7 +19,8 @@ PRODUCED = 0
 
 def date_to_week(date_from):
     week_from = datetime.strptime(date_from, '%Y-%m-%d')
-    year_week = week_from.strftime('%Y%W')
+    year, week_num, iso_weekday = week_from.isocalendar()
+    year_week = int(f'{year}{week_num}')
     return year_week
 
 def date_to_day(date_from):

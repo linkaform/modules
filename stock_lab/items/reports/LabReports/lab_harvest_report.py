@@ -25,7 +25,6 @@ def arrange_info(data, stage, recipes3={}, recipes4={}, report_obj=None):
     col = 'forcast'
     global plants, WEEKS
     today = date.today()
-    today_week = int(today.strftime('%Y%W'))
     res = []
     t = 0
     res_dict = {}
@@ -60,16 +59,12 @@ def arrange_info(data, stage, recipes3={}, recipes4={}, report_obj=None):
             print('multi_rate', multi_rate)
             overage_s4 = selected_recipe_s4.get('S4_overage', selected_recipe_s4.get('S4_overage_rate',0))
             harvest_date = datetime.strptime(str(cut_yearWeek)[:4], "%Y") + timedelta(weeks=t_grow_weeks-1)
-            harvest_week= int(harvest_date.strftime('%Y%W'))
-            print('harvest_date', harvest_date)
-            # if col == 'forcast':
-            #     if harvest_week < today_week:
-            #         harvest_date = today
             x['total_harvest'] = int(round((x['total'] * multi_rate) * (1-overage_s4) ,0))
             print('TOTAL3===', x['total_harvest'])
-            x['havest_week'] = int(harvest_date.strftime('%W'))
+            year, week_num, iso_weekday = harvest_date.isocalendar()
+            x['havest_week'] = int(week_num)
             x['havest_month'] = int(harvest_date.strftime('%m'))
-            x['havest_year'] = int(harvest_date.strftime('%Y'))
+            x['havest_year'] = int(year)
             print('x=', x)
             # x['total_harvest'] = int(x['total_planting'] * multi_rate)
             # x['total_harvest'] = int(x['total_harvest'] * (1-overage_s4) )

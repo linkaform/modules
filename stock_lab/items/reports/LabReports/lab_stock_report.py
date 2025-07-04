@@ -27,7 +27,9 @@ def set_header(pcode):
 def arrange_info(data, stage, col, recipes={}):
     global plants, WEEKS
     today = date.today()
-    today_week = int(today.strftime('%Y%W'))
+    # today_week = int(today.strftime('%Y%W'))
+    year, week_num, iso_weekday = today.isocalendar()
+    today_week = int(f'{year}{week_num}')
     for x in data:
         #pcode = x.get('plant_code')
         pcode = x.get('product_code')
@@ -58,7 +60,9 @@ def arrange_info(data, stage, col, recipes={}):
             cut_week = str(year_week)[4:]
             t_grow_weeks = int(cut_week) + grow_weeks
             harvest_date = datetime.strptime(str(year_week)[:4], "%Y") + timedelta(weeks=t_grow_weeks -1 )
-            harvest_week= int(harvest_date.strftime('%Y%W'))
+            # harvest_week= int(harvest_date.strftime('%Y%W'))
+            year, week_num, iso_weekday = harvest_date.isocalendar()
+            harvest_week = int(f'{year}{week_num}')
             ready_year_week = int(x.get('cut_yearWeek')) + grow_weeks
             if col == 'forcast':
                 if harvest_week < today_week:

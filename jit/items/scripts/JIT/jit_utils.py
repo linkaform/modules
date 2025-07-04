@@ -8,9 +8,8 @@ from lkf_addons.addons.jit.app import JIT
 from lkf_addons.addons.product.app import Product
 
 today = date.today()
-year_week = int(today.strftime('%Y%W'))
-
-
+year, week_num, iso_weekday = today.isocalendar()
+year_week = int(f'{year}{week_num}')
 
 class JIT(JIT):
 
