@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson
-from math import floor, ceil
+from math import floor, ceil, prod
 import json
 from datetime import timedelta, datetime
 
@@ -15,6 +15,13 @@ uom_class = {
         }
 
 class Reports(Reports):
+    
+    def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False):
+        super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
+        
+        self.f.update({
+            'familia': '61ef32bcdf0ec2ba73dec343'
+        })
     
     def estrucutra_rutas(self):
         estructura = {}
@@ -434,7 +441,11 @@ class Reports(Reports):
         return res
 
     def generate_report_info(self):
-        products = reorder_obj.get_product_by_type(product_type=product_family, product_line=product_line)
+        products = []
+        for product_family in product_families:
+            product = reorder_obj.get_product_by_type(product_type=product_family, product_line=product_line)
+            if product:
+                products.extend(product)
         # product_dict = {x['product_code']: x for x in products}
         product_dict = {}
         product_code = []
@@ -683,6 +694,34 @@ class Reports(Reports):
         # # warehouse_percentage_response = self.warehouses_by_percentage()  # Respuesta con almacenes y traspasos
         # # return data                        
         
+    def get_product_families(self):
+        """
+            Recupera y retorna una lista de familias únicas de productos del catálogo Product Catalog.
+        Retorna:
+            list: Una lista de familias únicas de productos.
+        """
+        
+        selector = {}
+        fields = ["_id", f"answers.{self.f['familia']}"]
+        
+        mango_query = {
+            "selector": selector,
+            "fields": fields,
+            "limit": 10000,
+            "skip": 0
+        }
+        
+        res = self.lkf_api.search_catalog(self.Product.PRODUCT_ID, mango_query)
+        
+        familias = set()
+        for doc in res:
+            familia = doc.get(self.f['familia'])
+            if familia:
+                familias.add(familia)
+        familias = list(familias)
+        
+        return familias
+        
 if __name__ == "__main__":
     reorder_obj = Reports(settings, sys_argv=sys.argv, use_api=True)
     reorder_obj.console_run()
@@ -693,6 +732,7 @@ if __name__ == "__main__":
     option = data.get('option','get_report')
     #option = 'get_report'
     product_family = data.get('product_family', 'TUBOS')
+    product_families = data.get('product_families', [])
     product_line = data.get('product_line', '')
     warehouse_info = data.get('warehouse', '')
     # warehouse_cedis = 'CEDIS GUADALAJARA'
@@ -703,9 +743,10 @@ if __name__ == "__main__":
     if option == 'get_catalog':
         # warehouse_types_catalog = warehouse_obj.get_all_stock_warehouse()
         product_type = reorder_obj.get_catalog_product_field(id_field=reorder_obj.Product.f['product_type'])
+        families = reorder_obj.get_product_families()
         reorder_obj.HttpResponse({
             "dataCatalogWarehouse": [],
-            "dataCatalogProductFamily": product_type,
+            "dataCatalogProductFamily": families,
         })
 
     elif option == 'get_product_line':
