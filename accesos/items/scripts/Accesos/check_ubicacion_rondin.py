@@ -124,7 +124,7 @@ class Accesos(Accesos):
                     else:
                         obj = {
                             self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
-                                self.f['nombre_area']: item.get('note_booth', '')
+                                self.f['nombre_area']: item.get('incidente_area', '')
                             },
                             self.f['fecha_hora_inspeccion_area']: item.get('fecha_hora_inspeccion_area', ''),
                             self.f['foto_evidencia_area_rondin']: item.get('foto_evidencia_area_rondin', []),
@@ -257,10 +257,10 @@ class Accesos(Accesos):
         }]
 
         for area in areas_recorrido:
-            if not area.get('note_booth') == area_rondin:
+            if not area.get('incidente_area') == area_rondin:
                 answers[self.f['areas_del_rondin']].append({
                     self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
-                        self.f['nombre_area']: area.get('note_booth', '')
+                        self.f['nombre_area']: area.get('incidente_area', '')
                     },
                 })
 
