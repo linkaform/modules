@@ -15,14 +15,17 @@ class JIT(JIT):
         
     def create_multiple_inventory_balance(self, data):
         families_list = data.get(self.f['families_list'], [])
-        borrar_historial = data.get(self.f['borrar_historial'], 'no')
-        
+        if data.get(self.f['borrar_historial']) == 'si':
+            print('borrando historial')
+            self.borrar_historial()
+            borrar_historial = 'no'#data.get(self.f['borrar_historial'], 'no')
         answers = {}
         list_response = []
         for family in families_list:
+            ans_familia = family.upper().replace('_',' ')
             answers.update({
                 self.Product.PRODUCT_OBJ_ID: {
-                    self.Product.f['product_type']: family
+                    self.Product.f['product_type']: ans_familia
                 },
                 self.f['estatus_balanceo']: 'cargar_documentos',
                 self.f['borrar_historial']: borrar_historial
@@ -77,7 +80,6 @@ class JIT(JIT):
 if __name__ == '__main__':
     class_obj = JIT(settings, sys_argv=sys.argv, use_api=True)
     class_obj.console_run()
-
     response = class_obj.create_multiple_inventory_balance(data=class_obj.answers)
 
     sys.stdout.write(simplejson.dumps({

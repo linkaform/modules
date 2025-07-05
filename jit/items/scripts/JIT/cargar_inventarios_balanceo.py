@@ -73,9 +73,6 @@ class CargaUniversal(CargaUniversal):
         #   Obtiene una info de un formulario en específico que viene de metadata
         metadata_stock = self.lkf_api.get_metadata(form_id=class_obj.Stock.FORM_INVENTORY_ID)
         metadata_sales = self.lkf_api.get_metadata(form_id=jit_obj.DEMANDA_UTIMOS_12_MES)
-        print('form id inventory', class_obj.Stock.FORM_INVENTORY_ID)
-        print('form id DEMANDA_UTIMOS_12_MES', jit_obj.DEMANDA_UTIMOS_12_MES)
-        #   Complementa la información del formulario con ayuda del método get_complete_metadata
         metadata_stock.update(self.get_complete_metadata())
         metadata_sales.update(self.get_complete_metadata())
         # Necesito un diccionario que agrupe los registros que se crearán y los que están en un grupo repetitivo y pertenecen a uno principal
@@ -126,7 +123,6 @@ class CargaUniversal(CargaUniversal):
             # answers = self.procesa_row(pos_field_dict, record, files_dir, nueva_ruta, id_forma_seleccionada, answers, p, dict_catalogs)
             answers_stock = self.transform_stock_answers(record)
             answers_sales = self.transform_sales_answers(record)
-            print('sales_answers', answers_sales)
             this_metadata_stock.update({"answers":answers_stock})
             this_metadata_sales.update({"answers":answers_sales})
             upload_records.append(this_metadata_stock)
@@ -250,22 +246,13 @@ if __name__ == '__main__':
     #for step in ['carga_stock']:
     sipre_obj = SIPRE()
     ans_familia = class_obj.answers.get(jit_obj.Product.PRODUCT_OBJ_ID,{}).get(jit_obj.Product.f['product_type'])
+    ans_familia = ans_familia.upper().replace('_',' ')
     familia = FAMILIAS.get(ans_familia)
     if not familia:
         class_obj.LKFException('Familia {ans_familia} no econtrada')
-    print('familia', familia)
     if jit_obj.answers.get(jit_obj.f['borrar_historial']) == 'si':
-        print('borrando historial...')
         jit_obj.borrar_historial()
     sipre_obj.stock = sipre_obj.get_stock_and_demand(familia)
-    # sipre_obj.stock = [
-    #  {'almacen': '01', 'almacenNombre': 'ALM MONTERREY', 'producto': '750200301001', 'productoNombre': 'MTRS TUBO S/C A106B/API5L STD 1/4"', 'ventas': 61.0, 'inventario': 2.7, 'familiaProducto': 'TUBOS', 'lineaProducto': 'A.C.', 'fechaAltaProducto': '2016-06-30T00:00:00', 'renglones': 1, }, 
-    #  {'almacen': '02', 'almacenNombre': 'ALM GUADALAJARA', 'producto': '750200301001', 'productoNombre': 'MTRS TUBO S/C A106B/API5L STD 1/4"', 'ventas': 17.4, 'inventario': 345.8, 'familiaProducto': 'TUBOS', 'lineaProducto': 'A.C.', 'fechaAltaProducto': '2016-06-30T00:00:00', 'renglones': 1} ]
     stock = class_obj.carga_stock_from_sipre()
-
-    # sys.stdout.write(simplejson.dumps({
-    #     'status': 101,
-    #     'replace_ans': jit_obj.answers,
-    #     }))
     res = class_obj.update_status_record(estatus)
 

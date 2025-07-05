@@ -64,7 +64,8 @@ class JIT(JIT, Stock):
             self.FORM_INVENTORY_ID,
         ]
         self.cr.delete_many({'form_id':{'$in':forms}}) #    or _delete
-
+        return True
+        
     def update_procurmet(self, records, **kwargs):
         response = []
         for rec in records:
