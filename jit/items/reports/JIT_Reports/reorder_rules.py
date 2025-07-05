@@ -693,34 +693,7 @@ class Reports(Reports):
         # return self.arrage_data(stock_list, data)
         # # warehouse_percentage_response = self.warehouses_by_percentage()  # Respuesta con almacenes y traspasos
         # # return data                        
-        
-    def get_product_families(self):
-        """
-            Recupera y retorna una lista de familias únicas de productos del catálogo Product Catalog.
-        Retorna:
-            list: Una lista de familias únicas de productos.
-        """
-        
-        selector = {}
-        fields = ["_id", f"answers.{self.f['familia']}"]
-        
-        mango_query = {
-            "selector": selector,
-            "fields": fields,
-            "limit": 10000,
-            "skip": 0
-        }
-        
-        res = self.lkf_api.search_catalog(self.Product.PRODUCT_ID, mango_query)
-        
-        familias = set()
-        for doc in res:
-            familia = doc.get(self.f['familia'])
-            if familia:
-                familias.add(familia)
-        familias = list(familias)
-        
-        return familias
+
         
 if __name__ == "__main__":
     reorder_obj = Reports(settings, sys_argv=sys.argv, use_api=True)
@@ -743,10 +716,10 @@ if __name__ == "__main__":
     if option == 'get_catalog':
         # warehouse_types_catalog = warehouse_obj.get_all_stock_warehouse()
         product_type = reorder_obj.get_catalog_product_field(id_field=reorder_obj.Product.f['product_type'])
-        families = reorder_obj.get_product_families()
+        print('product_type', product_type) 
         reorder_obj.HttpResponse({
             "dataCatalogWarehouse": [],
-            "dataCatalogProductFamily": families,
+            "dataCatalogProductFamily": product_type,
         })
 
     elif option == 'get_product_line':
