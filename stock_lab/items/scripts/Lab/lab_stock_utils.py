@@ -1464,6 +1464,7 @@ class Stock(Stock):
             adjust_lot_by = product.get(self.f['adjust_lot_by'], 'week')
             if adjust_lot_by == 'week':
                 prduction_date = datetime.strptime(f'{year}{cut_week}-1','%Y%W-%w')
+                date_yearweek = date.fromisocalendar(int(str(yearWeek)[:4]), int(str(cut_week)[-2:]), 1)
                 lot_number = self.create_proudction_lot_number(prduction_date, group, cycle)
             else:
                 prduction_date = datetime.strptime(f'{year}{day:03}','%Y%j')

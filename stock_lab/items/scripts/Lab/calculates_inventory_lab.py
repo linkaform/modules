@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson, math
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, date
 from bson import ObjectId
 
 from lab_stock_utils import Stock
@@ -20,14 +20,16 @@ class Stock(Stock):
             print('**********************************************')
             self.LKFException('Warehosue and product code are requierd')
         print(f'*******************{product_code}***************************')
-        yearWeek = str(self.answers[self.f['product_lot_created_weekproduct_lot_created_week']])
+        yearWeek = str(self.answers[self.f['product_lot_created_week']])
+
         if len(str(yearWeek)) <=5:
             week = self.answers[self.f['production_cut_week']]
             yearWeek = f'{str(yearWeek)[:4]}{week:02}'
             self.answers[self.f['product_lot_created_week']] = int(yearWeek)
         growth_week = int(self.answers[self.CATALOG_PRODUCT_RECIPE_OBJ_ID].get(self.f['reicpe_growth_weeks'],0))
         if growth_week > 0 :
-            date_yearweek = datetime.strptime(f'{yearWeek}-1', '%Y%W-%w')
+            #date_yearweek = datetime.strptime(f'{yearWeek}-1', '%Y%W-%w')
+            date_yearweek = date.fromisocalendar(int(str(yearWeek)[:4]), int(str(yearWeek)[-2:]), 1)
             cutweek = date_yearweek + timedelta(weeks=growth_week)
             #nextcut_week = cutweek.strftime('%Y%W')
             year, week_num, iso_weekday = cutweek.isocalendar()
