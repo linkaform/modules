@@ -489,9 +489,9 @@ if __name__ == '__main__':
         folio = "SAL"
         next_folio = stock_obj.get_record_folio(stock_obj.STOCK_ONE_MANY_ONE, folio)
         folio = f"{folio}-{next_folio}"
-        stock_obj.base_folio = folio
     if not stock_obj.record_id:
         stock_obj.record_id = stock_obj.object_id() 
+    stock_obj.base_folio = folio
     stock_obj.folio = folio
     stock_obj.current_record['folio'] = folio
     stock_obj.answers[stock_obj.f['folio_recepcion']] = folio
