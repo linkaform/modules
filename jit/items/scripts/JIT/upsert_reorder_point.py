@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import sys, simplejson, copy
+import sys, simplejson, copy, json
 
 from jit_utils import JIT
 from lkf_addons.addons.base.app import CargaUniversal
@@ -12,17 +12,46 @@ class JIT(JIT):
 
     def __init__(self, settings, sys_argv=None, use_api=False, **kwargs):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
+        self.config_fields.update({
+            'warehouse': f"{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse']}"
+        })
 
+    def get_product_config(self, family, *args, **kwargs):
+        if not self.GET_CONFIG:
+            query = [
+                {'$match': {
+                    "deleted_at": {"$exists": False},
+                    "form_id": self.CONFIGURACIONES_JIT,
+                    f"answers.{self.Product.PRODUCT_OBJ_ID}.{self.f['family']}": family,
+                }},
+                {'$project': {
+                    "_id": 0,
+                    "lead_time": f"$answers.{self.f['lead_time']}",
+                    "demora": f"$answers.{self.f['demora']}",
+                    "factor_seguridad_jit": f"$answers.{self.f['factor_seguridad_jit']}",
+                    "factor_crecimiento_jit": f"$answers.{self.f['factor_crecimiento_jit']}",
+                    "uom": f"$answers.{self.UOM_OBJ_ID}.{self.f['uom']}",
+                    "warehouse": f"$answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse']}",
+                }}
+            ]
+            self.GET_CONFIG = self.format_cr(self.cr.aggregate(query))
+            print('GET_CONFIG', self.GET_CONFIG)
+        result = {}
+        for res in self.GET_CONFIG:
+            args = args or list(self.config_fields.keys())
+            result = {arg:res[arg] for arg in args if res.get(arg)}
+        return result if result else None
 
-    def upsert_reorder_point(self, option):
+    def upsert_reorder_point_buy(self):
         if self.current_record:
             print('record, product base')
         records = self.get_product_average_demand_by_product()
         product_by_warehouse = {}
-        config = self.get_config()
+        buy_family = self.answers.get(self.Product.PRODUCT_OBJ_ID, {}).get(self.f['family'], '')
+        config = self.get_product_config(family=buy_family)
         print('config', config)
         ###
-        warehouse = 'ALM GUADALAJARA'
+        warehouse = config.get('warehouse') # type: ignore
         product_by_warehouse[warehouse] = []
         ###
         for rec in records:
@@ -41,7 +70,7 @@ class JIT(JIT):
                 location = wh_config.get('warehouse_location')
                 if not location:
                     self.LKFException({"status_code":400, "msg":f"Se debe de configura una ubicacion de Abastecimiento para el almacen {warehouse}."})
-            uom = rec.get('uom', config.get('uom'))
+            uom = rec.get('uom', config.get('uom')) # type: ignore
             ans = self.model_reorder_point(
                 product_code, 
                 sku,
@@ -49,6 +78,7 @@ class JIT(JIT):
                 warehouse,
                 location,
                 consumo_promedio_diario,
+                method='buy'
                 )
             product_by_warehouse[warehouse].append(ans)
 
@@ -63,7 +93,8 @@ class JIT(JIT):
                     sku = product[self.Product.SKU_OBJ_ID].get(self.f['sku'])
                     for existing_product in existing_products:
                         if existing_product.get('product_code') == product_code and \
-                            existing_product.get('sku') == sku:
+                            existing_product.get('sku') == sku and \
+                            existing_product.get('procurment_method') == 'buy':
                             update_records.append(product)
                             try:
                                create_records.remove(product)
@@ -79,12 +110,13 @@ if __name__ == '__main__':
     jit_obj = JIT(settings, sys_argv=sys.argv, use_api=True)
     cu_obj = CargaUniversal(settings, sys_argv=sys.argv, use_api=True)
     jit_obj.console_run()
-    option = jit_obj.data.get('option', 'xfer')
-    option = 'buy'
-    if option == 'xfer':
-        response = jit_obj.upsert_reorder_point(option='xfer')
+    data_raw = json.loads(sys.argv[2])
+    option = data_raw.get('option', 'transfer')
+
+    if option == 'transfer':
+        response = jit_obj.upsert_reorder_point()
     elif option == 'buy':
-        response = jit_obj.upsert_reorder_point(option='buy')
+        response = jit_obj.upsert_reorder_point_buy()
     res = cu_obj.update_status_record('reglas_reorden')
     print('==========res',res)
     # res = class_obj.update_status_record(estatus)

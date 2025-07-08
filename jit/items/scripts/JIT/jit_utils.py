@@ -76,7 +76,7 @@ class JIT(JIT, Stock):
             response.append(self.lkf_api.patch_multi_record( answers = rec, form_id=self.PROCURMENT, record_id=[rec.get('_id'),]))
         return response
 
-    def upsert_procurment(self, product_by_warehouse, **kwargs):
+    def upsert_procurment(self, product_by_warehouse, method, **kwargs):
         response = {}
         for wh, create_records in product_by_warehouse.items():
             existing_records = self.get_procurments(warehouse=wh)
@@ -89,7 +89,8 @@ class JIT(JIT, Stock):
                     for existing_record in existing_records:
                         print('existing_record', existing_record)
                         if existing_record.get('product_code') == product_code and \
-                            existing_record.get('sku') == sku:
+                            existing_record.get('sku') == sku and \
+                            existing_record.get('procurment_method') == method:
                             print('product', product)
                             product.update({'_id':existing_record.get('_id')})
                             update_records.append(product)
@@ -171,15 +172,14 @@ class JIT(JIT, Stock):
         answers[self.mf['procurment_schedule_date']] = schedule_date
         return answers
 
-    def balance_warehouse(self, warehouse=None, location=None, product_code=None, sku=None, status='active', rule_type='xfer'):
+    def balance_warehouse(self, warehouse=None, location=None, product_code=None, sku=None, status='active', method='transfer'):
         product_rules = self.get_reorder_rules(
             warehouse=warehouse, 
             location=location, 
             product_code=product_code, 
             sku=sku, 
             status=status,
-            rule_type)
-
+            method=method)
         res = []
 
         product_by_warehouse = {}
@@ -192,7 +192,20 @@ class JIT(JIT, Stock):
             product_by_warehouse[warehouse] = product_by_warehouse.get(warehouse,[])
             location = rule.get('warehouse_location')
             #product_stock = self.Stock.get_product_stock(product_code, sku=sku,  warehouse=warehouse, location=location)
-            product_stock = Stock.get_products_inventory(self, product_code, warehouse, location, status='active')
+            if method == 'buy':
+                product_stock_buy = Stock.get_products_inventory(self, product_code, status='active')
+                product_stock = {}
+                actuals = 0.0
+                for prod in product_stock_buy:
+                    actuals += prod.get('actuals', 0.0)
+                    product_stock.update({
+                        'product_code': prod.get('product_code'),
+                        'actuals': actuals
+                    })
+                product_stock = [product_stock]
+            else:            
+                product_stock = Stock.get_products_inventory(self, product_code, warehouse, location, status='active')
+            print('product_stock', product_stock)
             #product_stock = {'actuals':0}
             print('product_code', product_code)
             print('rule', rule)
@@ -204,13 +217,13 @@ class JIT(JIT, Stock):
             order_qty = self.exec_reorder_rules(rule, product_stock)
             if order_qty:
                 print('order qty', order_qty)
-                ans = self.model_procurment(order_qty, product_code, sku, warehouse, location, procurment_method='transfer')
+                ans = self.model_procurment(order_qty, product_code, sku, warehouse, location, procurment_method=method)
                 #! ===============
                 stock_en_transito = 0.0 #! Obtener stock en transito
                 actuals = product_stock.get('actuals', 0.0)
                 max_stock = rule.get('max_stock', 0.0)
                 min_stock = rule.get('min_stock', 0.0)
-                compra_sugerida = max_stock - (actuals + stock_en_transito)
+                compra_sugerida = round(max_stock - (actuals + stock_en_transito))
                 ans.update({
                     self.f['min_stock']: min_stock,
                     self.f['max_stock']: max_stock,
@@ -221,7 +234,7 @@ class JIT(JIT, Stock):
                 #! ==============
                 product_by_warehouse[warehouse].append(ans)
                 print('ans qty', ans)
-        response = self.upsert_procurment(product_by_warehouse)
+        response = self.upsert_procurment(product_by_warehouse, method=method)
         return response
 
 class SIPRE:
