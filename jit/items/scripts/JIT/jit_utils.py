@@ -42,6 +42,9 @@ class JIT(JIT, Stock):
             'wh_location_dest': '65c12749cfed7d3a0e1a341b',
             'families_list': '68647f867ac81846e75a58e5',
             'estatus_balanceo': '5e32fbb498849f475cfbdca2',
+            'stock_actual': '686c07da60e400ee128f6f43',
+            'stock_en_transito': '686c07da60e400ee128f6f44',
+            'compra_sugerida': '686c0804e38e5ab6338f6f83',
         })
 
     def ave_daily_demand(self, demanda_12_meses):
@@ -141,6 +144,8 @@ class JIT(JIT, Stock):
            standar_pack = tranfer_data.get('standar_pack', 1)
         else:
             standar_pack = self.ROUTE_RULES.get(str(product_code),{}).get(warehouse)
+            if not standar_pack:
+                standar_pack = 1
 
         config = self.get_config(*['uom'])
 
@@ -198,6 +203,20 @@ class JIT(JIT, Stock):
             if order_qty:
                 print('order qty', order_qty)
                 ans = self.model_procurment(order_qty, product_code, sku, warehouse, location, procurment_method='transfer')
+                #! ===============
+                stock_en_transito = 0.0 #! Obtener stock en transito
+                actuals = product_stock.get('actuals', 0.0)
+                max_stock = rule.get('max_stock', 0.0)
+                min_stock = rule.get('min_stock', 0.0)
+                compra_sugerida = max_stock - (actuals + stock_en_transito)
+                ans.update({
+                    self.f['min_stock']: min_stock,
+                    self.f['max_stock']: max_stock,
+                    self.f['stock_actual']: actuals,
+                    self.f['stock_en_transito']: stock_en_transito,
+                    self.f['compra_sugerida']: compra_sugerida
+                })
+                #! ==============
                 product_by_warehouse[warehouse].append(ans)
                 print('ans qty', ans)
         response = self.upsert_procurment(product_by_warehouse)
