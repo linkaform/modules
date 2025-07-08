@@ -57,6 +57,7 @@ class JIT(JIT, Stock):
         return demanda
 
     def borrar_historial(self):
+        #TODO diferenciar entre borra historial de transfers y de compras
         print('arranca borrar')
         forms = [
             self.DEMANDA_UTIMOS_12_MES,
@@ -170,13 +171,14 @@ class JIT(JIT, Stock):
         answers[self.mf['procurment_schedule_date']] = schedule_date
         return answers
 
-    def balance_warehouse(self, warehouse=None, location=None, product_code=None, sku=None, status='active'):
+    def balance_warehouse(self, warehouse=None, location=None, product_code=None, sku=None, status='active', rule_type='xfer'):
         product_rules = self.get_reorder_rules(
             warehouse=warehouse, 
             location=location, 
             product_code=product_code, 
             sku=sku, 
-            status=status)
+            status=status,
+            rule_type)
 
         res = []
 
@@ -269,6 +271,29 @@ class SIPRE:
         result = response.get('resultado',{})
         return result
 
+    def get_config(self, *args, **kwargs):
+        if not self.GET_CONFIG:
+            # print(dddd)
+            match_query ={ 
+                 'form_id': self.CONFIGURACIONES,  
+                 'deleted_at' : {'$exists':False},
+            } 
+            if 'query' in kwargs:
+                match_query.update(kwargs['query'])
+            project_ids = self._project_format(self.config_fields)
+
+            aggregate = [
+                {'$match': match_query},
+                {'$limit':kwargs.get('limit',1)},
+                {'$project': project_ids },
+                ]
+            self.GET_CONFIG =  self.format_cr(self.cr.aggregate(aggregate) )
+        result = {}
+        for res in self.GET_CONFIG:
+            args = args or list(self.config_fields.keys())
+            result = {arg:res[arg] for arg in args if res.get(arg)}
+        return result if result else None
+
     def get_stock_and_demand(self, familia):
         if not hasattr(self, 'token'):
             self.get_token()
@@ -276,7 +301,6 @@ class SIPRE:
         response = self.api_request(f"{self.host}{endpoint}", method='GET')
         result = response.get('resultado',{})
         return result
-
 
     def get_token(self):
         data = {
