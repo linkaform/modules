@@ -23,7 +23,7 @@ class Accesos(Accesos):
             }},
         ]
 
-        rondines = self.format_cr(self.cr.aggregate(query), **{'labels_off': True})
+        rondines = self.format_cr(self.cr.aggregate(query))
         return rondines
 
     def close_rondines(self, list_of_rondines):
