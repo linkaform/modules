@@ -45,7 +45,7 @@ class JIT(JIT):
     def upsert_reorder_point_buy(self):
         if self.current_record:
             print('record, product base')
-        records = self.get_product_average_demand_by_product()
+        records = self.get_product_average_demand_by_product(procurement_method='buy')
         product_by_warehouse = {}
         buy_family = self.answers.get(self.Product.PRODUCT_OBJ_ID, {}).get(self.f['family'], '')
         config = self.get_product_config(family=buy_family)
