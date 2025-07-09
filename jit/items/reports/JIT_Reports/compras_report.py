@@ -13,35 +13,33 @@ class Reports(Reports):
         self.f.update({
             'familia': '61ef32bcdf0ec2ba73dec343',
         })
-    
-    def get_product_families(self):
-        """
-            Recupera y retorna una lista de familias únicas de productos del catálogo Product Catalog.
-        Retorna:
-            list: Una lista de familias únicas de productos.
-        """
-        selector = {}
-        fields = ["_id", f"answers.{self.f['familia']}"]
         
+    def get_catalog_product_field(self, id_field):
+        query = {"form_id":self.PROCURMENT, 'deleted_at':{'$exists':False}}
+        proc = self.get_procurments()
+        products = [item['product_code'] for item in proc]
+        # Obtener los ids distintos y filtrar los None
         mango_query = {
-            "selector": selector,
-            "fields": fields,
+            "selector": {
+                f'answers.{self.Product.f["product_code"]}': {'$in': products}
+            },
             "limit": 10000,
             "skip": 0
         }
-        
         res = self.lkf_api.search_catalog(self.Product.PRODUCT_ID, mango_query)
-        
-        familias = set()
-        for doc in res:
-            familia = doc.get(self.f['familia'])
-            if familia:
-                familias.add(familia)
-        familias = list(familias)
-        
-        return familias
-        
-    def get_procurments(self, families: list):
+        res_format = self.format_catalog_product(res, id_field)
+        return res_format
+    
+    def format_catalog_product(self, data_query, id_field):
+        list_response = []
+        for item in data_query:
+            wharehouse = item.get(id_field,'')
+            if wharehouse not in list_response and wharehouse !='':
+                list_response.append(wharehouse)
+        list_response.sort()
+        return list_response
+    
+    def get_procurments_report(self, families: list):
         """
         Recupera los registros de procurments
         Args:
@@ -117,12 +115,12 @@ if __name__ == "__main__":
     families = data.get('product_families', [])
 
     if option == 'get_catalog':
-        data = class_obj.get_product_families()
+        data = class_obj.get_catalog_product_field(id_field=class_obj.Product.f['product_type'])
         response = {
             "product_families": data
         }
     elif option == 'get_report':
-        data = class_obj.get_procurments(families=families)
+        data = class_obj.get_procurments_report(families=families)
         response = {
             "data": data
         }
