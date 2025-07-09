@@ -59,25 +59,25 @@ class Reports(Reports):
                 "_id": 0,
                 "warehouse": f"$answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.WH.f['warehouse_location']}",
                 "sku": f"$answers.{self.Product.SKU_OBJ_ID}.{self.Product.f['product_sku']}",
-                "peso_unit": f"$answers.{self.UOM_OBJ_ID}.{self.f['uom']}",
-                "inventario": f"$answers.{self.f['stock_actual']}",
-                "transito": f"$answers.{self.f['stock_en_transito']}",
-                "compra": f"$answers.{self.f['compra_sugerida']}",
+                "family": f"$answers.{self.Product.SKU_OBJ_ID}.{self.f['familia']}",
+                "line": f"$answers.{self.Product.SKU_OBJ_ID}.{self.Product.f['product_category']}",
+                "desc": f"$answers.{self.Product.SKU_OBJ_ID}.{self.Product.f['product_name']}",
+                "peso": f"$answers.{self.UOM_OBJ_ID}.{self.f['uom']}",
+                "stock": f"$answers.{self.f['stock_actual']}",
+                "transit": f"$answers.{self.f['stock_en_transito']}",
+                "purchase": f"$answers.{self.f['compra_sugerida']}",
                 # "peso_compra": "",
             }}
         ]
         procurements = self.format_cr(self.cr.aggregate(query))
         format_data = {}
         for proc in procurements:
-            sku = proc.get('sku')
             wh = proc.get('warehouse')
-            if sku and wh:
-                details = self.get_details_procurment(sku)
-                proc.update({
-                    'descripcion': details.get(self.Product.f['product_name'], ''),
-                    'linea': details.get(self.Product.f['product_category'], ''),
-                    'familia': details.get(self.f['family'], '')
-                })
+            proc['family'] = self.unlist(proc.get('family', ''))
+            proc['line'] = self.unlist(proc.get('line', ''))
+            proc['desc'] = self.unlist(proc.get('desc', ''))
+            if wh:
+                wh = wh.replace(' ', '_').lower()
                 format_data.setdefault(wh, []).append(proc)
                 proc.pop('warehouse', None)
             
