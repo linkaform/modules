@@ -64,6 +64,8 @@ class Reports(Reports):
                 "desc": f"$answers.{self.Product.SKU_OBJ_ID}.{self.Product.f['product_name']}",
                 "peso": f"$answers.{self.UOM_OBJ_ID}.{self.f['uom']}",
                 "stock": f"$answers.{self.f['stock_actual']}",
+                "stock_min": f"$answers.{self.f['min_stock']}",
+                "stock_max": f"$answers.{self.f['max_stock']}",
                 "transit": f"$answers.{self.f['stock_en_transito']}",
                 "purchase": f"$answers.{self.f['compra_sugerida']}",
                 # "peso_compra": "",
@@ -76,6 +78,7 @@ class Reports(Reports):
             proc['family'] = self.unlist(proc.get('family', ''))
             proc['line'] = self.unlist(proc.get('line', ''))
             proc['desc'] = self.unlist(proc.get('desc', ''))
+            proc['peso_compra'] = proc.get('peso', '')
             if wh:
                 wh = wh.replace(' ', '_').lower()
                 format_data.setdefault(wh, []).append(proc)
