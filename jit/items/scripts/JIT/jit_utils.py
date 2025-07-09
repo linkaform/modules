@@ -200,7 +200,8 @@ class JIT(JIT, Stock):
                     actuals += prod.get('actuals', 0.0)
                     product_stock.update({
                         'product_code': prod.get('product_code'),
-                        'actuals': actuals
+                        'family': prod.get('family', ''),
+                        'actuals': actuals,
                     })
                 product_stock = [product_stock]
             else:            
@@ -220,10 +221,14 @@ class JIT(JIT, Stock):
                 ans = self.model_procurment(order_qty, product_code, sku, warehouse, location, procurment_method=method)
                 #! ===============
                 stock_en_transito = 0.0 #! Obtener stock en transito
+                family = product_stock.get('family', '')
                 actuals = product_stock.get('actuals', 0.0)
                 max_stock = rule.get('max_stock', 0.0)
                 min_stock = rule.get('min_stock', 0.0)
                 compra_sugerida = round(max_stock - (actuals + stock_en_transito))
+                ans[self.Product.SKU_OBJ_ID].update({
+                    self.f['family']: [family]
+                })
                 ans.update({
                     self.f['min_stock']: min_stock,
                     self.f['max_stock']: max_stock,
