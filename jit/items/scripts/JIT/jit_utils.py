@@ -201,6 +201,8 @@ class JIT(JIT, Stock):
                     product_stock.update({
                         'product_code': prod.get('product_code'),
                         'family': prod.get('family', ''),
+                        'nombre_producto': prod.get('nombre_producto', ''),
+                        'categoria': prod.get('categoria', ''),
                         'actuals': actuals,
                     })
                 product_stock = [product_stock]
@@ -222,12 +224,16 @@ class JIT(JIT, Stock):
                 #! ===============
                 stock_en_transito = 0.0 #! Obtener stock en transito
                 family = product_stock.get('family', '')
+                nombre_producto = product_stock.get('nombre_producto', '')
+                categoria = product_stock.get('categoria', '')
                 actuals = product_stock.get('actuals', 0.0)
                 max_stock = rule.get('max_stock', 0.0)
                 min_stock = rule.get('min_stock', 0.0)
                 compra_sugerida = round(max_stock - (actuals + stock_en_transito))
                 ans[self.Product.SKU_OBJ_ID].update({
-                    self.f['family']: [family]
+                    self.f['family']: [family],
+                    self.f['product_name']: [nombre_producto],
+                    self.f['product_category']: [categoria],
                 })
                 ans.update({
                     self.f['min_stock']: min_stock,
