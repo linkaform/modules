@@ -50,6 +50,8 @@ class JIT(JIT):
         buy_family = self.answers.get(self.Product.PRODUCT_OBJ_ID, {}).get(self.f['family'], '')
         config = self.get_product_config(family=buy_family)
         print('config', config)
+        if not config:
+            self.LKFException({"status_code":400, "msg":f"No se encontro configuracion para la familia {buy_family}. Debes de configurarla en la forma de Configuraciones - JIT."})
         ###
         warehouse = config.get('warehouse') # type: ignore
         product_by_warehouse[warehouse] = []
