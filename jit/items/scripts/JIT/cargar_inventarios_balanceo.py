@@ -66,7 +66,7 @@ class CargaUniversal(CargaUniversal):
                     break
         return res
 
-    def carga_stock_from_sipre(self):
+    def carga_stock_from_sipre(self, procurment_method):
         #   Se utiliza para el registro de errores
         # self.field_id_error_records = '5e32fbb498849f475cfbdca3'
         
@@ -122,7 +122,7 @@ class CargaUniversal(CargaUniversal):
             #   Se manda a llamar procesa_row para obtener los datos, se actualiza metada agregando el diccionario answers con todos los valores
             # answers = self.procesa_row(pos_field_dict, record, files_dir, nueva_ruta, id_forma_seleccionada, answers, p, dict_catalogs)
             answers_stock = self.transform_stock_answers(record)
-            answers_sales = self.transform_sales_answers(record)
+            answers_sales = self.transform_sales_answers(record, procurment_method)
             this_metadata_stock.update({"answers":answers_stock})
             this_metadata_sales.update({"answers":answers_sales})
             upload_records.append(this_metadata_stock)
@@ -194,7 +194,7 @@ class CargaUniversal(CargaUniversal):
     
         return fields
     
-    def transform_sales_answers(self, record):
+    def transform_sales_answers(self, record, procurment_method):
         answers = {}
         answers = {
             jit_obj.f['fecha_demanda']: self.today_str(),
@@ -208,7 +208,7 @@ class CargaUniversal(CargaUniversal):
             },
             jit_obj.f['demanda_12_meses']: record.get('ventas'),
             jit_obj.mf['consumo_promedio_diario']: jit_obj.ave_daily_demand(record.get('ventas')),
-
+            jit_obj.f['procurment_method']: procurment_method
         }
         return answers
 
@@ -238,6 +238,7 @@ if __name__ == '__main__':
     class_obj.load('Stock', **class_obj.kwargs)
     jit_obj = JIT(settings, sys_argv=sys.argv, use_api=True)
     step = class_obj.data.get('step')
+    option = class_obj.data.get('option', 'transfer')
     #step = 'carga_stock'
     # step = 'carga_stock'
     # for step in ['demanda']:
@@ -251,8 +252,8 @@ if __name__ == '__main__':
     if not familia:
         class_obj.LKFException('Familia {ans_familia} no econtrada')
     if jit_obj.answers.get(jit_obj.f['borrar_historial']) == 'si':
-        jit_obj.borrar_historial()
+        jit_obj.borrar_historial(method=option)
     sipre_obj.stock = sipre_obj.get_stock_and_demand(familia)
-    stock = class_obj.carga_stock_from_sipre()
+    stock = class_obj.carga_stock_from_sipre(procurment_method=option)
     res = class_obj.update_status_record(estatus)
 

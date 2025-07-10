@@ -56,8 +56,8 @@ class JIT(JIT, Stock):
             demanda = f"{demanda_12_meses/dias_laborales_consumo:.2f}"
         return demanda
 
-    def borrar_historial(self):
-        #TODO diferenciar entre borra historial de transfers y de compras
+    def borrar_historial(self, method):
+        #TODO comprobar en la forma de inventory que se borra
         print('arranca borrar')
         forms = [
             self.DEMANDA_UTIMOS_12_MES,
@@ -65,9 +65,14 @@ class JIT(JIT, Stock):
             self.STOCK_INVENTORY_ADJUSTMENT_ID,
             self.FORM_INVENTORY_ID,
             self.PROCURMENT,
-            self.FORM_INVENTORY_ID,
         ]
-        self.cr.delete_many({'form_id':{'$in':forms}}) #    or _delete
+        self.cr.delete_many({
+            'form_id':{'$in':forms},
+            '$or': [
+                {f"answers.{self.f['procurment_method']}": method},
+                {f"answers.{self.f['procurment_method']}": {'$exists': False}},
+            ]
+        }) #    or _delete
         return True
         
     def update_procurmet(self, records, **kwargs):
