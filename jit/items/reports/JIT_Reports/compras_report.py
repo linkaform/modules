@@ -60,23 +60,26 @@ class Reports(Reports):
                 "family": f"$answers.{self.Product.SKU_OBJ_ID}.{self.f['familia']}",
                 "line": f"$answers.{self.Product.SKU_OBJ_ID}.{self.Product.f['product_category']}",
                 "desc": f"$answers.{self.Product.SKU_OBJ_ID}.{self.Product.f['product_name']}",
-                "peso": f"$answers.{self.UOM_OBJ_ID}.{self.f['uom']}",
                 "stock": f"$answers.{self.f['stock_actual']}",
                 "stock_min": f"$answers.{self.f['min_stock']}",
                 "stock_max": f"$answers.{self.f['max_stock']}",
                 "transit": f"$answers.{self.f['stock_en_transito']}",
                 "purchase": f"$answers.{self.f['compra_sugerida']}",
-                # "peso_compra": "",
             }}
         ]
         procurements = self.format_cr(self.cr.aggregate(query))
         format_data = {}
+        sku_list = [proc.get('sku', '') for proc in procurements if proc.get('sku')]
+        product_weights = self.get_products_weight(sku_list)
+        peso_dict = {item['sku']: item['peso'] for item in product_weights or []}
         for proc in procurements:
             wh = proc.get('warehouse')
+            sku = proc.get('sku', '')
+            proc['peso_compra'] = peso_dict.get(sku, 0.0) * proc.get('purchase', 0.0)
+            proc['peso'] = peso_dict.get(sku, 0.0)
             proc['family'] = self.unlist(proc.get('family', ''))
             proc['line'] = self.unlist(proc.get('line', ''))
             proc['desc'] = self.unlist(proc.get('desc', ''))
-            proc['peso_compra'] = proc.get('peso', '')
             if wh:
                 wh = wh.replace(' ', '_').lower()
                 format_data.setdefault(wh, []).append(proc)
@@ -84,24 +87,31 @@ class Reports(Reports):
             
         return format_data
         
-    def get_details_procurment(self, sku: str):
+    def get_products_weight(self, sku_list: list):
         """
-        Recupera los detalles del producto a partir del SKU.
+        Recupera el peso de los productos a partir de una lista de SKUs.
         Args:
-            sku (str): El SKU del producto.
+            sku_list (list): Una lista de SKUs de productos.
         Returns:
-            dict: Un diccionario con los detalles del producto.
+            list: Una lista con los pesos de los productos.
         """
         mango_query = {
             "selector": {
-                f"answers.{self.Product.f['product_sku']}": sku
+                f"answers.{self.Product.f['product_sku']}": {"$in": sku_list}
             },
-            "fields": ["_id", f"answers.{self.f['family']}", f"answers.{self.Product.f['product_name']}", f"answers.{self.Product.f['product_category']}"],
-            "limit": 1,
+            "fields": [f"answers.{self.Product.f['product_sku']}",f"answers.{self.Product.f['peso']}"],
         }
         res = self.lkf_api.search_catalog(self.Product.SKU_ID, mango_query)
         if res:
-            res = self.unlist(res)
+            for r in res:
+                r.pop('_rev', None)
+                r.pop('created_at', None)
+                r.pop('updated_at', None)
+                r.pop('_id', None)
+                r['sku'] = r.get(self.Product.f["product_sku"], '')
+                r['peso'] = r.get(self.Product.f["peso"], 0.0)
+                r.pop(self.Product.f['product_sku'], None)
+                r.pop(self.Product.f['peso'], None)
         return res
     
 if __name__ == "__main__":
