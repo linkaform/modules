@@ -111,7 +111,7 @@ def calculations(current_record):
 
             year, week_num, iso_weekday = ready_date.isocalendar()
             # s['63f8f4cad090912501be306a'] = int(ready_date.strftime('%Y%W'))
-            s['63f8f4cad090912501be306b'] = int(f'{year}{week_num}')
+            s['63f8f4cad090912501be306a'] = int(f'{year}{week_num}')
             # print('=== plant',simplejson.dumps(plant, indent=4))
             s['61ef32bcdf0ec2ba73dec33c'].update({
                 '6205f73281bb36a6f1573358': start_size,
@@ -149,7 +149,8 @@ def calculations(current_record):
     }))
 
 if __name__ == '__main__':
-    print(sys.argv)
+    # print(sys.argv)
     stock_obj = Stock(settings, sys_argv=sys.argv)
+    stock_obj.console_run()
     current_record = stock_obj.current_record
     calculations(current_record)
