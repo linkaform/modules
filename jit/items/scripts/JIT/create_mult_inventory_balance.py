@@ -17,10 +17,11 @@ class JIT(JIT):
         
     def create_multiple_inventory_balance(self, data):
         families_list = data.get(self.f['families_list'], [])
+        borrar_historial = 'no'
         if data.get(self.f['borrar_historial']) == 'si':
             print('borrando historial')
             self.borrar_historial()
-            borrar_historial = 'no'#data.get(self.f['borrar_historial'], 'no')
+            borrar_historial = 'si'#data.get(self.f['borrar_historial'], 'no')
         answers = {}
         list_response = []
         for family in families_list:
