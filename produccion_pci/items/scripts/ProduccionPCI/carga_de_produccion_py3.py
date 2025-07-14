@@ -1490,7 +1490,7 @@ class Produccion_PCI( Produccion_PCI ):
             return self.set_status_proceso( current_record, record_id, 'error', msg='No se encontro la columna Folio en el documento de carga' )
         
         all_folios_in_file = [ record[ pos_folio ] for record in records if record[ pos_folio ] ]
-        duplicated_folios = [item for item, count in collections.Counter(all_folios_in_file).items() if count > 1]
+        duplicated_folios = [str(item) for item, count in collections.Counter(all_folios_in_file).items() if count > 1]
         print("duplicated_folios=",duplicated_folios)
         if duplicated_folios:
             return self.set_status_proceso( current_record, record_id, 'error', msg='No se permiten folios duplicados en un mismo proceso {}'.format(self.list_to_str(duplicated_folios)) )
