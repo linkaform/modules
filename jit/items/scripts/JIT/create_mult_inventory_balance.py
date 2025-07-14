@@ -49,10 +49,11 @@ class JIT(JIT):
     
     def create_multiple_sugerido_compra(self, data):
         families_list = data.get(self.f['families_list'], [])
+        borrar_historial = 'no'
         if data.get(self.f['borrar_historial']) == 'si':
             print('borrando historial')
             self.borrar_historial()
-            borrar_historial = 'no'#data.get(self.f['borrar_historial'], 'no')
+            borrar_historial = 'si'#data.get(self.f['borrar_historial'], 'no')
         answers = {}
         list_response = []
         for family in families_list:
@@ -69,7 +70,7 @@ class JIT(JIT):
                 process='Creacion de Sugerido de Compras',
                 action='create_mult_inventory_balance',
                 file='jit/app.py',
-                form_id=self.SUGERIDO_DE_COMPRAS,
+                form_id=136334, #TODO cambiar por self.SUGERIDO_DE_COMPRAS, de momento dice que no existe forma
                 answers=answers
             )
             list_response.append({
