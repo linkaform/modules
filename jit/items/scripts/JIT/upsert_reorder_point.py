@@ -49,7 +49,6 @@ class JIT(JIT):
         product_by_warehouse = {}
         buy_family = self.answers.get(self.Product.PRODUCT_OBJ_ID, {}).get(self.f['family'], '')
         config = self.get_product_config(family=buy_family)
-        print('config', config)
         if not config:
             self.LKFException({"status_code":400, "msg":f"No se encontro configuracion para la familia {buy_family}. Debes de configurarla en la forma de Configuraciones - JIT."})
         ###
@@ -57,7 +56,6 @@ class JIT(JIT):
         product_by_warehouse[warehouse] = []
         ###
         for rec in records:
-            print('rec', rec)
             product_code = rec.get('product_code')
             demanda_12_meses = rec.get('demanda_12_meses',0)
             sku = rec.get('sku')
@@ -68,7 +66,6 @@ class JIT(JIT):
             location = rec.get('location')
             if not location:
                 wh_config = self.WH.get_warehouse_config(warehouse, location_type='abastacimiento')
-                print('warehouse', wh_config)
                 location = wh_config.get('warehouse_location')
                 if not location:
                     self.LKFException({"status_code":400, "msg":f"Se debe de configura una ubicacion de Abastecimiento para el almacen {warehouse}."})

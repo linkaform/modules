@@ -92,18 +92,15 @@ class JIT(JIT, Stock):
                     product_code = product[self.Product.SKU_OBJ_ID].get(self.f['product_code'])
                     sku = product[self.Product.SKU_OBJ_ID].get(self.f['sku'])
                     for existing_record in existing_records:
-                        print('existing_record', existing_record)
                         if existing_record.get('product_code') == product_code and \
                             existing_record.get('sku') == sku and \
                             existing_record.get('procurment_method') == method:
-                            print('product', product)
                             product.update({'_id':existing_record.get('_id')})
                             update_records.append(product)
                             try:
                                 create_records.remove(product)
                             except ValueError:
                                  print('allready removed')
-            print('update_records', update_records)
             response = self.update_procurmet(update_records, **kwargs)
             response += self.create_procurment(create_records, **kwargs)
 
@@ -213,18 +210,13 @@ class JIT(JIT, Stock):
                 product_stock = [product_stock]
             else:            
                 product_stock = Stock.get_products_inventory(self, product_code, warehouse, location, status='active')
-            print('product_stock', product_stock)
             #product_stock = {'actuals':0}
-            print('product_code', product_code)
-            print('rule', rule)
             if isinstance(product_stock, list) and len(product_stock):
                 product_stock = product_stock[0]
             else:
                 product_stock = {}
-            print('product_stock', product_stock)
             order_qty = self.exec_reorder_rules(rule, product_stock)
             if order_qty:
-                print('order qty', order_qty)
                 ans = self.model_procurment(order_qty, product_code, sku, warehouse, location, procurment_method=method)
                 #! ===============
                 stock_en_transito = 0.0 #! Obtener stock en transito
@@ -249,7 +241,6 @@ class JIT(JIT, Stock):
                 })
                 #! ==============
                 product_by_warehouse[warehouse].append(ans)
-                print('ans qty', ans)
         response = self.upsert_procurment(product_by_warehouse, method=method)
         return response
 
