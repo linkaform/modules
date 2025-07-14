@@ -411,6 +411,14 @@ class Reports(Reports):
 
     def get_procurments_standar_pack(self, sku, procurment_warehouses):
         standar_pack = self.ROUTE_RULES.get(str(sku),{})
+        
+        if not standar_pack:
+            print(f'Warning: No se encontraron reglas de ruta para SKU {sku}')
+            return {
+                'standar_pack': 1,
+                'uom': 'unit'
+            }
+
         #TODO QUITAR CEDIS
         spack = standar_pack['CEDIS GUADALAJARA']['Almacen CEDIS Guadalajara']
         location = {
@@ -454,7 +462,7 @@ class Reports(Reports):
             product_dict[pcode] = {
                 'sku' : x['product_code'],
                 'desc' : x['product_name'],
-                'product_type' : x['product_type'],
+                'product_type' : x['family'],
                 'line' : x['product_category'],
                 'peso' : x.get('peso',0)
             }
