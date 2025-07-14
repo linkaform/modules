@@ -315,8 +315,9 @@ class Reports(Reports):
         # Execute query and return records
         record = self.Product._labels_list(self.lkf_api.search_catalog(self.Product.SKU_ID, mango_query), self.Product.f)
         return record
-    
-    def get_procurments(self, warehouse=None, location=None, product_code=None, sku=None, status='programmed', group_by=False):
+
+    def get_procurments(self, warehouse=None, location=None, product_code=None, sku=None, status='programmed', group_by=False, \
+        procurment_method=None):
         # sku='750200309290'
         self.load('Product', module_class='Warehouse', import_as='WH', **self.kwargs)
         prod_obj = self.Product
@@ -346,6 +347,10 @@ class Reports(Reports):
         if location:
             match_query.update({
                 f"answers.{warehouse_obj.WAREHOUSE_LOCATION_OBJ_ID}.{warehouse_obj.f['warehouse_location']}":location
+                })
+        if procurment_method:
+            match_query.update({
+                f"answers.{self.mf['procurment_method']}": procurment_method
                 })
         query = [
             {'$match': match_query},
@@ -391,7 +396,7 @@ class Reports(Reports):
     
     def get_catalog_product_field(self, id_field):
         query = {"form_id":self.PROCURMENT, 'deleted_at':{'$exists':False}}
-        proc = self.get_procurments()
+        proc = self.get_procurments(procurment_method='transfer')
         products = [item['product_code'] for item in proc]
         # Obtener los ids distintos y filtrar los None
         mango_query = {
