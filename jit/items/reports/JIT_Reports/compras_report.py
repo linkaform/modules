@@ -16,7 +16,7 @@ class Reports(Reports):
         
     def get_catalog_product_field(self, id_field):
         query = {"form_id":self.PROCURMENT, 'deleted_at':{'$exists':False}}
-        proc = self.get_procurments()
+        proc = self.get_procurments(procurment_method='buy')
         products = [item['product_code'] for item in proc]
         # Obtener los ids distintos y filtrar los None
         mango_query = {
