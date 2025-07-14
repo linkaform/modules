@@ -100,7 +100,7 @@ class JIT(JIT, Stock):
                             try:
                                 create_records.remove(product)
                             except ValueError:
-                                 print('allready removed')
+                                pass
             response = self.update_procurmet(update_records, **kwargs)
             response += self.create_procurment(create_records, **kwargs)
 

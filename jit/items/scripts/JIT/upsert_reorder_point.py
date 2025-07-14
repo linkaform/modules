@@ -98,7 +98,7 @@ class JIT(JIT):
                             try:
                                create_records.remove(product)
                             except ValueError:
-                                print('allready removed')
+                                pass
 
             response = self.create_reorder_rule(create_records)
             # repose_edit = self.update_reorder_rule(update_records)
