@@ -361,6 +361,7 @@ class Reports(Reports):
                     'procurment_method':f'$answers.{self.mf["procurment_method"]}',
                     'procurment_qty':f'$answers.{self.mf["procurment_qty"]}',
                     'product_code':f'$answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f["product_code"]}',
+                    'product_family':f'$answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f["family"]}',
                     'sku':f'$answers.{prod_obj.SKU_OBJ_ID}.{prod_obj.f["sku"]}',
                     'uom':f'$answers.{self.UOM_OBJ_ID}.{self.f["uom"]}',
                     'warehouse':f'$answers.{warehouse_obj.WAREHOUSE_LOCATION_OBJ_ID}.{warehouse_obj.f["warehouse"]}',
@@ -501,8 +502,8 @@ class Reports(Reports):
             for proc in procurment:
                 procurment_warehouses = [item for item in unique_warehouses if item not in proc['warehouse']]
                 sku = proc['sku']
+                proc['product_family'] = self.unlist(proc.get('product_family', ''))
                 if not product_dict.get(sku):
-                    print('NOT FOUND sku', sku)
                     continue
                 proc.update(product_dict[sku])
                 p_warehouse = proc.get('warehouse')
