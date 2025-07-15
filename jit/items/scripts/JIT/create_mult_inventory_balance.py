@@ -20,7 +20,7 @@ class JIT(JIT):
         borrar_historial = 'no'
         if data.get(self.f['borrar_historial']) == 'si':
             print('borrando historial')
-            self.borrar_historial()
+            self.borrar_historial('transfer')
             borrar_historial = 'si'#data.get(self.f['borrar_historial'], 'no')
         answers = {}
         list_response = []
@@ -52,7 +52,7 @@ class JIT(JIT):
         borrar_historial = 'no'
         if data.get(self.f['borrar_historial']) == 'si':
             print('borrando historial')
-            self.borrar_historial()
+            self.borrar_historial('buy')
             borrar_historial = 'si'#data.get(self.f['borrar_historial'], 'no')
         answers = {}
         list_response = []
