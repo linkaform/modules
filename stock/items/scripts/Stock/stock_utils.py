@@ -727,7 +727,6 @@ class Stock(Stock):
         deleted_sync_ids = []
         edited_sync_ids = []
         print('va a mover uno por uno en move_out_stock')
-        print(stop)
 
         for idx, product_data in record_data['product'].items():
             product_code = product_data['product_code']
