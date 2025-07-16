@@ -173,6 +173,41 @@ class JIT(JIT, Stock):
         answers[self.mf['procurment_status']] = status
         answers[self.mf['procurment_schedule_date']] = schedule_date
         return answers
+    
+    def model_procurment_without_qty(self, product_code, sku, warehouse, location, uom=None, schedule_date=None, \
+        bom=None, status='programmed', procurment_method='buy'):
+        answers = {}
+        if procurment_method == 'transfer':
+           tranfer_data = self.get_procurment_transfers(0, product_code, sku, warehouse, location, uom=uom, schedule_date=schedule_date, status=status)
+           answers[self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID] = {}
+           if tranfer_data.get('warehouse'):
+               answers[self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID][self.WH.f['warehouse_dest']] = tranfer_data['warehouse']
+           if tranfer_data.get('warehouse_location'):
+               answers[self.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID][self.WH.f['warehouse_location_dest']] = tranfer_data['warehouse_location']
+           standar_pack = tranfer_data.get('standar_pack', 1)
+
+        config = self.get_config(*['uom'])
+
+        if not schedule_date:
+            schedule_date = self.today_str()
+        if not location:
+            location = self.get_warehouse_config('tipo_almacen', 'abastacimiento', 'warehouse_location')
+        if not uom:
+            uom = config.get('uom')
+        answers[self.Product.SKU_OBJ_ID] = {}
+        answers[self.Product.SKU_OBJ_ID][self.f['product_code']] = product_code
+        answers[self.Product.SKU_OBJ_ID][self.f['sku']] = sku
+        answers[self.UOM_OBJ_ID] = {}
+        answers[self.UOM_OBJ_ID][self.f['uom']] = uom
+        answers[self.WH.WAREHOUSE_LOCATION_OBJ_ID] = {}
+        answers[self.WH.WAREHOUSE_LOCATION_OBJ_ID][self.WH.f['warehouse']] = warehouse
+        answers[self.WH.WAREHOUSE_LOCATION_OBJ_ID][self.WH.f['warehouse_location']] = location
+        answers[self.mf['procurment_date']] = self.today_str()
+        answers[self.mf['procurment_method']] = procurment_method
+        answers[self.mf['procurment_qty']] = 0
+        answers[self.mf['procurment_status']] = status
+        answers[self.mf['procurment_schedule_date']] = schedule_date
+        return answers
 
     def balance_warehouse(self, warehouse=None, location=None, product_code=None, sku=None, status='active', method='transfer'):
         product_rules = self.get_reorder_rules(
@@ -209,16 +244,31 @@ class JIT(JIT, Stock):
                     })
                 product_stock = [product_stock]
             else:            
-                product_stock = Stock.get_products_inventory(self, product_code, warehouse, location, status='active')
+                # TODO: Refactorizar codigo para evitar repeticion
+                product_stock_transfer = Stock.get_products_inventory(self, product_code, warehouse, location, status='active')
+                product_stock = {}
+                actuals = 0.0
+                for prod in product_stock_transfer:
+                    actuals += prod.get('actuals', 0.0)
+                    product_stock.update({
+                        'product_code': prod.get('product_code'),
+                        'family': prod.get('family', ''),
+                        'nombre_producto': prod.get('nombre_producto', ''),
+                        'categoria': prod.get('categoria', ''),
+                        'actuals': actuals,
+                    })
+                product_stock = [product_stock]
             #product_stock = {'actuals':0}
             if isinstance(product_stock, list) and len(product_stock):
                 product_stock = product_stock[0]
             else:
                 product_stock = {}
             order_qty = self.exec_reorder_rules(rule, product_stock)
+            #! ===============
             if order_qty:
                 ans = self.model_procurment(order_qty, product_code, sku, warehouse, location, procurment_method=method)
-                #! ===============
+            else:
+                ans = self.model_procurment_without_qty(product_code, sku, warehouse, location, procurment_method=method)
                 stock_en_transito = 0.0 #! Obtener stock en transito
                 family = product_stock.get('family', '')
                 nombre_producto = product_stock.get('nombre_producto', '')
@@ -239,8 +289,8 @@ class JIT(JIT, Stock):
                     self.f['stock_en_transito']: stock_en_transito,
                     self.f['compra_sugerida']: compra_sugerida
                 })
-                #! ==============
                 product_by_warehouse[warehouse].append(ans)
+            #! ==============
         response = self.upsert_procurment(product_by_warehouse, method=method)
         return response
 
