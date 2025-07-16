@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <lkf>
-    <form_id>{{ form.lab_inventroy.id }}</form_id>
+    <form_id>{{ form.lab_inventory.id }}</form_id>
     <id>65e8fec08b019ac4593ef4fc</id>
     <workflows>
         <item>
