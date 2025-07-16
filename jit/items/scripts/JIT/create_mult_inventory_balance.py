@@ -17,14 +17,15 @@ class JIT(JIT):
         
     def create_multiple_inventory_balance(self, data):
         families_list = data.get(self.f['families_list'], [])
-        borrar_historial = 'no'
-        if data.get(self.f['borrar_historial']) == 'si':
-            print('borrando historial')
-            self.borrar_historial('transfer')
-            borrar_historial = 'si'#data.get(self.f['borrar_historial'], 'no')
+        borrar_historial = ''
         answers = {}
         list_response = []
-        for family in families_list:
+        for idx, family in enumerate(families_list):
+            # ! Siempre se borra el historial
+            if idx == 0:
+                borrar_historial = 'si'
+            else:
+                borrar_historial = 'no'
             ans_familia = family.upper().replace('_',' ')
             answers.update({
                 self.Product.PRODUCT_OBJ_ID: {
@@ -49,14 +50,15 @@ class JIT(JIT):
     
     def create_multiple_sugerido_compra(self, data):
         families_list = data.get(self.f['families_list'], [])
-        borrar_historial = 'no'
-        if data.get(self.f['borrar_historial']) == 'si':
-            print('borrando historial')
-            self.borrar_historial('buy')
-            borrar_historial = 'si'#data.get(self.f['borrar_historial'], 'no')
+        borrar_historial = ''
         answers = {}
         list_response = []
-        for family in families_list:
+        for idx, family in enumerate(families_list):
+            # ! Siempre se borra el historial
+            if idx == 0:
+                borrar_historial = 'si'
+            else:
+                borrar_historial = 'no'
             ans_familia = family.upper().replace('_',' ')
             answers.update({
                 self.Product.PRODUCT_OBJ_ID: {

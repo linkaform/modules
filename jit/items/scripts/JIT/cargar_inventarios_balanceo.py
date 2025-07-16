@@ -92,6 +92,7 @@ class CargaUniversal(CargaUniversal):
         
         resultado = {'creados':0,'error':0,'actualizados':0, 'no_update':0}
         total_rows = len(sipre_obj.stock)   #   Longitud total de registros del diccionario "stock"
+        print('total_rows=', total_rows)
         #   Manejo del subgrupo de errores
         subgrupo_errors = []
         
