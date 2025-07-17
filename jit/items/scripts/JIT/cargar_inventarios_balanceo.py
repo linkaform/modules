@@ -205,7 +205,8 @@ class CargaUniversal(CargaUniversal):
             self.Stock.Product.SKU_OBJ_ID:{
                 self.Stock.Product.f['product_code']: record.get('producto'),
                 self.Stock.Product.f['product_sku']: record.get('producto'),
-                self.Stock.Product.f['product_name']: [record.get('productoNombre'),]
+                self.Stock.Product.f['product_name']: [record.get('productoNombre'),],
+                self.Stock.Product.f['family']: [record.get('familiaProducto'),]
             },
             jit_obj.f['demanda_12_meses']: record.get('ventas'),
             jit_obj.mf['consumo_promedio_diario']: jit_obj.ave_daily_demand(record.get('ventas')),
