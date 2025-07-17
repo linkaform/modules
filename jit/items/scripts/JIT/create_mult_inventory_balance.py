@@ -3,6 +3,7 @@ Script para crear multiples balanceo de inventario.
 """
 # -*- coding: utf-8 -*-
 import sys, simplejson
+from time import time
 
 from jit_utils import JIT
 
@@ -75,6 +76,8 @@ class JIT(JIT):
                 form_id=136334, #TODO cambiar por self.SUGERIDO_DE_COMPRAS, de momento dice que no existe forma
                 answers=answers
             )
+            if idx == 0:
+                time.sleep(5)
             list_response.append({
                 'family': family,
                 'response': response
