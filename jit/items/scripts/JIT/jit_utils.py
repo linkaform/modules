@@ -82,10 +82,38 @@ class JIT(JIT, Stock):
         return response
 
     def upsert_procurment(self, product_by_warehouse, method, **kwargs):
+        target_family = self.answers.get(self.Product.PRODUCT_OBJ_ID, {}).get(self.Product.f['family'])
         response = {}
         for wh, create_records in product_by_warehouse.items():
-            existing_records = self.get_procurments(warehouse=wh)
+            existing_records = self.get_procurments(warehouse=wh, procurment_method=method)
             update_records = []
+            
+            filtered_records = []
+            seen_products = set()
+            
+            for product in create_records:
+                if self.Product.SKU_OBJ_ID in product:
+                    product_code = product[self.Product.SKU_OBJ_ID].get(self.f['product_code'])
+                    sku = product[self.Product.SKU_OBJ_ID].get(self.f['sku'])
+                    
+                    key = f"{product_code}_{sku}_{wh}"
+                    
+                    if key in seen_products:
+                        # print(f"Duplicado detectado y eliminado: {product_code} en {wh}")
+                        continue
+                    
+                    if target_family:
+                        family = product[self.Product.SKU_OBJ_ID].get(self.f['family'], [])
+                        if isinstance(family, list) and target_family not in family:
+                            continue
+                        elif isinstance(family, str) and family != target_family:
+                            continue
+                    
+                    filtered_records.append(product)
+                    seen_products.add(key)
+            
+            create_records = filtered_records
+            
             # existing_skus = [prod['sku'] for prod in existing_procurments]
             for product in create_records[:]:
                 if self.Product.SKU_OBJ_ID in list(product.keys()):
@@ -101,6 +129,7 @@ class JIT(JIT, Stock):
                                 create_records.remove(product)
                             except ValueError:
                                 pass
+                            break
             response = self.update_procurmet(update_records, **kwargs)
             response += self.create_procurment(create_records, **kwargs)
 
@@ -269,28 +298,28 @@ class JIT(JIT, Stock):
                 ans = self.model_procurment(order_qty, product_code, sku, warehouse, location, procurment_method=method)
             else:
                 ans = self.model_procurment_without_qty(product_code, sku, warehouse, location, procurment_method=method)
-                stock_en_transito = 0.0 #! Obtener stock en transito
-                family = product_stock.get('family', '')
-                nombre_producto = product_stock.get('nombre_producto', '')
-                categoria = product_stock.get('categoria', '')
-                actuals = product_stock.get('actuals', 0.0)
-                max_stock = rule.get('max_stock', 0.0)
-                min_stock = rule.get('min_stock', 0.0)
-                compra_sugerida = round(max_stock - (actuals + stock_en_transito))
-                ans[self.Product.SKU_OBJ_ID].update({
-                    self.f['family']: [family],
-                    self.f['product_name']: [nombre_producto],
-                    self.f['product_category']: [categoria],
-                })
-                ans.update({
-                    self.f['min_stock']: min_stock,
-                    self.f['max_stock']: max_stock,
-                    self.f['stock_actual']: actuals,
-                    self.f['stock_en_transito']: stock_en_transito,
-                    self.f['compra_sugerida']: compra_sugerida
-                })
-                product_by_warehouse[warehouse].append(ans)
-            #! ==============
+            stock_en_transito = 0.0 #! Obtener stock en transito
+            family = product_stock.get('family', '')
+            nombre_producto = product_stock.get('nombre_producto', '')
+            categoria = product_stock.get('categoria', '')
+            actuals = product_stock.get('actuals', 0.0)
+            max_stock = rule.get('max_stock', 0.0)
+            min_stock = rule.get('min_stock', 0.0)
+            compra_sugerida = round(max_stock - (actuals + stock_en_transito))
+            ans[self.Product.SKU_OBJ_ID].update({
+                self.f['family']: [family],
+                self.f['product_name']: [nombre_producto],
+                self.f['product_category']: [categoria],
+            })
+            ans.update({
+                self.f['min_stock']: min_stock,
+                self.f['max_stock']: max_stock,
+                self.f['stock_actual']: actuals,
+                self.f['stock_en_transito']: stock_en_transito,
+                self.f['compra_sugerida']: compra_sugerida
+            })
+            product_by_warehouse[warehouse].append(ans)
+        #! ==============
         response = self.upsert_procurment(product_by_warehouse, method=method)
         return response
 
