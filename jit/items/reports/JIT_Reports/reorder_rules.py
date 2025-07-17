@@ -476,7 +476,7 @@ class Reports(Reports):
 
         # product_code = list(product_dict.keys())
 
-        procurment = reorder_obj.get_procurments(product_code=product_code)
+        procurment = reorder_obj.get_procurments(product_code=product_code, procurment_method='transfer')
         if not procurment:
             return None
         
