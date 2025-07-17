@@ -4,6 +4,8 @@ from linkaform_api import settings
 from account_settings import *
 
 from accesos_utils import Accesos
+from datetime import datetime
+import pytz
 
 class Accesos(Accesos):
 
@@ -17,6 +19,8 @@ class Accesos(Accesos):
             'option_checkin': '663bffc28d00553254f274e0',
             'image_checkin': '6855e761adab5d93274da7d7',
             'comment_checkin': '66a5b9bed0c44910177eb724',
+            'start_shift': '6879828d0234f02649cad390',
+            'end_shift': '6879828d0234f02649cad391',
         })
         
     def do_checkin(self, location, area, employee_list=[], check_in_manual={}):
@@ -89,31 +93,45 @@ class Accesos(Accesos):
             resp_create['json'].update({'boot_status':{'guard_on_duty':user_data['name']}})
         return resp_create
 
+    def check_in_manual(self):
+        if self.answers.get(self.f['start_shift']):
+            msg = 'Ya se ha registrado el inicio del turno.'
+            self.LKFException({'msg': msg, 'title': 'Turno ya iniciado'})
+            
+        tz = pytz.timezone('America/Mexico_City')
+        now = datetime.now(tz)
+        fecha_actual = now.strftime('%Y-%m-%d %H:%M:%S')
+        
+        self.answers.update({
+            self.f['start_shift']: fecha_actual,
+        })
+        
+    def check_out_manual(self):
+        if self.answers.get(self.f['end_shift']):
+            msg = 'Ya se ha registrado el fin del turno.'
+            self.LKFException({'msg': msg, 'title': 'Turno ya finalizado'})
+
+        tz = pytz.timezone('America/Mexico_City')
+        now = datetime.now(tz)
+        fecha_actual = now.strftime('%Y-%m-%d %H:%M:%S')
+        
+        self.answers.update({
+            self.f['end_shift']: fecha_actual,
+        })
+        
+
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
-    print('ANSWERSSSSSSSSSSSSS', simplejson.dumps(acceso_obj.answers, indent=3))
-
-    location = acceso_obj.answers.get(acceso_obj.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID, {}).get(acceso_obj.Location.f['location'], '')
-    area = acceso_obj.answers.get(acceso_obj.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID, {}).get(acceso_obj.mf['nombre_area_salida'], '')
-    image = acceso_obj.answers.get(acceso_obj.f['image_checkin'], '')
-    comment = acceso_obj.answers.get(acceso_obj.f['comment_checkin'], '')
     option = acceso_obj.answers.get(acceso_obj.f['option_checkin'], '')
     
     response = {}
     if option == 'iniciar_turno':
-        response = acceso_obj.do_checkin(location, area, check_in_manual={
-            'image': image,
-            'comment': comment
-        })
+        acceso_obj.check_in_manual()
     elif option == 'cerrar_turno':
-        load_shift = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
-        checkin_id = load_shift.get('booth_status', {}).get('checkin_id', '')
-        
-        if checkin_id:
-            response = acceso_obj.do_checkout(checkin_id=checkin_id, location=location, area= area)
+        acceso_obj.check_out_manual()
 
-    print('RESPONSE', response)
+    print('ANSWERSSSSSSSSSSSSS', simplejson.dumps(acceso_obj.answers, indent=3))
     sys.stdout.write(simplejson.dumps({
         'status': 101,
         'replace_ans': acceso_obj.answers
