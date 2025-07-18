@@ -125,6 +125,10 @@ if __name__ == "__main__":
     acceso_obj.console_run()
     option = acceso_obj.answers.get(acceso_obj.f['option_checkin'], '')
     
+    if acceso_obj.answers.get(acceso_obj.f['start_shift']) and acceso_obj.answers.get(acceso_obj.f['end_shift']):
+        msg = 'Este check in ya ha sido registrado con inicio y cierre, crea uno nuevo.'
+        acceso_obj.LKFException({'msg': msg, 'title': 'Turno ya registrado'})
+
     response = {}
     if option == 'iniciar_turno':
         acceso_obj.check_in_manual()
