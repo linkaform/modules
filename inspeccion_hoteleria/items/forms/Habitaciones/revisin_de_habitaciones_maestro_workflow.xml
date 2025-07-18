@@ -160,6 +160,7 @@
                         <email_fields>[]</email_fields>
                         <emails>
                             <item>karina@linkaform.com</item>
+                            <item>paco@linkaform.com</item>
                         </emails>
                         <embed_company_picture>True</embed_company_picture>
                         <fields_attached>[]</fields_attached>
@@ -206,9 +207,9 @@
                     <user>[]</user>
                 </metadata>
                 <record>
-                    <created>False</created>
+                    <created>True</created>
                     <deleted>False</deleted>
-                    <edited>False</edited>
+                    <edited>True</edited>
                     <run_multiple_times>True</run_multiple_times>
                     <runtime>after</runtime>
                 </record>
@@ -246,10 +247,14 @@
         <item>
             <actions>
                 <item>
-                    <_id>681cf5db48ab7c800cafee09</_id>
+                    <_id>6866ad060c080667472e9d1d</_id>
                     <action_id>7</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
+                        <arguments>
+                            <option>before</option>
+                        </arguments>
+                        <integration>None</integration>
                         <script>
                             <created_at>2025-05-06T01:02:17.034830</created_at>
                             <deleted_at>None</deleted_at>
@@ -259,11 +264,37 @@
                             <itype>script</itype>
                             <name>{{ script.actualiza_status_inspeccion.name }}</name>
                             <start_date>2025-05-06T01:02:17.032487</start_date>
-                            <updated_at>2025-05-08T18:12:21.043629</updated_at>
+                            <updated_at>2025-06-27T14:00:39.619002</updated_at>
                         </script>
+                        <scriptArguments>
+                            <item>
+                                <label>option</label>
+                                <value>before</value>
+                            </item>
+                        </scriptArguments>
+                        <scriptQuery>None</scriptQuery>
+                        <selectedUser>None</selectedUser>
                         <user>SCRIPT_OWNER</user>
+                        <userOptions>
+                            <item>
+                                <id>SCRIPT_OWNER</id>
+                                <name>Dueño del script</name>
+                            </item>
+                            <item>
+                                <id>FORM_OWNER</id>
+                                <name>Dueño de la forma</name>
+                            </item>
+                            <item>
+                                <id>OWNER_ACCOUNT_EMAIL</id>
+                                <name>Dueño de la cuenta</name>
+                            </item>
+                            <item>
+                                <id>RECORD_USER</id>
+                                <name>Usuario que contesta</name>
+                            </item>
+                        </userOptions>
                     </configuration>
-                    <name>None</name>
+                    <name>Se ejecuta el script</name>
                 </item>
             </actions>
             <id>681cf5db48ab7c800cafee0d</id>
@@ -291,26 +322,97 @@
                     <deleted>False</deleted>
                     <edited>True</edited>
                     <run_multiple_times>True</run_multiple_times>
+                    <runtime>before</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>[]</triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>6866cb2196a88a1e98773054</_id>
+                    <action_id>7</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <arguments>
+                            <option>after</option>
+                        </arguments>
+                        <integration>None</integration>
+                        <script>
+                            <created_at>2025-05-06T01:02:17.034830</created_at>
+                            <deleted_at>None</deleted_at>
+                            <end_date>None</end_date>
+                            <id>{{ script.actualiza_status_inspeccion.id }}</id>
+                            <is_fileShared>False</is_fileShared>
+                            <itype>script</itype>
+                            <name>{{ script.actualiza_status_inspeccion.name }}</name>
+                            <start_date>2025-05-06T01:02:17.032487</start_date>
+                            <updated_at>2025-07-03T18:19:11.101230</updated_at>
+                        </script>
+                        <scriptArguments>
+                            <item>
+                                <label>option</label>
+                                <value>after</value>
+                            </item>
+                        </scriptArguments>
+                        <scriptQuery>None</scriptQuery>
+                        <selectedUser>None</selectedUser>
+                        <user>SCRIPT_OWNER</user>
+                        <userOptions>
+                            <item>
+                                <id>SCRIPT_OWNER</id>
+                                <name>Dueño del script</name>
+                            </item>
+                            <item>
+                                <id>FORM_OWNER</id>
+                                <name>Dueño de la forma</name>
+                            </item>
+                            <item>
+                                <id>OWNER_ACCOUNT_EMAIL</id>
+                                <name>Dueño de la cuenta</name>
+                            </item>
+                            <item>
+                                <id>RECORD_USER</id>
+                                <name>Usuario que contesta</name>
+                            </item>
+                        </userOptions>
+                    </configuration>
+                    <name>Se ejecuta script</name>
+                </item>
+            </actions>
+            <id>6866cb2196a88a1e9877305b</id>
+            <name>Crear registro en inspeccion hoteleria</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-07-04T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-07-03T18:17:33.646Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>True</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
                     <runtime>after</runtime>
                 </record>
                 <wf_fields>
                     <operator>all</operator>
-                    <triggers>
-                        <item>
-                            <condition>in=</condition>
-                            <form_id>None</form_id>
-                            <other_value>None</other_value>
-                            <prefix>answer</prefix>
-                            <trigger_field>
-                                <catalog>{}</catalog>
-                                <field_id>67f0844734855c523e139132</field_id>
-                                <group>{}</group>
-                                <label>Status Auditoria</label>
-                                <type>select</type>
-                            </trigger_field>
-                            <value>proceso</value>
-                        </item>
-                    </triggers>
+                    <triggers>[]</triggers>
                 </wf_fields>
             </rules>
         </item>

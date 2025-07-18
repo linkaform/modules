@@ -647,54 +647,6 @@
                     <label>Comentarios Generales</label>
                     <type>textarea</type>
                 </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>67f067f7ab887dca18365ad9</field_id>
-                    <group_id>None</group_id>
-                    <id>67f067f7ab887dca18365ad9</id>
-                    <label>Comentarios</label>
-                    <type>textarea</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>67f067f7ab887dca18365ad7</field_id>
-                    <group_id>None</group_id>
-                    <id>67f067f7ab887dca18365ad7</id>
-                    <label>Comentarios</label>
-                    <type>textarea</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>67f067f7ab887dca18365ad6</field_id>
-                    <group_id>None</group_id>
-                    <id>67f067f7ab887dca18365ad6</id>
-                    <label>Fotografía</label>
-                    <type>images</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>67f067f7ab887dca18365ad8</field_id>
-                    <group_id>None</group_id>
-                    <id>67f067f7ab887dca18365ad8</id>
-                    <label>Fotografía</label>
-                    <type>images</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>67f04218dd311d4ea0138e32</field_id>
-                    <group_id>None</group_id>
-                    <id>67f04218dd311d4ea0138e32</id>
-                    <label>Termostato de sala</label>
-                    <type>radio</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>67f04218dd311d4ea0138e31</field_id>
-                    <group_id>None</group_id>
-                    <id>67f04218dd311d4ea0138e31</id>
-                    <label>A / C (sin ruido)</label>
-                    <type>radio</type>
-                </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>
             <name>Ocultar sala suits</name>
@@ -823,22 +775,6 @@
                     <group_id>None</group_id>
                     <id>680bca79343dc15af751bbef</id>
                     <label>Tarja</label>
-                    <type>radio</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>67f04218dd311d4ea0138e32</field_id>
-                    <group_id>None</group_id>
-                    <id>67f04218dd311d4ea0138e32</id>
-                    <label>Termostato de sala</label>
-                    <type>radio</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>67f04218dd311d4ea0138e31</field_id>
-                    <group_id>None</group_id>
-                    <id>67f04218dd311d4ea0138e31</id>
-                    <label>A / C (sin ruido)</label>
                     <type>radio</type>
                 </item>
             </fields_ruled>

@@ -7,7 +7,7 @@
             <config>True</config>
             <inc_by>1</inc_by>
             <manual>False</manual>
-            <next>2</next>
+            <next>4</next>
             <padding_zeros>3</padding_zeros>
             <prefix>%y%m-</prefix>
             <required>False</required>
@@ -22,7 +22,7 @@
     </confirmation>
     <created_at>1745349265.0</created_at>
     <description />
-    <edit_public_records>False</edit_public_records>
+    <edit_public_records>True</edit_public_records>
     <edit_registers>True</edit_registers>
     <element_ids>[]</element_ids>
     <email_configuration>
@@ -2371,7 +2371,7 @@
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
                     <help_text>None</help_text>
-                    <label>Contra chapa</label>
+                    <label>Contra chapa General</label>
                     <number_type>None</number_type>
                     <options>
                         <item>
@@ -17289,7 +17289,7 @@
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
                     <help_text>None</help_text>
-                    <label>Sardinel</label>
+                    <label>Sardinel de puerta de baño</label>
                     <number_type>None</number_type>
                     <options>
                         <item>
@@ -28947,7 +28947,7 @@
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
                     <help_text>None</help_text>
-                    <label>Agua Fría / Caliente</label>
+                    <label>Agua Fría / Caliente en lavabo</label>
                     <number_type>None</number_type>
                     <options>
                         <item>
@@ -29184,7 +29184,7 @@
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
                     <help_text>None</help_text>
-                    <label>Desagüe</label>
+                    <label>Desagüe en lavabo</label>
                     <number_type>None</number_type>
                     <options>
                         <item>
@@ -34065,7 +34065,7 @@
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
                     <help_text>None</help_text>
-                    <label>Zoclos</label>
+                    <label>Zoclos Hab General</label>
                     <number_type>None</number_type>
                     <options>
                         <item>
@@ -34302,7 +34302,7 @@
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
                     <help_text>None</help_text>
-                    <label>A / C (sin ruido)</label>
+                    <label>A / C (sin ruido) Hab General</label>
                     <number_type>None</number_type>
                     <options>
                         <item>
@@ -37857,7 +37857,7 @@
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
                     <help_text>None</help_text>
-                    <label>Cuadros decorativos</label>
+                    <label>Cuadros decorativos Hab General</label>
                     <number_type>None</number_type>
                     <options>
                         <item>
@@ -48705,7 +48705,7 @@
                     <number_type>None</number_type>
                     <options>
                         <item>
-                            <label>Sí</label>
+                            <label>SÍ</label>
                             <option>None</option>
                             <selected>False</selected>
                             <value>sí</value>
@@ -54213,7 +54213,7 @@
         <active>False</active>
     </notification>
     <process_ids>[]</process_ids>
-    <public>False</public>
+    <public>True</public>
     <resource_uri>/api/infosync/form/131701/</resource_uri>
     <send_on_foreground>False</send_on_foreground>
     <start_event_id>None</start_event_id>
@@ -54249,5 +54249,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1748453997.0</updated_at>
+    <updated_at>1751564273.0</updated_at>
 </lkf>
