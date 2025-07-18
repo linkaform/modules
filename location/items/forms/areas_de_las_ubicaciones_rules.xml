@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='utf-8'?>
+<lkf>
+    <form_id>{{ form.areas_de_las_ubicaciones.id }}</form_id>
+    <id>680977acc8b8227d6f281990</id>
+    <rules>
+        <item>
+            <conditions>
+                <item>
+                    <condition>iexact=</condition>
+                    <field>
+                        <catalog_id>67450f0efff8e4d36edce99a</catalog_id>
+                        <field_id>663e5e68f5b8a7ce8211ed18</field_id>
+                        <group_id>None</group_id>
+                        <id>663e5e68f5b8a7ce8211ed18</id>
+                        <label>Tipo de Area</label>
+                        <type>catalog-select</type>
+                    </field>
+                    <value>Habitación</value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>680977786d022b9bff6e3645</field_id>
+                    <group_id>None</group_id>
+                    <id>680977786d022b9bff6e3645</id>
+                    <label>Número de Habitación</label>
+                    <type>integer</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>680977786d022b9bff6e3646</field_id>
+                    <group_id>None</group_id>
+                    <id>680977786d022b9bff6e3646</id>
+                    <label>Piso</label>
+                    <type>integer</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Habitación</name>
+            <operator>and</operator>
+            <rule_id>15381d90248a167e</rule_id>
+            <rule_type>show</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+    </rules>
+</lkf>
