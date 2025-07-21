@@ -269,7 +269,7 @@ class PCI_Utils():
             'answers.f1054000a0100000000000a2': area
         }
         print('query_folio_os =',query_folio_os)
-        record = self.cr_admin.find_one(query_folio_os, {'folio':1, 'answers':1, 'connection_id':1, 'user_id':1})
+        record = self.cr_admin.find_one(query_folio_os, {'folio':1, 'answers':1, 'connection_id':1, 'user_id':1, 'created_at': 1})
         return record
 
     def check_folio_pagado(self, folio):

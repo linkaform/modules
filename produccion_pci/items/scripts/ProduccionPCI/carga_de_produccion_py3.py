@@ -287,7 +287,9 @@ class Produccion_PCI( Produccion_PCI ):
                 msg_error_folio_vencido = ''
                 if not actual_record.get('connection_id'):
                     field_id_fecha_liq = 'f1054000a02000000000fa02' if tecnologia_orden == 'fibra' else '5a1eecfbb43fdd65914505a1'
-                    fecha_liquidada = actual_record.get('answers',{}).get(field_id_fecha_liq,'')
+                    # fecha_liquidada = actual_record.get('answers',{}).get(field_id_fecha_liq,'')
+                    # Se deja de utilizar la fecha de liquidación... se cambia por la fecha de creacion
+                    fecha_liquidada = actual_record['created_at'].strftime("%Y-%m-%d")
                     if fecha_liquidada:
                         date_fecha_liquidada = datetime.datetime.strptime(fecha_liquidada, '%Y-%m-%d')
                         fecha_actual = datetime.datetime.now()
