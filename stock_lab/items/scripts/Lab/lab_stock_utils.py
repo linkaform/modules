@@ -67,6 +67,8 @@ class Stock(Stock):
                 'setis': 1,
                 'Setis': 1,
                 'SETIS': 1,
+                'Test tube': 1,
+                'test_tube': 1,
             }
 
         self.f.update({
