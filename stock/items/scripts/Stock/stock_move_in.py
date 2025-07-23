@@ -337,8 +337,8 @@ if __name__ == '__main__':
     stock_obj.base_folio = None
     header, records = stock_obj.read_xls_file()
     groups = []
+    stock_obj.set_mongo_connections()
     if stock_obj.proceso_onts:
-        stock_obj.set_mongo_connections()
         groups = stock_obj.do_groups(header, records)
         onts = [x[0] for x in records]
         exist_onts = stock_obj.lookup_onts(onts)
