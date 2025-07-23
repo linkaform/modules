@@ -1,5 +1,7 @@
 # coding: utf-8
+from datetime import date
 import sys, simplejson
+from tkinter import N
 from linkaform_api import settings
 from account_settings import *
 
@@ -113,8 +115,8 @@ class Accesos(Accesos):
             answers=answers
         )
         return response
-    
-    def create_register(self, module, process, action, file, form_id, answers):
+
+    def create_register(self, module: str, process: str, action: str, file: str, form_id: int, answers: dict):
         """Crea un registro en Linkaform con los metadatos y respuestas proporcionadas.
 
         Args:
@@ -147,7 +149,7 @@ class Accesos(Accesos):
         response = self.detail_response(response.get('status_code', 0))
         return response
     
-    def detail_response(self, status_code):
+    def detail_response(self, status_code: int):
         if status_code in [200, 201, 202]:
             return {"status": "success", "message": "Operation completed successfully."}
         elif status_code in [400, 404]:
@@ -156,17 +158,57 @@ class Accesos(Accesos):
             return {"status": "error", "message": "Server error, please try again later."}
         else:
             return {"status": "error", "message": "Unexpected error occurred."}
+
+    def list_rondines(self, date_from=None, date_to=None, limit=20, offset=0):
+        match = {
+            "form_id": 121742,
+            "deleted_at": {"$exists": False},
+        }
+        
+        if date_from:
+            match.update({
+                "created_at": {"$gte": date_from}
+            })
+        if date_to:
+            match.update({
+                "created_at": {"$lte": date_to}
+            })
+        
+        query = [
+            {"$match": match},
+            {"$project": {
+                "_id": 0,
+                "folio": 1,
+                "ubicacion": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}",
+                "nombre_del_rondin": f"$answers.{self.rondin_keys['nombre_rondin']}",
+                "checkpoints": {"$size": {"$ifNull": [f"$answers.{self.rondin_keys['areas']}", []]}},
+                "recurrencia": {"$ifNull": [f"$answers.{self.rondin_keys['la_tarea_es_de']}", 'No Recurrente']},
+                "duracion_estimada": f"$answers.{self.rondin_keys['duracion_estimada']}",
+                "asignado_a": {"$ifNull": [f"$answers.{self.GRUPOS_CAT_OBJ_ID}.{self.rondin_keys['grupo_asignado']}", 'No Asignado']},
+            }},
+            {"$sort": {"created_at": -1}},
+            {"$skip": offset},
+            {"$limit": limit}
+        ]
+        
+        response = self.format_cr(self.cr.aggregate(query))
+        return response
     
 if __name__ == "__main__":
     class_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
     class_obj.console_run()
     data = class_obj.data.get('data',{})
-    option = data.get("option",'')
-    
+    option = data.get("option", '')
+    rondin_data = data.get("rondin_data", {})
+    date_from = data.get("date_from", None)
+    date_to = data.get("date_to", None)
+    limit = data.get("limit", 20)
+    offset = data.get("offset", 0)
+
     if option == 'create_rondin':
-        response = class_obj.create_rondin()
-    elif option == 'get_config_modulo_seguridad':
-        response = {}
+        response = class_obj.create_rondin(rondin_data=rondin_data)
+    elif option == 'list_rondines':
+        response = class_obj.list_rondines(date_from=date_from, date_to=date_to, limit=limit, offset=offset)
     else :
         response = {"msg": "Empty"}
     class_obj.HttpResponse({"data": response})
