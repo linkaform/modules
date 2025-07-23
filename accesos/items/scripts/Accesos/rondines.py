@@ -2,6 +2,7 @@
 from datetime import date
 import sys, simplejson
 from tkinter import N
+from bson import ObjectId
 from linkaform_api import settings
 from account_settings import *
 
@@ -165,9 +166,10 @@ class Accesos(Accesos):
         else:
             return {"status": "error", "message": "Unexpected error occurred."}
 
-    def list_rondines(self, date_from=None, date_to=None, limit=20, offset=0):
+    def list_rondines(self, record_id=None, date_from=None, date_to=None, limit=20, offset=0):
         """Lista los rondines según los filtros proporcionados.
         Params:
+            record_id (str): El ID del registro a filtrar.
             date_from (str): Fecha de inicio del filtro.
             date_to (str): Fecha de fin del filtro.
             limit (int): Número máximo de rondines a devolver.
@@ -180,6 +182,11 @@ class Accesos(Accesos):
             "deleted_at": {"$exists": False},
         }
         
+        if record_id:
+            limit = 1
+            match.update({
+                "_id": ObjectId(record_id)
+            })
         if date_from:
             match.update({
                 "created_at": {"$gte": date_from}
@@ -243,6 +250,7 @@ if __name__ == "__main__":
     limit = data.get("limit", 20)
     offset = data.get("offset", 0)
     folio = data.get("folio", '')
+    record_id = data.get("record_id", '')
 
     if option == 'create_rondin':
         response = class_obj.create_rondin(rondin_data=rondin_data)
@@ -250,6 +258,11 @@ if __name__ == "__main__":
         response = class_obj.list_rondines(date_from=date_from, date_to=date_to, limit=limit, offset=offset)
     elif option == 'delete_rondin':
         response = class_obj.delete_rondin(folio=folio)
+    elif option == 'get_rondin_by_id':
+        if not record_id:
+            response = {"msg": "Record ID is required to get rondin details."}
+        else:
+            response = class_obj.list_rondines(record_id=record_id)
     else:
         response = {"msg": "Empty"}
     class_obj.HttpResponse({"data": response})
