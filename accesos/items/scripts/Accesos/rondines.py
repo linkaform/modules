@@ -150,6 +150,12 @@ class Accesos(Accesos):
         return response
     
     def detail_response(self, status_code: int):
+        """Devuelve un mensaje detallado según el código de estado HTTP.
+        Args:
+            status_code (int): El código de estado HTTP devuelto por la API.
+        Returns:
+            dict: Un diccionario con el estado y el mensaje correspondiente.
+        """
         if status_code in [200, 201, 202]:
             return {"status": "success", "message": "Operation completed successfully."}
         elif status_code in [400, 404]:
@@ -160,6 +166,15 @@ class Accesos(Accesos):
             return {"status": "error", "message": "Unexpected error occurred."}
 
     def list_rondines(self, date_from=None, date_to=None, limit=20, offset=0):
+        """Lista los rondines según los filtros proporcionados.
+        Params:
+            date_from (str): Fecha de inicio del filtro.
+            date_to (str): Fecha de fin del filtro.
+            limit (int): Número máximo de rondines a devolver.
+            offset (int): Número de rondines a omitir desde el inicio.
+        Returns:
+            list: Lista de rondines con sus detalles.
+        """
         match = {
             "form_id": 121742,
             "deleted_at": {"$exists": False},
@@ -194,6 +209,29 @@ class Accesos(Accesos):
         response = self.format_cr(self.cr.aggregate(query))
         return response
     
+    def delete_rondin(self, folio: str):
+        """Elimina un rondin por su folio.
+        Args:
+            folio (str): El folio del rondin a eliminar.
+        Returns:
+            dict: Un diccionario con el estado de la operación.
+        Raises:
+            Exception: Si el folio no es proporcionado.
+        """
+        if not folio:
+            raise Exception("Folio is required to delete a rondin.")
+        
+        response = self.cr.delete_one({
+            'form_id': 121742, # ID del formulario de rondines
+            'folio': folio
+        })
+        
+        if response.deleted_count > 0:
+            response = self.detail_response(202)
+        else:
+            response = self.detail_response(404)
+        return response
+    
 if __name__ == "__main__":
     class_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
     class_obj.console_run()
@@ -204,11 +242,14 @@ if __name__ == "__main__":
     date_to = data.get("date_to", None)
     limit = data.get("limit", 20)
     offset = data.get("offset", 0)
+    folio = data.get("folio", '')
 
     if option == 'create_rondin':
         response = class_obj.create_rondin(rondin_data=rondin_data)
     elif option == 'list_rondines':
         response = class_obj.list_rondines(date_from=date_from, date_to=date_to, limit=limit, offset=offset)
-    else :
+    elif option == 'delete_rondin':
+        response = class_obj.delete_rondin(folio=folio)
+    else:
         response = {"msg": "Empty"}
     class_obj.HttpResponse({"data": response})
