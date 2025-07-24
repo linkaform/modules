@@ -66,7 +66,7 @@ class Accesos(Accesos):
             match_query.update({
                 f"answers.{self.area_update['tag_id_area']}": data.get('qr_area')
             })
-        elif data.get('option') == 'acutalizacion_de_qr' or data.get('option') == 'actualizar_foto_con_seleccion_de_nombre':
+        elif data.get('option') == 'actualización_de_qr' or data.get('option') == 'actualizar_foto_con_selección_de_nombre':
             match_query.update({
                 f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.configuracion_area['ubicacion']}": ubicacion,
                 f"answers.{self.configuracion_area['area']}": area
@@ -105,7 +105,7 @@ class Accesos(Accesos):
         ubicacion = data.get('ubicacion', '')
         area = data.get('area', '')
         area_ubicacion_data = self.get_record_ubicacion(ubicacion=ubicacion, area=area, data=data)
-        print('area_ubicacion_data', area_ubicacion_data)
+        print('area_ubicacion_data', simplejson.dumps(area_ubicacion_data, indent=3))
         folio = area_ubicacion_data.get('folio', '')
         record_id = area_ubicacion_data.get('_id', '')
 
