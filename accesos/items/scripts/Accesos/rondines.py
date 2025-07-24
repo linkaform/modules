@@ -16,6 +16,10 @@ class Accesos(Accesos):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
         self.load(module='Location', **self.kwargs)
         
+        self.f.update({
+            'rondin_area': '663e5d44f5b8a7ce8211ed0f'
+        })
+        
         self.rondin_keys = {
             'nombre_rondin': '6645050d873fc2d733961eba',
             'duracion_estimada': '6854459836ea891d9d2be7d9',
@@ -47,6 +51,13 @@ class Accesos(Accesos):
         }
         
     def create_rondin(self, rondin_data: dict = {}):
+        """Crea un rondin con los datos proporcionados.
+        Args:
+            rondin_data (dict): Un diccionario con los datos del rondin.
+        Returns:
+            response: La respuesta de la API de Linkaform al crear el rondin.
+        """
+        #! Data hardcoded for testing purposes
         rondin_data = {
             'nombre_rondin': 'Ejemplo rondin',
             'duracion_estimada': '30 minutos',
@@ -82,11 +93,14 @@ class Accesos(Accesos):
         }
         
         answers = {}
+        rondin_data['ubicacion'] = self.get_ubicacion_geolocation(location=rondin_data.get('ubicacion', ''))
+        rondin_data['areas'] = self.get_areas_geolocation(areas_list=rondin_data.get('areas', []))
         
         for key, value in rondin_data.items():
             if key == 'ubicacion':
                 answers[self.Location.UBICACIONES_CAT_OBJ_ID] = {
-                    self.Location.f['location']: value
+                    self.Location.f['location']: value.get('location', ''),
+                    self.f['address_geolocation']: value.get('geolocation', [])
                 }
             elif key == 'grupo_asignado':
                 answers[self.GRUPOS_CAT_OBJ_ID] = {
@@ -97,7 +111,8 @@ class Accesos(Accesos):
                 for area in value:
                     area_dict = {
                         self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
-                            self.Location.f['area']: area
+                            self.Location.f['area']: area.get('area', ''),
+                            self.f['address_geolocation']: area.get('geolocation', [])
                         }
                     }
                     areas_list.append(area_dict)
@@ -149,6 +164,29 @@ class Accesos(Accesos):
         response = self.lkf_api.post_forms_answers(metadata)
         response = self.detail_response(response.get('status_code', 0))
         return response
+
+    def delete_rondin(self, folio: str):
+        """Elimina un rondin por su folio.
+        Args:
+            folio (str): El folio del rondin a eliminar.
+        Returns:
+            dict: Un diccionario con el estado de la operación.
+        Raises:
+            Exception: Si el folio no es proporcionado.
+        """
+        if not folio:
+            raise Exception("Folio is required to delete a rondin.")
+        
+        response = self.cr.delete_one({
+            'form_id': 121742, # TODO Modularizar este ID
+            'folio': folio
+        })
+        
+        if response.deleted_count > 0:
+            response = self.detail_response(202)
+        else:
+            response = self.detail_response(404)
+        return response
     
     def detail_response(self, status_code: int):
         """Devuelve un mensaje detallado según el código de estado HTTP.
@@ -166,10 +204,9 @@ class Accesos(Accesos):
         else:
             return {"status": "error", "message": "Unexpected error occurred."}
 
-    def list_rondines(self, record_id=None, date_from=None, date_to=None, limit=20, offset=0):
+    def get_rondines(self, date_from=None, date_to=None, limit=20, offset=0):
         """Lista los rondines según los filtros proporcionados.
         Params:
-            record_id (str): El ID del registro a filtrar.
             date_from (str): Fecha de inicio del filtro.
             date_to (str): Fecha de fin del filtro.
             limit (int): Número máximo de rondines a devolver.
@@ -178,15 +215,10 @@ class Accesos(Accesos):
             list: Lista de rondines con sus detalles.
         """
         match = {
-            "form_id": 121742,
+            "form_id": 121742, # TODO Modularizar este ID
             "deleted_at": {"$exists": False},
         }
         
-        if record_id:
-            limit = 1
-            match.update({
-                "_id": ObjectId(record_id)
-            })
         if date_from:
             match.update({
                 "created_at": {"$gte": date_from}
@@ -199,7 +231,7 @@ class Accesos(Accesos):
         query = [
             {"$match": match},
             {"$project": {
-                "_id": 0,
+                "_id": 1,
                 "folio": 1,
                 "ubicacion": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}",
                 "nombre_del_rondin": f"$answers.{self.rondin_keys['nombre_rondin']}",
@@ -216,27 +248,85 @@ class Accesos(Accesos):
         response = self.format_cr(self.cr.aggregate(query))
         return response
     
-    def delete_rondin(self, folio: str):
-        """Elimina un rondin por su folio.
+    def get_rondin_by_id(self, record_id: str):
+        """Obtiene los detalles de un rondin por su ID de registro.
         Args:
-            folio (str): El folio del rondin a eliminar.
+            record_id (str): El ID del registro del rondin.
         Returns:
-            dict: Un diccionario con el estado de la operación.
+            dict: Un diccionario con los detalles del rondin.
         Raises:
-            Exception: Si el folio no es proporcionado.
+            Exception: Si el ID del registro no es proporcionado.
         """
-        if not folio:
-            raise Exception("Folio is required to delete a rondin.")
+        if not record_id:
+            raise Exception("Record ID is required to get rondin details.")
         
-        response = self.cr.delete_one({
-            'form_id': 121742, # ID del formulario de rondines
-            'folio': folio
-        })
+        query = [
+            {"$match": {
+                "_id": ObjectId(record_id),
+                "form_id": 121742,  # TODO Modularizar este ID
+                "deleted_at": {"$exists": False}
+            }},
+            {"$project": {
+                "_id": 0,
+                "nombre_del_rondin": f"$answers.{self.rondin_keys['nombre_rondin']}",
+                "recurrencia": {"$ifNull": [f"$answers.{self.rondin_keys['la_tarea_es_de']}", 'No Recurrente']},
+                "asignado_a": {"$ifNull": [f"$answers.{self.GRUPOS_CAT_OBJ_ID}.{self.rondin_keys['grupo_asignado']}", 'No Asignado']},
+                "ubicacion": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}",
+                "ubicacion_geolocation": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.f['address_geolocation']}",
+                "cantidad_de_puntos": {"$size": {"$ifNull": [f"$answers.{self.rondin_keys['areas']}", []]}},
+                "areas": f"$answers.{self.rondin_keys['areas']}",
+            }}
+        ]
+
+        response = self.format_cr(self.cr.aggregate(query))
+        response = self.unlist(response)
+        return response
         
-        if response.deleted_count > 0:
-            response = self.detail_response(202)
-        else:
-            response = self.detail_response(404)
+    def get_ubicacion_geolocation(self, location: str):
+        """
+        Obtiene la geolocalización de una ubicación específica.
+        Args:
+            location (str): El nombre de la ubicación.
+        Returns:
+            dict: Un diccionario con la ubicación y su geolocalización.
+        """
+        query = [
+            {"$match": {
+                "form_id": self.Location.UBICACIONES,
+                "deleted_at": {"$exists": False},
+                f"answers.{self.Location.f['location']}": location,
+            }},
+            {"$project": {
+                "_id": 0,
+                "location": f"$answers.{self.Location.f['location']}",
+                "geolocation": f"$answers.{self.CONTACTO_CAT_OBJ_ID}.{self.f['address_geolocation']}",
+            }}
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
+        response = self.unlist(response)
+        return response
+        
+    def get_areas_geolocation(self, areas_list: list):
+        """
+        Obtiene la geolocalización de las áreas proporcionadas.
+        Args:
+            areas_list (list): Lista de áreas.
+        Returns:
+            list: Lista de áreas con su geolocalización.
+        """
+        query = [
+            {"$match": {
+                "form_id": self.Location.AREAS_DE_LAS_UBICACIONES,
+                "deleted_at": {"$exists": False},
+                f"answers.{self.Location.f['area']}": {"$in": areas_list},
+            }},
+            {"$project": {
+                "_id": 0,
+                "area": f"$answers.{self.Location.f['area']}",
+                "geolocation": f"$answers.{self.CONTACTO_CAT_OBJ_ID}.{self.f['address_geolocation']}",
+            }}
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
         return response
     
 if __name__ == "__main__":
@@ -254,15 +344,12 @@ if __name__ == "__main__":
 
     if option == 'create_rondin':
         response = class_obj.create_rondin(rondin_data=rondin_data)
-    elif option == 'list_rondines':
-        response = class_obj.list_rondines(date_from=date_from, date_to=date_to, limit=limit, offset=offset)
+    elif option == 'get_rondines':
+        response = class_obj.get_rondines(date_from=date_from, date_to=date_to, limit=limit, offset=offset)
     elif option == 'delete_rondin':
         response = class_obj.delete_rondin(folio=folio)
     elif option == 'get_rondin_by_id':
-        if not record_id:
-            response = {"msg": "Record ID is required to get rondin details."}
-        else:
-            response = class_obj.list_rondines(record_id=record_id)
+        response = class_obj.get_rondin_by_id(record_id=record_id)
     else:
         response = {"msg": "Empty"}
     class_obj.HttpResponse({"data": response})
