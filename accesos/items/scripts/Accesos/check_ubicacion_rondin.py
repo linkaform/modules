@@ -11,7 +11,12 @@ from accesos_utils import Accesos
 from account_settings import *
 
 class Accesos(Accesos):
-
+    
+    def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False, **kwargs):
+        #--Variables
+        # Module Globals#
+        super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
+        
     def get_recorridos_by_area(self, area_rondin):
         """
         Recibe: El area que se buscara en la configuracion de recorridos
@@ -344,11 +349,63 @@ class Accesos(Accesos):
         res = self.lkf_api.post_forms_answers(metadata)
         return res
 
+    def has_guard_started_shift(self):
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.EMPLEADOS,
+                f"answers.{self.USUARIOS_OBJ_ID}.{self.mf['id_usuario']}": self.user.get('user_id'),
+            }},
+            {"$project": {
+                "_id": 0,
+                "nombre_completo": f"$answers.{self.USUARIOS_OBJ_ID}.{self.mf['nombre_usuario']}"
+            }},
+            {"$lookup": {
+                "from": "form_answer",
+                "let": {
+                    "nombre_comp": "$nombre_completo"
+                },
+                "pipeline": [
+                    {"$match": {
+                        "deleted_at": {"$exists": False},
+                        "form_id": 135386,
+                        "$expr": {
+                            "$eq": [
+                                f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_empleado']}", 
+                                "$$nombre_comp"
+                            ]
+                        }
+                    }},
+                    {"$project": {
+                        "_id": 0,
+                        "estatus": f"$answers.{self.checkin_fields['checkin_type']}"
+                    }},
+                    {"$sort": {"created_at": -1}},
+                    {"$limit": 1}
+                ],
+                "as": "checkin_records"
+            }},
+            {"$project": {
+                "checkin_records": 1
+            }},
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
+        response = self.unlist(response)
+        if response:
+            turno = self.unlist(response.get('checkin_records', [])).get('estatus', '')
+            if turno == 'cerrar_turno':
+                msg = 'No haz iniciado turno, debes iniciar tu turno en la forma de Check In Manual, revisala y vuelve a intentar hacer un check.'
+                self.LKFException({'msg': msg, 'title': 'Sin Turno'})
+            else:
+                pass
+
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
     acceso_obj.console_run()
     record_id = json.loads(sys.argv[1])
     record_id = record_id.get('_id', '').get('$oid', '')
+    # Validacion de turno
+    # acceso_obj.has_guard_started_shift()
     print('answers', simplejson.dumps(acceso_obj.answers, indent=3))
     acceso_obj.load(module='Location', **acceso_obj.kwargs)
     cat_area_rondin = acceso_obj.answers.get(acceso_obj.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {})
