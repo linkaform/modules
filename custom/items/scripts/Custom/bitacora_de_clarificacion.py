@@ -62,6 +62,7 @@ class Custom(Custom):
                 value_var = float(value_var)
 
             str_unidad_medida = var_data.get('help_text') or ""
+            str_unidad_medida = str_unidad_medida.split('|')[0].strip()
             
             if min_var and not max_var:
                 str_rango = f"> {min_var} {str_unidad_medida}"
