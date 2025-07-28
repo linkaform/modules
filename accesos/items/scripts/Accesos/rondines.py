@@ -51,6 +51,32 @@ class Accesos(Accesos):
             'fecha_final_recurrencia': 'abcde0001000000000010099',
         }
         
+    def get_average_rondin_duration(self, location: str, rondin_name: str):
+        query = [
+            {"$match": {
+                "form_id": 121745,  # TODO Modularizar este ID
+                "deleted_at": {"$exists": False},
+                f"answers.66a83ad2e004a874a4a08d7f.{self.Location.f['location']}": location,
+                f"answers.66a83ad2e004a874a4a08d7f.{self.f['nombre_del_recorrido']}": rondin_name,
+            }},
+            {"$group": {
+                "_id": None,
+                "average_duration": {
+                    "$avg": {
+                        "$ifNull": [f"$answers.{self.f['duracion_rondin']}", 0]
+                    }
+                }
+            }},
+            {"$project": {
+                "_id": 0,
+                "average_duration": {"$round": ["$average_duration", 2]}
+            }}
+        ]
+        
+        response = self.format_cr(self.cr.aggregate(query))
+        response = self.unlist(response).get('average_duration', 0)
+        return response
+        
     def create_rondin(self, rondin_data: dict = {}):
         """Crea un rondin con los datos proporcionados.
         Args:
@@ -67,6 +93,7 @@ class Accesos(Accesos):
                 'Caseta 6 Poniente',
                 'Sala de Juntas Planta Baja',
                 'Recursos eléctricos',
+                'Almacén de inventario',
             ],
             'grupo_asignado': 'Guardias',
             'fecha_hora_programada': '2025-10-01 12:00:00',
@@ -277,11 +304,57 @@ class Accesos(Accesos):
                 "ubicacion_geolocation": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.f['address_geolocation']}",
                 "cantidad_de_puntos": {"$size": {"$ifNull": [f"$answers.{self.rondin_keys['areas']}", []]}},
                 "areas": f"$answers.{self.rondin_keys['areas']}",
-            }}
+                "duracion_esperada": {"$ifNull": [f"$answers.{self.rondin_keys['duracion_estimada']}", "No especificada"]},
+            }},
+            {"$lookup": {
+                "from": "form_answer",
+                "let": {
+                    "ubicacion_rondin": "$ubicacion",
+                    "nombre_rondin": "$nombre_del_rondin",
+                },
+                "pipeline": [
+                    {"$match": {
+                        "deleted_at": {"$exists": False},
+                        "form_id": 121745, # TODO Modularizar este ID
+                        "$expr": {
+                            "$and": [ # TODO Modularizar estos ObjId de catalogo
+                                {"$eq": [f"$answers.66a83ad2e004a874a4a08d7f.{self.Location.f['location']}", "$$ubicacion_rondin"]},
+                                {"$eq": [f"$answers.66a83ad2e004a874a4a08d7f.{self.f['nombre_del_recorrido']}", "$$nombre_rondin"]}
+                            ]
+                        }
+                    }},
+                    {"$project": {
+                        "_id": 0,
+                        "fecha_inicio": {"$ifNull": [f"$answers.{self.f['fecha_inicio_rondin']}", ""]},
+                        "estatus_rondin": {"$ifNull": [f"$answers.{self.f['estatus_del_recorrido']}", ""]},
+                        "fecha_finalizacion": {"$ifNull": [f"$answers.{self.f['fecha_fin_rondin']}", ""]},
+                    }},
+                    {"$sort": {"created_at": -1}},
+                    {"$limit": 1}
+                ],
+                "as": "bitacora_rondin"
+            }},
+            {"$project": {
+                "bitacora_rondin": {
+                    "$arrayElemAt": ["$bitacora_rondin", 0]
+                },
+                "nombre_del_rondin": 1,
+                "recurrencia": 1,
+                "asignado_a": 1,
+                "ubicacion": 1,
+                "ubicacion_geolocation": 1,
+                "cantidad_de_puntos": 1,
+                "areas": 1,
+                "duracion_esperada": 1,
+            }},
         ]
 
         response = self.format_cr(self.cr.aggregate(query))
         response = self.unlist(response)
+        location = response.get('ubicacion', '')
+        rondin_name = response.get('nombre_del_rondin', '')
+        duracion_promedio = self.get_average_rondin_duration(location=location, rondin_name=rondin_name)
+        response['duracion_promedio'] = duracion_promedio
         return response
         
     def get_ubicacion_geolocation(self, location: str):
