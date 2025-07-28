@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<lkf>
+    <form_id>{{ form.configuracion_de_area.id }}</form_id>
+    <id>68825eaa899ce0530832dde6</id>
+    <rules>[]</rules>
+</lkf>
