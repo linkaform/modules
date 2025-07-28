@@ -17,7 +17,8 @@ class Accesos(Accesos):
         self.load(module='Location', **self.kwargs)
         
         self.f.update({
-            'rondin_area': '663e5d44f5b8a7ce8211ed0f'
+            'rondin_area': '663e5d44f5b8a7ce8211ed0f',
+            'foto_area': '6763096aa99cee046ba766ad',
         })
         
         self.rondin_keys = {
@@ -94,7 +95,7 @@ class Accesos(Accesos):
         
         answers = {}
         rondin_data['ubicacion'] = self.get_ubicacion_geolocation(location=rondin_data.get('ubicacion', ''))
-        rondin_data['areas'] = self.get_areas_geolocation(areas_list=rondin_data.get('areas', []))
+        rondin_data['areas'] = self.get_areas_details(areas_list=rondin_data.get('areas', []))
         
         for key, value in rondin_data.items():
             if key == 'ubicacion':
@@ -112,7 +113,8 @@ class Accesos(Accesos):
                     area_dict = {
                         self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
                             self.Location.f['area']: area.get('area', ''),
-                            self.f['address_geolocation']: area.get('geolocation', [])
+                            self.f['address_geolocation']: area.get('geolocation', []),
+                            self.f['foto_area']: area.get('image', [])
                         }
                     }
                     areas_list.append(area_dict)
@@ -306,13 +308,13 @@ class Accesos(Accesos):
         response = self.unlist(response)
         return response
         
-    def get_areas_geolocation(self, areas_list: list):
+    def get_areas_details(self, areas_list: list):
         """
-        Obtiene la geolocalización de las áreas proporcionadas.
+        Obtiene los detalles necesarios de las áreas proporcionadas.
         Args:
             areas_list (list): Lista de áreas.
         Returns:
-            list: Lista de áreas con su geolocalización.
+            list: Lista de áreas con su geolocalización y foto.
         """
         query = [
             {"$match": {
@@ -324,6 +326,7 @@ class Accesos(Accesos):
                 "_id": 0,
                 "area": f"$answers.{self.Location.f['area']}",
                 "geolocation": f"$answers.{self.CONTACTO_CAT_OBJ_ID}.{self.f['address_geolocation']}",
+                "image": f"$answers.{self.f['foto_area']}"
             }}
         ]
         response = self.format_cr(self.cr.aggregate(query))
