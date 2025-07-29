@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson, re
+from fractions import Fraction
 from custom_utils import Custom
 from account_settings import *
 
@@ -8,7 +9,7 @@ class Custom(Custom):
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
 
-    def prepare_data_to_group(self, var_data, value, str_rango_referencia):
+    def prepare_data_to_group(self, var_data, value, str_rango_referencia, value_as_str):
         """
         Se procesan los datos del campo encontrado como fuera de rango
 
@@ -20,13 +21,36 @@ class Custom(Custom):
         Return:
             Diccionario con valores que se iran integrando al grupo repetitivo de resultados
         """
+        # if isinstance(value, Fraction):
+        #     value = float(value)
+        
         return {
             self.f['fuera_rango_variable']: var_data.get('label'),
-            self.f['fuera_rango_valor_obtenido']: value,
+            self.f['fuera_rango_valor_obtenido']: str(value) if value_as_str else value,
             self.f['fuera_rango_rango_referencia']: str_rango_referencia
         }
 
-    def process_variables(self, dict_variables, data_config, answers_to_get_values):
+    def is_fracciones(self, val):
+        """
+        Se revisa si el valor es texto y aplica para fracciones
+        """
+        return isinstance(val, str) and "/" in val
+
+    def get_partes_fraccion(self, val):
+        """
+        Desarma la fraccion para obtener el numerador y denominador
+        """
+        def convert_int(v):
+            try:
+                return int( v.replace(' ', '') )
+            except:
+                return None
+
+        val_split = val.split("/")
+
+        return convert_int( val_split[0] ), convert_int( val_split[1] )
+
+    def process_variables(self, dict_variables, data_config, answers_to_get_values, value_as_str):
         """
         Procesa el diccionario de variables y las compara con las configuraciones que tiene en el catalogo
         
@@ -58,6 +82,36 @@ class Custom(Custom):
             if not value_var or not any( [min_var, max_var] ):
                 continue
 
+            # Hay algunos casos excepcionales donde se manejan fracciones
+            if self.is_fracciones(min_var) or self.is_fracciones(max_var):
+                
+                numerador_min, denominador_min = self.get_partes_fraccion( min_var )
+                if not all( [numerador_min, denominador_min] ):
+                    raise Exception( simplejson.dumps({
+                        'folio': {'msg': [f'Error al convertir a fracciones el mínimo del campo {var_field_id}'], 'label': 'Folio', 'error': []}
+                    }) )
+
+                numerador_max, denominador_max = self.get_partes_fraccion( max_var )
+                if not all( [numerador_max, denominador_max] ):
+                    raise Exception( simplejson.dumps({
+                        'folio': {'msg': [f'Error al convertir a fracciones el máximo del campo {var_field_id}'], 'label': 'Folio', 'error': []}
+                    }) )
+
+                if not self.is_fracciones(value_var):
+                    raise Exception( simplejson.dumps({
+                        var_field_id: {'msg': [f'El valor debe ser especificado en Francciones'], 'label': var_data.get('label'), 'error': []}
+                    }) )
+
+                numerador_val, denominador_val = self.get_partes_fraccion( value_var )
+                if not all( [numerador_val, denominador_val] ):
+                    raise Exception( simplejson.dumps({
+                        var_field_id: {'msg': [f'Error al convertir a fracciones'], 'label': var_data.get('label'), 'error': []}
+                    }) )
+
+                min_var = Fraction( numerador_min, denominador_min )
+                max_var = Fraction( numerador_max, denominador_max )
+                value_var = Fraction( numerador_val, denominador_val )
+
             if isinstance(value_var, str):
                 value_var = float(value_var)
 
@@ -68,23 +122,23 @@ class Custom(Custom):
                 str_rango = f"> {min_var} {str_unidad_medida}"
                 # Se evalúa solo el mínimo
                 if value_var < min_var:
-                    list_items_to_group.append( self.prepare_data_to_group(var_data, value_var, str_rango) )
+                    list_items_to_group.append( self.prepare_data_to_group(var_data, value_var, str_rango, value_as_str) )
             elif max_var and not min_var:
                 str_rango = f"< {max_var} {str_unidad_medida}"
                 # Se evalúa solo el máximo
                 if value_var > max_var:
-                    list_items_to_group.append( self.prepare_data_to_group(var_data, value_var, str_rango) )
+                    list_items_to_group.append( self.prepare_data_to_group(var_data, value_var, str_rango, value_as_str) )
             elif not min_var <= value_var <= max_var:
                 str_rango = f"{min_var} - {max_var} {str_unidad_medida}"
                 # Si llega hasta acá, hay minimo y maximo definido, se evalua que el valor esté dentro del rango
-                list_items_to_group.append( self.prepare_data_to_group(var_data, value_var, str_rango) )
+                list_items_to_group.append( self.prepare_data_to_group(var_data, value_var, str_rango, value_as_str) )
 
         return list_items_to_group
 
     
     def bitacora_de_clarificacion(self):
         # Se obtienen los campos que se ocupan como variables, capturados por el usuario y desde readonly
-        fields_to_group, fields_to_catalog, fields_generals = self.get_fields_variables()
+        fields_to_group, fields_to_catalog, fields_generals, value_as_str = self.get_fields_variables()
         # print('\n === fields_to_group =',simplejson.dumps(fields_to_group, indent=4))
         # print('\n === fields_to_catalog =',simplejson.dumps(fields_to_catalog, indent=4))
         # print('\n === fields_generals =',simplejson.dumps(fields_generals, indent=4))
@@ -98,8 +152,8 @@ class Custom(Custom):
         group_vars_fuera_de_rango = []
 
         # Para la forma Bitácora de Energía (134982) se requiere realizar un cálculo para el Total de Niveles de Tanque
-        if self.form_id == self.FORM_BITACORA_ENERGIA:
-
+        is_form_bitacora_energia = self.form_id == self.FORM_BITACORA_ENERGIA
+        if is_form_bitacora_energia:
             total_niveles_tanque = sum([ 
                 answers.get( self.f[ field_tanque ], 0 ) 
                 for field_tanque in [
@@ -107,25 +161,28 @@ class Custom(Custom):
                 ]
             ])
 
+            print('total_niveles_tanque =',total_niveles_tanque)
+
             answers[ self.f['total_niveles_tanque'] ] = total_niveles_tanque
         
         # Se procesan las variables que están dentro de grupo repetitivo para armar la estructura que necesito
         for field_group, fields_variables in fields_to_group.items():
             for item_group in answers.get( field_group, [] ):
-                group_vars_fuera_de_rango.extend( self.process_variables(fields_variables, config_ranges_variables, item_group) )
+                group_vars_fuera_de_rango.extend( self.process_variables(fields_variables, config_ranges_variables, item_group, value_as_str) )
 
         # Se procesan las variables que están en un catálogo
         for field_catalog, fields_variables in fields_to_catalog.items():
-            group_vars_fuera_de_rango.extend( self.process_variables(fields_variables, config_ranges_variables, answers.get(field_catalog, {})) )
+            group_vars_fuera_de_rango.extend( self.process_variables(fields_variables, config_ranges_variables, answers.get(field_catalog, {}), value_as_str) )
 
         # Se procesan las variables que están a primer nivel del answers
-        group_vars_fuera_de_rango.extend( self.process_variables(fields_generals, config_ranges_variables, answers) )
+        group_vars_fuera_de_rango.extend( self.process_variables(fields_generals, config_ranges_variables, answers, value_as_str) )
 
         # Se integra al answers el grupo de Variables fuera de rango
         # print('=== group vars = ', simplejson.dumps(group_vars_fuera_de_rango, indent=4))
 
-        if group_vars_fuera_de_rango:
-            answers[ self.f['group_fuera_de_rango'] ] = group_vars_fuera_de_rango
+        if group_vars_fuera_de_rango or is_form_bitacora_energia:
+            if group_vars_fuera_de_rango:
+                answers[ self.f['group_fuera_de_rango'] ] = group_vars_fuera_de_rango
 
             # Se agrega el grupo repetitivo al answers del registro que se esta enviando
             sys.stdout.write(simplejson.dumps({
@@ -148,14 +205,19 @@ class Custom(Custom):
         Se consulta la estructura de la forma y se obtienen los campos que seran necesarios para 
         el grupo de variables
         """
-        form_fields = lkf_obj.lkf_api.get_form_id_fields(self.FORM_BITACORA)
+        form_fields = lkf_obj.lkf_api.get_form_id_fields(lkf_obj.form_id)
         fields = form_fields[0]['fields']
 
         # Se procesan los campos y se obtienen los que empiecen por aaaaa
         fields_to_group, fields_to_catalog, fields_generals = {}, {}, {}
+        value_as_str = False
 
         for f in fields:
             field_id = f.get('field_id', '')
+
+            if field_id == self.f['fuera_rango_valor_obtenido'] and f['field_type'] == 'text':
+                value_as_str = True
+
             if re.match(r"^(aaaaa|ccaaa)", field_id):
 
                 data_field = {
@@ -185,12 +247,12 @@ class Custom(Custom):
         #     for f in fields
         #     if re.match(r"^(aaaaa|ccaaa)", f.get('field_id', ''))
         # }
-        return fields_to_group, fields_to_catalog, fields_generals
+        return fields_to_group, fields_to_catalog, fields_generals, value_as_str
 
 
 if __name__ == '__main__':
     lkf_obj = Custom(settings, sys_argv=sys.argv)
-    lkf_obj.console_run()
+    # lkf_obj.console_run()
 
     answers = lkf_obj.answers
 
@@ -215,5 +277,8 @@ if __name__ == '__main__':
 
     # answers['aaaaa9ae6252bddeaede7911'] = 50
     # answers['aaaaaff28802aa99a480d35e'] = 1.2
+
+    # Pruebas de valores con Fracciones
+    # answers['aaaaa0c7d75b0e3f4ba2c326'] = "25 / 2"
 
     lkf_obj.bitacora_de_clarificacion()
