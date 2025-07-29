@@ -34,6 +34,10 @@ class Accesos(Accesos):
             'direccion_area': '663a7e0fe48382c5b1230902',
             'geolocalizacion_area': '663e5c8cf5b8a7ce8211ed0c',
         }
+        
+        self.f.update({
+            'status_details': '6889337c4db2c8b3de148e77',
+        })
 
     def format_data_area(self, data):
         formatted_data = {}
@@ -98,7 +102,11 @@ class Accesos(Accesos):
         res = self.format_cr(self.cr.aggregate(query))
         res = self.unlist(res)
         if not res and data.get('option') == 'actualizar_foto_con_scann_de_qr':
-            raise Exception("No se encontró un registro de área para el QR proporcionado. Intenta asignandole uno nuevo.")
+            msg = 'No se encontró un registro de área para el QR proporcionado. Intenta asignandole uno nuevo.'
+            self.LKFException({'msg': msg, 'title': 'Actualizacion de area'})
+        if not res and data.get('option') == 'actualización_de_qr':
+            msg = 'No se encontró un registro de área para la ubicación y área proporcionadas en la forma Areas de las Ubicaciones.'
+            self.LKFException({'msg': msg, 'title': 'Actualizacion de area'})
         return res
 
     def update_area(self, data):
@@ -163,11 +171,25 @@ class Accesos(Accesos):
                 '_id': record_id
             })
 
-            res = self.net.patch_forms_answers(metadata)
-            if res.get('status_code') in [200, 201, 202]:
-                return f'Area actualizada correctamente: {folio}'
-            else:
-                return f'Error al actualizar el area: {folio}'
+            response = self.net.patch_forms_answers(metadata)
+            response = self.detail_response(response.get('status_code', 0))
+            return response
+            
+    def detail_response(self, status_code: int):
+        """Devuelve un mensaje detallado según el código de estado HTTP.
+        Args:
+            status_code (int): El código de estado HTTP devuelto por la API.
+        Returns:
+            dict: Un diccionario con el estado y el mensaje correspondiente.
+        """
+        if status_code in [200, 201, 202]:
+            return {"status": "success", "message": "Operation completed successfully."}
+        elif status_code in [400, 404]:
+            return {"status": "error", "message": "Bad request or resource not found."}
+        elif status_code in [500, 502, 503]:
+            return {"status": "error", "message": "Server error, please try again later."}
+        else:
+            return {"status": "error", "message": "Unexpected error occurred."}
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
@@ -176,5 +198,10 @@ if __name__ == "__main__":
 
     data = acceso_obj.format_data_area(acceso_obj.answers)
     response = acceso_obj.update_area(data)
+    if response:
+        acceso_obj.answers[acceso_obj.f['status_details']] = response.get('message', 'No se pudo actualizar el área')
 
-    acceso_obj.HttpResponse({"data": response})
+    sys.stdout.write(simplejson.dumps({
+        'status': 101,
+        'replace_ans': acceso_obj.answers
+    }))
