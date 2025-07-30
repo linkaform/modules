@@ -17,6 +17,10 @@ class Accesos(Accesos):
         # Module Globals#
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
         
+        self.f.update({
+            'folio_del_check': '688a584dfa0d4a318d9ff389'
+        })
+        
     def get_recorridos_by_area(self, area_rondin):
         """
         Recibe: El area que se buscara en la configuracion de recorridos
@@ -312,6 +316,7 @@ class Accesos(Accesos):
             else:
                 incidente = incidencia.get(self.f['incidente_open'], '')
             format_grupo_incidencias.append({
+                self.f['folio_del_check']: self.folio,
                 self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID: {
                     self.mf['nombre_empleado']: employee_name
                 },
