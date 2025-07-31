@@ -55,7 +55,7 @@ if __name__ == "__main__":
     elif option == 'assing_gafete':
         response = acceso_obj.assing_gafete(data_gafete, id_bitacora, tipo_movimiento)
     elif option == 'list_bitacora':
-        response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, limit=limit, offset=offset)
+        response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, limit=limit, offset=offset,  filterDate=filterDate)
     elif option == 'list_bitacora2':
         response = acceso_obj.get_list_bitacora2(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate)
     elif option == 'get_user_booths':

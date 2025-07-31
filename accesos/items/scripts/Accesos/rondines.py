@@ -26,6 +26,7 @@ class Accesos(Accesos):
             'duracion_estimada': '6854459836ea891d9d2be7d9',
             'ubicacion': '663e5c57f5b8a7ce8211ed0b',
             'areas': '6645052ef8bc829a5ccafaf5',
+            'grupo_areas':'66462aa5d4a4af2eea07e0d1',
             'grupo_asignado': '638a9ab3616398d2e392a9fa',
             'fecha_hora_programada': 'abcde0001000000000010001',
             'programar_anticipacion': 'abcde0002000000000010001',
@@ -85,40 +86,41 @@ class Accesos(Accesos):
             response: La respuesta de la API de Linkaform al crear el rondin.
         """
         #! Data hardcoded for testing purposes
-        rondin_data = {
-            'nombre_rondin': 'Ejemplo rondin',
-            'duracion_estimada': '30 minutos',
-            'ubicacion': 'Planta Monterrey',
-            'areas': [
-                'Caseta 6 Poniente',
-                'Sala de Juntas Planta Baja',
-                'Recursos eléctricos',
-                'Almacén de inventario',
-            ],
-            'grupo_asignado': 'Guardias',
-            'fecha_hora_programada': '2025-10-01 12:00:00',
-            'programar_anticipacion': 'no',
-            'cuanto_tiempo_de_anticipacion': '',
-            'cuanto_tiempo_de_anticipacion_expresado_en': '',
-            'tiempo_para_ejecutar_tarea': 30,
-            'tiempo_para_ejecutar_tarea_expresado_en': 'minutos',
-            'la_tarea_es_de': '',
-            'se_repite_cada': '',
-            'sucede_cada': 'igual_que_la_primer_fecha',
-            'sucede_recurrencia': [],
-            'en_que_minuto_sucede': '',
-            'cada_cuantos_minutos_se_repite': '',
-            'en_que_hora_sucede': '',
-            'cada_cuantas_horas_se_repite': '',
-            'que_dias_de_la_semana': [],
-            'en_que_semana_sucede': '',
-            'que_dia_del_mes': '',
-            'cada_cuantos_dias_se_repite': '',
-            'en_que_mes': '',
-            'cada_cuantos_meses_se_repite': '',
-            'la_recurrencia_cuenta_con_fecha_final': 'no',
-            'fecha_final_recurrencia': '',
-        }
+
+        # rondin_data = {
+        #     'nombre_rondin': 'Ejemplo rondin',
+        #     'duracion_estimada': '30 minutos',
+        #     'ubicacion': 'Planta Monterrey',
+        #     'areas': [
+        #         'Caseta 6 Poniente',
+        #         'Sala de Juntas Planta Baja',
+        #         'Recursos eléctricos',
+        #         'Almacén de inventario',
+        #     ],
+        #     'grupo_asignado': 'Guardias',
+        #     'fecha_hora_programada': '2025-10-01 12:00:00',
+        #     'programar_anticipacion': 'no',
+        #     'cuanto_tiempo_de_anticipacion': '',
+        #     'cuanto_tiempo_de_anticipacion_expresado_en': '',
+        #     'tiempo_para_ejecutar_tarea': 30,
+        #     'tiempo_para_ejecutar_tarea_expresado_en': 'minutos',
+        #     'la_tarea_es_de': '',
+        #     'se_repite_cada': '',
+        #     'sucede_cada': 'igual_que_la_primer_fecha',
+        #     'sucede_recurrencia': [],
+        #     'en_que_minuto_sucede': '',
+        #     'cada_cuantos_minutos_se_repite': '',
+        #     'en_que_hora_sucede': '',
+        #     'cada_cuantas_horas_se_repite': '',
+        #     'que_dias_de_la_semana': [],
+        #     'en_que_semana_sucede': '',
+        #     'que_dia_del_mes': '',
+        #     'cada_cuantos_dias_se_repite': '',
+        #     'en_que_mes': '',
+        #     'cada_cuantos_meses_se_repite': '',
+        #     'la_recurrencia_cuenta_con_fecha_final': 'no',
+        #     'fecha_final_recurrencia': '',
+        # }
         
         answers = {}
         rondin_data['ubicacion'] = self.get_ubicacion_geolocation(location=rondin_data.get('ubicacion', ''))
@@ -150,7 +152,7 @@ class Accesos(Accesos):
                 pass
             else:
                 answers[self.rondin_keys[key]] = value
-                
+        print("answers", answers)
         response = self.create_register(
             module='Accesos',
             process='Creacion de un rondin',
@@ -159,6 +161,35 @@ class Accesos(Accesos):
             form_id=121742, #TODO Modularizar este ID
             answers=answers
         )
+        return response
+
+    def update_rondin(self, folio, rondin_data: dict = {}):
+        answers = {}
+        
+        for key, value in rondin_data.items():
+            if key == 'ubicacion':
+                answers[self.Location.UBICACIONES_CAT_OBJ_ID] = {
+                    self.Location.f['location']: value
+                }
+            elif key == 'grupo_asignado':
+                answers[self.GRUPOS_CAT_OBJ_ID] = {
+                    self.rondin_keys[key]: value
+                }
+            elif key == 'areas':
+                areas_list = []
+                for area in value:
+                    area_dict = {
+                        self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
+                            self.Location.f['area']: area
+                        }
+                    }
+                    areas_list.append(area_dict)
+                answers[self.rondin_keys["grupo_areas"]] = areas_list
+            elif value == '':
+                pass
+            else:
+                answers[self.rondin_keys[key]] = value
+        response = self.lkf_api.patch_multi_record( answers = answers, form_id=121742, folios=[folio])
         return response
 
     def create_register(self, module: str, process: str, action: str, file: str, form_id: int, answers: dict):
@@ -268,12 +299,14 @@ class Accesos(Accesos):
                 "recurrencia": {"$ifNull": [f"$answers.{self.rondin_keys['la_tarea_es_de']}", 'No Recurrente']},
                 "duracion_estimada": f"$answers.{self.rondin_keys['duracion_estimada']}",
                 "asignado_a": {"$ifNull": [f"$answers.{self.GRUPOS_CAT_OBJ_ID}.{self.rondin_keys['grupo_asignado']}", 'No Asignado']},
+                "fecha_hora_programada": f"$answers.{self.rondin_keys['fecha_hora_programada']}",
+                "cada_cuantos_dias_se_repite": f"$answers.{self.rondin_keys['cada_cuantos_dias_se_repite']}",
+                "areas": f"$answers.{self.rondin_keys['areas']}.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area']}",
             }},
-            {"$sort": {"created_at": -1}},
+            {"$sort": {"folio": -1}},
             {"$skip": offset},
             {"$limit": limit}
         ]
-        
         response = self.format_cr(self.cr.aggregate(query))
         return response
     
@@ -353,8 +386,8 @@ class Accesos(Accesos):
         response = self.unlist(response)
         location = response.get('ubicacion', '')
         rondin_name = response.get('nombre_del_rondin', '')
-        duracion_promedio = self.get_average_rondin_duration(location=location, rondin_name=rondin_name)
-        response['duracion_promedio'] = duracion_promedio
+        # duracion_promedio = self.get_average_rondin_duration(location=location, rondin_name=rondin_name)
+        # response['duracion_promedio'] = duracion_promedio
         return response
         
     def get_ubicacion_geolocation(self, location: str):
@@ -404,6 +437,22 @@ class Accesos(Accesos):
         ]
         response = self.format_cr(self.cr.aggregate(query))
         return response
+
+    def get_catalog_areas(self, ubicacion=""):
+        #Obtener areas disponibles para rondin
+        if ubicacion:
+            options = {
+                'startkey': [ubicacion],
+                'endkey': [f"{ubicacion}\n",{}],
+                'group_level':2
+            }
+
+            catalog_id = self.AREAS_DE_LAS_UBICACIONES_CAT_ID
+            form_id = 121742
+            return self.catalogo_view(catalog_id, form_id, options)
+        else:
+            raise Exception("Ubicacion is required.")
+     
     
 if __name__ == "__main__":
     class_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
@@ -417,13 +466,18 @@ if __name__ == "__main__":
     offset = data.get("offset", 0)
     folio = data.get("folio", '')
     record_id = data.get("record_id", '')
+    ubicacion = data.get("ubicacion", '')
 
     if option == 'create_rondin':
         response = class_obj.create_rondin(rondin_data=rondin_data)
     elif option == 'get_rondines':
         response = class_obj.get_rondines(date_from=date_from, date_to=date_to, limit=limit, offset=offset)
+    elif option == 'update_rondin':
+        response = class_obj.update_rondin(folio=folio,rondin_data=rondin_data)
     elif option == 'delete_rondin':
         response = class_obj.delete_rondin(folio=folio)
+    elif option == 'get_catalog_areas':
+        response = class_obj.get_catalog_areas(ubicacion=ubicacion)
     elif option == 'get_rondin_by_id':
         response = class_obj.get_rondin_by_id(record_id=record_id)
     else:
