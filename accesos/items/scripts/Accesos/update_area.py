@@ -229,10 +229,11 @@ class Accesos(Accesos):
         }
         res = self.lkf_api.search_catalog(131890, mango_query)
         res = self.unlist(res)
-        res.pop('_id', None)
-        res.pop('_rev', None)
-        res.pop('created_at', None)
-        res.pop('updated_at', None)
+        if res:
+            res.pop('_id', None)
+            res.pop('_rev', None)
+            res.pop('created_at', None)
+            res.pop('updated_at', None)
         return res if res else {}
 
     def create_new_area(self, data):
@@ -264,7 +265,7 @@ class Accesos(Accesos):
             process='Creacion de una area',
             action='rondines',
             file='accesos/app.py',
-            form_id=131892, #TODO Modularizar este ID
+            form_id=self.AREAS_DE_LAS_UBICACIONES,
             answers=answers
         )
         
