@@ -36,6 +36,7 @@ class Accesos(Accesos):
             'colonia_area': '663a7f79e48382c5b123090a',
             'direccion_area': '663a7e0fe48382c5b1230902',
             'geolocalizacion_area': '663e5c8cf5b8a7ce8211ed0c',
+            'geolocalizacion_area_ubicacion': '688bac1ecfdcf8b16eb209b5'
         }
         
         self.f.update({
@@ -60,7 +61,8 @@ class Accesos(Accesos):
             'ubicacion': data.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.configuracion_area['ubicacion'], ''),
             'area': data.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.configuracion_area['area'], ''),
             'create_area': True if data.get(self.configuracion_area['create_area']) == 'crear_nueva_area' else False,
-            'nombre_nueva_area': data.get(self.configuracion_area['nombre_nueva_area'], '')
+            'nombre_nueva_area': data.get(self.configuracion_area['nombre_nueva_area'], ''),
+            'geolocation_area': data.get(self.area_update['geolocalizacion_area_ubicacion'], {}), # type: ignore
         })
 
         return formatted_data
@@ -97,6 +99,7 @@ class Accesos(Accesos):
                 'colonia_area': f"$answers.{self.CONTACTO_CAT_OBJ_ID}.{self.area_update['colonia_area']}",
                 'direccion_area': f"$answers.{self.CONTACTO_CAT_OBJ_ID}.{self.area_update['direccion_area']}",
                 'geolocalizacion_area': f"$answers.{self.CONTACTO_CAT_OBJ_ID}.{self.area_update['geolocalizacion_area']}",
+                'geolocation_especific': f"$answers.{self.area_update['geolocalizacion_area_ubicacion']}",
                 'estatus_area': f"$answers.{self.area_update['estatus_area']}",
                 'estatus': f"$answers.{self.area_update['estatus']}",
                 'qr_area': f"$answers.{self.area_update['qr_area']}"
@@ -126,6 +129,10 @@ class Accesos(Accesos):
             data.pop('qr_area', None)
 
         answers={}
+        geolocation_especific = {
+            'latitude': area_ubicacion_data.get('latitude'),
+            'longitude': area_ubicacion_data.get('longitude')
+        }
 
         for key, value in area_ubicacion_data.items():
             if key == 'area':
@@ -157,6 +164,8 @@ class Accesos(Accesos):
                 answers[self.area_update['qr_area']] = value
             elif key == 'foto_area':
                 answers[self.area_update['foto_area']] = data.get('foto_area', value)
+            elif key == 'latitude' or key == 'longitude':
+                answers[self.area_update['geolocalizacion_area_ubicacion']] = geolocation_especific # type: ignore
             else:
                 pass
 
@@ -244,6 +253,7 @@ class Accesos(Accesos):
             self.Location.TIPO_AREA_OBJ_ID: {
                 self.area_update['tipo_area']: 'Área Pública'
             },
+            self.area_update['geolocalizacion_area_ubicacion']: data.get('geolocation_area', ''), #type: ignore
             self.CONTACTO_CAT_OBJ_ID: contact_details,
             self.area_update['estatus']: 'activa',
             self.area_update['estatus_area']: 'disponible',
