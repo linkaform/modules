@@ -32,15 +32,16 @@ class Produccion_PCI( Produccion_PCI ):
         metadata_os_iasa = lkf_api.get_metadata( form_id_os_iasa )
         metadata_os_iasa.update({
             'folio': os_folio,
-            'properties': {
-                "device_properties":{
-                    "system": "SCRIPT",
-                    "process":"PROCESO CARGA DE PRODUCCION HIBRIDO", 
-                    "accion":'ACTUALIZACION', 
-                    "folio carga":current_folio, 
-                    "archive": "carga_de_produccion.py"
-                }
-            },
+            'properties': self.get_metadata_properties('carga_de_produccion.py', 'ACTUALIZACION', process='PROCESO CARGA DE PRODUCCION HIBRIDO', folio_carga=current_folio),
+            # 'properties': {
+            #     "device_properties":{
+            #         "system": "SCRIPT",
+            #         "process":"PROCESO CARGA DE PRODUCCION HIBRIDO", 
+            #         "accion":'ACTUALIZACION', 
+            #         "folio carga":current_folio, 
+            #         "archive": "carga_de_produccion.py"
+            #     }
+            # },
             'answers': answers_iasa
         })
         try:
@@ -281,6 +282,10 @@ class Produccion_PCI( Produccion_PCI ):
                 #print('comentarize lo siguiente para pruebas')
                 self.RECORDS_PASSED += 1
                 self.GLOBAL_COMMUNICATION += 'Folio duplicado: %s Cargado por otro Contratista. '%(folio)
+            elif other_conexion == 'cuenta_padre':
+                self.RECORDS_PASSED += 1
+                result['update']['error'] = f'Folio: {folio} ya fue cargado por la cuenta padre.'
+                return result
             else:
                 autorizaciones_carga_folio = p_utils.find_folio_autorizado(folio, actual_record['answers'].get('f1054000a010000000000005', 0), info_cope['division'], tecnologia_orden)
                 print('autorizaciones_carga_folio=',autorizaciones_carga_folio)
@@ -1341,9 +1346,11 @@ class Produccion_PCI( Produccion_PCI ):
                                     print(e)
                                     new_record = ""
                             connection_id_for_record_creado = records_before_assign[folio_creado]
-                            if not records_to_assign.get(connection_id_for_record_creado):
-                                records_to_assign[ connection_id_for_record_creado ] = []
-                            records_to_assign[ connection_id_for_record_creado ].append(new_record)
+                            # if not records_to_assign.get(connection_id_for_record_creado):
+                            #     records_to_assign[ connection_id_for_record_creado ] = []
+                            # records_to_assign[ connection_id_for_record_creado ].append(new_record)
+                            records_to_assign.setdefault(connection_id_for_record_creado, []).append(new_record)
+
                         msg_exitoso = 'Folio CREADO con éxito'
                         if records_with_alerts.get(folio_creado, []):
                             msg_exitoso = '{} :: {}'.format(msg_exitoso, self.list_to_str( records_with_alerts.get(folio_creado, []) ))

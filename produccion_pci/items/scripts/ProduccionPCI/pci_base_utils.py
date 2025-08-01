@@ -1265,16 +1265,12 @@ class PCI_Utils():
     def uploaded_by_other_connection(self, record, connection_id):
         #Verifica q no haya sido cargada por otra conexion
         if record.get('connection_id'):
-            return 'update' if connection_id == record['connection_id'] else 'by_other'
+            return 'cuenta_padre' if connection_id == record['connection_id'] else 'by_other'
         return 'assigne'
 
     def validate_record_status(self, record):
-        if record['answers'].get('f1054000a030000000000012'):
-            if record['answers'].get('f1054000a030000000000012', '') in ('pendiente', 'reintento'):
-                return True
-            if record['answers'].get('f1054000a030000000000012', '') == 'estimacion' and record['answers'].get('5fc9269ce5363f7e3b9e3867', 'no') != 'no':
-                return True
-            return False
-        if record['answers'].get('f1054000a030000000000002', '') == 'liquidada':
+        if not record.get('connection_id'):
+            return True
+        if record['answers'].get('f1054000a030000000000012', '') in ['pendiente', 'reintento']:
             return True
         return False
