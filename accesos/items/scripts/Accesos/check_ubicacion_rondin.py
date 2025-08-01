@@ -158,27 +158,30 @@ class Accesos(Accesos):
         answers[self.f['estatus_del_recorrido']] = 'en_proceso' if rondin_en_progreso else 'realizado'
         answers[self.f['fecha_fin_rondin']] = today if not rondin_en_progreso else ''
         
-        format_list_incidencias = []
+        incidencias_rondin = {}
+        items_incidencias = []
+
         for incidencia in rondin.get('bitacora_rondin_incidencias', []):
             inc = incidencia.get(self.f['tipo_de_incidencia'])
             if inc:
-                incidencia.pop(self.f['tipo_de_incidencia'], None)
-                incidencia.update({
+                obj_incidencia = incidencia.copy()
+                obj_incidencia.pop(self.f['tipo_de_incidencia'], None)
+                obj_incidencia.update({
                     self.LISTA_INCIDENCIAS_CAT_OBJ_ID: {
                         self.f['tipo_de_incidencia']: inc
                     }
                 })
-                format_list_incidencias.append(incidencia)
-            
-        rondin['bitacora_rondin_incidencias'] = format_list_incidencias
-             
+                items_incidencias.append(obj_incidencia)
+            else:
+                items_incidencias.append(incidencia)
+
         for incidencia in data_rondin.get(self.f['grupo_incidencias_check'], []):
-            rondin['bitacora_rondin_incidencias'].append(incidencia)
-        
-        incidencias_list = rondin['bitacora_rondin_incidencias']
-        incidencias_dict = {str(idx): incidencia for idx, incidencia in enumerate(incidencias_list)}
-        answers[self.f['bitacora_rondin_incidencias']] = incidencias_dict
-        
+            items_incidencias.append(incidencia)
+
+        for idx, incidencia in enumerate(items_incidencias):
+            incidencias_rondin[str(idx)] = incidencia
+
+        answers[self.f['bitacora_rondin_incidencias']] = incidencias_rondin
         if data_rondin.get(self.f['check_status']) == 'finalizado':
             answers[self.f['estatus_del_recorrido']] = 'realizado'
 
