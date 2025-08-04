@@ -524,6 +524,11 @@ class Reports(Reports):
                 result['tableFifth'] = procurment_xfer
                 result['tableSixth'] = procurment_na
 
+        #! TEMP: Eliminar duplicados recorriendo toda la lista de resultados, hay que mejorar
+        for table_key in ['tableFirst', 'tableSecond', 'tableThird', 'tableFourth', 'tableFifth', 'tableSixth']:
+            if table_key in result:
+                result[table_key] = self.remove_duplicates_from_list(result[table_key])
+
         return result
 
         # for item in procurment:
@@ -598,6 +603,23 @@ class Reports(Reports):
         # #stock_dict = self.double_check(stock_dict)
         # stock_list = list(stock_dict.values())
         # return stock_list
+    
+    #! Temp: funcion para eliminar duplicados de una lista de diccionarios basada en el SKU
+    def remove_duplicates_from_list(self, items_list):
+        """Elimina duplicados basado en SKU"""
+        if not items_list:
+            return []
+        
+        seen_skus = set()
+        unique_items = []
+        
+        for item in items_list:
+            sku = item.get('sku')
+            if sku and sku not in seen_skus:
+                seen_skus.add(sku)
+                unique_items.append(item)
+        
+        return unique_items
     
     def get_stock_data(self, data, idx):
         stock_warehouse = data[idx]
