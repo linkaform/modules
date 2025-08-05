@@ -41,6 +41,7 @@ class Accesos(Accesos):
         
         self.f.update({
             'status_details': '6889337c4db2c8b3de148e77',
+            'status_details_message': '689270a245f31ca65437292b',
         })
 
     def format_data_area(self, data):
@@ -67,20 +68,22 @@ class Accesos(Accesos):
 
         return formatted_data
 
-    def get_record_ubicacion(self, ubicacion, area, data):
+    def get_record_ubicacion(self, ubicacion=None, area=None, tag_id_area=None):
         match_query = {
             "deleted_at":{"$exists":False},
             "form_id": self.AREAS_DE_LAS_UBICACIONES,
         }
-
-        if data.get('option') == 'actualizar_foto_con_scann_de_qr':
-            match_query.update({
-                f"answers.{self.area_update['tag_id_area']}": data.get('qr_area')
-            })
-        elif data.get('option') == 'actualización_de_qr' or data.get('option') == 'actualizar_foto_con_selección_de_nombre':
+        if ubicacion:
             match_query.update({
                 f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.configuracion_area['ubicacion']}": ubicacion,
+            })
+        if area:
+            match_query.update({
                 f"answers.{self.configuracion_area['area']}": area
+            })
+        if tag_id_area:
+            match_query.update({
+                f"answers.{self.area_update['tag_id_area']}": tag_id_area
             })
 
         query = [
@@ -109,27 +112,14 @@ class Accesos(Accesos):
         ]
         res = self.format_cr(self.cr.aggregate(query))
         res = self.unlist(res)
-        if not res and data.get('option') == 'actualizar_foto_con_scann_de_qr':
-            return False
-        if not res and data.get('option') == 'actualización_de_qr':
-            return False
         return res
 
     def update_area(self, data):
         ubicacion = data.get('ubicacion', '')
         area = data.get('area', '')
-        area_ubicacion_data = self.get_record_ubicacion(ubicacion=ubicacion, area=area, data=data)
-        if not area_ubicacion_data:
-            return {
-                'status': 'error',
-                'message': 'No se encontró el área o ubicación especificada. Prueba creando el area primero.'
-            }
-        print('area_ubicacion_data', simplejson.dumps(area_ubicacion_data, indent=3))
+        area_ubicacion_data = self.get_record_ubicacion(ubicacion=ubicacion, area=area)
         folio = area_ubicacion_data.get('folio', '')
         record_id = area_ubicacion_data.get('_id', '')
-
-        if data.get('option') == 'actualizar_foto_con_scann_de_qr' or data.get('option') == 'actualizar_foto_con_selección_de_nombre':
-            data.pop('qr_area', None)
 
         answers={}
         geolocation_especific = {
@@ -162,11 +152,11 @@ class Accesos(Accesos):
             elif key == 'estatus':
                 answers[self.area_update['estatus']] = value
             elif key == 'tag_id_area':
-                answers[self.area_update['tag_id_area']] = data.get('qr_area', value)
+                answers[self.area_update['tag_id_area']] = data.get('qr_area') or value
             elif key == 'qr_area':
                 answers[self.area_update['qr_area']] = value
             elif key == 'foto_area':
-                answers[self.area_update['foto_area']] = data.get('foto_area', value)
+                answers[self.area_update['foto_area']] = data.get('foto_area') or value
             elif key == 'latitude' or key == 'longitude':
                 answers[self.area_update['geolocalizacion_area_ubicacion']] = geolocation_especific # type: ignore
             else:
@@ -283,10 +273,6 @@ class Accesos(Accesos):
             answers=answers
         )
         
-        if response.get('status') != 'success':
-            msg = 'El area no fue creada correctamente, solicita a soporte revisar logs.'
-            self.LKFException({'msg': msg, 'title': 'Creacion de area'})
-
         return response
     
     def create_register(self, module: str, process: str, action: str, file: str, form_id: int, answers: dict):
@@ -326,16 +312,37 @@ if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
     print('answers', simplejson.dumps(acceso_obj.answers, indent=3))
-
     data = acceso_obj.format_data_area(acceso_obj.answers)
-    if (data.get('option') == 'actualizar_foto_con_selección_de_nombre' or data.get('option') == 'actualización_de_qr') \
-        and data.get('create_area'):
-            acceso_obj.create_new_area(data)
-            data['area'] = data.get('nombre_nueva_area')
+
+    #! Si trae solo el QR
+    if data.get('qr_area') and not data.get('ubicacion') and not data.get('area'):
+        qr_data = acceso_obj.get_record_ubicacion(tag_id_area=data.get('qr_area'))
+        if qr_data:
+            data['ubicacion'] = qr_data.get('ubicacion', '')
+            data['area'] = qr_data.get('area', '')
+            
+    #! Crea el area si no existe
+    if data.get('create_area', False):
+        acceso_obj.create_new_area(data)
+        data['area'] = data.get('nombre_nueva_area')
+
+    #! Actualiza el area si ya existe
+    if data.get('area'):
+        response = acceso_obj.update_area(data)
+    else:
+        response = {'status': 'create_error'}
         
-    response = acceso_obj.update_area(data)
+    #! Ajuste de respuestas
     if response:
-        acceso_obj.answers[acceso_obj.f['status_details']] = response.get('message', 'No se pudo actualizar el área')
+        status = response.get('status', 'Unknown')
+        if status == 'success':
+            details = 'Se actualizaron los datos del area correctamente.'
+        elif status == 'create_error':
+            details = 'No se pudo crear el area, verifique los datos ingresados.'
+        else:
+            details = 'Hubo un error al actualizar los datos del area'
+        acceso_obj.answers[acceso_obj.f['status_details']] = status
+        acceso_obj.answers[acceso_obj.f['status_details_message']] = details
 
     sys.stdout.write(simplejson.dumps({
         'status': 101,
