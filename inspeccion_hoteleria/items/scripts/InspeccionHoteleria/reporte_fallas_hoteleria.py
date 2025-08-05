@@ -307,25 +307,12 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         if match_cuatrimestre:
             pipeline.append({"$match": match_cuatrimestre})
     
-        status_validos = ["completada", "proceso", "incompleta"]
-    
         pipeline += [
             {'$project': {
-                'status_completada': {
-                    '$cond': [
-                        { '$in': [f"$answers.{self.f['status_auditoria']}", status_validos] },
-                        1,
-                        0
-                    ]
-                },
+                'status_completada': 1,
                 'habitacion_remodelada_si': {
                     '$cond': [
-                        {
-                            '$and': [
-                                { '$eq': [f"$answers.{self.f['habitacion_remodelada']}", "sí"] },
-                                { '$eq': [f"$answers.{self.f['status_auditoria']}", "completada"] }
-                            ]
-                        },
+                        { '$eq': [f"$answers.{self.f['habitacion_remodelada']}", "sí"] },
                         1,
                         0
                     ]
@@ -334,7 +321,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             {
                 '$group': {
                     '_id': None,
-                    'total_inspecciones_completadas': { '$sum': "$status_completada" },
+                    'total_inspecciones_completadas': { '$sum': 1 },
                     'total_habitaciones_remodeladas': { '$sum': "$habitacion_remodelada_si" }
                 }
             },
@@ -1083,9 +1070,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         if not inspecciones_validas:
             mejor = peor = None
         else:
-            # Mejor: la de menor cantidad de fallas
-            mejor = min(inspecciones_validas, key=lambda x: min(x['fallas']))
-            # Peor: la de mayor cantidad de fallas
+            mejor = max(inspecciones_validas, key=lambda x: max(x['grades']))
             peor = max(inspecciones_validas, key=lambda x: max(x['fallas']))
     
         return {
@@ -1402,10 +1387,14 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
         total_inspecciones_y_remodeladas = self.get_cantidad_inspecciones_y_remodeladas(forms_id_list=forms_id_list, anio=anio, cuatrimestres=cuatrimestres)
 
+        cards = self.get_cards(forms_id_list=forms_id_list, anio=anio, cuatrimestres=cuatrimestres)
+        cards = self.unlist(cards)
+        
         propiedades_inspeccionadas = self.porcentaje_propiedades_inspeccionadas(
            total_habitaciones.get('totalHabitaciones', 0) if total_habitaciones else 0,
            total_inspecciones_y_remodeladas.get('total_inspecciones_completadas', 0) if total_inspecciones_y_remodeladas else 0
         )
+        breakpoint()
         
         calificacion_x_hotel_grafica = self.get_cuatrimestres_by_hotel(hoteles=hoteles, anio=anio, cuatrimestres=[1, 2, 3])
 
@@ -1422,9 +1411,6 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         hoteles_comentarios = self.get_comentarios(forms_id_list=forms_id_list)
         
         rooms_details = self.get_rooms_details(forms_id_list=forms_id_list, anio=anio, cuatrimestres=cuatrimestres)
-
-        cards = self.get_cards(forms_id_list=forms_id_list, anio=anio, cuatrimestres=cuatrimestres)
-        cards = self.unlist(cards)
 
         report_data = {
             'cards': cards,
