@@ -60,7 +60,7 @@ class Accesos(Accesos):
             'option': data.get(self.configuracion_area['option'], ''),
             'ubicacion': data.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.configuracion_area['ubicacion'], ''),
             'area': data.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.configuracion_area['area'], ''),
-            'create_area': True if data.get(self.configuracion_area['create_area']) == 'crear_nueva_area' else False,
+            'create_area': True if data.get(self.configuracion_area['create_area']) == 'no' else False,
             'nombre_nueva_area': data.get(self.configuracion_area['nombre_nueva_area'], ''),
             'geolocation_area': data.get(self.area_update['geolocalizacion_area_ubicacion'], {}), # type: ignore
         })
@@ -110,22 +110,25 @@ class Accesos(Accesos):
         res = self.format_cr(self.cr.aggregate(query))
         res = self.unlist(res)
         if not res and data.get('option') == 'actualizar_foto_con_scann_de_qr':
-            msg = 'No se encontró un registro de área para el QR proporcionado. Intenta asignandole uno nuevo.'
-            self.LKFException({'msg': msg, 'title': 'Actualizacion de area'})
+            return False
         if not res and data.get('option') == 'actualización_de_qr':
-            msg = 'No se encontró un registro de área para la ubicación y área proporcionadas en la forma Areas de las Ubicaciones.'
-            self.LKFException({'msg': msg, 'title': 'Actualizacion de area'})
+            return False
         return res
 
     def update_area(self, data):
         ubicacion = data.get('ubicacion', '')
         area = data.get('area', '')
         area_ubicacion_data = self.get_record_ubicacion(ubicacion=ubicacion, area=area, data=data)
+        if not area_ubicacion_data:
+            return {
+                'status': 'error',
+                'message': 'No se encontró el área o ubicación especificada. Prueba creando el area primero.'
+            }
         print('area_ubicacion_data', simplejson.dumps(area_ubicacion_data, indent=3))
         folio = area_ubicacion_data.get('folio', '')
         record_id = area_ubicacion_data.get('_id', '')
 
-        if data.get('option') == 'actualizar_foto_con_scann_de_qr' or data.get('option') == 'actualizar_foto_con_seleccion_de_nombre':
+        if data.get('option') == 'actualizar_foto_con_scann_de_qr' or data.get('option') == 'actualizar_foto_con_selección_de_nombre':
             data.pop('qr_area', None)
 
         answers={}
@@ -235,15 +238,27 @@ class Accesos(Accesos):
             res.pop('created_at', None)
             res.pop('updated_at', None)
         return res if res else {}
+    
+    def exists_area(self, area):
+        query = [
+            {'$match': {
+                "deleted_at":{"$exists":False},
+                "form_id": self.AREAS_DE_LAS_UBICACIONES,
+                f'answers.{self.configuracion_area["area"]}': area
+            }},
+            {'$project': {
+                '_id': 1,
+            }},
+            {'$limit': 1},
+        ]
+        res = self.format_cr(self.cr.aggregate(query))
+        return True if res else False
 
     def create_new_area(self, data):
-        if not data.get('ubicacion'):
-            msg = 'Debes dejar una ubicacion seleccionada en el catalogo.'
-            self.LKFException({'msg': msg, 'title': 'Creacion de area'})
-        if not data.get('nombre_nueva_area'):
-            msg = 'Debes de rellenar el campo nombre del area para crear un area valida.'
-            self.LKFException({'msg': msg, 'title': 'Creacion de area'})
-            
+        exists_area = self.exists_area(data.get('nombre_nueva_area', ''))
+        if exists_area:
+            return
+        
         contact_details = self.get_contact_details(data.get('ubicacion', {}))
         
         answers = {
