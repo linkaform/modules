@@ -1394,7 +1394,6 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
            total_habitaciones.get('totalHabitaciones', 0) if total_habitaciones else 0,
            total_inspecciones_y_remodeladas.get('total_inspecciones_completadas', 0) if total_inspecciones_y_remodeladas else 0
         )
-        breakpoint()
         
         calificacion_x_hotel_grafica = self.get_cuatrimestres_by_hotel(hoteles=hoteles, anio=anio, cuatrimestres=[1, 2, 3])
 
