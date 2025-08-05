@@ -2,7 +2,7 @@
 import re, sys, datetime, simplejson
 import random, os, shutil, wget, zipfile, collections
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
-
+from copy import deepcopy
 from produccion_pci_utils import Produccion_PCI
 
 from account_settings import *
@@ -1006,6 +1006,14 @@ class Produccion_PCI( Produccion_PCI ):
                     return p
         return None
 
+    def prepare_record_admin( self, record_orden ):
+        record_orden['form_id'] = self.dict_equivalences_forms_id[ record_orden['form_id'] ]
+        record_orden.pop('alerts', None)
+        record_orden.pop('aerea', None)
+        record_orden.pop('user_id_old', None)
+        record_orden.pop('assigned_to', None)
+        return record_orden
+
     def create_record_fibra_cobre_hibrida(self, pos_field_id, records, header, current_record, parent_id, header_dict, pdfs_found, distometros_found, carga_sin_pdf, carga_sin_disto, dif_type='', permisos_contratista={}, dict_info_connections={}, records_for_cambio_tec=[]):
         # print("Una sola funcion para fibra y cobre ....")
         record_errors = []
@@ -1284,7 +1292,8 @@ class Produccion_PCI( Produccion_PCI ):
                             continue
                         this_record['update']['answers'].update(disto_uploaded)
 
-                        response = lkf_api.patch_record(this_record['update'],  jwt_settings_key='JWT_KEY')
+                        record_admin = self.prepare_record_admin( deepcopy( this_record['update'] ) )
+                        response = lkf_api.patch_record(record_admin,  jwt_settings_key='JWT_KEY')
                         print("+++++ Actualizando folio:",folio)
                         print("++++++++++ response:",response)
                         try:
