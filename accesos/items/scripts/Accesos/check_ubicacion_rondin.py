@@ -160,7 +160,7 @@ class Accesos(Accesos):
 
         answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = conf_recorrido
         answers[self.f['estatus_del_recorrido']] = 'en_proceso' if rondin_en_progreso else 'realizado'
-        answers[self.f['fecha_fin_rondin']] = today if not rondin_en_progreso else ''
+        answers[self.f['fecha_fin_rondin']] = today if data_rondin.get(self.f['check_status'], '') == 'finalizado' else ''
         
         format_list_incidencias = []
         for incidencia in rondin.get('bitacora_rondin_incidencias', []):
