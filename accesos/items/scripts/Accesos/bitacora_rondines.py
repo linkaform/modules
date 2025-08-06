@@ -23,7 +23,7 @@ class Accesos(Accesos):
             areas_procesadas = True
             duracion = fecha_inspeccion - fecha_inicio
             area[self.f['duracion_traslado_area']] = round(duracion / 60,2)
-            duracion_total += duracion
+            duracion_total = duracion
         if areas_procesadas:
             self.answers[self.f['duracion_rondin']] = round(duracion_total / 60,2)
         return True
