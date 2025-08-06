@@ -2,7 +2,7 @@
 import re, sys, datetime, simplejson
 import random, os, shutil, wget, zipfile, collections
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
-
+from copy import deepcopy
 from produccion_pci_utils import Produccion_PCI
 
 from account_settings import *
@@ -32,15 +32,16 @@ class Produccion_PCI( Produccion_PCI ):
         metadata_os_iasa = lkf_api.get_metadata( form_id_os_iasa )
         metadata_os_iasa.update({
             'folio': os_folio,
-            'properties': {
-                "device_properties":{
-                    "system": "SCRIPT",
-                    "process":"PROCESO CARGA DE PRODUCCION HIBRIDO", 
-                    "accion":'ACTUALIZACION', 
-                    "folio carga":current_folio, 
-                    "archive": "carga_de_produccion.py"
-                }
-            },
+            'properties': self.get_metadata_properties('carga_de_produccion.py', 'ACTUALIZACION', process='PROCESO CARGA DE PRODUCCION HIBRIDO', folio_carga=current_folio),
+            # 'properties': {
+            #     "device_properties":{
+            #         "system": "SCRIPT",
+            #         "process":"PROCESO CARGA DE PRODUCCION HIBRIDO", 
+            #         "accion":'ACTUALIZACION', 
+            #         "folio carga":current_folio, 
+            #         "archive": "carga_de_produccion.py"
+            #     }
+            # },
             'answers': answers_iasa
         })
         try:
@@ -281,19 +282,25 @@ class Produccion_PCI( Produccion_PCI ):
                 #print('comentarize lo siguiente para pruebas')
                 self.RECORDS_PASSED += 1
                 self.GLOBAL_COMMUNICATION += 'Folio duplicado: %s Cargado por otro Contratista. '%(folio)
+            elif other_conexion == 'cuenta_padre':
+                self.RECORDS_PASSED += 1
+                result['update']['error'] = f'Folio: {folio} ya fue cargado por la cuenta padre.'
+                return result
             else:
                 autorizaciones_carga_folio = p_utils.find_folio_autorizado(folio, actual_record['answers'].get('f1054000a010000000000005', 0), info_cope['division'], tecnologia_orden)
                 print('autorizaciones_carga_folio=',autorizaciones_carga_folio)
                 msg_error_folio_vencido = ''
                 if not actual_record.get('connection_id'):
                     field_id_fecha_liq = 'f1054000a02000000000fa02' if tecnologia_orden == 'fibra' else '5a1eecfbb43fdd65914505a1'
-                    fecha_liquidada = actual_record.get('answers',{}).get(field_id_fecha_liq,'')
+                    # fecha_liquidada = actual_record.get('answers',{}).get(field_id_fecha_liq,'')
+                    # Se deja de utilizar la fecha de liquidación... se cambia por la fecha de creacion
+                    fecha_liquidada = actual_record['created_at'].strftime("%Y-%m-%d")
                     if fecha_liquidada:
                         date_fecha_liquidada = datetime.datetime.strptime(fecha_liquidada, '%Y-%m-%d')
                         fecha_actual = datetime.datetime.now()
                         diff_dates = fecha_actual - date_fecha_liquidada
                         dias_transcurridos = diff_dates.days
-                        if dias_transcurridos > 15 and not autorizaciones_carga_folio:
+                        if dias_transcurridos > self.dias_para_marcar_desfase and not autorizaciones_carga_folio:
                             descuento15dias = True
                             msg_error_folio_vencido = 'Folio cargado correctamente, recuerda que tienes 14 días después de la fecha de liquidación para cargar tu folio, de lo contrario tendrá un descuento del 20% por gastos administrativos por cargas desfasadas'
                 else:
@@ -999,6 +1006,14 @@ class Produccion_PCI( Produccion_PCI ):
                     return p
         return None
 
+    def prepare_record_admin( self, record_orden ):
+        record_orden['form_id'] = self.dict_equivalences_forms_id[ record_orden['form_id'] ]
+        record_orden.pop('alerts', None)
+        record_orden.pop('aerea', None)
+        record_orden.pop('user_id_old', None)
+        record_orden.pop('assigned_to', None)
+        return record_orden
+
     def create_record_fibra_cobre_hibrida(self, pos_field_id, records, header, current_record, parent_id, header_dict, pdfs_found, distometros_found, carga_sin_pdf, carga_sin_disto, dif_type='', permisos_contratista={}, dict_info_connections={}, records_for_cambio_tec=[]):
         # print("Una sola funcion para fibra y cobre ....")
         record_errors = []
@@ -1277,7 +1292,8 @@ class Produccion_PCI( Produccion_PCI ):
                             continue
                         this_record['update']['answers'].update(disto_uploaded)
 
-                        response = lkf_api.patch_record(this_record['update'],  jwt_settings_key='JWT_KEY')
+                        record_admin = self.prepare_record_admin( deepcopy( this_record['update'] ) )
+                        response = lkf_api.patch_record(record_admin,  jwt_settings_key='JWT_KEY')
                         print("+++++ Actualizando folio:",folio)
                         print("++++++++++ response:",response)
                         try:
@@ -1339,9 +1355,11 @@ class Produccion_PCI( Produccion_PCI ):
                                     print(e)
                                     new_record = ""
                             connection_id_for_record_creado = records_before_assign[folio_creado]
-                            if not records_to_assign.get(connection_id_for_record_creado):
-                                records_to_assign[ connection_id_for_record_creado ] = []
-                            records_to_assign[ connection_id_for_record_creado ].append(new_record)
+                            # if not records_to_assign.get(connection_id_for_record_creado):
+                            #     records_to_assign[ connection_id_for_record_creado ] = []
+                            # records_to_assign[ connection_id_for_record_creado ].append(new_record)
+                            records_to_assign.setdefault(connection_id_for_record_creado, []).append(new_record)
+
                         msg_exitoso = 'Folio CREADO con éxito'
                         if records_with_alerts.get(folio_creado, []):
                             msg_exitoso = '{} :: {}'.format(msg_exitoso, self.list_to_str( records_with_alerts.get(folio_creado, []) ))
@@ -1490,7 +1508,7 @@ class Produccion_PCI( Produccion_PCI ):
             return self.set_status_proceso( current_record, record_id, 'error', msg='No se encontro la columna Folio en el documento de carga' )
         
         all_folios_in_file = [ record[ pos_folio ] for record in records if record[ pos_folio ] ]
-        duplicated_folios = [item for item, count in collections.Counter(all_folios_in_file).items() if count > 1]
+        duplicated_folios = [str(item) for item, count in collections.Counter(all_folios_in_file).items() if count > 1]
         print("duplicated_folios=",duplicated_folios)
         if duplicated_folios:
             return self.set_status_proceso( current_record, record_id, 'error', msg='No se permiten folios duplicados en un mismo proceso {}'.format(self.list_to_str(duplicated_folios)) )

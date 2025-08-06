@@ -62,6 +62,7 @@ class Accesos(Accesos):
             rondines_ids.append(rondin.get('_id'))
 
         answers[self.f['estatus_del_recorrido']] = 'cerrado'
+        answers[self.f['fecha_fin_rondin']] = ahora.strftime('%Y-%m-%d %H:%M:%S')
 
         # print(stop)
         if answers:

@@ -230,6 +230,7 @@ class Produccion_PCI( Produccion_PCI ):
 
     def update_estatus_historico(self, origen, destino, folios, forma, other_fields={}, res_type='legacy'):
         query = {
+            lkf_obj.f['field_id_cargado_desde_script']: 'sí',
             'f1054000a030000000000e20':{
                 "-1":{
                     'f1054000a030000000000e21':origen,

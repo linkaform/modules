@@ -24,34 +24,34 @@ class Produccion_PCI(Produccion_PCI):
         self.FORM_ID_CARGA_PROD = self.lkm.form_id('carga_de_produccin_diaria_por_contratistaiasa','id')
         self.FORM_ID_EXPEDIENTES_DE_TECNICOS = self.lkm.form_id('expedientes_de_tcnicosiasa','id')
         
-        self.ORDEN_SERVICIO_FIBRA = self.lkm.form_id('orden_de_servicio_metro_ftthiasa','id')
-        self.ORDEN_SERVICIO_COBRE = self.lkm.form_id('orden_de_servicio_metro_cobreiasa','id')
-        self.ORDEN_SERVICIO_FIBRA_OCCIDENTE = self.lkm.form_id('orden_de_servicio_occidente_ftthiasa','id')
-        self.ORDEN_SERVICIO_COBRE_OCCIDENTE = self.lkm.form_id('orden_de_servicio_occidente_cobreiasa','id')
-        self.ORDEN_SERVICIO_FIBRA_NORTE = self.lkm.form_id('orden_de_servicio_norte_ftthiasa','id')
-        self.ORDEN_SERVICIO_COBRE_NORTE = self.lkm.form_id('orden_de_servicio_norte_cobreiasa','id')
-        self.ORDEN_SERVICIO_FIBRA_SURESTE = self.lkm.form_id('orden_de_servicio_sur_ftthiasa','id')
-        self.ORDEN_SERVICIO_COBRE_SURESTE = self.lkm.form_id('orden_de_servicio_sur_cobreiasa','id')
+        # self.ORDEN_SERVICIO_FIBRA = self.lkm.form_id('orden_de_servicio_metro_ftthiasa','id')
+        # self.ORDEN_SERVICIO_COBRE = self.lkm.form_id('orden_de_servicio_metro_cobreiasa','id')
+        # self.ORDEN_SERVICIO_FIBRA_OCCIDENTE = self.lkm.form_id('orden_de_servicio_occidente_ftthiasa','id')
+        # self.ORDEN_SERVICIO_COBRE_OCCIDENTE = self.lkm.form_id('orden_de_servicio_occidente_cobreiasa','id')
+        # self.ORDEN_SERVICIO_FIBRA_NORTE = self.lkm.form_id('orden_de_servicio_norte_ftthiasa','id')
+        # self.ORDEN_SERVICIO_COBRE_NORTE = self.lkm.form_id('orden_de_servicio_norte_cobreiasa','id')
+        # self.ORDEN_SERVICIO_FIBRA_SURESTE = self.lkm.form_id('orden_de_servicio_sur_ftthiasa','id')
+        # self.ORDEN_SERVICIO_COBRE_SURESTE = self.lkm.form_id('orden_de_servicio_sur_cobreiasa','id')
 
-        # Aqui los ids de las formas de liberacion
-        self.FORMA_LIBERACION_FIBRA = self.lkm.form_id('liberacin_de_pagos_socio', 'id')
-        self.FORMA_LIBERACION_FIBRA_SURESTE = self.lkm.form_id('liberacin_de_pagos_sur_socio', 'id')
-        self.FORMA_LIBERACION_FIBRA_NORTE = self.lkm.form_id('liberacin_de_pagos_norte_socio', 'id')
-        self.FORMA_LIBERACION_FIBRA_OCCIDENTE = self.lkm.form_id('liberacin_de_pagos_occidente_socio', 'id')
-        self.FORMA_LIBERACION_COBRE = self.lkm.form_id('liberacin_de_pagos_cobre_socio', 'id')
-        self.FORMA_LIBERACION_COBRE_SURESTE = self.lkm.form_id('liberacin_de_pagos_sur_cobre_socio', 'id')
-        self.FORMA_LIBERACION_COBRE_NORTE = self.lkm.form_id('liberacin_de_pagos_norte_cobre_socio', 'id')
-        self.FORMA_LIBERACION_COBRE_OCCIDENTE = self.lkm.form_id('liberacin_de_pagos_occidente_cobre_socio', 'id')
+        # # Aqui los ids de las formas de liberacion
+        # self.FORMA_LIBERACION_FIBRA = self.lkm.form_id('liberacin_de_pagos_socio', 'id')
+        # self.FORMA_LIBERACION_FIBRA_SURESTE = self.lkm.form_id('liberacin_de_pagos_sur_socio', 'id')
+        # self.FORMA_LIBERACION_FIBRA_NORTE = self.lkm.form_id('liberacin_de_pagos_norte_socio', 'id')
+        # self.FORMA_LIBERACION_FIBRA_OCCIDENTE = self.lkm.form_id('liberacin_de_pagos_occidente_socio', 'id')
+        # self.FORMA_LIBERACION_COBRE = self.lkm.form_id('liberacin_de_pagos_cobre_socio', 'id')
+        # self.FORMA_LIBERACION_COBRE_SURESTE = self.lkm.form_id('liberacin_de_pagos_sur_cobre_socio', 'id')
+        # self.FORMA_LIBERACION_COBRE_NORTE = self.lkm.form_id('liberacin_de_pagos_norte_cobre_socio', 'id')
+        # self.FORMA_LIBERACION_COBRE_OCCIDENTE = self.lkm.form_id('liberacin_de_pagos_occidente_cobre_socio', 'id')
 
-        # Aqui los ids de las formas de orden de compra
-        self.FORMA_ORDEN_COMPRA_FIBRA = self.lkm.form_id('orden_compra_contratista_ftth_metro_socio', 'id')
-        self.FORMA_ORDEN_COMPRA_FIBRA_SURESTE = self.lkm.form_id('orden_compra_contratista_ftth_sur_socio', 'id')
-        self.FORMA_ORDEN_COMPRA_FIBRA_NORTE = self.lkm.form_id('orden_compra_contratista_ftth_norte_socio', 'id')
-        self.FORMA_ORDEN_COMPRA_FIBRA_OCCIDENTE = self.lkm.form_id('orden_compra_contratista_ftth_occidente_socio', 'id')
-        self.FORMA_ORDEN_COMPRA_COBRE = self.lkm.form_id('orden_compra_contratista_cobre_metro_socio', 'id')
-        self.FORMA_ORDEN_COMPRA_COBRE_SURESTE = self.lkm.form_id('orden_compra_contratista_cobre_sur_socio', 'id')
-        self.FORMA_ORDEN_COMPRA_COBRE_NORTE = self.lkm.form_id('orden_compra_contratista_cobre_norte_socio', 'id')
-        self.FORMA_ORDEN_COMPRA_COBRE_OCCIDENTE = self.lkm.form_id('orden_compra_contratista_cobre_occidente_socio', 'id')
+        # # Aqui los ids de las formas de orden de compra
+        # self.FORMA_ORDEN_COMPRA_FIBRA = self.lkm.form_id('orden_compra_contratista_ftth_metro_socio', 'id')
+        # self.FORMA_ORDEN_COMPRA_FIBRA_SURESTE = self.lkm.form_id('orden_compra_contratista_ftth_sur_socio', 'id')
+        # self.FORMA_ORDEN_COMPRA_FIBRA_NORTE = self.lkm.form_id('orden_compra_contratista_ftth_norte_socio', 'id')
+        # self.FORMA_ORDEN_COMPRA_FIBRA_OCCIDENTE = self.lkm.form_id('orden_compra_contratista_ftth_occidente_socio', 'id')
+        # self.FORMA_ORDEN_COMPRA_COBRE = self.lkm.form_id('orden_compra_contratista_cobre_metro_socio', 'id')
+        # self.FORMA_ORDEN_COMPRA_COBRE_SURESTE = self.lkm.form_id('orden_compra_contratista_cobre_sur_socio', 'id')
+        # self.FORMA_ORDEN_COMPRA_COBRE_NORTE = self.lkm.form_id('orden_compra_contratista_cobre_norte_socio', 'id')
+        # self.FORMA_ORDEN_COMPRA_COBRE_OCCIDENTE = self.lkm.form_id('orden_compra_contratista_cobre_occidente_socio', 'id')
         self.FORM_ID_PRECIOS_FTTH = self.lkm.form_id('precios_fibra_socio', 'id')
         self.FORM_ID_PRECIOS_COBRE = self.lkm.form_id('precios_cobre_socio', 'id')
 
@@ -69,6 +69,8 @@ class Produccion_PCI(Produccion_PCI):
         self.id_tecnicos_directos = [2071, 2072, 2073]
 
         self.MONTO_MAXIMO_POR_OC = 200000 # Monto maximo por OCs en Cobre
+        self.dias_para_marcar_desfase = 15 # Maximo de dias permitidos para carga antes de marcar como cobro minimo
+        self.porcentaje_descuento_x_desfase = 0.05 # Porcentaje de descuento por folios marcados con desfase en carga
 
         # Equivalencias de las formas de orden de servicio en las cuentas de SC y en Admin
         self.dict_equivalences_forms_id = { 
@@ -161,18 +163,18 @@ class Produccion_PCI(Produccion_PCI):
 
         return {'result': emails_connections, 'info_connections': dict_info_connection}
 
-    def get_metadata_properties(self, name_script, accion, process='', folio_carga=''):
-        dict_properties = {
-            'device_properties': {
-                'system': 'SCRIPT',
-                'process': process,
-                'accion': accion,
-                'archive': name_script
-            }
-        }
-        if folio_carga:
-            dict_properties['device_properties']['folio carga'] = folio_carga
-        return dict_properties
+    # def get_metadata_properties(self, name_script, accion, process='', folio_carga=''):
+    #     dict_properties = {
+    #         'device_properties': {
+    #             'system': 'SCRIPT',
+    #             'process': process,
+    #             'accion': accion,
+    #             'archive': name_script
+    #         }
+    #     }
+    #     if folio_carga:
+    #         dict_properties['device_properties']['folio carga'] = folio_carga
+    #     return dict_properties
 
     def get_xml_root(self, file_url, get_all_root=False, xml_downloaded=False):
         """

@@ -723,7 +723,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         folioDescuento20porc = 0
         if not record_is_for_acapulco:
             if (descuento15dias != 'no') or (descuentoCobroMinimo != 'no'):
-                descuento_20_porciento = total * 0.2
+                descuento_20_porciento = total * self.porcentaje_descuento_x_desfase
                 folioDescuento20porc += descuento_20_porciento
             if descuento15dias != 'no':
                 descuentos_por.append('desfase_15_dias_en_carga')
@@ -735,7 +735,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         """
         metrajeAnteriorModificado = answers.get('6021ba39dae34bd70dcd40b5', 0)
         if metrajeAnteriorModificado and not record_is_for_acapulco:
-            descuento_20_porciento = total * 0.2
+            descuento_20_porciento = total * self.porcentaje_descuento_x_desfase
             folioDescuento20porc += descuento_20_porciento
             descuentos_por.append('metraje_modificado')
 
@@ -838,11 +838,16 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         return response_multi_patch
 
     def update_estatus_historico(self, origen, destino, folios, forma, other_fields={}, res_type='legacy'):
-        query = {'f1054000a030000000000e20':
-                 {"-1":
-                   {'f1054000a030000000000e21':origen,
-                   'f1054000a030000000000e22':destino,
-                   'f1054000a030000000000e23':datetime.now().strftime("%Y-%m-%d")}}}
+        query = {
+            lkf_obj.f['field_id_cargado_desde_script']: 'sí',
+            'f1054000a030000000000e20':{
+                "-1":{
+                    'f1054000a030000000000e21':origen,
+                    'f1054000a030000000000e22':destino,
+                    'f1054000a030000000000e23':datetime.now().strftime("%Y-%m-%d")
+                }
+            }
+        }
         if other_fields:
             query.update(other_fields)
         response = {}
@@ -1059,7 +1064,10 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         return errors_to_create, ocs_creadas
 
     def update_records_status(self, folios, status, FORMA_ORDEN_SERVICIO, status_contratista=None):
-        update =  {'f1054000a030000000000012':status}
+        update =  {
+            'f1054000a030000000000012':status,
+            lkf_obj.f['field_id_cargado_desde_script']: 'sí'
+        }
         if status_contratista:
             update.update({'f1054000a030000000000013':status_contratista})
         response = lkf_api.patch_multi_record(update, FORMA_ORDEN_SERVICIO, folios=folios, jwt_settings_key='USER_JWT_KEY', threading=True)
@@ -1296,7 +1304,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             descuento_20_porciento = 0
             if (descuento15dias != 'no') or (descuentoCobroMinimo != 'no'):
                 #print '... ... folio marcado para descuento de 20% 15 dias: {} Cobro Minimo: {}'.format( descuento15dias.encode('utf-8'), descuentoCobroMinimo.encode('utf-8') )
-                descuento_20_porciento = total_folio_os * 0.2
+                descuento_20_porciento = total_folio_os * self.porcentaje_descuento_x_desfase
                 if total_20_row:
                     total_folio_os = total_folio_os - descuento_20_porciento
                 msg_folio_calc += 'Menos descuento {} = {} '.format(descuento_20_porciento, total_folio_os)

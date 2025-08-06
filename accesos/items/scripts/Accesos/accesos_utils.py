@@ -33,7 +33,17 @@ class Accesos( Accesos):
             'ubicacion_recorrido': '663e5c57f5b8a7ce8211ed0b',
             'fecha_inicio_rondin': '6818ea068a7f3446f1bae3b3',
             'fecha_fin_rondin': '6760a8e68cef14ecd7f8b6ff',
-            'check_status': '681fa6a8d916c74b691e174b'
+            'check_status': '681fa6a8d916c74b691e174b',
+            'grupo_incidencias_check': '681144fb0d423e25b42818d3',
+            'incidente_open': '6811455664dc22ecae83f75b',
+            'incidente_comentario': '681145323d9b5fa2e16e35cc',
+            'incidente_area': '663e5d44f5b8a7ce8211ed0f',
+            'incidente_location': '663e5c57f5b8a7ce8211ed0b',
+            'incidente_evidencia': '681145323d9b5fa2e16e35cd',
+            'incidente_documento': '685063ba36910b2da9952697',
+            'url_registro_rondin': '6750adb2936622aecd075607',
+            'bitacora_rondin_incidencias': '686468a637d014b9e0ab5090',
+            'tipo_de_incidencia': '663973809fa65cafa759eb97'
         })
 
 
@@ -287,10 +297,10 @@ class Accesos( Accesos):
             {'$project': proyect_fields},
             {'$lookup': lookup},
         ]
-        if not filterDate:
-            query.append(
-                {"$limit":25}
-            )
+        # if not filterDate:
+        #     query.append(
+        #         {"$limit":1}
+        #     )
         if dateFrom:
             query.append(
                 {'$sort':{'folio':-1}},
@@ -322,6 +332,139 @@ class Accesos( Accesos):
         return  records
 
 
+
+    def get_list_rondines(self, prioridades=[], dateFrom='', dateTo='', filterDate=""):
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id": self.BITACORA_RONDINES
+        }
+        # if location:
+        #     match_query.update({f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}":location})
+        # if area:
+        #     match_query.update({f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['nombre_area']}":area})
+        # if prioridades:
+        #     match_query[f"answers.{self.bitacora_fields['status_visita']}"] = {"$in": prioridades}
+  
+        user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
+        zona = user_data.get('timezone','America/Monterrey')
+
+        if filterDate != "range":
+            dateFrom, dateTo = self.get_range_dates(filterDate,zona)
+
+            if dateFrom:
+                dateFrom = str(dateFrom)
+            if dateTo:
+                dateTo = str(dateTo)
+
+        if dateFrom and dateTo:
+           match_query.update({
+                f"answers.{self.f['fecha_inicio_rondin']}": {"$gte": dateFrom, "$lte": dateTo},
+            })
+        elif dateFrom:
+            match_query.update({
+                f"answers.{self.f['fecha_inicio_rondin']}": {"$gte": dateFrom}
+            })
+        elif dateTo:
+            match_query.update({
+                f"answers.{self.f['fecha_inicio_rondin']}": {"$lte": dateTo}
+            })
+        
+        proyect_fields ={
+            '_id': 1,
+            'folio': "$folio",
+            'duracion_rondin': f"$answers.{self.f['duracion_rondin']}",
+            'duracion_traslado_area':f"$answers.{self.f['duracion_traslado_area']}",
+            'fecha_inspeccion_area':f"$answers.{self.f['fecha_inspeccion_area']}",
+            'fecha_programacion':f"$answers.{self.f['fecha_programacion']}",
+            'fecha_inicio_rondin':f"$answers.{self.f['fecha_inicio_rondin']}",
+            'grupo_areas_visitadas':f"$answers.{self.f['grupo_areas_visitadas']}",
+            
+            # 'areas_del_rondin': '66462aa5d4a4af2eea07e0d1',
+            # 'comentario_area_rondin': '66462b9d7124d1540f962088',
+            # 'comentario_check_area': '681144fb0d423e25b42818d4',
+            # 'estatus_del_recorrido': '6639b2744bb44059fc59eb62',
+            # 'fecha_hora_inspeccion_area': '6760a908a43b1b0e41abad6b',
+            # 'fecha_programacion':'6760a8e68cef14ecd7f8b6fe',
+            # 'foto_evidencia_area': '681144fb0d423e25b42818d2',
+            # 'foto_evidencia_area_rondin': '66462b9d7124d1540f962087',
+            # 'grupo_de_areas_recorrido': '6645052ef8bc829a5ccafaf5',
+            # 'nombre_area':'663e5d44f5b8a7ce8211ed0f',
+            # 'nombre_del_recorrido': '6645050d873fc2d733961eba',
+            # 'nombre_del_recorrido_en_catalog': '6644fb97e14dcb705407e0ef',
+            # 'ubicacion_recorrido': '663e5c57f5b8a7ce8211ed0b',
+            # 'fecha_inicio_rondin': '6818ea068a7f3446f1bae3b3',
+            # 'fecha_fin_rondin': '6760a8e68cef14ecd7f8b6ff',
+            # 'check_status': '681fa6a8d916c74b691e174b',
+            # 'grupo_incidencias_check': '681144fb0d423e25b42818d3',
+            # 'incidente_open': '6811455664dc22ecae83f75b',
+            # 'incidente_comentario': '681145323d9b5fa2e16e35cc',
+            # 'incidente_area': '663e5d44f5b8a7ce8211ed0f',
+            # 'incidente_location': '663e5c57f5b8a7ce8211ed0b',
+            # 'incidente_evidencia': '681145323d9b5fa2e16e35cd',
+            # 'incidente_documento': '685063ba36910b2da9952697',
+            # 'url_registro_rondin': '6750adb2936622aecd075607',
+            # 'bitacora_rondin_incidencias': '686468a637d014b9e0ab5090',
+            # 'tipo_de_incidencia': '663973809fa65cafa759eb97'
+            }
+        # lookup = {
+        #  'from': 'form_answer',
+        #  'localField': 'pase_id',
+        #  'foreignField': '_id',
+        #  "pipeline": [
+        #         {'$match':{
+        #             "deleted_at":{"$exists":False},
+        #             "form_id": self.PASE_ENTRADA,
+        #             }
+        #         },
+        #         {'$project':{
+        #             "_id":0, 
+        #             'motivo_visita':f"$answers.{self.CONFIG_PERFILES_OBJ_ID}.{self.mf['motivo']}",
+        #             'grupo_areas_acceso': f"$answers.{self.mf['grupo_areas_acceso']}",                    
+        #             }
+        #         },
+        #         ],
+        #  'as': 'pase',
+        # }
+       
+        query = [
+            {'$match': match_query },
+            {'$project': proyect_fields},
+            # {'$lookup': lookup},
+        ]
+        # if not filterDate:
+        #     query.append(
+        #         {"$limit":1}
+        #     )
+        if dateFrom:
+            query.append(
+                {'$sort':{'folio':-1}},
+            )
+        else:
+            query.append(
+                {'$sort':{'folio':-1}},
+            )
+           
+        records = self.format_cr(self.cr.aggregate(query))
+        # print( simplejson.dumps(records, indent=4))
+        # for r in records:
+        #     pase = r.pop('pase')
+        #     r.pop('pase_id')
+        #     if len(pase) > 0 :
+        #         pase = pase[0]
+        #         r['motivo_visita'] = self.unlist(pase.get('motivo_visita',''))
+        #         r['grupo_areas_acceso'] = self._labels_list(pase.get('grupo_areas_acceso',[]), self.mf)
+        #     r['id_gafet'] = r.get('id_gafet','')
+        #     r['status_visita'] = r.get('status_visita','').title().replace('_', ' ')
+        #     r['contratista'] = self.unlist(r.get('contratista',[]))
+        #     r['status_gafete'] = r.get('status_gafete','').title().replace('_', ' ')
+        #     r['documento'] = r.get('documento','')
+        #     r['grupo_areas_acceso'] = self._labels_list(r.pop('grupo_areas_acceso',[]), self.mf)
+        #     r['comentarios'] = self.format_comentarios(r.get('comentarios',[]))
+        #     r['vehiculos'] = self.format_vehiculos(r.get('vehiculos',[]))
+        #     r['equipos'] = self.format_equipos(r.get('equipos',[]))
+        #     r['visita_a'] = self.format_visita(r.get('visita_a',[]))
+        print("rondines", simplejson.dumps( records,indent=4))
+        return  records
 
     # def get_page_stats(self, booth_area, location, page=''):
     #     print('entra a get_booth_stats')
