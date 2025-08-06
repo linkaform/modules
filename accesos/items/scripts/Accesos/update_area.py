@@ -75,11 +75,17 @@ class Accesos(Accesos):
         }
         if ubicacion:
             match_query.update({
-                f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.configuracion_area['ubicacion']}": ubicacion,
+            f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.configuracion_area['ubicacion']}": {
+                    "$regex": f"^{ubicacion}$",
+                    "$options": "i"
+                }
             })
         if area:
             match_query.update({
-                f"answers.{self.configuracion_area['area']}": area
+            f"answers.{self.configuracion_area['area']}": {
+                    "$regex": f"^{area}$",
+                    "$options": "i"
+                }
             })
         if tag_id_area:
             match_query.update({
@@ -236,8 +242,14 @@ class Accesos(Accesos):
             {'$match': {
                 "deleted_at":{"$exists":False},
                 "form_id": self.AREAS_DE_LAS_UBICACIONES,
-                f'answers.{self.configuracion_area["area"]}': area,
-                f'answers.{self.configuracion_area["ubicacion"]}': ubicacion
+                f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.configuracion_area['ubicacion']}": {
+                    "$regex": f"^{ubicacion}$",
+                    "$options": "i"
+                },
+                f"answers.{self.configuracion_area['area']}": {
+                    "$regex": f"^{area}$",
+                    "$options": "i"
+                }
             }},
             {'$project': {
                 '_id': 1,
