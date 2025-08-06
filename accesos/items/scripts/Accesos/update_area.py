@@ -118,6 +118,8 @@ class Accesos(Accesos):
         ubicacion = data.get('ubicacion', '')
         area = data.get('area', '')
         area_ubicacion_data = self.get_record_ubicacion(ubicacion=ubicacion, area=area)
+        if not area_ubicacion_data:
+            return {'status': 'not_found'}
         folio = area_ubicacion_data.get('folio', '')
         record_id = area_ubicacion_data.get('_id', '')
 
@@ -229,12 +231,13 @@ class Accesos(Accesos):
             res.pop('updated_at', None)
         return res if res else {}
     
-    def exists_area(self, area):
+    def exists_area(self, ubicacion, area):
         query = [
             {'$match': {
                 "deleted_at":{"$exists":False},
                 "form_id": self.AREAS_DE_LAS_UBICACIONES,
-                f'answers.{self.configuracion_area["area"]}': area
+                f'answers.{self.configuracion_area["area"]}': area,
+                f'answers.{self.configuracion_area["ubicacion"]}': ubicacion
             }},
             {'$project': {
                 '_id': 1,
@@ -245,7 +248,7 @@ class Accesos(Accesos):
         return True if res else False
 
     def create_new_area(self, data):
-        exists_area = self.exists_area(data.get('nombre_nueva_area', ''))
+        exists_area = self.exists_area(data.get('ubicacion', {}), data.get('nombre_nueva_area', ''))
         if exists_area:
             return
         
@@ -340,6 +343,8 @@ if __name__ == "__main__":
             details = 'Se actualizaron los datos del area correctamente.'
         elif status == 'create_error':
             details = 'No se pudo crear el area, verifique los datos ingresados.'
+        elif status == 'not_found':
+            details = 'No se pudo encontrar el area, verifique los datos ingresados.'
         else:
             details = 'Hubo un error al actualizar los datos del area'
         acceso_obj.answers[acceso_obj.f['status_details']] = status
