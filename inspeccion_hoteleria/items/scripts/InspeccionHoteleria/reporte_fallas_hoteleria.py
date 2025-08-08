@@ -495,10 +495,9 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         print("hoteles", hoteles)
         
         if not hoteles:
-            my_hotels_set = set(self.my_hotels)
-            filtered_ids = [fid for fid in self.form_ids.values() if fid in my_hotels_set]
-
-            return filtered_ids
+            my_hotels_set = self.form_ids.values()
+            my_hotels_set = list(my_hotels_set)
+            return my_hotels_set
 
         hoteles_normalizados = [
             hotel.lower().replace(' ', '_') for hotel in hoteles
@@ -1515,6 +1514,210 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
         return filtered_res
 
+    def get_multi_line_chart_inspecciones(self, hoteles=[], anio=None, cuatrimestres=None):
+        if hoteles:
+            hoteles_actualizados = []
+            for hotel in hoteles:
+                encontrado = False
+                hotel_norm = hotel.lower().replace(' ', '_')
+                for k, v in self.hotel_name_abreviatura.items():
+                    v_norm = v.lower().replace(' ', '_')
+                    k_norm = k.lower().replace(' ', '_')
+                    if v_norm == hotel_norm:
+                        hoteles_actualizados.append(k_norm)
+                        encontrado = True
+                        break
+                if not encontrado:
+                    hoteles_actualizados.append(hotel_norm)
+            hoteles = hoteles_actualizados
+
+        forms_id_list = self.get_forms_id_list(hoteles)
+
+        match_query = {
+            "deleted_at": {"$exists": False},
+        }
+        
+        if len(forms_id_list) > 1:
+            match_query.update({
+                "form_id": {"$in": forms_id_list}, # type: ignore
+            })
+        else:
+            match_query.update({
+                "form_id": self.unlist(forms_id_list),
+            })
+        
+        pipeline = [
+            {'$match': match_query},
+            {'$addFields': {
+                # CORREGIDO: Agregar timezone para fechas consistentes
+                "_fecha": {
+                    "$dateToString": {
+                        "format": "%Y-%m-%d",
+                        "date": "$created_at",
+                        "timezone": "America/Mexico_City"  # ← AGREGAR TIMEZONE
+                    }
+                },
+                "_anio": {
+                    "$year": {
+                        "$dateFromString": {
+                            "dateString": {
+                                "$dateToString": {
+                                    "format": "%Y-%m-%d",
+                                    "date": "$created_at",
+                                    "timezone": "America/Mexico_City"
+                                }
+                            }
+                        }
+                    }
+                },
+                "_mes": {
+                    "$month": {
+                        "$dateFromString": {
+                            "dateString": {
+                                "$dateToString": {
+                                    "format": "%Y-%m-%d",
+                                    "date": "$created_at",
+                                    "timezone": "America/Mexico_City"
+                                }
+                            }
+                        }
+                    }
+                },
+                "_dia": {
+                    "$dayOfYear": {
+                        "$dateFromString": {
+                            "dateString": {
+                                "$dateToString": {
+                                    "format": "%Y-%m-%d",
+                                    "date": "$created_at",
+                                    "timezone": "America/Mexico_City"
+                                }
+                            }
+                        }
+                    }
+                }
+            }},
+            {'$addFields': {
+                "_cuatrimestre": {
+                    "$ceil": {"$divide": ["$_mes", 4]}
+                }
+            }},
+        ]
+        
+        # Filtro por año y cuatrimestre
+        match_cuatrimestre = {}
+        if anio is not None:
+            match_cuatrimestre["_anio"] = anio
+        if cuatrimestres:
+            match_cuatrimestre["_cuatrimestre"] = {"$in": cuatrimestres}
+        
+        if match_cuatrimestre:
+            pipeline.append({"$match": match_cuatrimestre})
+        
+        pipeline += [
+            {'$project': {
+                'form_id': 1,
+                'hotel': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_nombre']}",
+                '_cuatrimestre': 1,
+                '_anio': 1,
+                '_fecha': 1,  # CORREGIDO: Ya incluye timezone
+                '_dia': 1     # CORREGIDO: Ya incluye timezone
+            }},
+            {
+                '$group': {
+                    '_id': {
+                        'form_id': '$form_id',
+                        'hotel': '$hotel',
+                        'anio': '$_anio',
+                        'cuatrimestre': '$_cuatrimestre',
+                        'fecha': '$_fecha'  # CORREGIDO: Agrupar por fecha con timezone
+                    },
+                    'total_inspecciones_dia': {'$sum': 1},
+                    'dia_del_anio': {'$first': '$_dia'}
+                }
+            },
+            {
+                '$group': {
+                    '_id': {
+                        'form_id': '$_id.form_id',
+                        'hotel': '$_id.hotel',
+                        'anio': '$_id.anio',
+                        'cuatrimestre': '$_id.cuatrimestre'
+                    },
+                    'dias_data': {
+                        '$push': {
+                            'fecha': '$_id.fecha',
+                            'dia_del_anio': '$dia_del_anio',
+                            'inspecciones': '$total_inspecciones_dia'
+                        }
+                    },
+                    'total_inspecciones_cuatrimestre': {'$sum': '$total_inspecciones_dia'}
+                }
+            },
+            {
+                '$project': {
+                    '_id': 0,
+                    'form_id': '$_id.form_id',
+                    'hotel': '$_id.hotel',
+                    'anio': '$_id.anio',
+                    'cuatrimestre': '$_id.cuatrimestre',
+                    'dias_data': 1,
+                    'total_inspecciones_cuatrimestre': 1
+                }
+            },
+            {
+                '$sort': {
+                    'hotel': 1,
+                    'anio': 1,
+                    'cuatrimestre': 1
+                }
+            }
+        ]
+        
+        response = self.cr.aggregate(pipeline)
+        response = list(response)
+        
+        # AGREGAR: Mapear form_id a nombre de hotel
+        form_id_to_hotel_name = {v: k.upper().replace('_', ' ') for k, v in self.form_ids.items()}
+        
+        # Agrupar por hotel
+        hoteles_agrupados = {}
+        for item in response:
+            hotel = item['hotel']
+            
+            # CORREGIDO: Si no viene hotel del query, usar mapeo por form_id
+            if not hotel:
+                hotel = form_id_to_hotel_name.get(item['form_id'], f"Hotel {item['form_id']}")
+            
+            # CORREGIDO: Aplicar abreviaturas si corresponde
+            if hotel in self.hotel_name_abreviatura:
+                hotel = self.hotel_name_abreviatura[hotel]
+            
+            if hotel not in hoteles_agrupados:
+                hoteles_agrupados[hotel] = []
+            
+            # Ordenar dias_data por día del año
+            dias_ordenados = sorted(item['dias_data'], key=lambda x: x['dia_del_anio'])
+            
+            hoteles_agrupados[hotel].append({
+                'anio': item['anio'],
+                'cuatrimestre': item['cuatrimestre'],
+                'total_inspecciones_cuatrimestre': item['total_inspecciones_cuatrimestre'],
+                'dias_data': dias_ordenados
+            })
+        
+        resultado_final = {
+            'agrupado_por_hotel': [
+                {
+                    'hotel': hotel,
+                    'cuatrimestres_data': data
+                }
+                for hotel, data in hoteles_agrupados.items()
+            ]
+        }
+        
+        return resultado_final
+
 if __name__ == '__main__':
     module_obj = Inspeccion_Hoteleria(settings, sys_argv=sys.argv, use_api=False)
     module_obj.console_run()
@@ -1537,6 +1740,8 @@ if __name__ == '__main__':
         response = module_obj.get_room_data(hotel_name=hotel_name, room_id=room_id)
     elif option == 'get_room_pdf':
         response = module_obj.get_pdf(record_id=record_id)
+    elif option == 'get_multi_line_chart_inspecciones':
+        response = module_obj.get_multi_line_chart_inspecciones(hoteles=hoteles)
 
     # print('response=', response)
     if data.get('test'):
