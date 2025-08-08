@@ -123,6 +123,8 @@ class Accesos(Accesos):
     def update_area(self, data):
         ubicacion = data.get('ubicacion', '')
         area = data.get('area', '')
+        if not ubicacion:
+            return {'status': 'not_found'}
         area_ubicacion_data = self.get_record_ubicacion(ubicacion=ubicacion, area=area)
         if not area_ubicacion_data:
             return {'status': 'not_found'}
@@ -341,8 +343,17 @@ if __name__ == "__main__":
         acceso_obj.create_new_area(data)
         data['area'] = data.get('nombre_nueva_area')
 
+    #! Verificar si el qr ya esta asignado a un area
+    exists_qr = False
+    if data.get('qr_area'):
+        qr_data = acceso_obj.get_record_ubicacion(tag_id_area=data.get('qr_area'))
+        if qr_data and qr_data.get('tag_id_area') == data.get('qr_area'):
+            exists_qr = True
+
     #! Actualiza el area si ya existe
-    if data.get('area'):
+    if exists_qr:
+        response = {'status': 'not_created'}
+    elif data.get('area'):
         response = acceso_obj.update_area(data)
     else:
         response = {'status': 'create_error'}
@@ -356,6 +367,8 @@ if __name__ == "__main__":
             details = 'No se pudo crear el area, verifique los datos ingresados.'
         elif status == 'not_found':
             details = 'No se pudo encontrar el area, verifique los datos ingresados.'
+        elif status == 'not_created':
+            details = 'El qr ya esta asignado a un area, no se puede asignar a otra.'
         else:
             details = 'Hubo un error al actualizar los datos del area'
         acceso_obj.answers[acceso_obj.f['status_details']] = status
