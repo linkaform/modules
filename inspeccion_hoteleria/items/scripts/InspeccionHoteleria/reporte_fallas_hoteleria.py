@@ -1514,7 +1514,63 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
         return filtered_res
 
+    def get_cantidad_habitaciones_x_hotel(self, hoteles=[]):
+        match = {
+            "deleted_at": {"$exists": False},
+            "form_id": self.Location.AREAS_DE_LAS_UBICACIONES,
+            f"answers.{self.Location.TIPO_AREA_OBJ_ID}.{self.f['tipo_area']}": "Habitación"
+        }
+
+        if hoteles:
+            if len(hoteles) > 1:
+                match.update({
+                    f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": {"$in": hoteles},
+                })
+            else:
+                match.update({
+                    f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": self.unlist(hoteles),
+                })
+        
+        query = [
+            {'$match': match},
+            {'$group': {
+                '_id': f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}",
+                'total_habitaciones': {'$sum': 1}
+            }},
+            {'$project': {
+                '_id': 0,
+                'hotel': '$_id',
+                'total_habitaciones': 1
+            }},
+            {'$sort': {
+                'hotel': 1
+            }}
+        ]
+        
+        response = self.cr.aggregate(query)
+        response = list(response)
+        for item in response:
+            hotel_nombre = item.get('hotel', '')
+            if hotel_nombre in self.hotel_name_abreviatura:
+                item['hotel'] = self.hotel_name_abreviatura[hotel_nombre]
+        print("Cantidad de habitaciones por hotel:", simplejson.dumps(response, indent=2))
+        return response
+
     def get_multi_line_chart_inspecciones(self, hoteles=[], anio=None, cuatrimestres=None):
+        print('================', hoteles)
+        hoteles_con_abreviatura = []
+        if hoteles:
+            for hotel in hoteles:
+                hotel_encontrado = None
+                for nombre_completo, abreviatura in self.hotel_name_abreviatura.items():
+                    if hotel == nombre_completo:
+                        hotel_encontrado = abreviatura
+                        break
+                if hotel_encontrado:
+                    hoteles_con_abreviatura.append(hotel_encontrado)
+                else:
+                    hoteles_con_abreviatura.append(hotel)
+        
         if hoteles:
             hoteles_actualizados = []
             for hotel in hoteles:
@@ -1532,6 +1588,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             hoteles = hoteles_actualizados
 
         forms_id_list = self.get_forms_id_list(hoteles)
+        habitaciones_x_hotel = self.get_cantidad_habitaciones_x_hotel(hoteles=hoteles_con_abreviatura)
 
         match_query = {
             "deleted_at": {"$exists": False},
@@ -1549,12 +1606,11 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         pipeline = [
             {'$match': match_query},
             {'$addFields': {
-                # CORREGIDO: Agregar timezone para fechas consistentes
                 "_fecha": {
                     "$dateToString": {
                         "format": "%Y-%m-%d",
                         "date": "$created_at",
-                        "timezone": "America/Mexico_City"  # ← AGREGAR TIMEZONE
+                        "timezone": "America/Mexico_City"
                     }
                 },
                 "_anio": {
@@ -1620,8 +1676,8 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 'hotel': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_nombre']}",
                 '_cuatrimestre': 1,
                 '_anio': 1,
-                '_fecha': 1,  # CORREGIDO: Ya incluye timezone
-                '_dia': 1     # CORREGIDO: Ya incluye timezone
+                '_fecha': 1,
+                '_dia': 1
             }},
             {
                 '$group': {
@@ -1630,7 +1686,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                         'hotel': '$hotel',
                         'anio': '$_anio',
                         'cuatrimestre': '$_cuatrimestre',
-                        'fecha': '$_fecha'  # CORREGIDO: Agrupar por fecha con timezone
+                        'fecha': '$_fecha'
                     },
                     'total_inspecciones_dia': {'$sum': 1},
                     'dia_del_anio': {'$first': '$_dia'}
@@ -1677,7 +1733,13 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         response = self.cr.aggregate(pipeline)
         response = list(response)
         
-        # AGREGAR: Mapear form_id a nombre de hotel
+        # NUEVO: Crear diccionario de habitaciones por hotel para cálculo de porcentajes
+        habitaciones_dict = {}
+        for hab_info in habitaciones_x_hotel:
+            hotel_name = hab_info.get('hotel', '')
+            total_habitaciones = hab_info.get('total_habitaciones', 0)
+            habitaciones_dict[hotel_name] = total_habitaciones
+        
         form_id_to_hotel_name = {v: k.upper().replace('_', ' ') for k, v in self.form_ids.items()}
         
         # Agrupar por hotel
@@ -1685,25 +1747,50 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         for item in response:
             hotel = item['hotel']
             
-            # CORREGIDO: Si no viene hotel del query, usar mapeo por form_id
             if not hotel:
                 hotel = form_id_to_hotel_name.get(item['form_id'], f"Hotel {item['form_id']}")
             
-            # CORREGIDO: Aplicar abreviaturas si corresponde
             if hotel in self.hotel_name_abreviatura:
                 hotel = self.hotel_name_abreviatura[hotel]
             
             if hotel not in hoteles_agrupados:
                 hoteles_agrupados[hotel] = []
             
-            # Ordenar dias_data por día del año
+            # NUEVO: Procesar dias_data para agregar porcentajes progresivos
+            total_habitaciones = habitaciones_dict.get(hotel, 0)
             dias_ordenados = sorted(item['dias_data'], key=lambda x: x['dia_del_anio'])
+            
+            # CALCULAR: Progreso acumulativo de porcentaje por día
+            inspecciones_acumuladas = 0
+            for dia_info in dias_ordenados:
+                inspecciones_acumuladas += dia_info['inspecciones']
+                
+                # Calcular porcentaje progresivo hasta ese día
+                if total_habitaciones > 0:
+                    porcentaje_progresivo = min((inspecciones_acumuladas / total_habitaciones) * 100, 100.0)
+                    porcentaje_progresivo = round(porcentaje_progresivo, 2)
+                else:
+                    porcentaje_progresivo = 0.0
+                
+                # AGREGAR: Datos de porcentaje al día
+                dia_info['porcentaje_progresivo'] = porcentaje_progresivo
+                dia_info['porcentaje_del_dia'] = round((dia_info['inspecciones'] / total_habitaciones) * 100, 2) if total_habitaciones > 0 else 0.0
+            
+            # Calcular porcentaje total del cuatrimestre
+            total_inspecciones = item['total_inspecciones_cuatrimestre']
+            porcentaje_total_cuatrimestre = 0.0
+            
+            if total_habitaciones > 0:
+                porcentaje_total_cuatrimestre = min((total_inspecciones / total_habitaciones) * 100, 100.0)
+                porcentaje_total_cuatrimestre = round(porcentaje_total_cuatrimestre, 2)
             
             hoteles_agrupados[hotel].append({
                 'anio': item['anio'],
                 'cuatrimestre': item['cuatrimestre'],
-                'total_inspecciones_cuatrimestre': item['total_inspecciones_cuatrimestre'],
-                'dias_data': dias_ordenados
+                'total_inspecciones_cuatrimestre': total_inspecciones,
+                'total_habitaciones': total_habitaciones,
+                'porcentaje_inspeccionado': porcentaje_total_cuatrimestre,
+                'dias_data': dias_ordenados  # ACTUALIZADO: Con porcentajes progresivos
             })
         
         resultado_final = {
@@ -1713,9 +1800,8 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                     'cuatrimestres_data': data
                 }
                 for hotel, data in hoteles_agrupados.items()
-            ]
+            ],
         }
-        
         return resultado_final
 
 if __name__ == '__main__':
