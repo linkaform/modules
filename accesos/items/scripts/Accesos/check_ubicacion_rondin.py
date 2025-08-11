@@ -22,7 +22,7 @@ class Accesos(Accesos):
             'folio_del_check': '688a584dfa0d4a318d9ff389'
         })
         
-    def get_recorridos_by_area(self, area_rondin):
+    def get_recorridos_by_area(self, ubicacion, area_rondin):
         """
         Recibe: El area que se buscara en la configuracion de recorridos
         Retorna: Una lista de objetos con los nombres y ids de los recorridos que tengan esa area
@@ -36,6 +36,7 @@ class Accesos(Accesos):
                 '$match': {
                     'deleted_at': {'$exists': False},
                     'form_id': self.CONFIGURACION_DE_RECORRIDOS_FORM,
+                    f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": ubicacion,
                     f"answers.{self.f['grupo_de_areas_recorrido']}": {'$exists': True}
                 }
             },
@@ -416,9 +417,10 @@ if __name__ == "__main__":
     acceso_obj.load(module='Location', **acceso_obj.kwargs)
     cat_area_rondin = acceso_obj.answers.get(acceso_obj.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {})
     nombre_area_rondin = acceso_obj.unlist(cat_area_rondin.get(acceso_obj.f['nombre_area'], []))
+    nombre_ubicacion_rondin = acceso_obj.unlist(cat_area_rondin.get(acceso_obj.Location.f['location'], []))
     # print('nombre_area_rondin', nombre_area_rondin)
 
-    nombres_recorrido = acceso_obj.get_recorridos_by_area(nombre_area_rondin)
+    nombres_recorrido = acceso_obj.get_recorridos_by_area(nombre_ubicacion_rondin, nombre_area_rondin)
     # print('nombres_recorrido', nombres_recorrido)
 
     rondin = acceso_obj.search_rondin_by_name(names=nombres_recorrido)
