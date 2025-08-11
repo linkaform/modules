@@ -40,8 +40,8 @@ class Accesos(Accesos):
         }
         
         self.f.update({
-            'status_details': '6889337c4db2c8b3de148e77',
-            'status_details_message': '689270a245f31ca65437292b',
+            'status_details': '689a46342038ded0e949be07',
+            'status_details_message': '689a46342038ded0e949be08',
         })
 
     def format_data_area(self, data):
@@ -124,10 +124,14 @@ class Accesos(Accesos):
         ubicacion = data.get('ubicacion', '')
         area = data.get('area', '')
         if not ubicacion:
-            return {'status': 'not_found'}
+            self.statuss = 'error'
+            self.status_comment = 'La ubicacion no puede estar vacia.'
+            return
         area_ubicacion_data = self.get_record_ubicacion(ubicacion=ubicacion, area=area)
         if not area_ubicacion_data:
-            return {'status': 'not_found'}
+            self.statuss = 'error'
+            self.status_comment = 'No se encontro el area especificada.'
+            return
         folio = area_ubicacion_data.get('folio', '')
         record_id = area_ubicacion_data.get('_id', '')
 
@@ -290,6 +294,10 @@ class Accesos(Accesos):
             form_id=self.AREAS_DE_LAS_UBICACIONES,
             answers=answers
         )
+
+        if response.get('status') != 'success':
+            self.statuss = 'error'
+            self.status_comment = 'Hubo un error al crear el area.'
         
         return response
     
@@ -331,6 +339,8 @@ if __name__ == "__main__":
     acceso_obj.console_run()
     print('answers', simplejson.dumps(acceso_obj.answers, indent=3))
     data = acceso_obj.format_data_area(acceso_obj.answers)
+    acceso_obj.statuss = 'ok'
+    acceso_obj.status_comment = ''
 
     #! Si trae solo el QR
     if data.get('qr_area') and not data.get('ubicacion') and not data.get('area'):
@@ -353,27 +363,17 @@ if __name__ == "__main__":
 
     #! Actualiza el area si ya existe
     if exists_qr:
-        response = {'status': 'not_created'}
+        acceso_obj.statuss = 'error'
+        acceso_obj.status_comment = 'El QR ya esta asignado a un area.'
     elif data.get('area'):
         response = acceso_obj.update_area(data)
-    else:
-        response = {'status': 'create_error'}
+        if response.get('status') != 'success': # type: ignore
+            acceso_obj.statuss = 'error'
+            acceso_obj.status_comment = 'No se pudo actualizar el area.'
         
     #! Ajuste de respuestas
-    if response:
-        status = response.get('status', 'Unknown')
-        if status == 'success':
-            details = 'Se actualizaron los datos del area correctamente.'
-        elif status == 'create_error':
-            details = 'No se pudo crear el area, verifique los datos ingresados.'
-        elif status == 'not_found':
-            details = 'No se pudo encontrar el area, verifique los datos ingresados.'
-        elif status == 'not_created':
-            details = 'El qr ya esta asignado a un area, no se puede asignar a otra.'
-        else:
-            details = 'Hubo un error al actualizar los datos del area'
-        acceso_obj.answers[acceso_obj.f['status_details']] = status
-        acceso_obj.answers[acceso_obj.f['status_details_message']] = details
+    acceso_obj.answers[acceso_obj.f['status_details']] = acceso_obj.statuss
+    acceso_obj.answers[acceso_obj.f['status_details_message']] = acceso_obj.status_comment
 
     sys.stdout.write(simplejson.dumps({
         'status': 101,
