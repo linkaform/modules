@@ -268,6 +268,7 @@ class Accesos(Accesos):
     def create_new_area(self, data):
         exists_area = self.exists_area(data.get('ubicacion', {}), data.get('nombre_nueva_area', ''))
         if exists_area:
+            self.status_comment = 'El area ya existe. Solo se actualizo la informacion rellenada.'
             return
         
         contact_details = self.get_contact_details(data.get('ubicacion', {}))
