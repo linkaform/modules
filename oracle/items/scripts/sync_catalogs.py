@@ -9,16 +9,9 @@ class Oracle(Oracle):
 
     def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False, **kwargs):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
-        self.class_cr = self.get_db_cr('Oracle')
+        #self.class_cr = self.get_db_cr('Oracle')
         #use self.lkm.catalog_id() to get catalog id
         self.name =  __class__.__name__
-        self.load('Employee', **self.kwargs)
-        self.Employee.f.update({
-            'worker_code':'670f585bf844ff7bc357b1dc',
-            'worker_code':'670f585bf844ff7bc357b1dc',
-            
-            })
-        self.f.update(self.Employee.f)
         self.settings = settings
         self.etl_values = {
             'A':'Activo',
@@ -28,6 +21,8 @@ class Oracle(Oracle):
             'D':'Disponible',
             'ND':'NoDisponible',
         }
+
+        self.VARIABLES_CRITICAS_PRODUCCION = 134148
 
         self.db_id_fields = {
             'CONTACTOID':'FEC_MODIF',
@@ -40,171 +35,88 @@ class Oracle(Oracle):
             'VEHICULO_TALID':'FEC_MODIF',
             }
 
-        self.schema_dict = {
-            'LINK_EMPLEADOS':{
-                'catalog_id': self.CONTACTO_CAT_ID,
-                'schema':{
-                    'CONTACTOID': self.f['address_code'],
-                    'CIUDAD': self.f['city'],
-                    'DIRECCION': self.f['address'],
-                    'CODIGOPOSTAL': self.f['zip_code'],
-                    'DEPARTAMENTO': self.f['worker_department'],
-                    'EMAIL': self.f['email'],
-                    'ESTADO_EMPLEADO': self.f['address_status'],
-                    'GENERO': self.f['genero'],
-                    'PUESTO': self.f['worker_position'],
-                    'PAIS': self.f['country'],
-                    'PROVINCIA': self.f['state'],
-                    'RAZON_SOCIAL': self.f['address_name'],
-                    'TELEFONO1': self.f['phone'],
-                    'TELEFONO2': self.f['phone2'],
-                    'TIPO_CONTACTO': self.f['address_type'],
-                }
-            },
-            'LINK_EMPLEADOS_2':{
-                'catalog_id': self.Employee.EMPLEADOS_JEFES_DIRECTOS_ID,
-                'schema':{
-                    'DEPARTAMENTO': self.f['worker_department'],
-                    'CONTACTOID': self.f['worker_code_jefes'],
-                    'EMAIL': self.f['email'],
-                    'ESTADO_EMPLEADO': self.f['address_status'],
-                    'GENERO': self.f['genero_jefes'],
-                    'PUESTO': self.f['worker_position'],
-                    'RAZON_SOCIAL': self.f['worker_name_jefes'],
-                    'TELEFONO1': self.f['telefono1'],
-                    'DIRECCION_CAT': self.f['address_name'],
-                    'PICUTRE': self.f['picture_jefes'],
-                }
-            },
-            'LINK_CLIENTES':{
-                'catalog_id': self.CONTACTO_CAT_ID,
-                'schema':{
-                    'CONTACTOID': self.f['address_code'],
-                    'CIUDAD': self.f['city'],
-                    'DIRECCION': self.f['address'],
-                    'CODIGOPOSTAL': self.f['zip_code'],
-                    'DEPARTAMENTO': self.f['worker_department'],
-                    'EMAIL': self.f['email'],
-                    'ESTADO': self.f['address_status'],
-                    'GENERO': self.f['genero'],
-                    'PUESTO': self.f['worker_position'],
-                    'PAIS': self.f['country'],
-                    'PROVINCIA': self.f['state'],
-                    'RAZON_SOCIAL': self.f['address_name'],
-                    'TELEFONO1': self.f['phone'],
-                    'TELEFONO2': self.f['phone2'],
-                    'TIPO_CONTACTO': self.f['address_type'],
-                }
-            }
-        }
+        # self.schema_dict = {
+        #     'LINK_EMPLEADOS':{
+        #         'catalog_id': self.CONTACTO_CAT_ID,
+        #         'schema':{
+        #             'CONTACTOID': self.f['address_code'],
+        #             'CIUDAD': self.f['city'],
+        #             'DIRECCION': self.f['address'],
+        #             'CODIGOPOSTAL': self.f['zip_code'],
+        #             'DEPARTAMENTO': self.f['worker_department'],
+        #             'EMAIL': self.f['email'],
+        #             'ESTADO_EMPLEADO': self.f['address_status'],
+        #             'GENERO': self.f['genero'],
+        #             'PUESTO': self.f['worker_position'],
+        #             'PAIS': self.f['country'],
+        #             'PROVINCIA': self.f['state'],
+        #             'RAZON_SOCIAL': self.f['address_name'],
+        #             'TELEFONO1': self.f['phone'],
+        #             'TELEFONO2': self.f['phone2'],
+        #             'TIPO_CONTACTO': self.f['address_type'],
+        #         }
+        #     },
+        #     'LINK_EMPLEADOS_2':{
+        #         'catalog_id': self.Employee.EMPLEADOS_JEFES_DIRECTOS_ID,
+        #         'schema':{
+        #             'DEPARTAMENTO': self.f['worker_department'],
+        #             'CONTACTOID': self.f['worker_code_jefes'],
+        #             'EMAIL': self.f['email'],
+        #             'ESTADO_EMPLEADO': self.f['address_status'],
+        #             'GENERO': self.f['genero_jefes'],
+        #             'PUESTO': self.f['worker_position'],
+        #             'RAZON_SOCIAL': self.f['worker_name_jefes'],
+        #             'TELEFONO1': self.f['telefono1'],
+        #             'DIRECCION_CAT': self.f['address_name'],
+        #             'PICUTRE': self.f['picture_jefes'],
+        #         }
+        #     },
+        #     'LINK_CLIENTES':{
+        #         'catalog_id': self.CONTACTO_CAT_ID,
+        #         'schema':{
+        #             'CONTACTOID': self.f['address_code'],
+        #             'CIUDAD': self.f['city'],
+        #             'DIRECCION': self.f['address'],
+        #             'CODIGOPOSTAL': self.f['zip_code'],
+        #             'DEPARTAMENTO': self.f['worker_department'],
+        #             'EMAIL': self.f['email'],
+        #             'ESTADO': self.f['address_status'],
+        #             'GENERO': self.f['genero'],
+        #             'PUESTO': self.f['worker_position'],
+        #             'PAIS': self.f['country'],
+        #             'PROVINCIA': self.f['state'],
+        #             'RAZON_SOCIAL': self.f['address_name'],
+        #             'TELEFONO1': self.f['phone'],
+        #             'TELEFONO2': self.f['phone2'],
+        #             'TIPO_CONTACTO': self.f['address_type'],
+        #         }
+        #     }
+        # }
 
         self.views = {
-            'LINK_PAIS':{
-                'catalog_id': self.COUNTRY_ID,
+            'VW_LinkAForm_Hora':{
+                'catalog_id': self.VARIABLES_CRITICAS_PRODUCCION,
                 'schema':{
                     'PAISID': '_id',
-                    'DESCRIPCION': self.f['country'],
-                    'PAISID': self.f['country_code'],
+                    # 'DESCRIPCION': self.f['country'],
+                    # 'PAISID': self.f['country_code'],
                     }
             },
-            'LINK_PROVINCIAS':{
-                'catalog_id': self.ESTADO_ID,
+            'VW_LinkAForm_Dia':{
+                'catalog_id': self.VARIABLES_CRITICAS_PRODUCCION,
                 'schema':{
-                    'PROVINCIAID':  self.f['state_code'],
-                    'DESCRIPCION': self.f['state'],
-                    'PAIS': self.f['country'],
+                    # 'PROVINCIAID':  self.f['state_code'],
+                    # 'DESCRIPCION': self.f['state'],
+                    # 'PAIS': self.f['country'],
                     }
                 },
-            'LINK_DEPARTAMENTO':{
-                'catalog_id': self.DEPARTAMENTOS_ID,
+            'vw_linkaform_fab':{
+                'catalog_id': self.VARIABLES_CRITICAS_PRODUCCION,
                 'schema':{
-                    'DEPARTAMENTOID': self.f['department_code'],
-                    'DESCRIPCION': self.f['worker_department'],
+                    # 'DEPARTAMENTOID': self.f['department_code'],
+                    # 'DESCRIPCION': self.f['worker_department'],
                     }
                 },
-            'LINK_PUESTO':{
-                'catalog_id': self.PUESTOS_ID,
-                'schema':{
-                    'CARGOID': self.f['worker_position_code'],
-                    'DESCRIPCION': self.f['worker_position'],
-                    }
-            },
-            'LINK_EMPLEADOS':{
-                'catalog_id': self.EMPLOYEE_ID,
-                'schema':{
-                    'DEPARTAMENTO': self.f['worker_department'],
-                    'CONTACTOID': self.f['worker_code'],
-                    'EMAIL': self.f['email'],
-                    'ESTADO_EMPLEADO': self.f['estatus_dentro_empresa'],
-                    'GENERO': self.f['genero'],
-                    'PUESTO': self.f['worker_position'],
-                    'RAZON_SOCIAL': self.f['worker_name'],
-                    'TELEFONO1': self.f['telefono1'],
-                    'DIRECCION_CAT': self.f['address_name'],
-                    'PICUTRE': self.f['picture'],
-                    },
-            },
-
-            'LINK_FABRICANTE':{
-                'catalog_id': self.MARCA_ID,
-                'schema':{
-                    'MARCAID': self.f['marca_codigo'],
-                    'DESCRIPCION': self.f['marca'],
-                    }
-                },
-            'LINK_MODELO_EQUIPOS':{
-                'catalog_id': self.MODELO_ID,
-                'schema':{
-                    'MODELOID':  self.f['modelo_codigo'],
-                    'MARCA': self.f['marca'],
-                    'MODELO': self.f['modelo'],
-                    'TIPO_MAQ': self.f['categoria_marca'],
-                    }
-                },
-            'LINK_CLIENTES':{
-                'catalog_id': self.CLIENTE_CAT_ID,
-                'schema':{
-                    'CONTACTOID': self.f['client_code'],
-                    'NOMBRE_COMERCIAL': self.f['nombre_comercial'],
-                    'RAZON_SOCIAL': self.f['razon_social'],
-                    'DIRECCION_CAT': self.f['address_name'],
-                    'RUC': self.f['rfc_razon_social'],
-                    }
-            },
-            'LINK_EQUIPOS':{
-                'catalog_id': self.ACTIVOS_FIJOS_CAT_ID,
-                'schema':{
-                    'VEHICULO_TALID': '_id',
-                    'CATEGORIA': self.f['categoria_marca'],
-                    'EQUIPO': self.f['tipo_equipo'],
-                    'FABRICANTE': self.f['marca'],
-                    'MODELO': self.f['modelo'],
-                    'NOMBRE': self.f['nombre_equipo'],
-                    'CHASIS': self.f['numero_de_serie_chasis'],
-                    'CLIENTE': self.f['nombre_comercial'],
-                    'ULTIMO_HOROMETRO': self.f['ultimo_horometro'],
-                    'FEC_ULT_HOROMETRO': self.f['fecha_horometro'],
-                    'ESTATUS': self.f['estatus'],
-                    'ESTADO': self.f['estado'],
-                    },
-                }
-            }
-
-        self.aux_view = {
-            'EQUIPOS':{
-                'catalog_id': self.TIPO_DE_EQUIPO_ID,
-                'schema':{
-                    'VEHICULO_TALID': '_id',
-                    'EQUIPO': self.f['tipo_equipo'],
-                    }
-                },
-            'DEPARTAMENTO':{
-                'catalog_id': self.CONF_DEPARTAMENTOS_PUESTOS_CAT_ID,
-                'schema':{
-                    'DEPARTAMENTO': self.f['worker_department'],
-                    'PUESTO': self.f['worker_position'],
-                    }
-                }    
             }
 
 
@@ -367,11 +279,16 @@ class Oracle(Oracle):
 
 
 if __name__ == "__main__":
+    print('account settings \\\\\\\\\\\\\\', settings.config)
+    oo  = settings.config['ORACLE_HOST']
+    print('oo',oo)
     module_obj = Oracle(settings, sys_argv=sys.argv)
-    module_obj.console_run()
+    # module_obj.console_run()
     module_obj.db_updated_at = time.time()
-    # gg = module_obj.search_views()
-    # print('gg',gg)
+    gg = module_obj.search_views()
+    print('gg',gg)
+    print('account settings', module_obj.settings.config)
+    print('account settings', module_dobj.settings.config)
     data = module_obj.data.get('data',{})
     option = data.get("option",'read')
 
@@ -388,8 +305,10 @@ if __name__ == "__main__":
                     'VEHICULO_TALID': '_id',
                     'DESCRIPCION': module_obj.f['worker_position'],
                     }
+        print('views',views)
+        breakpoint()
         for v in views:
-            print('-----------------------------------------------------------')
+            print('-----------------------------------------------------------',v)
             if True:
                 record_ids, last_update,  = module_obj.get_last_db_update_data(v)
                 # last_update_date
