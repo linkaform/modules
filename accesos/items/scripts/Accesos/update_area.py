@@ -357,15 +357,18 @@ if __name__ == "__main__":
 
     #! Verificar si el qr ya esta asignado a un area
     exists_qr = False
+    is_a_different_area = True
     if data.get('qr_area'):
         qr_data = acceso_obj.get_record_ubicacion(tag_id_area=data.get('qr_area'))
         if qr_data and qr_data.get('tag_id_area') == data.get('qr_area'):
+            if qr_data.get('ubicacion') == data.get('ubicacion') and qr_data.get('area') == data.get('area'):
+                is_a_different_area = False
             exists_qr = True
 
     #! Actualiza el area si ya existe
-    if exists_qr:
+    if exists_qr and is_a_different_area:
         acceso_obj.statuss = 'error'
-        acceso_obj.status_comment = 'El QR ya esta asignado a un area.'
+        acceso_obj.status_comment = 'El QR ya esta asignado a un area diferente.'
     elif data.get('area'):
         response = acceso_obj.update_area(data)
         if response.get('status') != 'success': # type: ignore
