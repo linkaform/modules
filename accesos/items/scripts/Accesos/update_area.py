@@ -296,7 +296,7 @@ class Accesos(Accesos):
             answers=answers
         )
 
-        if response.get('status') != 'success':
+        if response is None or response.get('status', 'unknown') != 'success':
             self.statuss = 'error'
             self.status_comment = 'Hubo un error al crear el area.'
         
@@ -354,6 +354,16 @@ if __name__ == "__main__":
     if data.get('create_area', False):
         acceso_obj.create_new_area(data)
         data['area'] = data.get('nombre_nueva_area')
+    else:
+        #! Validacion para evitar problema con areas creadas directamente en el catalogo
+        search_area = acceso_obj.get_record_ubicacion(ubicacion=data.get('ubicacion'), area=data.get('area'))
+        if search_area.get('ubicacion') == data.get('ubicacion') and search_area.get('area') == data.get('area'):
+            pass
+        else:
+            data['area'] = ''
+            data['qr_area'] = ''
+            acceso_obj.statuss = 'error'
+            acceso_obj.status_comment = 'No se encontró el área seleccionada. Intenta creandola primero.'
 
     #! Verificar si el qr ya esta asignado a un area
     exists_qr = False
@@ -371,7 +381,7 @@ if __name__ == "__main__":
         acceso_obj.status_comment = 'El QR ya esta asignado a un area diferente.'
     elif data.get('area'):
         response = acceso_obj.update_area(data)
-        if response.get('status') != 'success': # type: ignore
+        if response is None or response.get('status', 'unknown') != 'success':
             acceso_obj.statuss = 'error'
             acceso_obj.status_comment = 'No se pudo actualizar el area.'
         
