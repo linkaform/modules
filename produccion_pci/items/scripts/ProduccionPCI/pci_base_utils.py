@@ -110,7 +110,7 @@ class PCI_Utils():
                             label_err = info_group['label']
                             msg_err_arr.append('SET {0}:: {1} - {2}'.format(i_err, msg_err, label_err))
             if msg_err_arr:
-                data_str_err = list_to_str(msg_err_arr)
+                data_str_err = self.lkf_obj.list_to_str(msg_err_arr)
         except Exception as e:
             print('response', response)
             print('Exception =  ', e)
@@ -268,6 +268,9 @@ class PCI_Utils():
             'answers.f1054000a010000000000005': telefono,
             'answers.f1054000a0100000000000a2': area
         }
+        if not folio:
+            query_folio_os.pop('folio')
+            query_folio_os['answers.633d9f63eb936fb6ec9bf580'] = 'degradado'
         print('query_folio_os =',query_folio_os)
         record = self.cr_admin.find_one(query_folio_os, {'folio':1, 'answers':1, 'connection_id':1, 'user_id':1, 'created_at': 1})
         return record
