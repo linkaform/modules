@@ -9,6 +9,7 @@ from bson import ObjectId
 from accesos_utils import Accesos
 
 from account_settings import *
+from datetime import datetime, timedelta
 
 class Accesos(Accesos):
     
@@ -17,7 +18,11 @@ class Accesos(Accesos):
         # Module Globals#
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
         
-    def get_recorridos_by_area(self, area_rondin):
+        self.f.update({
+            'folio_del_check': '688a584dfa0d4a318d9ff389'
+        })
+        
+    def get_recorridos_by_area(self, ubicacion, area_rondin):
         """
         Recibe: El area que se buscara en la configuracion de recorridos
         Retorna: Una lista de objetos con los nombres y ids de los recorridos que tengan esa area
@@ -31,6 +36,7 @@ class Accesos(Accesos):
                 '$match': {
                     'deleted_at': {'$exists': False},
                     'form_id': self.CONFIGURACION_DE_RECORRIDOS_FORM,
+                    f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": ubicacion,
                     f"answers.{self.f['grupo_de_areas_recorrido']}": {'$exists': True}
                 }
             },
@@ -91,7 +97,7 @@ class Accesos(Accesos):
         rondin_en_progreso = True
         answers={}
 
-        print('rondinnnnnnnnnnnnnnnnn', simplejson.dumps(rondin, indent=3))
+        # print('rondinnnnnnnnnnnnnnnnn', simplejson.dumps(rondin, indent=3))
 
         if not rondin.get('fecha_inicio_rondin'):
             rondin['fecha_inicio_rondin'] = today
@@ -156,36 +162,33 @@ class Accesos(Accesos):
 
         answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = conf_recorrido
         answers[self.f['estatus_del_recorrido']] = 'en_proceso' if rondin_en_progreso else 'realizado'
-        answers[self.f['fecha_fin_rondin']] = today if not rondin_en_progreso else ''
+        answers[self.f['fecha_fin_rondin']] = today if data_rondin.get(self.f['check_status'], '') == 'finalizado' else ''
         
-        incidencias_rondin = {}
-        items_incidencias = []
-
+        format_list_incidencias = []
         for incidencia in rondin.get('bitacora_rondin_incidencias', []):
             inc = incidencia.get(self.f['tipo_de_incidencia'])
             if inc:
-                obj_incidencia = incidencia.copy()
-                obj_incidencia.pop(self.f['tipo_de_incidencia'], None)
-                obj_incidencia.update({
+                incidencia.pop(self.f['tipo_de_incidencia'], None)
+                incidencia.update({
                     self.LISTA_INCIDENCIAS_CAT_OBJ_ID: {
                         self.f['tipo_de_incidencia']: inc
                     }
                 })
-                items_incidencias.append(obj_incidencia)
-            else:
-                items_incidencias.append(incidencia)
-
+                format_list_incidencias.append(incidencia)
+            
+        rondin['bitacora_rondin_incidencias'] = format_list_incidencias
+             
         for incidencia in data_rondin.get(self.f['grupo_incidencias_check'], []):
-            items_incidencias.append(incidencia)
-
-        for idx, incidencia in enumerate(items_incidencias):
-            incidencias_rondin[str(idx)] = incidencia
-
-        answers[self.f['bitacora_rondin_incidencias']] = incidencias_rondin
+            rondin['bitacora_rondin_incidencias'].append(incidencia)
+        
+        incidencias_list = rondin['bitacora_rondin_incidencias']
+        incidencias_dict = {str(idx): incidencia for idx, incidencia in enumerate(incidencias_list)}
+        answers[self.f['bitacora_rondin_incidencias']] = incidencias_dict
+        
         if data_rondin.get(self.f['check_status']) == 'finalizado':
             answers[self.f['estatus_del_recorrido']] = 'realizado'
 
-        print("ans", simplejson.dumps(answers, indent=4))
+        # print("ans", simplejson.dumps(answers, indent=4))
 
         if answers:
             res= self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=[format_id_rondin])
@@ -275,7 +278,7 @@ class Accesos(Accesos):
         answers[self.f['bitacora_rondin_incidencias']] = self.answers.get(self.f['grupo_incidencias_check'], [])
 
         metadata.update({'answers':answers})
-        print(simplejson.dumps(metadata, indent=3))
+        # print(simplejson.dumps(metadata, indent=3))
 
         ##############################
         #TODO Asignar a usuario
@@ -315,6 +318,7 @@ class Accesos(Accesos):
             else:
                 incidente = incidencia.get(self.f['incidente_open'], '')
             format_grupo_incidencias.append({
+                self.f['folio_del_check']: self.folio,
                 self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID: {
                     self.mf['nombre_empleado']: employee_name
                 },
@@ -409,17 +413,18 @@ if __name__ == "__main__":
     record_id = record_id.get('_id', '').get('$oid', '')
     # Validacion de turno
     # acceso_obj.has_guard_started_shift()
-    print('answers', simplejson.dumps(acceso_obj.answers, indent=3))
+    # print('answers', simplejson.dumps(acceso_obj.answers, indent=3))
     acceso_obj.load(module='Location', **acceso_obj.kwargs)
     cat_area_rondin = acceso_obj.answers.get(acceso_obj.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {})
     nombre_area_rondin = acceso_obj.unlist(cat_area_rondin.get(acceso_obj.f['nombre_area'], []))
+    nombre_ubicacion_rondin = acceso_obj.unlist(cat_area_rondin.get(acceso_obj.Location.f['location'], []))
     # print('nombre_area_rondin', nombre_area_rondin)
 
-    nombres_recorrido = acceso_obj.get_recorridos_by_area(nombre_area_rondin)
+    nombres_recorrido = acceso_obj.get_recorridos_by_area(nombre_ubicacion_rondin, nombre_area_rondin)
     # print('nombres_recorrido', nombres_recorrido)
 
     rondin = acceso_obj.search_rondin_by_name(names=nombres_recorrido)
-    print('rondin', rondin)
+    # print('rondin', rondin)
 
     if not rondin:
         if not nombres_recorrido:
@@ -427,10 +432,35 @@ if __name__ == "__main__":
         else:
             print('No se encontro un rondin con el area proporcionada. Creando uno nuevo...')
             response = acceso_obj.create_rondin(acceso_obj.answers, nombre_area_rondin, record_id, nombres_recorrido)
-            print('response', response)
     else:
-        resultado = acceso_obj.check_area_in_rondin(data_rondin=acceso_obj.answers, area_rondin=nombre_area_rondin, rondin=rondin, record_id=record_id)
-        print('resultado', resultado)
+        rondin_areas = acceso_obj.unlist(rondin).get('areas_del_rondin', [])
+        for area in rondin_areas:
+            if nombre_area_rondin == area.get('incidente_area', ''):
+                print('Se encontro el area en un rondin en proceso...')
+                fecha_area_registrada = area.get('fecha_hora_inspeccion_area', '')
+                if fecha_area_registrada:
+                    tz = pytz.timezone('America/Mexico_City')
+                    fecha_reg = datetime.strptime(fecha_area_registrada, '%Y-%m-%d %H:%M:%S')
+                    fecha_reg = tz.localize(fecha_reg)
+                    ahora = datetime.now(tz)
+                    ha_pasado_una_hora = (ahora - fecha_reg) >= timedelta(hours=1)
+                    if ha_pasado_una_hora:
+                        print('========>')
+                        print('========> Ha pasado mas de una hora desde el ultimo check en esta area')
+                        print('========>')
+                        rondines = acceso_obj.get_rondines_by_status()
+                        acceso_obj.close_rondines(rondines)
+                        response = acceso_obj.create_rondin(acceso_obj.answers, nombre_area_rondin, record_id, nombres_recorrido)
+                        nombre_area_rondin = ''
+                    else:
+                        print('========>')
+                        print('========> Ya se hizo un check en esta area hace menos de una hora, no se puede actualizar el rondin actual ni crear uno nuevo.')
+                        print('========>')
+                        nombre_area_rondin = ''
+
+        if nombre_area_rondin:
+            print('Entra a actualizar check')
+            resultado = acceso_obj.check_area_in_rondin(data_rondin=acceso_obj.answers, area_rondin=nombre_area_rondin, rondin=rondin, record_id=record_id)
 
     grupo_incidencias = acceso_obj.answers.get(acceso_obj.f['grupo_incidencias_check'], [])
     if grupo_incidencias:
