@@ -19,6 +19,16 @@ class Accesos(Accesos):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
         self.load(module='Location', **self.kwargs)
 
+    #! Utils functions ==========
+    def parse_date_for_sorting(self, date_str):
+        if not date_str or not date_str.strip():
+            return datetime.max
+        try:
+            return datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+        except:
+            return datetime.max
+    #! ===========================
+
     def search_rondin_by_area(self):
         """
         Search for a rondin by location and check_area in form Configuracion de Recorridos.
@@ -65,6 +75,7 @@ class Accesos(Accesos):
             {'$limit': 1},
             {'$project': {
                 '_id': 1,
+                'folio': 1,
                 'fecha_programacion': f"$answers.{self.f['fecha_programacion']}",
                 'answers': f"$answers"
             }},
@@ -178,7 +189,6 @@ class Accesos(Accesos):
         answers[self.f['estatus_del_recorrido']] = 'en_proceso'
         check_areas_list = []
         for area in winner.get('checks', []):
-            print('areaaaaaaaaaaaaa', area)
             format_area = {
                 self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
                     self.f['nombre_area']: self.unlist(area['check_data'].get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['area'], []))
@@ -215,7 +225,7 @@ class Accesos(Accesos):
         """
         self.cr_cache.delete_many({})
         
-    def check_area_in_rondin(self, data_rondin, area_rondin, rondin, record_id):
+    def check_areas_in_rondin(self, cache, rondin):
         """
         Recibe: Las answers del check de ubicacion, el area que se hice check de ubicacion y el registro de rondin
         Retorna: La respuesta de la api al hacer el patch de un registro
@@ -231,7 +241,7 @@ class Accesos(Accesos):
         # print('rondinnnnnnnnnnnnnnnnn', simplejson.dumps(rondin, indent=3))
 
         if not rondin.get('fecha_inicio_rondin'):
-            rondin['fecha_inicio_rondin'] = today
+            rondin['fecha_inicio_rondin'] = self.timestamp and datetime.fromtimestamp(self.timestamp, tz).strftime('%Y-%m-%d %H:%M:%S')
 
         conf_recorrido = {}
         for key, value in rondin.items():
@@ -250,51 +260,57 @@ class Accesos(Accesos):
             elif key == 'estatus_del_recorrido':
                 answers[self.f['estatus_del_recorrido']] = value
             elif key == 'areas_del_rondin':
-                areas_rondin = {}
-                items = []
-                for index, item in enumerate(value):
-                    if item.get('incidente_area', '') == area_rondin:
-                        print('entra en la seleccionnnnn')
-                        obj = {
+                areas_dict = {}
+                
+                if isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, dict):
+                            area_name = (
+                                item.get('incidente_area') or 
+                                item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['nombre_area'], '')
+                            )
+                            if area_name:
+                                areas_dict[area_name] = {
+                                    self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
+                                        self.f['nombre_area']: area_name
+                                    },
+                                    self.f['fecha_hora_inspeccion_area']: item.get('fecha_hora_inspeccion_area', ''),
+                                    self.f['foto_evidencia_area_rondin']: item.get('foto_evidencia_area_rondin', []),
+                                    self.f['comentario_area_rondin']: item.get('comentario_area_rondin', ''),
+                                    self.f['url_registro_rondin']: item.get('url_registro_rondin', '')
+                                }
+                
+                for cache_item in cache:
+                    data_cache = cache_item.get('check_data', {})
+                    area_name = self.unlist(
+                        data_cache.get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {})
+                        .get(self.Location.f['area'], '')
+                    )
+                    
+                    if area_name and area_name not in areas_dict:
+                        areas_dict[area_name] = {
                             self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
-                                self.f['nombre_area']: area_rondin
+                                self.f['nombre_area']: area_name
                             },
-                            self.f['fecha_hora_inspeccion_area']: today,
-                            self.f['foto_evidencia_area_rondin']: data_rondin.get(self.f['foto_evidencia_area'], []),
-                            self.f['comentario_area_rondin']: data_rondin.get(self.f['comentario_check_area'], ''),
-                            self.f['url_registro_rondin']: f"https://app.linkaform.com/#/records/detail/{record_id}"
+                            self.f['fecha_hora_inspeccion_area']: cache_item.get('timestamp') and datetime.fromtimestamp(cache_item['timestamp'], tz).strftime('%Y-%m-%d %H:%M:%S'),
+                            self.f['foto_evidencia_area_rondin']: data_cache.get(self.f['foto_evidencia_area'], []),
+                            self.f['comentario_area_rondin']: data_cache.get(self.f['comentario_check_area'], ''),
+                            self.f['url_registro_rondin']: f"https://app.linkaform.com/#/records/detail/{cache_item.get('_id', '')}",
                         }
-                    else:
-                        obj = {
-                            self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
-                                self.f['nombre_area']: item.get('incidente_area', '')
-                            },
-                            self.f['fecha_hora_inspeccion_area']: item.get('fecha_hora_inspeccion_area', ''),
-                            self.f['foto_evidencia_area_rondin']: item.get('foto_evidencia_area_rondin', []),
-                            self.f['comentario_area_rondin']: item.get('comentario_area_rondin', '')
-                        }
-                    items.append(obj)
-
-                items_sorted = sorted(
-                    items,
-                    key=lambda x: not bool(x.get(self.f['fecha_hora_inspeccion_area'], '').strip())
+                
+                all_areas = list(areas_dict.values())
+                all_areas_sorted = sorted(
+                    all_areas,
+                    key=lambda x: self.parse_date_for_sorting(x.get(self.f['fecha_hora_inspeccion_area'], ''))
                 )
-
-                rondin_en_progreso = True
-                for idx, obj in enumerate(items_sorted):
-                    # if not obj.get(self.f['fecha_hora_inspeccion_area']):
-                    #     rondin_en_progreso = True
-                    # else:
-                    #     rondin_en_progreso = False
-                    areas_rondin[str(idx)] = obj
-
-                answers[self.f['areas_del_rondin']] = areas_rondin
+                
+                answers[self.f['areas_del_rondin']] = all_areas_sorted
             else:
                 pass
 
         answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = conf_recorrido
         answers[self.f['estatus_del_recorrido']] = 'en_proceso' if rondin_en_progreso else 'realizado'
-        answers[self.f['fecha_fin_rondin']] = today if data_rondin.get(self.f['check_status'], '') == 'finalizado' else ''
+        answers[self.f['fecha_fin_rondin']] = today if data_rondin.get(self.f['check_status'], '') == ['finalizado', 'realizado', 'cerrado'] else ''
         
         format_list_incidencias = []
         for incidencia in rondin.get('bitacora_rondin_incidencias', []):
@@ -320,14 +336,30 @@ class Accesos(Accesos):
         if data_rondin.get(self.f['check_status']) == 'finalizado':
             answers[self.f['estatus_del_recorrido']] = 'realizado'
 
-        print("ans", simplejson.dumps(answers, indent=4))
+        # print("ans", simplejson.dumps(answers, indent=4))
 
-        # if answers:
-        #     res= self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=[format_id_rondin])
-        #     if res.get('status_code') == 201 or res.get('status_code') == 202:
-        #         return res
-        #     else: 
-        #         return res
+        if answers:
+            metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_RONDINES)
+            metadata.update(self.get_record_by_folio(rondin.get('folio'), self.BITACORA_RONDINES, select_columns={'_id': 1}, limit=1))
+
+            metadata.update({
+                    'properties': {
+                        "device_properties":{
+                            "system": "Addons",
+                            "process":"Actualizacion de Bitacora", 
+                            "accion":'rondines_cache', 
+                            "folio": rondin.get('folio'), 
+                            "archive": "rondines_cache.py"
+                        }
+                    },
+                    'answers': answers,
+                    '_id': rondin.get('_id')
+                })
+            res = self.net.patch_forms_answers(metadata)
+            if res.get('status_code') == 201 or res.get('status_code') == 202:
+                return res
+            else: 
+                return res
 
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
@@ -347,14 +379,44 @@ if __name__ == "__main__":
 
     recorridos = script_obj.search_rondin_by_area()
     exists_bitacora = script_obj.search_active_bitacora_by_rondin(recorridos=recorridos)
+    validacion_area = False
     
     if exists_bitacora:
-        #! Si existe una bitacora activa se hace el check en esa bitacora
-        print('ya existe bitacora asi que entra aqui')
-        print('======', simplejson.dumps(exists_bitacora, indent=3))
-        resultado = script_obj.check_area_in_rondin(data_rondin=script_obj.answers, area_rondin=script_obj.check_area, rondin=exists_bitacora, record_id=script_obj.record_id)
-        print('resultado', simplejson.dumps(resultado, indent=3))
+        rondin_areas = script_obj.unlist(exists_bitacora).get('areas_del_rondin', [])
+        for area in rondin_areas:
+            if script_obj.check_area == area.get('incidente_area', ''):
+                fecha_area_registrada = area.get('fecha_hora_inspeccion_area', '')
+                if fecha_area_registrada:
+                    tz = pytz.timezone('America/Mexico_City')
+                    fecha_reg = datetime.strptime(fecha_area_registrada, '%Y-%m-%d %H:%M:%S')
+                    fecha_reg = tz.localize(fecha_reg)
+                    ahora = datetime.now(tz)
+                    ha_pasado_una_hora = (ahora - fecha_reg) >= timedelta(hours=1)
+                    if ha_pasado_una_hora:
+                        print('========>')
+                        print('========> Ha pasado mas de una hora desde el ultimo check en esta area')
+                        print('========>')
+                        rondines = script_obj.get_rondines_by_status()
+                        res = script_obj.close_rondines(rondines)
+                        validacion_area = True
+                    else:
+                        print('========>')
+                        print('========> Ya se hizo un check en esta area hace menos de una hora, no se puede actualizar el rondin actual ni crear uno nuevo.')
+                        print('========>')
+                        sys.exit()
+        if not validacion_area:
+            #! Si existe una bitacora activa se hace el check en esa bitacora
+            resp = script_obj.create_cache()
+            time.sleep(5)
+            cache = script_obj.search_cache()
+            winner = script_obj.select_winner(caches_list=cache)
+            if winner.get('folio', '') == script_obj.folio:
+                resultado = script_obj.check_areas_in_rondin(cache=cache, rondin=exists_bitacora)
+                cache = script_obj.search_cache()
     else:
+        validacion_area = True
+
+    if validacion_area:
         #! Si no existe una bitacora activa se busca un ganador en el cache
         exists_winner = script_obj.search_cache(search_winner=True)
         if exists_winner and script_obj.unlist(exists_winner).get('folio', '') != script_obj.folio:
