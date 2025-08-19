@@ -142,7 +142,7 @@ class Accesos(Accesos):
         for check in checks_list:
             new_check = {
                 "area": check['check_data'].get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['area'], []),
-                "record_id": str(check['_id']),
+                "record_id": str(check.get('_id', '')),
                 "timestamp": check['timestamp'],
                 "check_data": check['check_data']
             }
@@ -159,9 +159,6 @@ class Accesos(Accesos):
         """
         Create a bitacora entry from cache data.
         """
-        nombre_recorrido = ''
-        ubicacion_recorrido = ''
-
         metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_RONDINES)
         metadata.update({
             "properties": {
@@ -177,7 +174,6 @@ class Accesos(Accesos):
         answers = {}
 
         tz = pytz.timezone('America/Mexico_City')
-        today = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
 
         answers[self.f['fecha_programacion']] = winner.get('timestamp') and datetime.fromtimestamp(winner.get('timestamp'), tz).strftime('%Y-%m-%d %H:%M:%S')
         answers[self.f['fecha_inicio_rondin']] = winner.get('timestamp') and datetime.fromtimestamp(winner.get('timestamp'), tz).strftime('%Y-%m-%d %H:%M:%S')
@@ -199,6 +195,8 @@ class Accesos(Accesos):
                 self.f['url_registro_rondin']: f"https://app.linkaform.com/#/records/detail/{area.get('record_id', '')}",
             }
             check_areas_list.append(format_area)
+            
+        check_areas_list.sort(key=lambda x: self.parse_date_for_sorting(x.get(self.f['fecha_hora_inspeccion_area'], '')))
         answers[self.f['areas_del_rondin']] = check_areas_list
 
         # for area in areas_recorrido:
@@ -216,7 +214,6 @@ class Accesos(Accesos):
         # breakpoint()
 
         res = self.lkf_api.post_forms_answers(metadata)
-        print('response======', res)
         return res
     
     def clear_cache(self):
@@ -382,6 +379,8 @@ if __name__ == "__main__":
     validacion_area = False
     
     if exists_bitacora:
+        #!Si existe bitacora se valida si ya se hizo check del area actual 
+        #! o si ha pasado mas de una hora desde el ultimo check para cerrar la bitacora y empezar una nueva.
         rondin_areas = script_obj.unlist(exists_bitacora).get('areas_del_rondin', [])
         for area in rondin_areas:
             if script_obj.check_area == area.get('incidente_area', ''):
@@ -411,8 +410,8 @@ if __name__ == "__main__":
             cache = script_obj.search_cache()
             winner = script_obj.select_winner(caches_list=cache)
             if winner.get('folio', '') == script_obj.folio:
-                resultado = script_obj.check_areas_in_rondin(cache=cache, rondin=exists_bitacora)
-                cache = script_obj.search_cache()
+                script_obj.check_areas_in_rondin(cache=cache, rondin=exists_bitacora)
+                script_obj.clear_cache()
     else:
         validacion_area = True
 
@@ -450,4 +449,4 @@ if __name__ == "__main__":
     cache = script_obj.search_cache()
     for c in cache:
         c['_id'] = str(c['_id'])
-    print(simplejson.dumps(cache, indent=3))
+    print('Cache====>', simplejson.dumps(cache, indent=3))
