@@ -68,6 +68,7 @@ class Accesos(Accesos):
             {'$match': {
                 "deleted_at": {"$exists": False},
                 "form_id": self.BITACORA_RONDINES,
+                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": self.location,
                 f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.f['nombre_del_recorrido']}": {"$in": recorridos},
                 f"answers.{self.f['estatus_del_recorrido']}": 'en_proceso',
             }},
@@ -154,11 +155,15 @@ class Accesos(Accesos):
                     }
                 }
             )
-    
-    def create_bitacora_from_cache(self, winner):
+
+    def create_bitacora_from_cache(self, winner, recorridos_names):
         """
         Create a bitacora entry from cache data.
         """
+        nombre_del_recorrido = ""
+        for name in recorridos_names:
+            nombre_del_recorrido = name
+        
         metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_RONDINES)
         metadata.update({
             "properties": {
@@ -180,7 +185,7 @@ class Accesos(Accesos):
 
         answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = {
             self.f['ubicacion_recorrido']: self.location,
-            self.f['nombre_del_recorrido']: 'Ejemplo rondin'
+            self.f['nombre_del_recorrido']: nombre_del_recorrido
         }
         answers[self.f['estatus_del_recorrido']] = 'en_proceso'
         check_areas_list = []
@@ -440,7 +445,7 @@ if __name__ == "__main__":
                 cache = script_obj.search_cache()
                 script_obj.add_checks_to_winner(winner=winner, checks_list=cache)
                 winner = script_obj.unlist(script_obj.search_cache(search_winner=True))
-                script_obj.create_bitacora_from_cache(winner=winner)
+                script_obj.create_bitacora_from_cache(winner=winner, recorridos_names=recorridos)
                 script_obj.clear_cache()
             else:
                 #! Si este check no tiene el mismo folio que el cache ganador se acaba el proceso
