@@ -347,7 +347,7 @@ class Accesos(Accesos):
         incidencias_dict = {str(idx): incidencia for idx, incidencia in enumerate(incidencias_list)}
         answers[self.f['bitacora_rondin_incidencias']] = incidencias_dict
         
-        if data_rondin.get(self.f['check_status']) == 'finalizado':
+        if data_rondin.get('answers', {}).get(self.f['check_status']) == 'finalizado':
             answers[self.f['estatus_del_recorrido']] = 'realizado'
 
         # print("ans", simplejson.dumps(answers, indent=4))
@@ -401,41 +401,28 @@ if __name__ == "__main__":
     script_obj.location = script_obj.unlist(location.get(script_obj.Location.f['location'], ''))
     check_area = script_obj.answers.get(script_obj.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {})
     script_obj.check_area = script_obj.unlist(check_area.get(script_obj.Location.f['area'], ''))
-
-    recorridos = script_obj.search_rondin_by_area()
-    exists_bitacora = script_obj.search_active_bitacora_by_rondin(recorridos=recorridos)
     validacion_area = False
     
-    if exists_bitacora:
-        #!Si existe bitacora se valida si ya se hizo check del area actual 
-        #! o si ha pasado mas de una hora desde el ultimo check para cerrar la bitacora y empezar una nueva.
-        rondin_areas = script_obj.unlist(exists_bitacora).get('areas_del_rondin', [])
-        for area in rondin_areas:
-            if script_obj.check_area == area.get('incidente_area', ''):
-                fecha_area_registrada = area.get('fecha_hora_inspeccion_area', '')
-                if fecha_area_registrada:
-                    tz = pytz.timezone('America/Mexico_City')
-                    fecha_reg = datetime.strptime(fecha_area_registrada, '%Y-%m-%d %H:%M:%S')
-                    fecha_reg = tz.localize(fecha_reg)
-                    ahora = datetime.now(tz)
-                    ha_pasado_una_hora = (ahora - fecha_reg) >= timedelta(hours=1)
-                    if ha_pasado_una_hora:
-                        print('========>')
-                        print('========> Ha pasado mas de una hora desde el ultimo check en esta area')
-                        print('========>')
-                        rondines = script_obj.get_rondines_by_status()
-                        res = script_obj.close_rondines(rondines)
-                        validacion_area = True
-        if not validacion_area:
-            #! Si existe una bitacora activa se hace el check en esa bitacora
-            resp = script_obj.create_cache()
-            time.sleep(5)
-            cache = script_obj.search_cache(location=script_obj.location)
-            winner = script_obj.select_winner(caches_list=cache, location=script_obj.location)
-    
-            if winner and winner.get('folio', '') == script_obj.folio:
-                script_obj.check_areas_in_rondin(cache=cache, rondin=exists_bitacora)
-                script_obj.clear_cache(location=script_obj.location)
+    #! Validacion inicial: Cerrar bitacoras fuera de tiempo
+    rondines = script_obj.get_rondines_by_status()
+    if rondines:
+        res = script_obj.close_rondines(rondines)
+        if res and res.get('status_code') in [200, 201, 202]:
+            validacion_area = True
+            
+    recorridos = script_obj.search_rondin_by_area()
+    exists_bitacora = script_obj.search_active_bitacora_by_rondin(recorridos=recorridos)
+            
+    if exists_bitacora and not validacion_area:
+        #! Si existe una bitacora activa se hace el check en esa bitacora
+        resp = script_obj.create_cache()
+        time.sleep(5)
+        cache = script_obj.search_cache(location=script_obj.location)
+        winner = script_obj.select_winner(caches_list=cache, location=script_obj.location)
+
+        if winner and winner.get('folio', '') == script_obj.folio:
+            script_obj.check_areas_in_rondin(cache=cache, rondin=exists_bitacora)
+            script_obj.clear_cache(location=script_obj.location)
     else:
         validacion_area = True
 
