@@ -84,15 +84,18 @@ class Accesos(Accesos):
         resp = self.format_cr(self.cr.aggregate(query))
         return resp
 
-    def search_cache(self, search_winner=False):
+    def search_cache(self, search_winner=False, location=None):
         """
-        Search active caches.
+        Search active caches, optionally filtered by location.
         """
         match_query = {}
-        
         if search_winner:
             match_query.update({
                 'winner': True,
+            })
+        if location:
+            match_query.update({
+                'location': location
             })
         
         query = [
@@ -109,6 +112,7 @@ class Accesos(Accesos):
         data = {}
         data.update({
             '_id': ObjectId(self.record_id),
+            'location': self.location,
             'folio': self.folio,
             'timestamp': self.timestamp,
             'random': random.random(),
@@ -116,10 +120,16 @@ class Accesos(Accesos):
         })
         return self.create(data, collection='rondin_caches')
 
-    def select_winner(self, caches_list):
+    def select_winner(self, caches_list, location=None):
         """
-        Select a winner rondin from the cache.
+        Select a winner rondin from the cache, optionally filtered by location.
         """
+        if location:
+            caches_list = [cache for cache in caches_list if cache.get('location') == location]
+        
+        if not caches_list:
+            return None
+            
         sorted_caches = sorted(caches_list, key=lambda x: (x.get('timestamp', float('inf')), -x.get('random', 0)))
         winner = sorted_caches[0]
         
@@ -220,12 +230,15 @@ class Accesos(Accesos):
 
         res = self.lkf_api.post_forms_answers(metadata)
         return res
-    
-    def clear_cache(self):
+
+    def clear_cache(self, location=None):
         """
         Clear collection rondin_caches.
         """
-        self.cr_cache.delete_many({})
+        if location:
+            self.cr_cache.delete_many({'location': location})
+        else:
+            self.cr_cache.delete_many({})
         
     def check_areas_in_rondin(self, cache, rondin):
         """
@@ -362,6 +375,17 @@ class Accesos(Accesos):
                 return res
             else: 
                 return res
+            
+    def get_unique_locations_from_cache(self):
+        """
+        Get unique locations from cache.
+        """
+        pipeline = [
+            {'$group': {'_id': '$location'}},
+            {'$project': {'location': '$_id', '_id': 0}}
+        ]
+        resp = self.cr_cache.aggregate(pipeline)
+        return [item['location'] for item in resp if item['location']]
 
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
@@ -414,7 +438,7 @@ if __name__ == "__main__":
             time.sleep(5)
             cache = script_obj.search_cache()
             winner = script_obj.select_winner(caches_list=cache)
-            if winner.get('folio', '') == script_obj.folio:
+            if winner and winner.get('folio', '') == script_obj.folio:
                 script_obj.check_areas_in_rondin(cache=cache, rondin=exists_bitacora)
                 script_obj.clear_cache()
     else:
@@ -422,7 +446,7 @@ if __name__ == "__main__":
 
     if validacion_area:
         #! Si no existe una bitacora activa se busca un ganador en el cache
-        exists_winner = script_obj.search_cache(search_winner=True)
+        exists_winner = script_obj.search_cache(search_winner=True, location=script_obj.location)
         if exists_winner and script_obj.unlist(exists_winner).get('folio', '') != script_obj.folio:
             #! Si existe un ganador en el cache se agrega en su lista de checks
             checks_list = [{
@@ -436,21 +460,21 @@ if __name__ == "__main__":
             #! Si no existe un ganador en el cache se crea un cache
             resp = script_obj.create_cache()
             time.sleep(5)
-            cache = script_obj.search_cache()
-            winner = script_obj.select_winner(caches_list=cache)
-            if winner.get('folio', '') == script_obj.folio:
-                #! Si este check tiene el mismo folio que el cache ganador se crea la bitacora
-                script_obj.add_checks_to_winner(winner=winner, checks_list=cache)
-                time.sleep(1)
-                cache = script_obj.search_cache()
-                script_obj.add_checks_to_winner(winner=winner, checks_list=cache)
-                winner = script_obj.unlist(script_obj.search_cache(search_winner=True))
-                script_obj.create_bitacora_from_cache(winner=winner, recorridos_names=recorridos)
-                script_obj.clear_cache()
-            else:
-                #! Si este check no tiene el mismo folio que el cache ganador se acaba el proceso
-                print('Byeee')
-
+            locations = script_obj.get_unique_locations_from_cache()
+            for location in locations:
+                cache = script_obj.search_cache(location=location)
+                winner = script_obj.select_winner(caches_list=cache, location=location)
+                
+                if winner and winner.get('folio', '') == script_obj.folio:
+                    script_obj.add_checks_to_winner(winner=winner, checks_list=cache)
+                    time.sleep(1)
+                    cache = script_obj.search_cache(location=location)
+                    script_obj.add_checks_to_winner(winner=winner, checks_list=cache)
+                    winner = script_obj.unlist(script_obj.search_cache(search_winner=True, location=location))
+                    script_obj.create_bitacora_from_cache(winner=winner, recorridos_names=recorridos)
+                    script_obj.clear_cache(location=location)
+                else:
+                    print(f'Byeee para {location}')
     cache = script_obj.search_cache()
     for c in cache:
         c['_id'] = str(c['_id'])
