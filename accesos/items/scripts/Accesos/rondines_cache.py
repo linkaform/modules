@@ -1,5 +1,4 @@
 # coding: utf-8
-from genericpath import exists
 import sys, simplejson, json, pytz
 import time
 from datetime import datetime, timedelta, date
@@ -418,11 +417,39 @@ if __name__ == "__main__":
         resp = script_obj.create_cache()
         time.sleep(5)
         cache = script_obj.search_cache(location=script_obj.location)
-        winner = script_obj.select_winner(caches_list=cache, location=script_obj.location)
+        
+        should_create_new = False
+        finalized_timestamp = None
+        
+        for cache_item in cache:
+            check_status = cache_item.get('check_data', {}).get(script_obj.f['check_status'])
+            if check_status == 'finalizado':
+                finalized_timestamp = cache_item.get('timestamp')
+                break
+        
+        if finalized_timestamp and script_obj.timestamp > finalized_timestamp:
+            should_create_new = True
 
-        if winner and winner.get('folio', '') == script_obj.folio:
-            script_obj.check_areas_in_rondin(cache=cache, rondin=exists_bitacora)
-            script_obj.clear_cache(location=script_obj.location)
+        if should_create_new:
+            script_obj.clear_cache(record_id=script_obj.record_id)
+            validacion_area = True
+            time.sleep(5)
+        else:
+            winner = script_obj.select_winner(caches_list=cache, location=script_obj.location)
+
+            if winner and winner.get('folio', '') == script_obj.folio:
+                if finalized_timestamp:
+                    cache_filtered = [
+                        cache_item for cache_item in cache 
+                        if cache_item.get('timestamp', 0) <= finalized_timestamp
+                    ]
+                    data_rondin['answers'][script_obj.f['check_status']] = 'finalizado'
+                    script_obj.check_areas_in_rondin(cache=cache_filtered, rondin=exists_bitacora)
+                    for cache_item in cache_filtered:
+                        script_obj.clear_cache(record_id=str(cache_item['_id']))
+                else:
+                    script_obj.check_areas_in_rondin(cache=cache, rondin=exists_bitacora)
+                    script_obj.clear_cache(location=script_obj.location)
     else:
         validacion_area = True
 
