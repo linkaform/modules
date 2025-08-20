@@ -231,12 +231,14 @@ class Accesos(Accesos):
         res = self.lkf_api.post_forms_answers(metadata)
         return res
 
-    def clear_cache(self, location=None):
+    def clear_cache(self, location=None, record_id=None):
         """
         Clear collection rondin_caches.
         """
         if location:
             self.cr_cache.delete_many({'location': location})
+        if record_id:
+            self.cr_cache.delete_one({'_id': ObjectId(record_id)})
         else:
             self.cr_cache.delete_many({})
         
@@ -249,9 +251,9 @@ class Accesos(Accesos):
         tz = pytz.timezone('America/Mexico_City')
         today = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
         rondin = self.unlist(rondin)
-        format_id_rondin = rondin.get('_id', '')
         rondin_en_progreso = True
         answers={}
+        areas_list = []
 
         # print('rondinnnnnnnnnnnnnnnnn', simplejson.dumps(rondin, indent=3))
 
@@ -275,8 +277,6 @@ class Accesos(Accesos):
             elif key == 'estatus_del_recorrido':
                 answers[self.f['estatus_del_recorrido']] = value
             elif key == 'areas_del_rondin':
-                areas_dict = {}
-                
                 if isinstance(value, list):
                     for item in value:
                         if isinstance(item, dict):
@@ -285,7 +285,7 @@ class Accesos(Accesos):
                                 item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['nombre_area'], '')
                             )
                             if area_name:
-                                areas_dict[area_name] = {
+                                areas_list.append({
                                     self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
                                         self.f['nombre_area']: area_name
                                     },
@@ -293,7 +293,7 @@ class Accesos(Accesos):
                                     self.f['foto_evidencia_area_rondin']: item.get('foto_evidencia_area_rondin', []),
                                     self.f['comentario_area_rondin']: item.get('comentario_area_rondin', ''),
                                     self.f['url_registro_rondin']: item.get('url_registro_rondin', '')
-                                }
+                                })
                 
                 for cache_item in cache:
                     data_cache = cache_item.get('check_data', {})
@@ -302,8 +302,8 @@ class Accesos(Accesos):
                         .get(self.Location.f['area'], '')
                     )
                     
-                    if area_name and area_name not in areas_dict:
-                        areas_dict[area_name] = {
+                    if area_name:
+                        areas_list.append({
                             self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
                                 self.f['nombre_area']: area_name
                             },
@@ -311,17 +311,16 @@ class Accesos(Accesos):
                             self.f['foto_evidencia_area_rondin']: data_cache.get(self.f['foto_evidencia_area'], []),
                             self.f['comentario_area_rondin']: data_cache.get(self.f['comentario_check_area'], ''),
                             self.f['url_registro_rondin']: f"https://app.linkaform.com/#/records/detail/{cache_item.get('_id', '')}",
-                        }
-                
-                all_areas = list(areas_dict.values())
-                all_areas_sorted = sorted(
-                    all_areas,
-                    key=lambda x: self.parse_date_for_sorting(x.get(self.f['fecha_hora_inspeccion_area'], ''))
-                )
-                
-                answers[self.f['areas_del_rondin']] = all_areas_sorted
-            else:
-                pass
+                        })
+            
+            all_areas_sorted = sorted(
+                areas_list,
+                key=lambda x: self.parse_date_for_sorting(x.get(self.f['fecha_hora_inspeccion_area'], ''))
+            )
+            
+            answers[self.f['areas_del_rondin']] = all_areas_sorted
+        else:
+            pass
 
         answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = conf_recorrido
         answers[self.f['estatus_del_recorrido']] = 'en_proceso' if rondin_en_progreso else 'realizado'
@@ -358,18 +357,18 @@ class Accesos(Accesos):
             metadata.update(self.get_record_by_folio(rondin.get('folio'), self.BITACORA_RONDINES, select_columns={'_id': 1}, limit=1))
 
             metadata.update({
-                    'properties': {
-                        "device_properties":{
-                            "system": "Addons",
-                            "process":"Actualizacion de Bitacora", 
-                            "accion":'rondines_cache', 
-                            "folio": rondin.get('folio'), 
-                            "archive": "rondines_cache.py"
-                        }
-                    },
-                    'answers': answers,
-                    '_id': rondin.get('_id')
-                })
+                'properties': {
+                    "device_properties": {
+                        "system": "Addons",
+                        "process":"Actualizacion de Bitacora", 
+                        "accion":'rondines_cache', 
+                        "folio": rondin.get('folio'), 
+                        "archive": "rondines_cache.py"
+                    }
+                },
+                'answers': answers,
+                '_id': rondin.get('_id')
+            })
             res = self.net.patch_forms_answers(metadata)
             if res.get('status_code') == 201 or res.get('status_code') == 202:
                 return res
@@ -427,20 +426,16 @@ if __name__ == "__main__":
                         rondines = script_obj.get_rondines_by_status()
                         res = script_obj.close_rondines(rondines)
                         validacion_area = True
-                    else:
-                        print('========>')
-                        print('========> Ya se hizo un check en esta area hace menos de una hora, no se puede actualizar el rondin actual ni crear uno nuevo.')
-                        print('========>')
-                        sys.exit()
         if not validacion_area:
             #! Si existe una bitacora activa se hace el check en esa bitacora
             resp = script_obj.create_cache()
             time.sleep(5)
-            cache = script_obj.search_cache()
-            winner = script_obj.select_winner(caches_list=cache)
+            cache = script_obj.search_cache(location=script_obj.location)
+            winner = script_obj.select_winner(caches_list=cache, location=script_obj.location)
+    
             if winner and winner.get('folio', '') == script_obj.folio:
                 script_obj.check_areas_in_rondin(cache=cache, rondin=exists_bitacora)
-                script_obj.clear_cache()
+                script_obj.clear_cache(location=script_obj.location)
     else:
         validacion_area = True
 
@@ -467,7 +462,7 @@ if __name__ == "__main__":
                 
                 if winner and winner.get('folio', '') == script_obj.folio:
                     script_obj.add_checks_to_winner(winner=winner, checks_list=cache)
-                    time.sleep(1)
+                    time.sleep(5)
                     cache = script_obj.search_cache(location=location)
                     script_obj.add_checks_to_winner(winner=winner, checks_list=cache)
                     winner = script_obj.unlist(script_obj.search_cache(search_winner=True, location=location))
