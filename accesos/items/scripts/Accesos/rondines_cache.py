@@ -421,6 +421,7 @@ if __name__ == "__main__":
         should_create_new = False
         finalized_timestamp = None
         
+        #! Se verifica si hay un check con status finalizado
         for cache_item in cache:
             check_status = cache_item.get('check_data', {}).get(script_obj.f['check_status'])
             if check_status == 'finalizado':
@@ -428,6 +429,8 @@ if __name__ == "__main__":
                 break
         
         if finalized_timestamp and script_obj.timestamp > finalized_timestamp:
+            #! Si un check no tiene un timestamp menor al check con status finalizado 
+            #! se manda a crear una nueva bitacora
             should_create_new = True
 
         if should_create_new:
@@ -435,6 +438,7 @@ if __name__ == "__main__":
             validacion_area = True
             time.sleep(5)
         else:
+            #! Se actualiza bitacora activa con cache filtrado o cache normal, dependiendo si venia un status finalizado
             winner = script_obj.select_winner(caches_list=cache, location=script_obj.location)
 
             if winner and winner.get('folio', '') == script_obj.folio:
