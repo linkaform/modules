@@ -245,7 +245,7 @@ class Accesos(Accesos):
 
         # answers[self.f['bitacora_rondin_incidencias']] = self.answers.get(self.f['grupo_incidencias_check'], [])
 
-        # metadata.update({'answers':answers})
+        metadata.update({'answers':answers})
         # print(simplejson.dumps(metadata, indent=3))
 
         res = self.lkf_api.post_forms_answers(metadata)
