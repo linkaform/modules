@@ -48,8 +48,14 @@
                     <affecting_rules>
                         <item>
                             <applied>False</applied>
-                            <rule_id>cb21ff717e02534</rule_id>
-                            <rule_index>0</rule_index>
+                            <rule_id>220ba511bf41f93</rule_id>
+                            <rule_index>8</rule_index>
+                            <rule_type>disabled</rule_type>
+                        </item>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>179a7e4263925a9</rule_id>
+                            <rule_index>9</rule_index>
                             <rule_type>invisible</rule_type>
                         </item>
                     </affecting_rules>
@@ -106,6 +112,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -124,7 +131,7 @@
                         <catalog_field_id>None</catalog_field_id>
                         <catalog_id>{{ catalog.localidades.id }}</catalog_id>
                         <field_type>None</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -187,6 +194,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -205,7 +213,7 @@
                         <catalog_field_id>{{ catalog.localidades.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.localidades.id }}</catalog_id>
                         <field_type>text</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>True</last>
                         <related_catalog>{}</related_catalog>
@@ -263,6 +271,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -281,7 +290,7 @@
                         <catalog_field_id>{{ catalog.localidades.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.localidades.id }}</catalog_id>
                         <field_type>text</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -339,6 +348,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -354,8 +364,14 @@
                     <affecting_rules>
                         <item>
                             <applied>False</applied>
-                            <rule_id>cb21ff717e02534</rule_id>
-                            <rule_index>0</rule_index>
+                            <rule_id>220ba511bf41f93</rule_id>
+                            <rule_index>8</rule_index>
+                            <rule_type>disabled</rule_type>
+                        </item>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>179a7e4263925a9</rule_id>
+                            <rule_index>9</rule_index>
                             <rule_type>invisible</rule_type>
                         </item>
                     </affecting_rules>
@@ -412,16 +428,14 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
                         <watermark_enable>False</watermark_enable>
                     </properties>
                     <required>False</required>
-                    <rules>
-                        <item>cb21ff717e02534</item>
-                        <item>cb21ff717e02534</item>
-                    </rules>
+                    <rules>[]</rules>
                     <show_for_rule>True</show_for_rule>
                     <validations>{}</validations>
                     <visible>True</visible>
@@ -430,8 +444,14 @@
                     <affecting_rules>
                         <item>
                             <applied>False</applied>
-                            <rule_id>cb21ff717e02534</rule_id>
-                            <rule_index>0</rule_index>
+                            <rule_id>220ba511bf41f93</rule_id>
+                            <rule_index>8</rule_index>
+                            <rule_type>disabled</rule_type>
+                        </item>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>179a7e4263925a9</rule_id>
+                            <rule_index>9</rule_index>
                             <rule_type>invisible</rule_type>
                         </item>
                     </affecting_rules>
@@ -488,6 +508,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -554,13 +575,19 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
                         <watermark_enable>False</watermark_enable>
                     </properties>
                     <required>True</required>
-                    <rules>[]</rules>
+                    <rules>
+                        <item>220ba511bf41f93</item>
+                        <item>220ba511bf41f93</item>
+                        <item>179a7e4263925a9</item>
+                        <item>179a7e4263925a9</item>
+                    </rules>
                     <show_for_rule>True</show_for_rule>
                     <validations>{}</validations>
                     <visible>True</visible>
@@ -636,6 +663,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -712,6 +740,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -788,6 +817,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -864,6 +894,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -930,6 +961,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -996,6 +1028,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1013,8 +1046,8 @@
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
                     <catalog_relation>None</catalog_relation>
-                    <default>False</default>
-                    <default_value />
+                    <default>True</default>
+                    <default_value>Programado</default_value>
                     <descriptor>None</descriptor>
                     <fav>True</fav>
                     <field_id>abcde0001000000000000020</field_id>
@@ -1062,6 +1095,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1128,6 +1162,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1201,6 +1236,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1270,6 +1306,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1370,6 +1407,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1439,6 +1477,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1508,6 +1547,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1581,6 +1621,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>
@@ -1660,6 +1701,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>
@@ -1678,7 +1720,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>179a7e4263925a9</rule_id>
+                            <rule_index>9</rule_index>
+                            <rule_type>invisible</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -1757,6 +1806,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1846,6 +1896,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1861,8 +1912,8 @@
                     <affecting_rules>
                         <item>
                             <applied>False</applied>
-                            <rule_id>cb21ff717e02534</rule_id>
-                            <rule_index>0</rule_index>
+                            <rule_id>179a7e4263925a9</rule_id>
+                            <rule_index>9</rule_index>
                             <rule_type>invisible</rule_type>
                         </item>
                     </affecting_rules>
@@ -1919,6 +1970,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -1952,7 +2004,7 @@
                     <grading_criteria>{}</grading_criteria>
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
-                    <help_text>Esta fecha es utlizada como base para la recurrenia de las proximas tareas</help_text>
+                    <help_text>Esta fecha es utlizada como base para la recurrenia de las proximas tareas. Poner fecha en UTC-0 (sin zona horaria)</help_text>
                     <label>Fecha Primer Evento</label>
                     <number_type>None</number_type>
                     <options>[]</options>
@@ -1992,6 +2044,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -2071,6 +2124,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -2078,7 +2132,8 @@
                     </properties>
                     <required>False</required>
                     <rules>
-                        <item>221a25ea13cd91e</item>
+                        <item>15b514681c1726f8</item>
+                        <item>23e0129f2498a43</item>
                     </rules>
                     <show_for_rule>True</show_for_rule>
                     <validations>{}</validations>
@@ -2088,9 +2143,15 @@
                     <affecting_rules>
                         <item>
                             <applied>False</applied>
-                            <rule_id>221a25ea13cd91e</rule_id>
-                            <rule_index>1</rule_index>
+                            <rule_id>15b514681c1726f8</rule_id>
+                            <rule_index>18</rule_index>
                             <rule_type>show</rule_type>
+                        </item>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>23e0129f2498a43</rule_id>
+                            <rule_index>19</rule_index>
+                            <rule_type>required</rule_type>
                         </item>
                     </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
@@ -2146,6 +2207,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -2161,9 +2223,15 @@
                     <affecting_rules>
                         <item>
                             <applied>False</applied>
-                            <rule_id>221a25ea13cd91e</rule_id>
-                            <rule_index>1</rule_index>
+                            <rule_id>15b514681c1726f8</rule_id>
+                            <rule_index>18</rule_index>
                             <rule_type>show</rule_type>
+                        </item>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>23e0129f2498a43</rule_id>
+                            <rule_index>19</rule_index>
+                            <rule_type>required</rule_type>
                         </item>
                     </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
@@ -2250,6 +2318,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -2316,6 +2385,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -2413,6 +2483,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -2492,6 +2563,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -2499,7 +2571,9 @@
                     </properties>
                     <required>False</required>
                     <rules>
-                        <item>18ad25c77381cd8</item>
+                        <item>22a76a745820c2</item>
+                        <item>2278230619c41adb</item>
+                        <item>26c9d6625631349</item>
                     </rules>
                     <show_for_rule>True</show_for_rule>
                     <validations>{}</validations>
@@ -2509,9 +2583,15 @@
                     <affecting_rules>
                         <item>
                             <applied>False</applied>
-                            <rule_id>18ad25c77381cd8</rule_id>
-                            <rule_index>2</rule_index>
+                            <rule_id>22a76a745820c2</rule_id>
+                            <rule_index>7</rule_index>
                             <rule_type>show</rule_type>
+                        </item>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>2278230619c41adb</rule_id>
+                            <rule_index>10</rule_index>
+                            <rule_type>required</rule_type>
                         </item>
                     </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
@@ -2604,6 +2684,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -2611,7 +2692,13 @@
                     </properties>
                     <required>False</required>
                     <rules>
-                        <item>e1d182716391186</item>
+                        <item>156626991b6c637</item>
+                        <item>156626991b6c637</item>
+                        <item>156626991b6c637</item>
+                        <item>156626991b6c637</item>
+                        <item>156626991b6c637</item>
+                        <item>156626991b6c637</item>
+                        <item>139e63021131e75</item>
                     </rules>
                     <show_for_rule>True</show_for_rule>
                     <validations>{}</validations>
@@ -2621,8 +2708,8 @@
                     <affecting_rules>
                         <item>
                             <applied>False</applied>
-                            <rule_id>18ad25c77381cd8</rule_id>
-                            <rule_index>2</rule_index>
+                            <rule_id>156626991b6c637</rule_id>
+                            <rule_index>0</rule_index>
                             <rule_type>show</rule_type>
                         </item>
                     </affecting_rules>
@@ -2692,6 +2779,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -2704,7 +2792,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>139e63021131e75</rule_id>
+                            <rule_index>1</rule_index>
+                            <rule_type>show</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -2789,13 +2884,20 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
                         <watermark_enable>False</watermark_enable>
                     </properties>
                     <required>False</required>
-                    <rules>[]</rules>
+                    <rules>
+                        <item>a68ad8b5a24b1</item>
+                        <item>124a100c12fb1ac5</item>
+                        <item>1e53d071fbfa62</item>
+                        <item>2559462c7923ec</item>
+                        <item>143be6ea401107</item>
+                    </rules>
                     <show_for_rule>True</show_for_rule>
                     <validations>{}</validations>
                     <visible>True</visible>
@@ -2804,8 +2906,8 @@
                     <affecting_rules>
                         <item>
                             <applied>False</applied>
-                            <rule_id>e1d182716391186</rule_id>
-                            <rule_index>3</rule_index>
+                            <rule_id>a68ad8b5a24b1</rule_id>
+                            <rule_index>2</rule_index>
                             <rule_type>show</rule_type>
                         </item>
                     </affecting_rules>
@@ -2862,6 +2964,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -2877,8 +2980,8 @@
                     <affecting_rules>
                         <item>
                             <applied>False</applied>
-                            <rule_id>e1d182716391186</rule_id>
-                            <rule_index>3</rule_index>
+                            <rule_id>a68ad8b5a24b1</rule_id>
+                            <rule_index>2</rule_index>
                             <rule_type>show</rule_type>
                         </item>
                     </affecting_rules>
@@ -2935,6 +3038,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -2950,7 +3054,7 @@
                     <affecting_rules>
                         <item>
                             <applied>False</applied>
-                            <rule_id>e1d182716391186</rule_id>
+                            <rule_id>124a100c12fb1ac5</rule_id>
                             <rule_index>3</rule_index>
                             <rule_type>show</rule_type>
                         </item>
@@ -3008,6 +3112,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -3020,7 +3125,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>124a100c12fb1ac5</rule_id>
+                            <rule_index>3</rule_index>
+                            <rule_type>show</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -3074,6 +3186,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -3086,7 +3199,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>1e53d071fbfa62</rule_id>
+                            <rule_index>4</rule_index>
+                            <rule_type>show</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -3183,6 +3303,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -3195,7 +3316,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>1e53d071fbfa62</rule_id>
+                            <rule_index>4</rule_index>
+                            <rule_type>show</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -3286,6 +3414,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -3298,7 +3427,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>2559462c7923ec</rule_id>
+                            <rule_index>5</rule_index>
+                            <rule_type>show</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -3352,6 +3488,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -3364,7 +3501,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>2559462c7923ec</rule_id>
+                            <rule_index>5</rule_index>
+                            <rule_type>show</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -3418,6 +3562,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -3430,7 +3575,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>143be6ea401107</rule_id>
+                            <rule_index>6</rule_index>
+                            <rule_type>show</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -3557,6 +3709,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -3569,7 +3722,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>143be6ea401107</rule_id>
+                            <rule_index>6</rule_index>
+                            <rule_type>show</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -3623,6 +3783,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -3635,7 +3796,14 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>26c9d6625631349</rule_id>
+                            <rule_index>15</rule_index>
+                            <rule_type>show</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -3702,19 +3870,29 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
                         <watermark_enable>False</watermark_enable>
                     </properties>
                     <required>False</required>
-                    <rules>[]</rules>
+                    <rules>
+                        <item>a70f8a13162702</item>
+                    </rules>
                     <show_for_rule>True</show_for_rule>
                     <validations>{}</validations>
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>[]</affecting_rules>
+                    <affecting_rules>
+                        <item>
+                            <applied>False</applied>
+                            <rule_id>a70f8a13162702</rule_id>
+                            <rule_index>16</rule_index>
+                            <rule_type>show</rule_type>
+                        </item>
+                    </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -3768,6 +3946,7 @@
                         <service_name />
                         <update_values>{}</update_values>
                         <url />
+                        <username>False</username>
                         <visible_on />
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -3792,8 +3971,10 @@
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
                     <catalog_relation>None</catalog_relation>
-                    <default>False</default>
-                    <default_value />
+                    <default>True</default>
+                    <default_value>
+                        <item>seleccion_de_usuarios</item>
+                    </default_value>
                     <descriptor>None</descriptor>
                     <fav>False</fav>
                     <field_id>abcde0001000000000020001</field_id>
@@ -3814,7 +3995,7 @@
                         <item>
                             <label>Seleccion de Usuarios</label>
                             <points>None</points>
-                            <selected>False</selected>
+                            <selected>True</selected>
                             <value>seleccion_de_usuarios</value>
                         </item>
                     </options>
@@ -3892,13 +4073,13 @@
                     <groups_fields>
                         <item>abcde0001000000000020003</item>
                         <item>67ad6e90067960b5f2ce1e15</item>
-                        <item>677ffaea04607ad6f85c8532</item>
+                        <item>66f649762b30d5f80e632688</item>
                         <item>638a9a7767c332f5d459fc81</item>
                         <item>638a9a7767c332f5d459fc82</item>
                         <item>638a9a99616398d2e392a9f5</item>
                         <item>638a9a99616398d2e392a9f7</item>
                         <item>638a9a99616398d2e392a9f6</item>
-                        <item>677ffae44528f76a4789d54b</item>
+                        <item>66f649756a38bc05612bca8d</item>
                         <item>638a9ab3616398d2e392a9fa</item>
                         <item>639b65dfaf316bacfc551ba2</item>
                     </groups_fields>
@@ -3960,8 +4141,8 @@
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
                     <catalog_relation>None</catalog_relation>
-                    <default>False</default>
-                    <default_value />
+                    <default>True</default>
+                    <default_value>grupo</default_value>
                     <descriptor>None</descriptor>
                     <fav>True</fav>
                     <field_id>abcde0001000000000020003</field_id>
@@ -4018,7 +4199,7 @@
                         <parameters>[]</parameters>
                         <pfd_print>always</pfd_print>
                         <pfd_style>Tabla_respuestas</pfd_style>
-                        <selected>None</selected>
+                        <selected>0</selected>
                         <send_email>False</send_email>
                         <send_record>False</send_record>
                         <send_to_lkf>False</send_to_lkf>
@@ -4057,7 +4238,7 @@
                     <catalog_fields>[]</catalog_fields>
                     <catalog_relation>None</catalog_relation>
                     <default>True</default>
-                    <default_value>multiples_registros</default_value>
+                    <default_value>un_solo_registro</default_value>
                     <descriptor>None</descriptor>
                     <fav>False</fav>
                     <field_id>67ad6e90067960b5f2ce1e15</field_id>
@@ -4114,7 +4295,7 @@
                         <parameters>[]</parameters>
                         <pfd_print>always</pfd_print>
                         <pfd_style>Tabla_respuestas</pfd_style>
-                        <selected>0</selected>
+                        <selected>1</selected>
                         <send_email>False</send_email>
                         <send_record>False</send_record>
                         <send_to_lkf>False</send_to_lkf>
@@ -4974,6 +5155,7 @@
                             <abcde00010000000a0000001>pausar</abcde00010000000a0000001>
                         </update_values>
                         <url />
+                        <username>False</username>
                         <visible_on>edit-preview</visible_on>
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -5046,6 +5228,7 @@
                             <abcde00010000000a0000001>programar</abcde00010000000a0000001>
                         </update_values>
                         <url />
+                        <username>False</username>
                         <visible_on>edit-preview</visible_on>
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -5118,6 +5301,7 @@
                             <abcde00010000000a0000001>eliminar</abcde00010000000a0000001>
                         </update_values>
                         <url />
+                        <username>False</username>
                         <visible_on>edit-preview</visible_on>
                         <wait_response>False</wait_response>
                         <watermark_config>None</watermark_config>
@@ -5167,5 +5351,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1736816722.0</updated_at>
+    <updated_at>1755628750.0</updated_at>
 </lkf>

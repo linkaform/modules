@@ -65,6 +65,18 @@
                     </field>
                     <value>año</value>
                 </item>
+                <item>
+                    <condition>in=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>abcde0001000000000010007</field_id>
+                        <group_id>None</group_id>
+                        <id>abcde0001000000000010007</id>
+                        <label>Se repite Cada</label>
+                        <type>select</type>
+                    </field>
+                    <value>configurable</value>
+                </item>
             </conditions>
             <element_ids>[]</element_ids>
             <empty>False</empty>
@@ -567,7 +579,7 @@
                     <catalog_id>None</catalog_id>
                     <field_id>{{ catalog.grupos.obj_id}}</field_id>
                     <group_id>None</group_id>
-                    <id>677ffae44528f76a4789d54b</id>
+                    <id>66f649756a38bc05612bca8d</id>
                     <label>Grupo</label>
                     <type>catalog</type>
                 </item>
@@ -609,7 +621,7 @@
                     <catalog_id>None</catalog_id>
                     <field_id>{{ catalog.usuarios.obj_id}}</field_id>
                     <group_id>None</group_id>
-                    <id>677ffaea04607ad6f85c8532</id>
+                    <id>66f649762b30d5f80e632688</id>
                     <label>Usuario</label>
                     <type>catalog</type>
                 </item>
