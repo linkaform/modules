@@ -82,6 +82,27 @@ class Accesos(Accesos):
         ]
         resp = self.format_cr(self.cr.aggregate(query))
         return resp
+    
+    def search_closed_bitacora_by_check(self, status=['cerrado', 'realizado'], date_from=None, date_to=None):
+        """
+        Search for closed bitacora entries by status.
+        """
+        query = [
+            {'$match': {
+                "deleted_at": {"$exists": False},
+                "form_id": self.BITACORA_RONDINES,
+                f"answers.{self.f['fecha_inicio_rondin']}": {"$gte": date_from, "$lte": date_to} if date_from and date_to else {},
+                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": self.location,
+                f"answers.{self.f['estatus_del_recorrido']}": {"$in": status},
+            }},
+            {'$project': {
+                '_id': 1,
+                'folio': 1,
+                'answers': f"$answers"
+            }},
+        ]
+        resp = self.format_cr(self.cr.aggregate(query))
+        return resp
 
     def search_cache(self, search_winner=False, location=None):
         """
@@ -224,9 +245,8 @@ class Accesos(Accesos):
 
         # answers[self.f['bitacora_rondin_incidencias']] = self.answers.get(self.f['grupo_incidencias_check'], [])
 
-        metadata.update({'answers':answers})
-        print(simplejson.dumps(metadata, indent=3))
-        # breakpoint()
+        # metadata.update({'answers':answers})
+        # print(simplejson.dumps(metadata, indent=3))
 
         res = self.lkf_api.post_forms_answers(metadata)
         return res
@@ -391,6 +411,162 @@ class Accesos(Accesos):
         resp = self.cr_cache.aggregate(pipeline)
         return [item['location'] for item in resp if item['location']]
 
+    def find_best_bitacora_and_position(self, bitacoras, dt_check):
+        """
+        Busca la mejor bitácora y posición para un check previo erroneo.
+        """
+        tz = pytz.timezone('America/Mexico_City')
+        best_bitacora = None
+        best_idx = None
+        min_time_diff = None
+
+        for bitacora in bitacoras:
+            areas = bitacora.get('areas_del_rondin', [])
+            if not areas:
+                best_bitacora = bitacora
+                best_idx = 0
+                min_time_diff = 0
+                continue
+
+            for idx in range(len(areas) + 1):
+                prev_time = None
+                next_time = None
+                if idx > 0:
+                    prev_time = tz.localize(datetime.strptime(areas[idx - 1]['fecha_hora_inspeccion_area'], '%Y-%m-%d %H:%M:%S'))
+                if idx < len(areas):
+                    next_time = tz.localize(datetime.strptime(areas[idx]['fecha_hora_inspeccion_area'], '%Y-%m-%d %H:%M:%S'))
+                fits = True
+                if prev_time and dt_check < prev_time:
+                    fits = False
+                if next_time and dt_check > next_time:
+                    fits = False
+                if prev_time and next_time:
+                    fits = prev_time <= dt_check <= next_time
+                elif prev_time:
+                    fits = dt_check >= prev_time
+                elif next_time:
+                    fits = dt_check <= next_time
+                if fits:
+                    diff = 0
+                    if prev_time:
+                        diff += abs((dt_check - prev_time).total_seconds())
+                    if next_time:
+                        diff += abs((next_time - dt_check).total_seconds())
+                    if min_time_diff is None or diff < min_time_diff:
+                        best_bitacora = bitacora
+                        best_idx = idx
+                        min_time_diff = diff
+
+        return best_bitacora, best_idx
+
+    def update_closed_bitacora(self, rondin):
+        """
+        Actualiza la bitácora cerrada con la información del rondín.
+        """
+        tz = pytz.timezone('America/Mexico_City')
+        today = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
+        rondin = self.unlist(rondin)
+        rondin_en_progreso = True
+        answers={}
+        areas_list = []
+
+        if not rondin.get('fecha_inicio_rondin'):
+            rondin['fecha_inicio_rondin'] = self.timestamp and datetime.fromtimestamp(self.timestamp, tz).strftime('%Y-%m-%d %H:%M:%S')
+
+        conf_recorrido = {}
+        for key, value in rondin.items():
+            if key == 'fecha_programacion':
+                answers[self.f['fecha_programacion']] = value
+            elif key == 'fecha_inicio_rondin':
+                answers[self.f['fecha_inicio_rondin']] = value
+            elif key == 'fecha_fin_rondin':
+                answers[self.f['fecha_fin_rondin']] = value
+            elif key == 'incidente_location':
+                conf_recorrido.update({
+                    self.f['ubicacion_recorrido']: value
+                })
+            elif key == 'nombre_del_recorrido':
+                conf_recorrido.update({
+                    self.f['nombre_del_recorrido']: value
+                })
+            elif key == 'estatus_del_recorrido':
+                answers[self.f['estatus_del_recorrido']] = value
+            elif key == 'areas_del_rondin':
+                if isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, dict):
+                            area_name = (
+                                item.get('incidente_area') or 
+                                item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['nombre_area'], '')
+                            )
+                            if area_name:
+                                areas_list.append({
+                                    self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
+                                        self.f['nombre_area']: area_name
+                                    },
+                                    self.f['fecha_hora_inspeccion_area']: item.get('fecha_hora_inspeccion_area', ''),
+                                    self.f['foto_evidencia_area_rondin']: item.get('foto_evidencia_area_rondin', []),
+                                    self.f['comentario_area_rondin']: item.get('comentario_area_rondin', ''),
+                                    self.f['url_registro_rondin']: item.get('url_registro_rondin', '')
+                                })
+                
+            all_areas_sorted = sorted(
+                areas_list,
+                key=lambda x: self.parse_date_for_sorting(x.get(self.f['fecha_hora_inspeccion_area'], ''))
+            )
+            
+            answers[self.f['areas_del_rondin']] = all_areas_sorted
+        else:
+            pass
+
+        answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = conf_recorrido
+        
+        format_list_incidencias = []
+        for incidencia in rondin.get('bitacora_rondin_incidencias', []):
+            inc = incidencia.get(self.f['tipo_de_incidencia'])
+            if inc:
+                incidencia.pop(self.f['tipo_de_incidencia'], None)
+                incidencia.update({
+                    self.LISTA_INCIDENCIAS_CAT_OBJ_ID: {
+                        self.f['tipo_de_incidencia']: inc
+                    }
+                })
+                format_list_incidencias.append(incidencia)
+            
+        rondin['bitacora_rondin_incidencias'] = format_list_incidencias
+             
+        for incidencia in data_rondin.get(self.f['grupo_incidencias_check'], []):
+            rondin['bitacora_rondin_incidencias'].append(incidencia)
+        
+        incidencias_list = rondin['bitacora_rondin_incidencias']
+        incidencias_dict = {str(idx): incidencia for idx, incidencia in enumerate(incidencias_list)}
+        answers[self.f['bitacora_rondin_incidencias']] = incidencias_dict
+
+        # print("ans", simplejson.dumps(answers, indent=4))
+
+        if answers:
+            metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_RONDINES)
+            metadata.update(self.get_record_by_folio(rondin.get('folio'), self.BITACORA_RONDINES, select_columns={'_id': 1}, limit=1))
+
+            metadata.update({
+                'properties': {
+                    "device_properties": {
+                        "system": "Addons",
+                        "process":"Actualizacion de Bitacora", 
+                        "accion":'rondines_cache', 
+                        "folio": rondin.get('folio'), 
+                        "archive": "rondines_cache.py"
+                    }
+                },
+                'answers': answers,
+                '_id': rondin.get('_id')
+            })
+            res = self.net.patch_forms_answers(metadata)
+            if res.get('status_code') == 201 or res.get('status_code') == 202:
+                return res
+            else: 
+                return res
+
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
     script_obj.console_run()
@@ -414,6 +590,31 @@ if __name__ == "__main__":
         res = script_obj.close_rondines(rondines)
         if res and res.get('status_code') in [200, 201, 202]:
             validacion_area = True
+            
+    #! Si el check no es de hoy se verifica si pertenece a una bitacora ya cerrada
+    tz = pytz.timezone('America/Mexico_City')
+    dt_check = datetime.fromtimestamp(script_obj.timestamp, tz)
+    date_from = (dt_check - timedelta(minutes=30)).strftime('%Y-%m-%d %H:%M:%S')
+    date_to = (dt_check + timedelta(minutes=30)).strftime('%Y-%m-%d %H:%M:%S')
+    today_str = datetime.now(tz).strftime('%Y-%m-%d')
+
+    if not date_from.startswith(today_str):
+        bitacoras = script_obj.search_closed_bitacora_by_check(date_from=date_from, date_to=date_to)
+        if bitacoras:
+            my_check = {
+                'duracion_traslado_area': 0.0,
+                'comentario_area_rondin': script_obj.answers.get(script_obj.f['comentario_check_area'], ''),
+                'foto_evidencia_area_rondin': script_obj.answers.get(script_obj.f['foto_evidencia_area'], []),
+                'fecha_hora_inspeccion_area': dt_check.strftime('%Y-%m-%d %H:%M:%S'),
+                'url_registro_rondin': f'https://app.linkaform.com/#/records/detail/{script_obj.record_id}',
+                'incidente_area': script_obj.check_area,
+            }
+
+            winner_bitacora, insert_idx = script_obj.find_best_bitacora_and_position(bitacoras, dt_check)
+            if winner_bitacora is not None and insert_idx is not None:
+                areas = winner_bitacora['areas_del_rondin']
+                areas.insert(insert_idx, my_check)
+                script_obj.update_closed_bitacora(winner_bitacora)
             
     recorridos = script_obj.search_rondin_by_area()
     exists_bitacora = script_obj.search_active_bitacora_by_rondin(recorridos=recorridos)
@@ -555,11 +756,11 @@ if __name__ == "__main__":
                     elif winner:
                         #! Mientras exista ganador los demas checks entran en espera por si otro resulta ganador
                         if not bitacoras_created:
-                            print(f'❌ No soy el ganador para {location}. Esperando...')
+                            # print(f'❌ No soy el ganador para {location}. Esperando...')
                             time.sleep(2)
                             continue
                         else:
-                            print(f'✅ Bitácoras ya creadas para {location}. Saliendo.')
+                            # print(f'✅ Bitácoras ya creadas para {location}. Saliendo.')
                             break
                     else:
                         break
