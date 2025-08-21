@@ -265,7 +265,7 @@ class Accesos(Accesos):
         # answers[self.f['bitacora_rondin_incidencias']] = self.answers.get(self.f['grupo_incidencias_check'], [])
 
         metadata.update({'answers':answers})
-        # print(simplejson.dumps(metadata, indent=3))
+        print(simplejson.dumps(metadata, indent=3))
 
         res = self.lkf_api.post_forms_answers(metadata)
         return res
@@ -720,7 +720,7 @@ if __name__ == "__main__":
                     cache = script_obj.search_cache(location=script_obj.location)
                     winner = script_obj.select_winner(caches_list=cache, location=script_obj.location)
                     script_obj.add_checks_to_winner(winner=winner, checks_list=cache)
-                    time.sleep(2)
+                    time.sleep(5)
                     cache = script_obj.search_cache(location=script_obj.location)
                     script_obj.add_checks_to_winner(winner=winner, checks_list=cache)
                     final_winner = script_obj.unlist(script_obj.search_cache(search_winner=True, location=script_obj.location))
@@ -731,9 +731,7 @@ if __name__ == "__main__":
                     script_obj.clear_cache(location=script_obj.location)
                     print(f'✅ Bitácora creada por {script_obj.folio}')
                 else:
-                    print('❌ No soy el ganador, espero y me borro del cache')
-                    time.sleep(2)
-                    script_obj.clear_cache(record_id=script_obj.record_id)
+                    print('❌ No soy el ganador')
                     sys.exit(0)
     cache = script_obj.search_cache()
     for c in cache:
