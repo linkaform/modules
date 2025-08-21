@@ -589,6 +589,7 @@ if __name__ == "__main__":
     if rondines:
         res = script_obj.close_rondines(rondines)
         if res and res.get('status_code') in [200, 201, 202]:
+            print('Se cerraron bitacoras...')
             validacion_area = True
             
     #! Si el check no es de hoy se verifica si pertenece a una bitacora ya cerrada
@@ -615,6 +616,7 @@ if __name__ == "__main__":
                 areas = winner_bitacora['areas_del_rondin']
                 areas.insert(insert_idx, my_check)
                 script_obj.update_closed_bitacora(winner_bitacora)
+                sys.exit(0)
             
     recorridos = script_obj.search_rondin_by_area()
     exists_bitacora = script_obj.search_active_bitacora_by_rondin(recorridos=recorridos)
