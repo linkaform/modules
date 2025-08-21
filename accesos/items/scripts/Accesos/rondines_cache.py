@@ -479,6 +479,7 @@ if __name__ == "__main__":
             #! Si no existe un ganador en el cache se crea un cache
             resp = script_obj.create_cache()
             time.sleep(5)
+            #! Se obtienen las ubicaciones de los caches creados
             locations = script_obj.get_unique_locations_from_cache()
             for location in locations:
                 start_time = time.time()
@@ -486,6 +487,7 @@ if __name__ == "__main__":
                 bitacoras_created = False
                 
                 while True:
+                    #! Validacion para evitar un loop infinito en caso de error inesperado
                     if time.time() - start_time > max_duration:
                         print(f'⚠️  Timeout alcanzado para {location}. Forzando salida.')
                         script_obj.clear_cache(location=location)
@@ -499,6 +501,7 @@ if __name__ == "__main__":
                     finalized_timestamp = None
                     earliest_finalized = None
 
+                    #! Se busca el timestamp más temprano de los caches finalizados
                     for cache_item in cache:
                         check_status = cache_item.get('check_data', {}).get(script_obj.f['check_status'])
                         if check_status == 'finalizado':
@@ -508,6 +511,7 @@ if __name__ == "__main__":
                                 finalized_timestamp = item_timestamp
 
                     if finalized_timestamp:
+                        #! Se filtran los caches hasta el timestamp finalizado si hay un check finalizado
                         cache_to_process = [
                             cache_item for cache_item in cache 
                             if cache_item.get('timestamp', 0) <= finalized_timestamp
@@ -520,6 +524,7 @@ if __name__ == "__main__":
                     winner = script_obj.select_winner(caches_list=cache_to_process, location=location)
                     
                     if winner and winner.get('_id') == ObjectId(script_obj.record_id):
+                        #! Se agrega la información de los checks al ganador y se crea la bitacora
                         script_obj.add_checks_to_winner(winner=winner, checks_list=cache_to_process)
                         time.sleep(2)
                         script_obj.add_checks_to_winner(winner=winner, checks_list=cache_to_process)
@@ -548,6 +553,7 @@ if __name__ == "__main__":
                         print(f'✅ Bitácora {"finalizada" if is_finalized_bitacora else "en proceso"} creada por {script_obj.folio}')
                         
                     elif winner:
+                        #! Mientras exista ganador los demas checks entran en espera por si otro resulta ganador
                         if not bitacoras_created:
                             print(f'❌ No soy el ganador para {location}. Esperando...')
                             time.sleep(2)
