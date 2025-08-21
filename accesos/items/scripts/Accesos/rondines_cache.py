@@ -196,7 +196,8 @@ class Accesos(Accesos):
             self.f['ubicacion_recorrido']: self.location,
             self.f['nombre_del_recorrido']: nombre_del_recorrido
         }
-        answers[self.f['estatus_del_recorrido']] = 'en_proceso'
+        estatus_del_recorrido = 'realizado' if winner.get('check_data', {}).get(self.f['check_status'], '') == 'finalizado' else 'en_proceso'
+        answers[self.f['estatus_del_recorrido']] = estatus_del_recorrido
         check_areas_list = []
         for area in winner.get('checks', []):
             format_area = {
@@ -230,16 +231,21 @@ class Accesos(Accesos):
         res = self.lkf_api.post_forms_answers(metadata)
         return res
 
-    def clear_cache(self, location=None, record_id=None):
+    def clear_cache(self, location=None, record_id=None, winner=None):
         """
         Clear collection rondin_caches.
         """
         if location:
             self.cr_cache.delete_many({'location': location})
+            return
         if record_id:
             self.cr_cache.delete_one({'_id': ObjectId(record_id)})
-        else:
-            self.cr_cache.delete_many({})
+            return
+        if winner:
+            self.cr_cache.delete_one({'winner': True})
+            return
+        
+        self.cr_cache.delete_many({})
         
     def check_areas_in_rondin(self, cache, rondin):
         """
@@ -475,19 +481,82 @@ if __name__ == "__main__":
             time.sleep(5)
             locations = script_obj.get_unique_locations_from_cache()
             for location in locations:
-                cache = script_obj.search_cache(location=location)
-                winner = script_obj.select_winner(caches_list=cache, location=location)
+                start_time = time.time()
+                max_duration = 60
+                bitacoras_created = False
                 
-                if winner and winner.get('folio', '') == script_obj.folio:
-                    script_obj.add_checks_to_winner(winner=winner, checks_list=cache)
-                    time.sleep(5)
+                while True:
+                    if time.time() - start_time > max_duration:
+                        print(f'⚠️  Timeout alcanzado para {location}. Forzando salida.')
+                        script_obj.clear_cache(location=location)
+                        break
+                    
                     cache = script_obj.search_cache(location=location)
-                    script_obj.add_checks_to_winner(winner=winner, checks_list=cache)
-                    winner = script_obj.unlist(script_obj.search_cache(search_winner=True, location=location))
-                    script_obj.create_bitacora_from_cache(winner=winner, recorridos_names=recorridos)
-                    script_obj.clear_cache(location=location)
-                else:
-                    print(f'Byeee para {location}')
+                    if not cache:
+                        print(f'Cache vacío para {location}. Terminando procesamiento.')
+                        break
+                        
+                    finalized_timestamp = None
+                    earliest_finalized = None
+
+                    for cache_item in cache:
+                        check_status = cache_item.get('check_data', {}).get(script_obj.f['check_status'])
+                        if check_status == 'finalizado':
+                            item_timestamp = cache_item.get('timestamp')
+                            if earliest_finalized is None or item_timestamp < earliest_finalized:
+                                earliest_finalized = item_timestamp
+                                finalized_timestamp = item_timestamp
+
+                    if finalized_timestamp:
+                        cache_to_process = [
+                            cache_item for cache_item in cache 
+                            if cache_item.get('timestamp', 0) <= finalized_timestamp
+                        ]
+                        is_finalized_bitacora = True
+                    else:
+                        cache_to_process = cache
+                        is_finalized_bitacora = False
+                    
+                    winner = script_obj.select_winner(caches_list=cache_to_process, location=location)
+                    
+                    if winner and winner.get('_id') == ObjectId(script_obj.record_id):
+                        script_obj.add_checks_to_winner(winner=winner, checks_list=cache_to_process)
+                        time.sleep(2)
+                        script_obj.add_checks_to_winner(winner=winner, checks_list=cache_to_process)
+                        final_winner = script_obj.unlist(script_obj.search_cache(search_winner=True, location=location))
+                        
+                        final_winner['check_data'] = final_winner.get('check_data', {})
+                        final_winner['check_data'][script_obj.f['check_status']] = 'en_proceso'
+
+                        if is_finalized_bitacora:
+                            has_finalized_check = any(
+                                cache_item.get('check_data', {}).get(script_obj.f['check_status']) == 'finalizado'
+                                for cache_item in cache_to_process
+                            )
+                            
+                            if has_finalized_check:
+                                final_winner['check_data'] = final_winner.get('check_data', {})
+                                final_winner['check_data'][script_obj.f['check_status']] = 'finalizado'
+
+                        script_obj.create_bitacora_from_cache(winner=final_winner, recorridos_names=recorridos)
+                        
+                        for cache_item in cache_to_process:
+                            script_obj.clear_cache(record_id=str(cache_item['_id']))
+                        script_obj.clear_cache(winner=True)
+                        
+                        bitacoras_created = True
+                        print(f'✅ Bitácora {"finalizada" if is_finalized_bitacora else "en proceso"} creada por {script_obj.folio}')
+                        
+                    elif winner:
+                        if not bitacoras_created:
+                            print(f'❌ No soy el ganador para {location}. Esperando...')
+                            time.sleep(2)
+                            continue
+                        else:
+                            print(f'✅ Bitácoras ya creadas para {location}. Saliendo.')
+                            break
+                    else:
+                        break
     cache = script_obj.search_cache()
     for c in cache:
         c['_id'] = str(c['_id'])
