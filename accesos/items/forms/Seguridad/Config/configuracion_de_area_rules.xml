@@ -79,14 +79,6 @@
                     <label>Nombre del area a crear</label>
                     <type>text</type>
                 </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>688bac1ecfdcf8b16eb209b5</field_id>
-                    <group_id>None</group_id>
-                    <id>688bac1ecfdcf8b16eb209b5</id>
-                    <label>Geolocalizacion de Area</label>
-                    <type>geolocation</type>
-                </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>
             <name>Regla 2</name>
