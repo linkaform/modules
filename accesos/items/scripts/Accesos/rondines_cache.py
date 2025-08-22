@@ -39,36 +39,75 @@ class Accesos(Accesos):
                 f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": self.location,
                 f"answers.{self.f['grupo_de_areas_recorrido']}": {'$exists': True}
             }},
-            # {'$unwind': f"$answers.{self.f['grupo_de_areas_recorrido']}"},
+            {'$unwind': f"$answers.{self.f['grupo_de_areas_recorrido']}"},
             {'$project': {
                 '_id': 1,
-                # 'match_area': f"$answers.{self.f['grupo_de_areas_recorrido']}.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area']}",
+                'match_area': f"$answers.{self.f['grupo_de_areas_recorrido']}.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area']}",
                 'nombre_recorrido': f"$answers.{self.f['nombre_del_recorrido']}",
                 'ubicacion_recorrido': f"$answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_recorrido']}"
             }},
-            # {'$match': {
-            #     'match_area': self.check_area
-            # }},
-            # {"$project": {
-            #     "_id": 1,
-            #     "nombre_recorrido": 1,
-            #     "ubicacion_recorrido": 1
-            # }}
+            {'$match': {
+                'match_area': self.check_area
+            }},
+            {"$project": {
+                "_id": 1,
+                "nombre_recorrido": 1,
+                "ubicacion_recorrido": 1
+            }}
         ]
         resp = self.cr.aggregate(query)
-        format_res = list({item.get('nombre_recorrido') for item in resp})
-        return format_res
+        resp = list(resp)
+        if not resp:
+            query = [
+                {'$match': {
+                    'deleted_at': {'$exists': False},
+                    'form_id': self.CONFIGURACION_DE_RECORRIDOS_FORM,
+                    f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": self.location,
+                    f"answers.{self.f['grupo_de_areas_recorrido']}": {'$exists': True}
+                }},
+                {'$project': {
+                    '_id': 1,
+                    'nombre_recorrido': f"$answers.{self.f['nombre_del_recorrido']}",
+                    'ubicacion_recorrido': f"$answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_recorrido']}"
+                }},
+            ]
+            resp = self.cr.aggregate(query)
+            resp = list(resp)
+        return resp
+    
+    def get_areas_recorrido(self, record_id):
+        query = [
+            {'$match': {
+                "deleted_at": {"$exists": False},
+                "form_id": self.CONFIGURACION_DE_RECORRIDOS_FORM,
+                "_id": ObjectId(record_id)
+            }},
+            {'$project': {
+                '_id': 0,
+                'areas_recorrido': f'$answers.{self.f["grupo_de_areas_recorrido"]}'
+            }},
+            {'$limit': 1}
+        ]
+
+        res = self.format_cr(self.cr.aggregate(query))
+        formatted_res = self.unlist(res)
+        formatted_res = formatted_res.get('areas_recorrido', [])
+        return formatted_res
 
     def search_active_bitacora_by_rondin(self, recorridos):
         """
         Search for a bitacora by rondin name in form Bitacora Rondines.
         """
+        format_names = []
+        for recorrido in recorridos:
+            format_names.append(recorrido.get('nombre_recorrido', ''))
+        
         query = [
             {'$match': {
                 "deleted_at": {"$exists": False},
                 "form_id": self.BITACORA_RONDINES,
                 f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": self.location,
-                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.f['nombre_del_recorrido']}": {"$in": recorridos},
+                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.f['nombre_del_recorrido']}": {"$in": format_names},
                 f"answers.{self.f['estatus_del_recorrido']}": 'en_proceso',
             }},
             {'$sort': {'created_at': -1}},
@@ -205,14 +244,24 @@ class Accesos(Accesos):
                 }
             )
 
-    def create_bitacora_from_cache(self, winner, recorridos_names):
+    def create_bitacora_from_cache(self, winner, recorridos):
         """
         Create a bitacora entry from cache data.
         """
         nombre_del_recorrido = ""
-        for name in recorridos_names:
-            nombre_del_recorrido = name
-        
+        ubicacion_del_recorrido = ""
+        id_del_recorrido = ""
+        print('Recorridos encontrados:', recorridos)
+        for recorrido in recorridos:
+            nombre_del_recorrido = recorrido.get('nombre_recorrido')
+            ubicacion_del_recorrido = recorrido.get('ubicacion_recorrido')
+            id_del_recorrido = recorrido.get('_id')
+
+        if not id_del_recorrido:
+            raise Exception("No se encontró un record_id válido para obtener las áreas del recorrido.")
+
+        areas_recorrido = self.get_areas_recorrido(id_del_recorrido)
+
         metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_RONDINES)
         metadata.update({
             "properties": {
@@ -233,7 +282,7 @@ class Accesos(Accesos):
         answers[self.f['fecha_inicio_rondin']] = winner.get('timestamp') and datetime.fromtimestamp(winner.get('timestamp'), tz).strftime('%Y-%m-%d %H:%M:%S')
 
         answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = {
-            self.f['ubicacion_recorrido']: self.location,
+            self.f['ubicacion_recorrido']: ubicacion_del_recorrido,
             self.f['nombre_del_recorrido']: nombre_del_recorrido
         }
         estatus_del_recorrido = 'realizado' if winner.get('check_data', {}).get(self.f['check_status'], '') == 'finalizado' else 'en_proceso'
@@ -254,13 +303,13 @@ class Accesos(Accesos):
         check_areas_list.sort(key=lambda x: self.parse_date_for_sorting(x.get(self.f['fecha_hora_inspeccion_area'], '')))
         answers[self.f['areas_del_rondin']] = check_areas_list
 
-        # for area in areas_recorrido:
-        #     if not area.get('incidente_area') == area_rondin:
-        #         answers[self.f['areas_del_rondin']].append({
-        #             self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
-        #                 self.f['nombre_area']: area.get('incidente_area', '')
-        #             },
-        #         })
+        for area in areas_recorrido:
+            if not area.get('incidente_area') == self.check_area:
+                answers[self.f['areas_del_rondin']].append({
+                    self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
+                        self.f['nombre_area']: area.get('incidente_area', '')
+                    },
+                })
 
         # answers[self.f['bitacora_rondin_incidencias']] = self.answers.get(self.f['grupo_incidencias_check'], [])
 
@@ -347,7 +396,7 @@ class Accesos(Accesos):
                     )
                     
                     if area_name:
-                        areas_list.append({
+                        nueva_area = {
                             self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
                                 self.f['nombre_area']: area_name
                             },
@@ -355,7 +404,19 @@ class Accesos(Accesos):
                             self.f['foto_evidencia_area_rondin']: data_cache.get(self.f['foto_evidencia_area'], []),
                             self.f['comentario_area_rondin']: data_cache.get(self.f['comentario_check_area'], ''),
                             self.f['url_registro_rondin']: f"https://app.linkaform.com/#/records/detail/{cache_item.get('_id', '')}",
-                        })
+                        }
+
+                        reemplazado = False
+                        for idx, area_existente in enumerate(areas_list):
+                            nombre_existente = area_existente.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['nombre_area'], '')
+                            fecha_existente = area_existente.get(self.f['fecha_hora_inspeccion_area'], '')
+                            if nombre_existente == area_name and not fecha_existente:
+                                areas_list[idx] = nueva_area
+                                reemplazado = True
+                                break
+
+                        if not reemplazado:
+                            areas_list.append(nueva_area)
             
             all_areas_sorted = sorted(
                 areas_list,
@@ -727,7 +788,7 @@ if __name__ == "__main__":
                     cache = script_obj.search_cache(location=script_obj.location)
                     final_winner['check_data'] = final_winner.get('check_data', {})
                     final_winner['check_data'][script_obj.f['check_status']] = 'en_proceso'
-                    script_obj.create_bitacora_from_cache(winner=final_winner, recorridos_names=recorridos)
+                    script_obj.create_bitacora_from_cache(winner=final_winner, recorridos=recorridos)
                     script_obj.clear_cache(location=script_obj.location)
                     print(f'✅ Bitácora creada por {script_obj.folio}')
                 else:
