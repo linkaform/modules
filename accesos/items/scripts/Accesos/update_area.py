@@ -40,8 +40,8 @@ class Accesos(Accesos):
         }
         
         self.f.update({
-            'status_details': '6889337c4db2c8b3de148e77',
-            'status_details_message': '689270a245f31ca65437292b',
+            'status_details': '689a46342038ded0e949be07',
+            'status_details_message': '689a46342038ded0e949be08',
         })
 
     def format_data_area(self, data):
@@ -124,10 +124,18 @@ class Accesos(Accesos):
         ubicacion = data.get('ubicacion', '')
         area = data.get('area', '')
         if not ubicacion:
-            return {'status': 'not_found'}
+            msg = 'La ubicacion no puede estar vacia.'
+            acceso_obj.LKFException({'msg': msg, 'title': 'Ubicacion vacia'})
+            self.statuss = 'error'
+            self.status_comment = 'La ubicacion no puede estar vacia.'
+            return
         area_ubicacion_data = self.get_record_ubicacion(ubicacion=ubicacion, area=area)
         if not area_ubicacion_data:
-            return {'status': 'not_found'}
+            msg = 'No se encontro el area especificada.'
+            acceso_obj.LKFException({'msg': msg, 'title': 'Area no encontrada'})
+            self.statuss = 'error'
+            self.status_comment = 'No se encontro el area especificada.'
+            return
         folio = area_ubicacion_data.get('folio', '')
         record_id = area_ubicacion_data.get('_id', '')
 
@@ -264,6 +272,7 @@ class Accesos(Accesos):
     def create_new_area(self, data):
         exists_area = self.exists_area(data.get('ubicacion', {}), data.get('nombre_nueva_area', ''))
         if exists_area:
+            self.status_comment = 'El area ya existe. Solo se actualizo la informacion rellenada.'
             return
         
         contact_details = self.get_contact_details(data.get('ubicacion', {}))
@@ -290,6 +299,12 @@ class Accesos(Accesos):
             form_id=self.AREAS_DE_LAS_UBICACIONES,
             answers=answers
         )
+
+        if response is None or response.get('status', 'unknown') != 'success':
+            msg = 'Hubo un error al crear el area. Contacta a soporte'
+            acceso_obj.LKFException({'msg': msg, 'title': 'Error al crear area'})
+            self.statuss = 'error'
+            self.status_comment = 'Hubo un error al crear el area.'
         
         return response
     
@@ -331,6 +346,8 @@ if __name__ == "__main__":
     acceso_obj.console_run()
     print('answers', simplejson.dumps(acceso_obj.answers, indent=3))
     data = acceso_obj.format_data_area(acceso_obj.answers)
+    acceso_obj.statuss = 'ok'
+    acceso_obj.status_comment = ''
 
     #! Si trae solo el QR
     if data.get('qr_area') and not data.get('ubicacion') and not data.get('area'):
@@ -343,37 +360,45 @@ if __name__ == "__main__":
     if data.get('create_area', False):
         acceso_obj.create_new_area(data)
         data['area'] = data.get('nombre_nueva_area')
+    else:
+        #! Validacion para evitar problema con areas creadas directamente en el catalogo
+        search_area = acceso_obj.get_record_ubicacion(ubicacion=data.get('ubicacion'), area=data.get('area'))
+        if search_area and search_area.get('ubicacion') == data.get('ubicacion') and search_area.get('area') == data.get('area'):
+            pass
+        else:
+            msg = 'No se encontró el área seleccionada en la forma Areas de las Ubicaciones.'
+            msg += 'Intenta creandola primero y solicita a soporte borrar el area creada en catalogo.'
+            acceso_obj.LKFException({'msg': msg, 'title': 'Área no encontrada'})
+            data['area'] = ''
+            data['qr_area'] = ''
+            acceso_obj.statuss = 'error'
+            acceso_obj.status_comment = 'No se encontró el área seleccionada. Intenta creandola primero.'
 
     #! Verificar si el qr ya esta asignado a un area
     exists_qr = False
+    is_a_different_area = True
     if data.get('qr_area'):
         qr_data = acceso_obj.get_record_ubicacion(tag_id_area=data.get('qr_area'))
         if qr_data and qr_data.get('tag_id_area') == data.get('qr_area'):
+            if qr_data.get('ubicacion') == data.get('ubicacion') and qr_data.get('area') == data.get('area'):
+                is_a_different_area = False
             exists_qr = True
 
     #! Actualiza el area si ya existe
-    if exists_qr:
-        response = {'status': 'not_created'}
+    if exists_qr and is_a_different_area:
+        msg = 'Ya se ha registrado este QR en otra area.'
+        acceso_obj.LKFException({'msg': msg, 'title': 'QR ya asignado'})
+        acceso_obj.statuss = 'error'
+        acceso_obj.status_comment = 'El QR ya esta asignado a un area diferente.'
     elif data.get('area'):
         response = acceso_obj.update_area(data)
-    else:
-        response = {'status': 'create_error'}
+        if response is None or response.get('status', 'unknown') != 'success':
+            acceso_obj.statuss = 'error'
+            acceso_obj.status_comment = 'No se pudo actualizar el area.'
         
     #! Ajuste de respuestas
-    if response:
-        status = response.get('status', 'Unknown')
-        if status == 'success':
-            details = 'Se actualizaron los datos del area correctamente.'
-        elif status == 'create_error':
-            details = 'No se pudo crear el area, verifique los datos ingresados.'
-        elif status == 'not_found':
-            details = 'No se pudo encontrar el area, verifique los datos ingresados.'
-        elif status == 'not_created':
-            details = 'El qr ya esta asignado a un area, no se puede asignar a otra.'
-        else:
-            details = 'Hubo un error al actualizar los datos del area'
-        acceso_obj.answers[acceso_obj.f['status_details']] = status
-        acceso_obj.answers[acceso_obj.f['status_details_message']] = details
+    acceso_obj.answers[acceso_obj.f['status_details']] = acceso_obj.statuss
+    acceso_obj.answers[acceso_obj.f['status_details_message']] = acceso_obj.status_comment
 
     sys.stdout.write(simplejson.dumps({
         'status': 101,
