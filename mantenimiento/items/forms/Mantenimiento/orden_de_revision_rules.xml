@@ -263,6 +263,30 @@
             <fields_ruled>
                 <item>
                     <catalog_id>None</catalog_id>
+                    <field_id>{{ catalog.clientes.obj_id}}</field_id>
+                    <group_id>None</group_id>
+                    <id>67c9e431b59043d4bb7a2714</id>
+                    <label>Cliente</label>
+                    <type>catalog</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>66bfc0accd15883ed163e9b0</field_id>
+                    <group_id>None</group_id>
+                    <id>66bfc0accd15883ed163e9b0</id>
+                    <label>Nombre Comercial</label>
+                    <type>catalog-select</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>{{ catalog.empleados.obj_id}}</field_id>
+                    <group_id>None</group_id>
+                    <id>67c9e532b383a87836981405</id>
+                    <label>Técnico Asignado</label>
+                    <type>catalog</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
                     <field_id>62c5ff407febce07043024dd</field_id>
                     <group_id>None</group_id>
                     <id>62c5ff407febce07043024dd</id>
@@ -295,14 +319,6 @@
                 </item>
                 <item>
                     <catalog_id>None</catalog_id>
-                    <field_id>67c8c67734cc8b94bc183eca</field_id>
-                    <group_id>None</group_id>
-                    <id>67c8c67734cc8b94bc183eca</id>
-                    <label>Fecha de Programación del Servicio</label>
-                    <type>datetime</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
                     <field_id>67d218329d65ba66bf981253</field_id>
                     <group_id>None</group_id>
                     <id>67d218329d65ba66bf981253</id>
@@ -324,30 +340,6 @@
                     <id>67d9f8efbfe21e488f4f5262</id>
                     <label>Estatus</label>
                     <type>select</type>
-                </item>
-                <item>
-                    <catalog_id>67c9e431b59043d4bb7a2714</catalog_id>
-                    <field_id>66bfc0accd15883ed163e9b0</field_id>
-                    <group_id>None</group_id>
-                    <id>66bfc0accd15883ed163e9b0</id>
-                    <label>Nombre Comercial</label>
-                    <type>catalog-select</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>{{ catalog.clientes.obj_id}}</field_id>
-                    <group_id>None</group_id>
-                    <id>67c9e431b59043d4bb7a2714</id>
-                    <label>Cliente</label>
-                    <type>catalog</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>{{ catalog.empleados.obj_id}}</field_id>
-                    <group_id>None</group_id>
-                    <id>67c9e532b383a87836981405</id>
-                    <label>Técnico Asignado</label>
-                    <type>catalog</type>
                 </item>
             </fields_ruled>
             <group_conditions>
@@ -721,6 +713,40 @@
             <operator>or</operator>
             <rule_id>b11142525f11370</rule_id>
             <rule_type>disabled</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>not__empty=</condition>
+                    <field>
+                        <catalog_id>67c9e717d2436c644601b570</catalog_id>
+                        <field_id>66397bae9e8b08289a59ec86</field_id>
+                        <group_id>67eece00786284d3aa2ddaaa</group_id>
+                        <id>66397bae9e8b08289a59ec86</id>
+                        <label>Concepto</label>
+                        <type>catalog-select</type>
+                    </field>
+                    <value> </value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>6834fb4a0f1a6a3014e110ac</field_id>
+                    <group_id>None</group_id>
+                    <id>6834fb4a0f1a6a3014e110ac</id>
+                    <label>Fotografia de Manipulacion</label>
+                    <type>images</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Regla 15</name>
+            <operator>and</operator>
+            <rule_id>17d0170e1cb8112a</rule_id>
+            <rule_type>show</rule_type>
             <user_conditions>{}</user_conditions>
         </item>
     </rules>

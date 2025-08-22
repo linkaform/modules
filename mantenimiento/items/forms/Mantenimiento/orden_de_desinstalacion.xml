@@ -1184,14 +1184,7 @@
                     <visible>True</visible>
                 </item>
                 <item>
-                    <affecting_rules>
-                        <item>
-                            <applied>False</applied>
-                            <rule_id>20a3203114244ae</rule_id>
-                            <rule_index>0</rule_index>
-                            <rule_type>disabled</rule_type>
-                        </item>
-                    </affecting_rules>
+                    <affecting_rules>[]</affecting_rules>
                     <buttons_ids>[]</buttons_ids>
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
@@ -5130,7 +5123,7 @@
                     <group>None</group>
                     <groups_fields>[]</groups_fields>
                     <help_text>None</help_text>
-                    <label>Completado</label>
+                    <label>Validado</label>
                     <number_type>None</number_type>
                     <options>[]</options>
                     <properties>
@@ -5240,5 +5233,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1747769688.0</updated_at>
+    <updated_at>1750719321.0</updated_at>
 </lkf>

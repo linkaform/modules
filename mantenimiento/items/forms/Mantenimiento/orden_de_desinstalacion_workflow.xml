@@ -281,103 +281,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>681b69efa513bb44e2ffeecf</_id>
-                    <action_id>4</action_id>
-                    <action_settings>{}</action_settings>
-                    <configuration>
-                        <assignTo>
-                            <item>
-                                <customUser>
-                                    <email>miguel.trevino@bosonti.com</email>
-                                    <first_name>Miguel Ángel Treviño Rodríguez</first_name>
-                                    <id>17466</id>
-                                    <username>miguel.trevino@bosonti.com</username>
-                                </customUser>
-                                <field_id>CUSTOM_USER</field_id>
-                                <label>Usuario</label>
-                                <push_notification>False</push_notification>
-                                <send_mail>False</send_mail>
-                            </item>
-                        </assignTo>
-                    </configuration>
-                    <name>Se asigna a usuario</name>
-                </item>
-            </actions>
-            <id>681b69efa513bb44e2ffeedd</id>
-            <name>Se asigna registro tecnico Miguel Treviño</name>
-            <rules>
-                <metadata>
-                    <connection>[]</connection>
-                    <date>
-                        <period>
-                            <month>1</month>
-                            <selected>False</selected>
-                            <year>2014</year>
-                        </period>
-                        <range>
-                            <end>2025-05-08T06:00:00.000Z</end>
-                            <selected>False</selected>
-                            <start>2025-05-07T14:02:36.769Z</start>
-                        </range>
-                    </date>
-                    <grading>{}</grading>
-                    <user>[]</user>
-                </metadata>
-                <record>
-                    <created>True</created>
-                    <deleted>False</deleted>
-                    <edited>True</edited>
-                    <run_multiple_times>True</run_multiple_times>
-                    <runtime>after</runtime>
-                </record>
-                <wf_fields>
-                    <operator>all</operator>
-                    <triggers>
-                        <item>
-                            <condition>in=</condition>
-                            <form_id>None</form_id>
-                            <other_value>None</other_value>
-                            <prefix>answer</prefix>
-                            <trigger_field>
-                                <catalog>{}</catalog>
-                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
-                                <group>{}</group>
-                                <label>Estatus</label>
-                                <type>select</type>
-                            </trigger_field>
-                            <value>asignado</value>
-                        </item>
-                        <item>
-                            <condition>in=</condition>
-                            <form_id>None</form_id>
-                            <other_value>None</other_value>
-                            <prefix>answer</prefix>
-                            <trigger_field>
-                                <catalog>
-                                    <catalog_field_id>{{ catalog.empleados.obj_id }}</catalog_field_id>
-                                    <catalog_id>{{ catalog.empleados.id }}</catalog_id>
-                                    <field_type>text</field_type>
-                                    <filters>None</filters>
-                                    <geofence>None</geofence>
-                                    <last>True</last>
-                                    <related_catalog>{}</related_catalog>
-                                    <view_fields>[]</view_fields>
-                                    <view_index>1</view_index>
-                                </catalog>
-                                <field_id>62c5ff407febce07043024dd</field_id>
-                                <group>{}</group>
-                                <label>Nombre completo del Técnico</label>
-                                <type>catalog-select</type>
-                            </trigger_field>
-                            <value>Miguel Ángel Treviño Rodríguez</value>
-                        </item>
-                    </triggers>
-                </wf_fields>
-            </rules>
-        </item>
-        <item>
-            <actions>
-                <item>
                     <_id>681b69efa513bb44e2ffeed0</_id>
                     <action_id>4</action_id>
                     <action_settings>{}</action_settings>
@@ -1823,6 +1726,103 @@
                                 <type>select</type>
                             </trigger_field>
                             <value>validado</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>68a8a048042ab4abc6acd352</_id>
+                    <action_id>4</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <assignTo>
+                            <item>
+                                <customUser>
+                                    <email>carlos.martinez@bosonti.com</email>
+                                    <first_name>Carlos Enrique Martinez Tovar </first_name>
+                                    <id>19024</id>
+                                    <username>carlos</username>
+                                </customUser>
+                                <field_id>CUSTOM_USER</field_id>
+                                <label>Usuario</label>
+                                <push_notification>False</push_notification>
+                                <send_mail>False</send_mail>
+                            </item>
+                        </assignTo>
+                    </configuration>
+                    <name>Se asigna a usuario</name>
+                </item>
+            </actions>
+            <id>68a8a049042ab4abc6acd377</id>
+            <name>Se asigna registro técnico Carlos Tovar</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-08-23T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-08-22T16:51:48.511Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>True</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>asignado</value>
+                        </item>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>
+                                    <catalog_field_id>{{ catalog.empleados.obj_id }}</catalog_field_id>
+                                    <catalog_id>{{ catalog.empleados.id }}</catalog_id>
+                                    <field_type>text</field_type>
+                                    <filters>None</filters>
+                                    <geofence>None</geofence>
+                                    <last>True</last>
+                                    <related_catalog>{}</related_catalog>
+                                    <view_fields>[]</view_fields>
+                                    <view_index>1</view_index>
+                                </catalog>
+                                <field_id>62c5ff407febce07043024dd</field_id>
+                                <group>{}</group>
+                                <label>Nombre completo del Técnico</label>
+                                <type>catalog-select</type>
+                            </trigger_field>
+                            <value>Carlos Enrique Martinez Tovar</value>
                         </item>
                     </triggers>
                 </wf_fields>

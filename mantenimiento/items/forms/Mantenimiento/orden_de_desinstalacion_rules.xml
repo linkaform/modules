@@ -87,14 +87,6 @@
                 </item>
                 <item>
                     <catalog_id>None</catalog_id>
-                    <field_id>67c8c67734cc8b94bc183eca</field_id>
-                    <group_id>None</group_id>
-                    <id>67c8c67734cc8b94bc183eca</id>
-                    <label>Fecha de Programación del Servicio</label>
-                    <type>datetime</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
                     <field_id>67d218329d65ba66bf981253</field_id>
                     <group_id>None</group_id>
                     <id>67d218329d65ba66bf981253</id>
