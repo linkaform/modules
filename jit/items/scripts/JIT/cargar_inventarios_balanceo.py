@@ -228,7 +228,7 @@ class CargaUniversal(CargaUniversal):
                 self.Stock.Product.f['product_category']: record.get('lineaProducto'),
                 self.Stock.Product.f['product_type']: record.get('familiaProducto'),
             },
-            self.Stock.f['actual_eaches_on_hand']: record.get('inventario')
+            self.Stock.f['actual_eaches_on_hand']: record.get('inventario') + record.get('pedidoTransito', 0.0)
 
         }
         return answers
