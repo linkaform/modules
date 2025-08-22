@@ -285,7 +285,7 @@ class Accesos(Accesos):
             self.Location.TIPO_AREA_OBJ_ID: {
                 self.area_update['tipo_area']: 'Área Pública'
             },
-            self.area_update['geolocalizacion_area_ubicacion']: data.get('geolocation_area', ''), #type: ignore
+            self.area_update['geolocalizacion_area_ubicacion']: self.geolocation_area if self.geolocation_area else {},
             self.CONTACTO_CAT_OBJ_ID: contact_details,
             self.area_update['estatus']: 'activa',
             self.area_update['estatus_area']: 'disponible',
@@ -346,6 +346,13 @@ if __name__ == "__main__":
     acceso_obj.console_run()
     print('answers', simplejson.dumps(acceso_obj.answers, indent=3))
     data = acceso_obj.format_data_area(acceso_obj.answers)
+    data_conf_area = json.loads(sys.argv[1])
+    acceso_obj.geolocation_area = data_conf_area.get('geolocation', [])
+    if acceso_obj.geolocation_area:
+        acceso_obj.geolocation_area = {
+            "latitude": acceso_obj.geolocation_area[0],
+            "longitude": acceso_obj.geolocation_area[1]
+        }
     acceso_obj.statuss = 'ok'
     acceso_obj.status_comment = ''
 
