@@ -32,4 +32,3 @@ class Custom(Custom):
             'nivel_tanque_8': '6849c24677284457309f3ea9',
             'nivel_tanque_9': '6849c24677284457309f3eab',
         })
-    
