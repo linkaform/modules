@@ -119,9 +119,9 @@ class Accesos(Accesos):
                         "deleted_at": {"$exists": False},
                         "form_id": 135386, #TODO MODULARIZAR ID
                         "$expr": {
-                            "$eq": [
-                                "$user_name",
-                                "$$nombre_comp"
+                            "$and": [
+                                {"$eq": ["$user_name", "$$nombre_comp"]},
+                                {"$eq": [f"$answers.{self.checkin_fields['checkin_type']}", "iniciar_turno"]},
                             ]
                         }
                     }},

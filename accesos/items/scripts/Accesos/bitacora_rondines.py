@@ -44,7 +44,7 @@ class Accesos(Accesos):
             self.answers[self.f['porcentaje_obtenido_bitacora']] = str(round((cantidad_de_inspecciones / len(areas_visitadas)) * 100, 2)) + '%'
             self.answers[self.f['cantidad_areas_inspeccionadas']] = str(cantidad_de_inspecciones) + '/' + str(len(areas_visitadas))
         fecha_final_str = datetime.datetime.fromtimestamp(fecha_final).strftime('%Y-%m-%d %H:%M:%S') if fecha_final else ''
-        if self.answers.get(self.f['estatus_del_recorrido']) == 'realizado' and fecha_final_str:
+        if self.answers.get(self.f['estatus_del_recorrido']) in ['realizado', 'cerrado'] and fecha_final_str:
             self.answers[self.f['fecha_fin_rondin']] = fecha_final_str
         return True
 
