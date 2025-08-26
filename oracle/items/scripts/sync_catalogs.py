@@ -23,6 +23,7 @@ class Oracle(Oracle):
         }
 
         self.VARIABLES_CRITICAS_PRODUCCION = 134148
+        self.VARIABLES_CRITICAS_PRODUCCION_FORM = 139471
 
         self.db_id_fields = {
             'CONTACTOID':'FEC_MODIF',
@@ -94,15 +95,22 @@ class Oracle(Oracle):
         # }
 
         self.views = {
-            'VW_LinkAForm_Hora':{
+            'PRODUCCION.VW_LinkAForm_Hora':{
                 'catalog_id': self.VARIABLES_CRITICAS_PRODUCCION,
+                'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM,
                 'schema':{
-                    'PAISID': '_id',
-                    # 'DESCRIPCION': self.f['country'],
-                    # 'PAISID': self.f['country_code'],
+                    'FECHA':'683753204328adb3fa0bfd2b',
+                    'LECBRIXSOLUT2': 'ccaaa5b15ad84734fae92bae',
+                    '%BRIXJARABE': 'ccaaa548cf22411a910aabf2',
+                    'SODAAPLICADCALD': 'ccaaa864c62694640f0c69c7',
+                    'FOSFATOSKITCAL5': 'ccaaa864c62694640f0c69ca',
+                    'FOSFATOSKITCAL6': 'ccaaa864c62694640f0c69cd',
+                    'CONDAGPURGCALD7': 'ccaaa864c62694640f0c69ce',
+                    'FOSFATOSKITCAL7': 'ccaaa864c62694640f0c69d0',
+                    'CONDTANQEB3': 'ccaaa864c62694640f0c69d1',
                     }
             },
-            'VW_LinkAForm_Dia':{
+            'PRODUCCION.VW_LinkAForm_Dia':{
                 'catalog_id': self.VARIABLES_CRITICAS_PRODUCCION,
                 'schema':{
                     # 'PROVINCIAID':  self.f['state_code'],
@@ -132,17 +140,20 @@ class Oracle(Oracle):
             res['sync_data']['db_updated_at'] = data[self.db_id_fields[common_key]]
         return res
 
-    def api_etl(self, data, schema, catalog_id):
+    def api_etl(self, data, schema, catalog_id, form_id):
         #data: 
         translated_dict = {}
         for key, value in data.items():
             if schema.get(key) and value:
                 if type(value) in (str, int, float) and self.etl_values.get(value):
                     translated_dict[schema[key]] = self.etl_values[value]
+                elif type(value) == datetime.datetime:
+                    translated_dict[schema[key]] = value.strftime('%Y-%m-%d %H:%M:%S')    
                 else:
                     translated_dict[schema[key]] = value
         translated_dict.update(self.find_db_id(data))
         translated_dict.update({'catalog_id':catalog_id})
+        translated_dict.update({'form_id':form_id})
         return translated_dict
 
     def get_last_db_update_data(self, db_name):
@@ -163,86 +174,67 @@ class Oracle(Oracle):
         oracle_key = ', '.join(common_keys)
         return  data.get(oracle_key)
 
-    def load_data(self, v, view, response, schema, catalog_id, update=False):
-        metadata_catalog = self.lkf_api.get_catalog_metadata( view['catalog_id'] )
+
+    def get_variables_model(self, view, **kwargs):
+        metadata = self.lkf_api.get_metadata(view['form_id'])
+        properties = {
+                "device_properties":{
+                    "system": "Script",
+                    "process": "Sync Catalogs", 
+                    "accion": 'sync_catalogs', 
+                    "archive": "oracle/sync_catalogs.py",
+                },
+            }
+        metadata.update({
+            'properties': properties,
+            'kwargs': kwargs,
+            'answers': {}
+            },
+        )
+        return metadata
+
+    def load_data(self, v, view, response, schema, catalog_id, form_id, update=False):
+        # metadata_catalog = self.lkf_api.get_catalog_metadata( view['catalog_id'] )
+        metadata_catalog = self.get_variables_model(view)
         # schema = module_obj.view_a
         data = []
-        departamento_puesto = {}
-        eq = self.views[v]
         for row in response:
-            if v == 'LINK_EQUIPOS':
-                row['CATEGORIA'] = [row['EQUIPO'],]
-                row['NOMBRE'] = str(row['VEHICULO_TALID'])
-                row['ESTATUS'] = 'Disponible'
-                row['ESTADO'] = 'Activo'
-                this_eq = row.get('EQUIPO')
-                # if this_eq not in equipos:
-                #     self.equipos.append(this_eq)
-                #     self.equipos_row.append(row)
-            elif v == 'LINK_EMPLEADOS':
-                row['TIPO_CONTACTO'] = 'Persona'
-                row['DIRECCION_CAT'] = row['RAZON_SOCIAL']
-                row['PICUTRE'] = [{
-                    'file_url':'https://f001.backblazeb2.com/file/app-linkaform/public-client-126/71202/60b81349bde5588acca320e1/64efc11e5e294b3fefca279e.png', 
-                    'file_name':'default_avatar.jpg'}]
-                if row.get('DEPARTAMENTO') and row['DEPARTAMENTO']:
-                    departamento_puesto[row['DEPARTAMENTO']] = departamento_puesto.get(row['DEPARTAMENTO'],[])
-                    if row.get('PUESTO') and row['PUESTO']:
-                        if row['PUESTO'] not in departamento_puesto[row['DEPARTAMENTO']]:
-                            departamento_puesto[row['DEPARTAMENTO']].append(row['PUESTO'])
-            elif v == 'LINK_CLIENTES':
-                row['ESTADO'] = 'Activo'
-                row['DIRECCION_CAT'] = row['RAZON_SOCIAL']
-                row['TIPO_CONTACTO'] = 'Empresa'
             usr = {}
+            ans = {}
+            print('204 row=', row)
             usr.update(metadata_catalog)
-            usr['answers'] = self.api_etl(row, schema, catalog_id)
+            if row.get('answers') or row.get('ANSWERS'):
+                ans = simplejson.loads(row.get('answers',row.get('ANSWERS')))
+                ans['FECHA'] = row.get('FECHA_HORA')
+            usr['answers'] = self.api_etl(ans, schema, catalog_id, form_id)
             usr['_id'] = usr['answers'].get('_id')
             usr['sync_data'] = usr['answers'].pop('sync_data') if usr['answers'].get('sync_data') else {}
             usr['sync_data']['oracle_id'] = self.get_oracle_id(row)
+            usr['sync_data']['db_id'] = row.get('fecha','none')
             # print('row', row.get('GENERO'))
 
             data.append(usr)
 
-        if self.equipos:
-            eq = self.aux_view['EQUIPOS']
-            metadata_equipos = self.lkf_api.get_catalog_metadata( eq['catalog_id'] )
-            data_equipos = []
-            for t_eq in self.equipos_row:
-                eq_ans = {}
-                eq_ans.update(metadata_equipos)
-                eq_ans['answers'] = self.api_etl(t_eq, eq['schema'], catalog_id)
-                eq_ans['_id'] = eq_ans['answers'].get('_id')
-                data_equipos.append(eq_ans)
-            # self.lkf_api.post_catalog_answers_list(data_equipos)
-            self.update_and_sync_db(v, eq['catalog_id'], data_equipos, update=update)         
-        if departamento_puesto:
-            eq = self.aux_view['DEPARTAMENTO']
-            metadata_equipos = self.lkf_api.get_catalog_metadata( eq['catalog_id'] )
-            this_data = []
-            for dep, puestos in departamento_puesto.items():
-                for puesto in puestos:
-                    eq_ans = {}
-                    t_row = {'DEPARTAMENTO':dep, 'PUESTO':puesto}
-                    eq_ans.update(metadata_equipos)
-                    eq_ans['answers'] = self.api_etl(t_row, eq['schema'], catalog_id)
-                    this_data.append(eq_ans)
-            # res = self.lkf_api.post_catalog_answers_list(this_data)
-            query = {'db_name':'Departamentos'}
-            search_db = self.search(query)
-            if not search_db:
-                self.update_and_sync_db('Departamentos', eq['catalog_id'], this_data, update=update)
         if data:
             # res = self.lkf_api.post_catalog_answers_list(data)
-            self.update_and_sync_db(v, eq['catalog_id'], data, update=update)
+            print('v=', v)
+            self.update_and_sync_db(v, catalog_id, form_id, data, update=update)
 
-    def update_and_sync_db(self, db_name, item_id, data, update=False):
+    def update_and_sync_db(self, db_name, catalog_id, form_id, data, update=False):
+        if form_id:
+            # print('data=', data)
+            print('record=', data[0])
+            res = self.lkf_api.post_forms_answers_list(data)
+            print('res=', res)
+        print(stop)
         for rec in data:
+            print('rec=', rec)
             if rec.get('sync_data'):
                 sync_data = rec.pop('sync_data')
                 #creates
+                print('sync_data', sync_data)
                 query = {'db_id': sync_data['db_id'], 'item_id': rec['catalog_id']}
-                record_id = self.get_record_id_to_sync(query)
+                record_id = None #self.get_record_id_to_sync(query)
                 if record_id:
                     rec['record_id'] = record_id[0]
                     rec.pop('_id')
@@ -254,9 +246,7 @@ class Oracle(Oracle):
                         self.update(query, sync_data, upsert=True)
                         # self.create(sync_data)
                 else:
-                    self.post_catalog(db_name, item_id, rec, sync_data)
-            else:
-                res = self.post_catalog(db_name, item_id, rec, db_sync=True)
+                    self.post_catalog(db_name, catalog_id, rec, sync_data)
 
     def post_catalog(self, db_name, item_id, rec, sync_data={}, db_sync=False):
             res = self.lkf_api.post_catalog_answers(rec)
@@ -285,10 +275,9 @@ if __name__ == "__main__":
     module_obj = Oracle(settings, sys_argv=sys.argv)
     # module_obj.console_run()
     module_obj.db_updated_at = time.time()
-    gg = module_obj.search_views()
-    print('gg',gg)
-    print('account settings', module_obj.settings.config)
-    print('account settings', module_dobj.settings.config)
+    #gg = module_obj.search_views()
+    #print('gg',gg)
+    # print('account settings', module_obj.settings.config)
     data = module_obj.data.get('data',{})
     option = data.get("option",'read')
 
@@ -301,16 +290,12 @@ if __name__ == "__main__":
         views = list(module_obj.views.keys())
         module_obj.equipos = []
         module_obj.equipos_row = []
-        equipos_schema ={
-                    'VEHICULO_TALID': '_id',
-                    'DESCRIPCION': module_obj.f['worker_position'],
-                    }
         print('views',views)
-        breakpoint()
         for v in views:
             print('-----------------------------------------------------------',v)
             if True:
-                record_ids, last_update,  = module_obj.get_last_db_update_data(v)
+                # record_ids, last_update,  = module_obj.get_last_db_update_data(v)
+                last_update = False
                 # last_update_date
                 update = False
                 query = None
@@ -323,28 +308,59 @@ if __name__ == "__main__":
                     print('last_update_date', last_update_date)
                     a = f"TO_TIMESTAMP('{last_update_date}', 'YYYY-MM-DD HH24:MI:SS.FF6')"
                     query = f'SELECT * FROM {v} WHERE FEC_MODIF  > {a}'
-
+                else:
+                    query = """
+                        WITH base AS (
+                        SELECT
+                            TRUNC(DATA) + (TO_DATE(HORA, 'HH24:MI') - TRUNC(TO_DATE(HORA, 'HH24:MI'))) AS fecha_hora,
+                            VARIA,
+                            VALOR_N
+                        FROM PRODUCCION.VW_LinkAForm_Hora
+                        ),
+                        ranked AS (
+                        SELECT
+                            fecha_hora, VARIA, VALOR_N,
+                            ROW_NUMBER() OVER (
+                            PARTITION BY fecha_hora, VARIA
+                            ORDER BY fecha_hora DESC
+                            ) AS rn
+                        FROM base
+                        )
+                        SELECT
+                        fecha_hora,
+                        JSON_OBJECTAGG(VARIA VALUE VALOR_N) AS answers
+                        FROM ranked
+                        WHERE rn = 1
+                        GROUP BY fecha_hora
+                        ORDER BY fecha_hora
+                    """
+                    # # query = "select *  FROM PRODUCCION.VW_LinkAForm_Hora"
+                    # query = """SELECT
+                    #         TRUNC(DATA) + (TO_DATE(HORA, 'HH24:MI') - TRUNC(TO_DATE(HORA, 'HH24:MI'))) AS fecha_hora,
+                    #         VARIA,
+                    #         VALOR_N
+                    #     FROM PRODUCCION.VW_LinkAForm_Hora"""
                 header, response = module_obj.sync_db_catalog(db_name=v, query=query)
                 # schema = getattr(module_obj, v, "Attribute not found")
-                print('query=', query)
-                if v == 'LINK_EMPLEADOS':
-                    #Carga primero los Contactos
-                    view = module_obj.schema_dict[v]
-                    schema = view['schema']
-                    catalog_id = view['catalog_id']
-                    #module_obj.load_data(v, view, response, schema, catalog_id)
-                    # Carga Jefes Directos
-                    view = module_obj.schema_dict[f'{v}_2']
-                    schema = view['schema']
-                    catalog_id = view['catalog_id']
-                    module_obj.load_data(v, view, response, schema, catalog_id, update=update)
-                elif  v == 'LINK_CLIENTES':
-                    view = module_obj.schema_dict[v]
-                    schema = view['schema']
-                    catalog_id = view['catalog_id']
-                    module_obj.load_data(v, view, response, schema, catalog_id)
+                print('341 query=', query)
+                # if v == 'LINK_EMPLEADOS':
+                #     #Carga primero los Contactos
+                #     view = module_obj.schema_dict[v]
+                #     schema = view['schema']
+                #     catalog_id = view['catalog_id']
+                #     #module_obj.load_data(v, view, response, schema, catalog_id)
+                #     # Carga Jefes Directos
+                #     view = module_obj.schema_dict[f'{v}_2']
+                #     schema = view['schema']
+                #     catalog_id = view['catalog_id']
+                #     module_obj.load_data(v, view, response, schema, catalog_id, update=update)
+                # elif  v == 'LINK_CLIENTES':
+                #     view = module_obj.schema_dict[v]
+                #     schema = view['schema']
+                #     catalog_id = view['catalog_id']
+                #     module_obj.load_data(v, view, response, schema, catalog_id)
                 view = module_obj.views[v]
                 schema = view['schema']
                 catalog_id = view['catalog_id']
-                print('catalog_id',catalog_id)
-                module_obj.load_data(v, view, response, schema, catalog_id)
+                form_id = view['form_id']
+                module_obj.load_data(v, view, response, schema, catalog_id, form_id)
