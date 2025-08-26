@@ -200,10 +200,10 @@ class Accesos(Accesos):
         if turn_data:
             answers = turn_data.get('answers', [])
             answers[self.f['option_checkin']] = 'cerrar_turno'
-            answers[self.f['foto_end']] = []
             answers[self.f['comment_checkout']] = personalized_comment if personalized_comment else 'Cierre de turno automatico por nuevo check in.'
             if answers:
                 resp = self.lkf_api.patch_multi_record(answers=answers, form_id=135386, record_id=[str(record_id)])
+                print('responseeeeeeeeeeeeeeeee', resp)
                 if resp.get('status_code') in [200, 201, 202]:
                     print('==============> TURNO CERRADO AUTOMATICAMENTE')
                 else: 
