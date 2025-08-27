@@ -16,7 +16,6 @@ class Accesos(Accesos):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
         self.load(module='Location', **self.kwargs)
         self.CHECKIN_MANUAL = self.lkm.form_id('checkin_manual','id')
-        self.checkout_comment = ''
         
         self.f.update({
             'option_checkin': '663bffc28d00553254f274e0',
@@ -130,8 +129,6 @@ class Accesos(Accesos):
                         "created_at": 1,
                         "estatus": f"$answers.{self.checkin_fields['checkin_type']}",
                     }},
-                    {"$sort": {"created_at": -1}},
-                    {"$limit": 1}
                 ],
                 "as": "checkin_records"
             }},
@@ -143,75 +140,30 @@ class Accesos(Accesos):
         response = self.format_cr(self.cr.aggregate(query))
         response = self.unlist(response)
         if response:
-            checkin_records = self.unlist(response.get('checkin_records', {}))
-            status = checkin_records.get('estatus', '')
-            record_id = checkin_records.get('_id', '')
-            if status == 'iniciar_turno':
-                self.automatic_close_turn(record_id=record_id, personalized_comment=self.checkout_comment)
+            checkin_records = response.get('checkin_records', [])
+            if checkin_records:
+                list_records_ids = [i.get('_id') for i in checkin_records ]
+                self.automatic_close_turn(record_ids=list_records_ids)
             else:
                 return
         return
     
-    def verify_aux_guard_status(self, aux_guard):
-        query = [
-            {"$match": {
-                "deleted_at": {"$exists": False},
-                "form_id": 135386, #TODO MODULARIZAR ID
-                f"answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.f['nombre_empleado']}": aux_guard
-            }},
-            {"$project": {
-                "_id": 1,
-                "created_at": 1,
-                "estatus": f"$answers.{self.checkin_fields['checkin_type']}",
-            }},
-            {"$sort": {"created_at": -1}},
-            {"$limit": 1}
-        ]
-        
-        response = self.format_cr(self.cr.aggregate(query))
-        response = {
-            'checkin_records': response
-        }
-        if response:
-            checkin_records = self.unlist(response.get('checkin_records', {}))
-            status = checkin_records.get('estatus', '')
-            record_id = ObjectId(checkin_records.get('_id', ''))
-            if status == 'iniciar_turno':
-                self.automatic_close_turn(record_id=record_id)
-            else:
-                return
-        return
-    
-    def automatic_close_turn(self, record_id, personalized_comment=None):
-        query = [
-            {"$match": {
-                "deleted_at": {"$exists": False},
-                "form_id": 135386, #TODO MODULARIZAR ID
-                "_id": record_id
-            }},
-            {"$project": {
-                "_id": 1,
-                "folio": 1,
-                "answers": 1
-            }}
-        ]
-        turn_data = self.cr.aggregate(query)
-        turn_data = self.unlist(list(turn_data))
-        if turn_data:
-            answers = turn_data.get('answers', [])
-            answers[self.f['option_checkin']] = 'cerrar_turno'
-            answers[self.f['comment_checkout']] = personalized_comment if personalized_comment else 'Cierre de turno automatico por nuevo check in.'
-            if answers:
-                resp = self.lkf_api.patch_multi_record(answers=answers, form_id=135386, record_id=[str(record_id)])
-                print('responseeeeeeeeeeeeeeeee', resp)
-                if resp.get('status_code') in [200, 201, 202]:
-                    print('==============> TURNO CERRADO AUTOMATICAMENTE')
-                else: 
-                    print('==============> ERROR EN: TURNO CERRADO AUTOMATICAMENTE')
+    def automatic_close_turn(self, record_ids=[]):
+        answers = {}
+        answers[self.f['option_checkin']] = 'cerrar_turno'
+        answers[self.f['comment_checkout']] = 'Cierre de turno automatico.'
+        format_record_ids = [str(item) for item in record_ids]
+        if answers:
+            resp = self.lkf_api.patch_multi_record(answers=answers, form_id=135386, record_id=format_record_ids)
+            print('======log:', resp)
+            if resp.get('status_code') in [200, 201, 202]:
+                print('==============> TURNO CERRADO AUTOMATICAMENTE')
+            else: 
+                print('==============> ERROR EN: TURNO CERRADO AUTOMATICAMENTE')
                     
     def check_in_manual(self):
         self.verify_guard_status()
-
+        
         if self.answers.get(self.f['start_shift']):
             msg = 'Ya se ha registrado el inicio del turno.'
             self.LKFException({'msg': msg, 'title': 'Turno ya iniciado'})
@@ -225,7 +177,6 @@ class Accesos(Accesos):
         })
         
     def check_out_manual(self):
-        self.checkout_comment = 'Cierre de turno manual en otro registro.'
         self.verify_guard_status()
         
         if self.answers.get(self.f['end_shift']):
