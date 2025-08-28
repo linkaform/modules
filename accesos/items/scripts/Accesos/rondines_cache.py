@@ -19,6 +19,9 @@ class Accesos(Accesos):
         # Module Globals#
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
         self.load(module='Location', **self.kwargs)
+        self.f.update({
+            'tag_id_area_ubicacion': '6762f7b0922cc2a2f57d4044',
+        })
 
     #! Utils functions ==========
     def parse_date_for_sorting(self, date_str):
@@ -238,10 +241,15 @@ class Accesos(Accesos):
                                 item.get('incidente_area') or 
                                 item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['nombre_area'], '')
                             )
+                            area_tag_id = (
+                                item.get('tag_id_area_ubicacion') or 
+                                item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['tag_id_area_ubicacion'], '')
+                            )
                             if area_name:
                                 areas_list.append({
                                     self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
-                                        self.f['nombre_area']: area_name
+                                        self.f['nombre_area']: area_name,
+                                        self.f['tag_id_area_ubicacion']: [area_tag_id]
                                     },
                                     self.f['fecha_hora_inspeccion_area']: item.get('fecha_hora_inspeccion_area', ''),
                                     self.f['foto_evidencia_area_rondin']: item.get('foto_evidencia_area_rondin', []),
@@ -255,12 +263,14 @@ class Accesos(Accesos):
                         data_cache.get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {})
                         .get(self.Location.f['area'], '')
                     )
+                    area_tag_id = [data_cache.get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['tag_id_area_ubicacion'], '')]
                     
                     if area_name:
                         area_record_id = str(cache_item.get('_id'))
                         nueva_area = {
                             self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
-                                self.f['nombre_area']: area_name
+                                self.f['nombre_area']: area_name,
+                                self.f['tag_id_area_ubicacion']: area_tag_id
                             },
                             self.f['fecha_hora_inspeccion_area']: cache_item.get('timestamp') and datetime.fromtimestamp(cache_item['timestamp'], tz).strftime('%Y-%m-%d %H:%M:%S'),
                             self.f['foto_evidencia_area_rondin']: data_cache.get(self.f['foto_evidencia_area'], []),
@@ -390,7 +400,8 @@ class Accesos(Accesos):
             area_record_id = str(area.get('_id'))
             format_area = {
                 self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
-                    self.f['nombre_area']: self.unlist(area['check_data'].get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['area'], []))
+                    self.f['nombre_area']: self.unlist(area['check_data'].get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['area'], [])),
+                    self.f['tag_id_area_ubicacion']: [area['check_data'].get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['tag_id_area_ubicacion'], '')]
                 },
                 self.f['fecha_hora_inspeccion_area']: area.get('timestamp') and datetime.fromtimestamp(area.get('timestamp'), tz).strftime('%Y-%m-%d %H:%M:%S'),
                 self.f['foto_evidencia_area_rondin']: area['check_data'].get(self.f['foto_evidencia_area'], []),
