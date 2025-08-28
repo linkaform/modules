@@ -167,7 +167,7 @@ class Accesos(Accesos):
             msg = 'Ya se ha registrado el inicio del turno.'
             self.LKFException({'msg': msg, 'title': 'Turno ya iniciado'})
             
-        tz = pytz.timezone('America/Mexico_City')
+        tz = pytz.timezone(self.timezone)
         now = datetime.now(tz)
         fecha_actual = now.strftime('%Y-%m-%d %H:%M:%S')
         
@@ -182,7 +182,7 @@ class Accesos(Accesos):
             msg = 'Ya se ha registrado el fin del turno.'
             self.LKFException({'msg': msg, 'title': 'Turno ya finalizado'})
 
-        tz = pytz.timezone('America/Mexico_City')
+        tz = pytz.timezone(self.timezone)
         now = datetime.now(tz)
         fecha_actual = now.strftime('%Y-%m-%d %H:%M:%S')
         
@@ -195,6 +195,8 @@ if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
     acceso_obj.console_run()
     option = acceso_obj.answers.get(acceso_obj.f['option_checkin'], '')
+    data_rondin = json.loads(sys.argv[1])
+    acceso_obj.timezone = data_rondin.get('timezone', 'America/Mexico_City')
     
     if acceso_obj.answers.get(acceso_obj.f['start_shift']) and acceso_obj.answers.get(acceso_obj.f['end_shift']):
         msg = 'Este check in ya ha sido registrado con inicio y cierre, crea uno nuevo.'
