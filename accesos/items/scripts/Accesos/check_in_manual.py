@@ -142,7 +142,7 @@ class Accesos(Accesos):
         if response:
             checkin_records = response.get('checkin_records', [])
             if checkin_records:
-                list_records_ids = [i.get('_id') for i in checkin_records ]
+                list_records_ids = [str(i.get('_id')) for i in checkin_records]
                 self.automatic_close_turn(record_ids=list_records_ids)
             else:
                 return
@@ -152,9 +152,8 @@ class Accesos(Accesos):
         answers = {}
         answers[self.f['option_checkin']] = 'cerrar_turno'
         answers[self.f['comment_checkout']] = 'Cierre de turno automatico.'
-        format_record_ids = [str(item) for item in record_ids]
         if answers:
-            resp = self.lkf_api.patch_multi_record(answers=answers, form_id=135386, record_id=format_record_ids)
+            resp = self.lkf_api.patch_multi_record(answers=answers, form_id=135386, record_id=record_ids)
             print('======log:', resp)
             if resp.get('status_code') in [200, 201, 202]:
                 print('==============> TURNO CERRADO AUTOMATICAMENTE')
@@ -193,7 +192,7 @@ class Accesos(Accesos):
         
 
 if __name__ == "__main__":
-    acceso_obj = Accesos(settings, sys_argv=sys.argv)
+    acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
     acceso_obj.console_run()
     option = acceso_obj.answers.get(acceso_obj.f['option_checkin'], '')
     

@@ -20,9 +20,9 @@ class Accesos(Accesos):
         })
 
     def calcluta_tiempo_traslados(self):
-        fecha_inicio = self.answers[self.f['fecha_inicio_rondin']]
-        fecha_inicio = self.date_2_epoch(self.answers[self.f['fecha_inicio_rondin']])
-        areas_visitadas = self.answers[self.f['grupo_areas_visitadas']]
+        fecha_inicio = self.answers.get(self.f['fecha_inicio_rondin'], None)
+        fecha_inicio = self.date_2_epoch(fecha_inicio)
+        areas_visitadas = self.answers.get(self.f['grupo_areas_visitadas'], [])
         fecha_inspeccion = 0
         duracion_total = 0
         cantidad_de_inspecciones = 0

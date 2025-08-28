@@ -164,7 +164,7 @@ class Accesos(Accesos):
         resp = self.format_cr(self.cr.aggregate(query))
         return resp
 
-    def search_active_bitacora_by_hour(self, location, search_hour):
+    def search_closed_bitacora_by_hour(self, location, search_hour):
         """
         Search for a bitacora by rondin name in form Bitacora Rondines.
         search_hour: string in format 'YYYY-MM-DD HH'
@@ -257,6 +257,7 @@ class Accesos(Accesos):
                     )
                     
                     if area_name:
+                        area_record_id = str(cache_item.get('_id'))
                         nueva_area = {
                             self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
                                 self.f['nombre_area']: area_name
@@ -264,7 +265,7 @@ class Accesos(Accesos):
                             self.f['fecha_hora_inspeccion_area']: cache_item.get('timestamp') and datetime.fromtimestamp(cache_item['timestamp'], tz).strftime('%Y-%m-%d %H:%M:%S'),
                             self.f['foto_evidencia_area_rondin']: data_cache.get(self.f['foto_evidencia_area'], []),
                             self.f['comentario_area_rondin']: data_cache.get(self.f['comentario_check_area'], ''),
-                            self.f['url_registro_rondin']: f"https://app.linkaform.com/#/records/detail/{cache_item.get('_id', '')}",
+                            self.f['url_registro_rondin']: f"https://app.linkaform.com/#/records/detail/{area_record_id}",
                         }
 
                         reemplazado = False
@@ -386,6 +387,7 @@ class Accesos(Accesos):
         answers[self.f['estatus_del_recorrido']] = 'cerrado' if closed else 'en_proceso'
         check_areas_list = []
         for area in winner.get('checks', []):
+            area_record_id = str(area.get('_id'))
             format_area = {
                 self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
                     self.f['nombre_area']: self.unlist(area['check_data'].get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['area'], []))
@@ -393,7 +395,7 @@ class Accesos(Accesos):
                 self.f['fecha_hora_inspeccion_area']: area.get('timestamp') and datetime.fromtimestamp(area.get('timestamp'), tz).strftime('%Y-%m-%d %H:%M:%S'),
                 self.f['foto_evidencia_area_rondin']: area['check_data'].get(self.f['foto_evidencia_area'], []),
                 self.f['comentario_area_rondin']: area['check_data'].get(self.f['comentario_check_area'], ''),
-                self.f['url_registro_rondin']: f"https://app.linkaform.com/#/records/detail/{area.get('record_id', '')}",
+                self.f['url_registro_rondin']: f"https://app.linkaform.com/#/records/detail/{area_record_id}",
             }
             check_areas_list.append(format_area)
             
@@ -537,11 +539,20 @@ if __name__ == "__main__":
                 diff = now - winner_dt
                 winner_hour = winner_dt.strftime('%Y-%m-%d %H')
                 
+                #! Verificar si hay un rondin que ya paso su hora
+                rondines = script_obj.get_rondines_by_status()
+                if rondines:
+                    print('Hay rondines que cerrar...')
+                    response = script_obj.close_rondines(rondines)
+                    print("response", response)
+                else:
+                    print("No hay rondines para cerrar...")
+                    
                 #! 7. Verificamos si ha pasado mas de 1 hora de este check pasado
                 if diff.total_seconds() > 3600 and winner.get('type') == 'closed_winner':
                     print('Ha pasado más de 1 hora desde el winner_date.')
-                    #! 7-1 Se busca una bitacora activa para la hora en que se hizo este check
-                    bitacora = script_obj.search_active_bitacora_by_hour(winner.get('location'), winner_hour)
+                    #! 7-1 Se busca una bitacora cerrada para la hora en que se hizo este check
+                    bitacora = script_obj.search_closed_bitacora_by_hour(winner.get('location'), winner_hour)
                     time.sleep(5)
                     winner_checks = script_obj.search_cache(winner_id=winner.get('winner_id'), location=winner.get('location'))
                     print('winner_checks:============', len(winner_checks))
