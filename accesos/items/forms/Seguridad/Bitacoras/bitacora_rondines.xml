@@ -504,7 +504,7 @@
                     <default>False</default>
                     <default_value />
                     <descriptor>None</descriptor>
-                    <fav>False</fav>
+                    <fav>True</fav>
                     <field_id>68a7b68a22ac030a67b7f8f8</field_id>
                     <field_type>text</field_type>
                     <grading_criteria>{}</grading_criteria>
@@ -2293,5 +2293,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1755822125.0</updated_at>
+    <updated_at>1755903874.0</updated_at>
 </lkf>
