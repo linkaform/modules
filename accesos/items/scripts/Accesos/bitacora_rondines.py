@@ -51,6 +51,11 @@ class Accesos(Accesos):
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
+    
+    #! Validacion para answers vacio
+    if not acceso_obj.answers:
+        acceso_obj.answers = acceso_obj.current_record.get('answers', {})
+    
     #-FILTROS
     acceso_obj.calcluta_tiempo_traslados()
     sys.stdout.write(simplejson.dumps({
