@@ -316,7 +316,7 @@ class Oracle(Oracle):
             }
         },
         { '$match': { '$expr': { '$gte': ["$fecha_dt", "$window_start"] } } },
-        { '$project': { 'answers': { '$objectToArray': "$answers" }} },
+        { '$project': { 'answers': { '$objectToArray': "$answers" }, "fecha_dt":1 }},
         { '$unwind': "$answers" },
         {'$match': {
             "answers.k": {
@@ -336,22 +336,25 @@ class Oracle(Oracle):
         {'$group': {
             '_id': "$answers.k",
             'promedio_24h': { '$avg': '$val_num' },
+            'ultima_fecha': { '$max': '$fecha_dt' },
             'n': { '$sum': 1 }
         }},
         { '$sort': { '_id': 1 } }
         ]
         # print('query', simplejson.dumps(query, indent=4))
-        answers_last_values = {}
+        answers_average_values = {}
         with self.cr.aggregate(query) as cursor:
             for doc in cursor:
-                answers_last_values[doc['_id']] = round(doc['promedio_24h'], 2)
-        
-        answers_last_values[self.f['tipo_registro']] = 'promedio'
-        if answers_last_values.get(self.f['base_de_datos_oracle']):
-            answers_last_values.pop(self.f['base_de_datos_oracle'])
+                answers_average_values[doc['_id']] = round(doc['promedio_24h'], 2)
+                answers_average_values[self.f['fecha']] = doc['ultima_fecha'].strftime("%Y-%m-%d %H:%M:%S")
+
+        answers_average_values[self.f['tipo_registro']] = 'promedio'
+        if answers_average_values.get(self.f['base_de_datos_oracle']):
+            answers_average_values.pop(self.f['base_de_datos_oracle'])
             
-        print('answers_last_values', answers_last_values)
-        return answers_last_values
+        print('answers_average_values', answers_average_values)
+
+        return answers_average_values
 
     def get_last_variable_value(self):
         print(' update values....')
@@ -542,12 +545,20 @@ class Oracle(Oracle):
         """
         catalogo_metadata = self.lkf_api.get_catalog_metadata(catalog_id=self.VARIABLES_CRITICAS_PRODUCCION)
         if data.get('answers'):
-            catalogo_metadata['answers'] = data.get('answers')
+            catalogo_metadata['answers'] = {}
+            for k,v in data.get('answers').items():
+                if k not in (self.f['fecha']):
+                    catalogo_metadata['answers'][k] = f"{v} | {record_type}"
+                else:
+                    if record_type == 'Promedio':
+                        pass
+                    else:
+                        catalogo_metadata['answers'][k] = v
         else:
             catalogo_metadata['answers'] = data
         catalogo_metadata['answers'][self.f['tipo_registro']] = record_type
         catalogo_metadata['answers'][self.f['variable_criticas']] = 'Variables críticas'
-        
+        print('catalogo_metadata=', simplejson.dumps(catalogo_metadata, indent=4))
         mango_query = { "selector": {f"answers.{self.f['tipo_registro']}": record_type} }
         record = self.lkf_api.search_catalog(self.VARIABLES_CRITICAS_PRODUCCION, mango_query)
         if record:
@@ -658,11 +669,11 @@ if __name__ == "__main__":
                         ORDER BY fecha_hora
                     """
 
-                header, response = module_obj.sync_db_catalog(db_name=v, query=query)
-                print('len response', len(response))
+                #header, response = module_obj.sync_db_catalog(db_name=v, query=query)
+                #print('len response', len(response))
                 view = module_obj.views[v]
                 schema = view['schema']
                 catalog_id = view.get('catalog_id')
                 form_id = view.get('form_id')
-                module_obj.load_data(v, view, response, schema, catalog_id, form_id)
+                #module_obj.load_data(v, view, response, schema, catalog_id, form_id)
         module_obj.update_values(v, view, form_id)
