@@ -372,11 +372,13 @@ class Accesos(Accesos):
             ubicacion_del_recorrido = recorrido.get('ubicacion_recorrido')
             id_del_recorrido = recorrido.get('_id')
 
-        if not id_del_recorrido:
-            raise Exception("No se encontró un record_id válido para obtener las áreas del recorrido.")
-
-        areas_recorrido = self.get_areas_recorrido(id_del_recorrido)
-        print('Áreas del recorrido:', areas_recorrido)
+        if id_del_recorrido:
+            areas_recorrido = self.get_areas_recorrido(id_del_recorrido)
+            print('Áreas del recorrido:', areas_recorrido)
+        else:
+            areas_recorrido = []
+            nombre_del_recorrido = 'Recorrido Automático'
+            ubicacion_del_recorrido = winner.get('location', self.location)
 
         metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_RONDINES)
         metadata.update({
@@ -563,15 +565,14 @@ if __name__ == "__main__":
                 diff = now - winner_dt
                 winner_hour = winner_dt.strftime('%Y-%m-%d %H')
                 
-                #! Verificar si hay un rondin que ya paso su hora
+                #! Verificar si hay rondines que cerrar
                 rondines = script_obj.get_rondines_by_status()
-                if rondines:
-                    print('Hay rondines que cerrar...')
-                    response = script_obj.close_rondines(rondines)
+                response = script_obj.close_rondines(rondines)
+                if response:
                     print("response", response)
                 else:
-                    print("No hay rondines para cerrar...")
-                    
+                    print("No hay rondines que cerrar")
+
                 #! 7. Verificamos si ha pasado mas de 1 hora de este check pasado
                 if diff.total_seconds() > 3600 and winner.get('type') == 'closed_winner':
                     print('Ha pasado más de 1 hora desde el winner_date.')
