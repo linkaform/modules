@@ -241,15 +241,19 @@ class Accesos(Accesos):
                                 item.get('incidente_area') or 
                                 item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['nombre_area'], '')
                             )
-                            area_tag_id = (
+                            tag_value = (
                                 item.get('tag_id_area_ubicacion') or 
                                 item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['tag_id_area_ubicacion'], '')
                             )
+                            if isinstance(tag_value, list):
+                                area_tag_id = tag_value
+                            else:
+                                area_tag_id = [tag_value] if tag_value else []
                             if area_name:
                                 areas_list.append({
                                     self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
                                         self.f['nombre_area']: area_name,
-                                        self.f['tag_id_area_ubicacion']: [area_tag_id]
+                                        self.f['tag_id_area_ubicacion']: area_tag_id
                                     },
                                     self.f['fecha_hora_inspeccion_area']: item.get('fecha_hora_inspeccion_area', ''),
                                     self.f['foto_evidencia_area_rondin']: item.get('foto_evidencia_area_rondin', []),
@@ -263,7 +267,11 @@ class Accesos(Accesos):
                         data_cache.get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {})
                         .get(self.Location.f['area'], '')
                     )
-                    area_tag_id = [data_cache.get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['tag_id_area_ubicacion'], '')]
+                    tag_value = data_cache.get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['tag_id_area_ubicacion'], '')
+                    if isinstance(tag_value, list):
+                        area_tag_id = tag_value
+                    else:
+                        area_tag_id = [tag_value] if tag_value else []
                     
                     if area_name:
                         area_record_id = str(cache_item.get('_id'))
@@ -398,10 +406,15 @@ class Accesos(Accesos):
         check_areas_list = []
         for area in winner.get('checks', []):
             area_record_id = str(area.get('_id'))
+            tag_value = area['check_data'].get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['tag_id_area_ubicacion'], '')
+            if isinstance(tag_value, list):
+                area_tag_id = tag_value
+            else:
+                area_tag_id = [tag_value] if tag_value else []
             format_area = {
                 self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
                     self.f['nombre_area']: self.unlist(area['check_data'].get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['area'], [])),
-                    self.f['tag_id_area_ubicacion']: [area['check_data'].get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['tag_id_area_ubicacion'], '')]
+                    self.f['tag_id_area_ubicacion']: area_tag_id
                 },
                 self.f['fecha_hora_inspeccion_area']: area.get('timestamp') and datetime.fromtimestamp(area.get('timestamp'), tz).strftime('%Y-%m-%d %H:%M:%S'),
                 self.f['foto_evidencia_area_rondin']: area['check_data'].get(self.f['foto_evidencia_area'], []),
