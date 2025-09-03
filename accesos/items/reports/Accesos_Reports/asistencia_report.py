@@ -296,7 +296,7 @@ class Accesos(Accesos):
                 ]
             else:
                 location_shifts[location] = location_specific_shifts
-        
+    
         # Inicializar estructura para todas las ubicaciones y sus turnos aplicables
         location_shift_data = {}
         for location, shifts in location_shifts.items():
@@ -308,7 +308,7 @@ class Accesos(Accesos):
                     'attendance_dates': {},
                     'records': []
                 }
-        
+    
         # Procesar los registros
         for record in data:
             location = record.get('incidente_location', '')
@@ -344,7 +344,7 @@ class Accesos(Accesos):
                 
             except (ValueError, TypeError):
                 pass
-        
+    
         # Formatear salida
         formatted_locations = []
         for location_shift_key, loc_data in location_shift_data.items():
@@ -357,13 +357,59 @@ class Accesos(Accesos):
                 "summary": {
                     "totalPresent": 0,
                     "totalLate": 0,
-                    "totalAbsent": 0
+                    "totalAbsent": 0,
+                    "totalNotApplicable": 0  # Nuevo contador para días no aplicables
                 }
             }
             
             for day_num in range(1, days_in_month + 1):
                 date_str = f"{year}-{month:02d}-{day_num:02d}"
                 
+                # Determinar si este día de la semana aplica para este turno
+                day_date = datetime(year, month, day_num)
+                day_of_week = day_date.strftime("%A").lower()  # Obtenemos el día de la semana en inglés
+                
+                # Convertir a formato español/número si es necesario para coincidir con el formato en shifts
+                day_mapping = {
+                    "monday": "lunes", 
+                    "tuesday": "martes", 
+                    "wednesday": "miercoles", 
+                    "thursday": "jueves", 
+                    "friday": "viernes", 
+                    "saturday": "sabado", 
+                    "sunday": "domingo"
+                }
+                
+                day_es = day_mapping.get(day_of_week, day_of_week)
+                
+                # También podemos manejar el caso donde los días se almacenan como números (0=lunes, 6=domingo)
+                day_num_week = day_date.weekday()  # 0 es lunes, 6 es domingo
+                
+                # Verificar si el día aplica para este turno
+                days_config = loc_data['shiftInfo'].get('days', [])
+                
+                # Intentar distintos formatos de días para mayor compatibilidad
+                day_applies = (
+                    day_es in days_config or 
+                    day_of_week in days_config or 
+                    day_num_week in days_config or 
+                    str(day_num_week) in days_config or
+                    # Si no hay configuración de días, asumimos que aplica todos los días
+                    not days_config
+                )
+                
+                if not day_applies:
+                    # Este día de la semana no aplica para este turno
+                    status = "notApplicable"
+                    location_shift["summary"]["totalNotApplicable"] += 1
+                    location_shift["attendance"][str(day_num)] = {
+                        "status": status,
+                        "date": date_str
+                    }
+                    continue
+                
+                # Si llegamos aquí, el día sí aplica para este turno
+                # Ahora verificamos si hay asistencia registrada
                 if date_str in loc_data['attendance_dates'] and loc_data['attendance_dates'][date_str]:
                     status = "present"
                     location_shift["summary"]["totalPresent"] += 1
@@ -386,7 +432,7 @@ class Accesos(Accesos):
                         "status": status,
                         "date": date_str
                     }
-        
+            
             formatted_locations.append(location_shift)
         return formatted_locations
     
