@@ -206,6 +206,9 @@ class Accesos(Accesos):
         day = now.day
         days_in_month = monthrange(year, month)[1]
         
+        # Asegurarse de que los turnos por defecto estén cargados
+        self.shifts = self.shifts or self.default_shifts
+        
         employees_data = {}
         for record in data:
             user_name = record.get('user_name', '')
@@ -215,23 +218,95 @@ class Accesos(Accesos):
             if user_name not in employees_data:
                 employees_data[user_name] = {
                     'records': [],
-                    'attendance_dates': set()
+                    'attendance_dates': {}  # Ahora será {fecha: {'status': 'on_time|late', 'location': 'ubicacion'}}
                 }
                 
             employees_data[user_name]['records'].append(record)
             
-            fecha_str = record.get('fecha_cierre_turno') or record.get('fecha_inicio_turno')
-            if fecha_str:
+            # Procesar fecha de inicio para evaluar retrasos
+            if record.get('fecha_inicio_turno'):
+                fecha_str = record.get('fecha_inicio_turno')
                 try:
                     fecha_dt = datetime.strptime(fecha_str, '%Y-%m-%d %H:%M:%S')
                     attendance_date = fecha_dt.strftime('%Y-%m-%d')
-                    employees_data[user_name]['attendance_dates'].add(attendance_date)
+                    hora_real = fecha_dt.hour
+                    minuto_real = fecha_dt.minute
+                    location = record.get('incidente_location', '')
+                    
+                    if not location:
+                        continue
+                    
+                    # Obtener el turno para esta hora y ubicación
+                    shift_info = self.get_shift(hora_real, location, minuto_real, anticipada=30)
+                    
+                    # Extraer la tolerancia del turno
+                    tolerancia = shift_info.get('tolerancia', 0)
+                    try:
+                        tolerancia = int(tolerancia)
+                    except (ValueError, TypeError):
+                        tolerancia = 0
+                    
+                    # Evaluar si hay retraso
+                    time_range = shift_info.get('timeRange', '')
+                    if time_range:
+                        try:
+                            hora_planificada = time_range.split(" - ")[0]
+                            hora_plan, minuto_plan = map(int, hora_planificada.split(":"))
+                            
+                            # Calcular minutos totales desde medianoche
+                            minutos_planificados = hora_plan * 60 + minuto_plan
+                            minutos_reales = hora_real * 60 + minuto_real
+                            
+                            # La diferencia es el retraso
+                            minutos_retraso = minutos_reales - minutos_planificados
+                            
+                            # Determinar estado basado en retraso
+                            if minutos_retraso > tolerancia:
+                                status = "late"
+                                print(f"DEBUG: Usuario: {user_name}, Hora plan: {hora_plan}:{minuto_plan}, Hora real: {hora_real}:{minuto_real}")
+                                print(f"DEBUG: Minutos retraso: {minutos_retraso}, Tolerancia: {tolerancia}")
+                                print(f"DEBUG: Usuario marcado como TARDE: {user_name}")
+                            else:
+                                status = "on_time"
+                            
+                            # Guardar en attendance_dates - priorizar "on_time" si ya existe entrada
+                            if attendance_date not in employees_data[user_name]['attendance_dates']:
+                                employees_data[user_name]['attendance_dates'][attendance_date] = {
+                                    'status': status,
+                                    'location': location
+                                }
+                            elif status == "on_time":  # Siempre priorizar "on_time" sobre "late"
+                                employees_data[user_name]['attendance_dates'][attendance_date]['status'] = status
+                                
+                        except (IndexError, ValueError):
+                            # Si no podemos calcular, asumir que está a tiempo
+                            if attendance_date not in employees_data[user_name]['attendance_dates']:
+                                employees_data[user_name]['attendance_dates'][attendance_date] = {
+                                    'status': "on_time",
+                                    'location': location
+                                }
                 except (ValueError, TypeError):
                     pass
-        
+            # Procesar también registros con fecha de cierre (para casos donde no hay inicio)
+            elif record.get('fecha_cierre_turno'):
+                fecha_str = record.get('fecha_cierre_turno')
+                try:
+                    fecha_dt = datetime.strptime(fecha_str, '%Y-%m-%d %H:%M:%S')
+                    attendance_date = fecha_dt.strftime('%Y-%m-%d')
+                    location = record.get('incidente_location', '')
+                    
+                    # Solo si no existe ya un registro para esta fecha
+                    if attendance_date not in employees_data[user_name]['attendance_dates']:
+                        employees_data[user_name]['attendance_dates'][attendance_date] = {
+                            'status': "on_time",  # Asumimos a tiempo si solo hay cierre
+                            'location': location or ""
+                        }
+                except (ValueError, TypeError):
+                    pass
+    
         formatted_employees = []
         for user_name, emp_data in employees_data.items():
-            # Si no hay fechas de asistencia completa, omitir este empleado
+            # Si no hay fechas de asistencia, omitir este empleado
             if not emp_data['attendance_dates']:
                 continue
             
@@ -251,8 +326,22 @@ class Accesos(Accesos):
                 date_str = f"{year}-{month:02d}-{day_num:02d}"
                 
                 if date_str in emp_data['attendance_dates']:
-                    status = "present"
-                    employee["summary"]["totalPresent"] += 1
+                    attendance_info = emp_data['attendance_dates'][date_str]
+                    if attendance_info['status'] == "on_time":
+                        status = "present"
+                        employee["summary"]["totalPresent"] += 1
+                    else:  # late
+                        status = "halfDay"  # Nuevo estado para retrasos
+                        employee["summary"]["totalLate"] += 1
+                        
+                    # Agregar la ubicación solo si existe
+                    location_data = {"location": attendance_info.get('location', '')} if attendance_info.get('location') else {}
+                    
+                    employee["attendance"][str(day_num)] = {
+                        "status": status,
+                        "date": date_str,
+                        **location_data  # Usar unpacking para agregar location solo si existe
+                    }
                 else:
                     if day_num < day:
                         status = "absent"
@@ -260,11 +349,11 @@ class Accesos(Accesos):
                     else:
                         status = "noRecord"
                         
-                employee["attendance"][str(day_num)] = {
-                    "status": status,
-                    "date": date_str
-                }
-                
+                    employee["attendance"][str(day_num)] = {
+                        "status": status,
+                        "date": date_str
+                    }
+            
             formatted_employees.append(employee)
         return formatted_employees
     
