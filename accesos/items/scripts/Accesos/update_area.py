@@ -124,11 +124,15 @@ class Accesos(Accesos):
         ubicacion = data.get('ubicacion', '')
         area = data.get('area', '')
         if not ubicacion:
+            msg = 'La ubicacion no puede estar vacia.'
+            acceso_obj.LKFException({'msg': msg, 'title': 'Ubicacion vacia'})
             self.statuss = 'error'
             self.status_comment = 'La ubicacion no puede estar vacia.'
             return
         area_ubicacion_data = self.get_record_ubicacion(ubicacion=ubicacion, area=area)
         if not area_ubicacion_data:
+            msg = 'No se encontro el area especificada.'
+            acceso_obj.LKFException({'msg': msg, 'title': 'Area no encontrada'})
             self.statuss = 'error'
             self.status_comment = 'No se encontro el area especificada.'
             return
@@ -281,7 +285,7 @@ class Accesos(Accesos):
             self.Location.TIPO_AREA_OBJ_ID: {
                 self.area_update['tipo_area']: 'Área Pública'
             },
-            self.area_update['geolocalizacion_area_ubicacion']: data.get('geolocation_area', ''), #type: ignore
+            self.area_update['geolocalizacion_area_ubicacion']: self.geolocation_area if self.geolocation_area else {},
             self.CONTACTO_CAT_OBJ_ID: contact_details,
             self.area_update['estatus']: 'activa',
             self.area_update['estatus_area']: 'disponible',
@@ -297,6 +301,8 @@ class Accesos(Accesos):
         )
 
         if response is None or response.get('status', 'unknown') != 'success':
+            msg = 'Hubo un error al crear el area. Contacta a soporte'
+            acceso_obj.LKFException({'msg': msg, 'title': 'Error al crear area'})
             self.statuss = 'error'
             self.status_comment = 'Hubo un error al crear el area.'
         
@@ -340,6 +346,13 @@ if __name__ == "__main__":
     acceso_obj.console_run()
     print('answers', simplejson.dumps(acceso_obj.answers, indent=3))
     data = acceso_obj.format_data_area(acceso_obj.answers)
+    data_conf_area = json.loads(sys.argv[1])
+    acceso_obj.geolocation_area = data_conf_area.get('geolocation', [])
+    if acceso_obj.geolocation_area:
+        acceso_obj.geolocation_area = {
+            "latitude": acceso_obj.geolocation_area[0],
+            "longitude": acceso_obj.geolocation_area[1]
+        }
     acceso_obj.statuss = 'ok'
     acceso_obj.status_comment = ''
 
@@ -357,9 +370,12 @@ if __name__ == "__main__":
     else:
         #! Validacion para evitar problema con areas creadas directamente en el catalogo
         search_area = acceso_obj.get_record_ubicacion(ubicacion=data.get('ubicacion'), area=data.get('area'))
-        if search_area.get('ubicacion') == data.get('ubicacion') and search_area.get('area') == data.get('area'):
+        if search_area and search_area.get('ubicacion') == data.get('ubicacion') and search_area.get('area') == data.get('area'):
             pass
         else:
+            msg = 'No se encontró el área seleccionada en la forma Areas de las Ubicaciones.'
+            msg += 'Intenta creandola primero y solicita a soporte borrar el area creada en catalogo.'
+            acceso_obj.LKFException({'msg': msg, 'title': 'Área no encontrada'})
             data['area'] = ''
             data['qr_area'] = ''
             acceso_obj.statuss = 'error'
@@ -377,6 +393,8 @@ if __name__ == "__main__":
 
     #! Actualiza el area si ya existe
     if exists_qr and is_a_different_area:
+        msg = 'Ya se ha registrado este QR en otra area.'
+        acceso_obj.LKFException({'msg': msg, 'title': 'QR ya asignado'})
         acceso_obj.statuss = 'error'
         acceso_obj.status_comment = 'El QR ya esta asignado a un area diferente.'
     elif data.get('area'):

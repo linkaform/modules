@@ -8,12 +8,17 @@ import pytz
 class Accesos( Accesos):
     print('Entra a acceos utils')
 
+    def __init__(self, settings, sys_argv=None, use_api=False):
+        super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
 
-    def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False, **kwargs):
-        super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
+        # self.bitacora_fields.update({
+        #     "catalogo_pase_entrada": "66a83ad652d2643c97489d31",
+        #     "gafete_catalog": "66a83ace56d1e741159ce114"
+        # })
 
-        self.CONFIGURACION_DE_RECORRIDOS_FORM = self.lkm.form_id('configuracion_de_recorridos','id')
-        self.BITACORA_RONDINES = self.lkm.form_id('bitacora_rondines','id')
+        # self.consecionados_fields.update({
+        #     "catalogo_ubicacion_concesion": "66a83a74de752e12018fbc3c",
+        # })
 
         self.CONFIGURACION_DE_RECORRIDOS_FORM = self.lkm.form_id('configuracion_de_recorridos','id')
         self.BITACORA_RONDINES = self.lkm.form_id('bitacora_rondines','id')
