@@ -64,73 +64,78 @@ class Accesos(Accesos):
         
     #! =========================================== Utils functions
     # Modificar la función get_shift para que reciba también la ubicación
-    def get_shift(self, hour, location=None):
-        """
-        Determina el turno correspondiente a una hora y ubicación.
-        Si la ubicación tiene turnos específicos, los usa.
-        De lo contrario, usa los turnos predeterminados.
-        """
-        # Si no hay turnos personalizados o no se proporciona ubicación, usar los predeterminados
+    def get_shift(self, hour, location=None, minute=0, anticipada=30):
         if not self.shifts or not location:
             if 6 <= hour < 14:
                 return self.default_shifts["T1"]
             elif 14 <= hour < 22:
                 return self.default_shifts["T2"]
-            else:  # 22-24 or 0-6
+            else:
                 return self.default_shifts["T3"]
-        
-        # Buscar turnos específicos para esta ubicación
+
         location_shifts = []
         for shift_id, shift_info in self.shifts.items():
-            # Verificar si esta ubicación está en las ubicaciones del turno
             if location in shift_info.get("locations", []):
-                # Extraer las horas de entrada y salida
                 try:
                     entrada = shift_info.get("timeRange", "").split(" - ")[0]
                     salida = shift_info.get("timeRange", "").split(" - ")[1].replace(" hrs", "")
-                    
-                    # Convertir a horas enteras para comparación simple
-                    hora_entrada = int(entrada.split(":")[0])
-                    hora_salida = int(salida.split(":")[0])
-                    
-                    # Agregar el turno a los turnos de esta ubicación
+                    hora_entrada, minuto_entrada = map(int, entrada.split(":"))
+                    hora_salida, minuto_salida = map(int, salida.split(":"))
                     location_shifts.append({
                         "shift": shift_info,
                         "hora_entrada": hora_entrada,
-                        "hora_salida": hora_salida
+                        "minuto_entrada": minuto_entrada,
+                        "hora_salida": hora_salida,
+                        "minuto_salida": minuto_salida
                     })
                 except (IndexError, ValueError):
                     continue
-        
-        # Si no hay turnos específicos para esta ubicación, usar los predeterminados
+
         if not location_shifts:
             if 6 <= hour < 14:
                 return self.default_shifts["T1"]
             elif 14 <= hour < 22:
                 return self.default_shifts["T2"]
-            else:  # 22-24 or 0-6
+            else:
                 return self.default_shifts["T3"]
-        
-        # Buscar el turno que corresponda a esta hora
+
+        minutos_actual = hour * 60 + minute
+
+        # Ordenar turnos por hora de entrada para priorizar la ventana anticipada del turno siguiente
+        location_shifts.sort(key=lambda s: (s["hora_entrada"], s["minuto_entrada"]))
+
+        # 1. Buscar si está en la ventana anticipada de algún turno y retornar inmediatamente
+        for shift in location_shifts:
+            entrada = shift["hora_entrada"]
+            min_entrada = shift["minuto_entrada"]
+            minutos_entrada = entrada * 60 + min_entrada
+            if minutos_entrada - anticipada <= minutos_actual < minutos_entrada:
+                return shift["shift"]
+
+        # 2. Si no está en ventana anticipada, buscar turno normal
         for shift in location_shifts:
             entrada = shift["hora_entrada"]
             salida = shift["hora_salida"]
-            
-            # Caso normal (entrada < salida), por ejemplo 8:00 - 16:00
+            min_entrada = shift["minuto_entrada"]
+            min_salida = shift["minuto_salida"]
+            minutos_entrada = entrada * 60 + min_entrada
+            minutos_salida = salida * 60 + min_salida
+
             if entrada < salida:
-                if entrada <= hour < salida:
+                # Turno normal (ej: 06:00-14:00)
+                if minutos_entrada <= minutos_actual < minutos_salida:
                     return shift["shift"]
-            # Caso especial (entrada > salida), por ejemplo 22:00 - 6:00 (turno nocturno)
             else:
-                if hour >= entrada or hour < salida:
+                # Turno nocturno (ej: 22:00-06:00)
+                if minutos_actual >= minutos_entrada or minutos_actual < minutos_salida:
                     return shift["shift"]
-        
+
         # Si ningún turno específico coincide, usar los predeterminados
         if 6 <= hour < 14:
             return self.default_shifts["T1"]
         elif 14 <= hour < 22:
             return self.default_shifts["T2"]
-        else:  # 22-24 or 0-6
+        else:
             return self.default_shifts["T3"]
     #! ===========================================
     
@@ -156,6 +161,7 @@ class Accesos(Accesos):
                 "tolerancia": record.get('tolerancia_retardo', ''),
                 "limite_retardo": record.get('retardo_maximo', '')
             }
+        print(simplejson.dumps(self.shifts, indent=4))
 
     def get_employees_attendance(self, date_range="mes", group_by="employees", locations=[]):
         match = {
@@ -328,7 +334,7 @@ class Accesos(Accesos):
                 minuto_real = fecha_dt.minute
                 
                 # Obtener el turno para esta hora y ubicación
-                shift_info = self.get_shift(hora_real, location)
+                shift_info = self.get_shift(hora_real, location, minuto_real, anticipada=30)
                 shift_id = shift_info["id"]
                 
                 location_shift_key = f"{location.replace(' ', '_').lower()}-{shift_id}"
@@ -540,5 +546,6 @@ if __name__ == "__main__":
     elif option == 'get_locations':
         response = script_obj.get_locations()
 
+    print(simplejson.dumps(response, indent=4))
     script_obj.HttpResponse({"data": response})
 
