@@ -163,10 +163,27 @@ class Accesos(Accesos):
             }
         print(simplejson.dumps(self.shifts, indent=4))
 
+    def get_employees_list(self):
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.EMPLEADOS,
+            }},
+            {"$project": {
+                "_id": 0,
+                "nombre_usuario": f"$answers.{self.USUARIOS_OBJ_ID}.{self.mf['nombre_usuario']}"
+            }}
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
+        format_response = list({i.get('nombre_usuario') for i in response})
+        return format_response
+
     def get_employees_attendance(self, date_range="mes", group_by="employees", locations=[]):
+        employees_list = self.get_employees_list()
         match = {
             "deleted_at": {"$exists": False},
-            "form_id": 135386,
+            "form_id": 135386, #TODO: Modulariar ID
+            "user_name": {"$in": employees_list}
         }
 
         if locations:
@@ -194,12 +211,12 @@ class Accesos(Accesos):
         print(simplejson.dumps(response, indent=4))
         format_response = {}
         if group_by == "employees":
-            format_response = self.format_employees_attendance(data=response, date_range=date_range)
+            format_response = self.format_employees_attendance(data=response, date_range=date_range, employees_list=employees_list)
         elif group_by == "locations":
             format_response = self.format_locations_attendance(data=response, date_range=date_range)
         return format_response
 
-    def format_employees_attendance(self, data, date_range="mes"):
+    def format_employees_attendance(self, data, date_range="mes", employees_list=[]):
         now = datetime.now(timezone('America/Mexico_City'))
         year = now.year
         month = now.month
@@ -209,16 +226,32 @@ class Accesos(Accesos):
         # Asegurarse de que los turnos por defecto estén cargados
         self.shifts = self.shifts or self.default_shifts
         
+        # Extraer todas las ubicaciones únicas
+        all_locations = set()
+        for record in data:
+            location = record.get('incidente_location', '')
+            if location:
+                all_locations.add(location)
+        
+        # Pre-inicializar todos los empleados de la lista
         employees_data = {}
+        for employee_name in employees_list:
+            employees_data[employee_name] = {
+                'records': [],
+                'attendance_dates': {},  # {fecha: {'status': 'on_time|late', 'location': 'ubicacion'}}
+            }
+        
+        # Procesar registros
         for record in data:
             user_name = record.get('user_name', '')
             if not user_name:
                 continue
                 
+            # Asegurar que el usuario exista en employees_data
             if user_name not in employees_data:
                 employees_data[user_name] = {
                     'records': [],
-                    'attendance_dates': {}  # Ahora será {fecha: {'status': 'on_time|late', 'location': 'ubicacion'}}
+                    'attendance_dates': {}
                 }
                 
             employees_data[user_name]['records'].append(record)
@@ -275,8 +308,12 @@ class Accesos(Accesos):
                                     'status': status,
                                     'location': location
                                 }
-                            elif status == "on_time":  # Siempre priorizar "on_time" sobre "late"
-                                employees_data[user_name]['attendance_dates'][attendance_date]['status'] = status
+                            elif status == "on_time" or employees_data[user_name]['attendance_dates'][attendance_date]['status'] == "late":
+                                # Priorizar "on_time" sobre "late"
+                                if status == "on_time":
+                                    employees_data[user_name]['attendance_dates'][attendance_date]['status'] = status
+                                # Siempre guardar la ubicación
+                                employees_data[user_name]['attendance_dates'][attendance_date]['location'] = location
                                 
                         except (IndexError, ValueError):
                             # Si no podemos calcular, asumir que está a tiempo
@@ -303,59 +340,99 @@ class Accesos(Accesos):
                         }
                 except (ValueError, TypeError):
                     pass
-    
-        formatted_employees = []
+
+        # Organizar empleados por ubicaciones
+        employee_location_data = []
+        
+        # Primero generar las combinaciones empleado-ubicación necesarias
         for user_name, emp_data in employees_data.items():
-            # Si no hay fechas de asistencia, omitir este empleado
-            if not emp_data['attendance_dates']:
-                continue
+            # Recopilar todas las ubicaciones donde este empleado ha estado
+            employee_locations = set()
             
-            employee = {
-                "id": user_name.replace(' ', '_').lower(),
-                "name": user_name,
-                "type": "employee",
-                "attendance": {},
-                "summary": {
-                    "totalPresent": 0,
-                    "totalLate": 0,
-                    "totalAbsent": 0
-                }
-            }
+            # Agregar las ubicaciones de sus registros de asistencia
+            for date_info in emp_data['attendance_dates'].values():
+                if date_info.get('location'):
+                    employee_locations.add(date_info['location'])
             
-            for day_num in range(1, days_in_month + 1):
-                date_str = f"{year}-{month:02d}-{day_num:02d}"
+            # Si no hay registros, al menos incluir una entrada sin ubicación específica
+            if not employee_locations:
+                employee_locations.add("")
+            
+            # Crear una entrada para cada ubicación
+            for location in employee_locations:
+                employee_location_id = f"{user_name.replace(' ', '_').lower()}"
+                if location:
+                    employee_location_id += f"-{location.replace(' ', '_').lower()}"
                 
-                if date_str in emp_data['attendance_dates']:
-                    attendance_info = emp_data['attendance_dates'][date_str]
-                    if attendance_info['status'] == "on_time":
-                        status = "present"
-                        employee["summary"]["totalPresent"] += 1
-                    else:  # late
-                        status = "halfDay"  # Nuevo estado para retrasos
-                        employee["summary"]["totalLate"] += 1
-                        
-                    # Agregar la ubicación solo si existe
-                    location_data = {"location": attendance_info.get('location', '')} if attendance_info.get('location') else {}
+                employee_location = {
+                    "id": employee_location_id,
+                    "name": user_name,
+                    "type": "employee",
+                    "location": location,  # Agregamos la ubicación al empleado
+                    "attendance": {},
+                    "summary": {
+                        "totalPresent": 0,
+                        "totalLate": 0,
+                        "totalAbsent": 0
+                    }
+                }
+                
+                # Llenar los datos de asistencia para esta combinación empleado-ubicación
+                for day_num in range(1, days_in_month + 1):
+                    date_str = f"{year}-{month:02d}-{day_num:02d}"
                     
-                    employee["attendance"][str(day_num)] = {
-                        "status": status,
-                        "date": date_str,
-                        **location_data  # Usar unpacking para agregar location solo si existe
-                    }
-                else:
-                    if day_num < day:
-                        status = "absent"
-                        employee["summary"]["totalAbsent"] += 1
-                    else:
-                        status = "noRecord"
+                    # Verificar si hay registro para esta fecha
+                    if date_str in emp_data['attendance_dates']:
+                        attendance_info = emp_data['attendance_dates'][date_str]
                         
-                    employee["attendance"][str(day_num)] = {
-                        "status": status,
-                        "date": date_str
-                    }
-            
-            formatted_employees.append(employee)
-        return formatted_employees
+                        # Solo incluir si es la ubicación correcta o si no hay ubicación específica
+                        if attendance_info.get('location') == location or not location:
+                            if attendance_info['status'] == "on_time":
+                                status = "present"
+                                employee_location["summary"]["totalPresent"] += 1
+                            else:  # late
+                                status = "halfDay"  # Estado para retrasos
+                                employee_location["summary"]["totalLate"] += 1
+                                
+                            # Agregar ubicación al registro diario
+                            loc = attendance_info.get('location', '')
+                            location_data = {"location": loc} if loc else {}
+                            
+                            employee_location["attendance"][str(day_num)] = {
+                                "status": status,
+                                "date": date_str,
+                                **location_data
+                            }
+                        else:
+                            # Es otra ubicación, no registrar asistencia aquí
+                            if day_num < day:
+                                status = "absent"
+                                employee_location["summary"]["totalAbsent"] += 1
+                            else:
+                                status = "noRecord"
+                                
+                            employee_location["attendance"][str(day_num)] = {
+                                "status": status,
+                                "date": date_str
+                            }
+                    else:
+                        # No hay registro para esta fecha
+                        if day_num < day:
+                            status = "absent"
+                            employee_location["summary"]["totalAbsent"] += 1
+                        else:
+                            status = "noRecord"
+                            
+                        employee_location["attendance"][str(day_num)] = {
+                            "status": status,
+                            "date": date_str
+                        }
+                
+                # Solo agregar si hay al menos un día con asistencia o si debería mostrar faltas
+                if employee_location["summary"]["totalPresent"] > 0 or employee_location["summary"]["totalLate"] > 0 or day > 1:
+                    employee_location_data.append(employee_location)
+    
+        return employee_location_data
     
     def format_locations_attendance(self, data, date_range="mes"):
         now = datetime.now(timezone('America/Mexico_City'))
