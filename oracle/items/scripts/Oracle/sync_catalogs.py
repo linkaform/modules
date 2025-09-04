@@ -13,191 +13,6 @@ class Oracle(Oracle):
         #use self.lkm.catalog_id() to get catalog id
         self.name =  __class__.__name__
         self.settings = settings
-        self.etl_values = {
-            'A':'Activo',
-            'I':'Activo',
-            'H':'Masculino',
-            'M':'Femenino',
-            'D':'Disponible',
-            'ND':'NoDisponible',
-        }
-        self.f.update({
-            'base_de_datos_oracle':'68ae9831a113d169e05af40d',
-            'fecha':'683753204328adb3fa0bfd2b',
-            'tipo_registro':'68ae9831a113d169e05af40e',
-            'variable_criticas':'68375178ec91ea1bc3e92b65'
-            })
-
-        self.VARIABLES_CRITICAS_PRODUCCION = 134148
-        self.VARIABLES_CRITICAS_PRODUCCION_FORM = 139471
-
-        self.db_id_fields = {
-            'CONTACTOID':'FEC_MODIF',
-            'PAISID':'FEC_MODIF',
-            'PROVINCIAID':'FEC_MODIF',
-            'DEPARTAMENTOID':'FEC_MODIF',
-            'CARGOID':'FEC_MODIF',
-            'MARCAID':'FEC_MODIF',
-            'MODELOID':'FEC_MODIF_MODELO',
-            'VEHICULO_TALID':'FEC_MODIF',
-            }
-
-        # self.schema_dict = {
-        #     'LINK_EMPLEADOS':{
-        #         'catalog_id': self.CONTACTO_CAT_ID,
-        #         'schema':{
-        #             'CONTACTOID': self.f['address_code'],
-        #             'CIUDAD': self.f['city'],
-        #             'DIRECCION': self.f['address'],
-        #             'CODIGOPOSTAL': self.f['zip_code'],
-        #             'DEPARTAMENTO': self.f['worker_department'],
-        #             'EMAIL': self.f['email'],
-        #             'ESTADO_EMPLEADO': self.f['address_status'],
-        #             'GENERO': self.f['genero'],
-        #             'PUESTO': self.f['worker_position'],
-        #             'PAIS': self.f['country'],
-        #             'PROVINCIA': self.f['state'],
-        #             'RAZON_SOCIAL': self.f['address_name'],
-        #             'TELEFONO1': self.f['phone'],
-        #             'TELEFONO2': self.f['phone2'],
-        #             'TIPO_CONTACTO': self.f['address_type'],
-        #         }
-        #     },
-        #     'LINK_EMPLEADOS_2':{
-        #         'catalog_id': self.Employee.EMPLEADOS_JEFES_DIRECTOS_ID,
-        #         'schema':{
-        #             'DEPARTAMENTO': self.f['worker_department'],
-        #             'CONTACTOID': self.f['worker_code_jefes'],
-        #             'EMAIL': self.f['email'],
-        #             'ESTADO_EMPLEADO': self.f['address_status'],
-        #             'GENERO': self.f['genero_jefes'],
-        #             'PUESTO': self.f['worker_position'],
-        #             'RAZON_SOCIAL': self.f['worker_name_jefes'],
-        #             'TELEFONO1': self.f['telefono1'],
-        #             'DIRECCION_CAT': self.f['address_name'],
-        #             'PICUTRE': self.f['picture_jefes'],
-        #         }
-        #     },
-        #     'LINK_CLIENTES':{
-        #         'catalog_id': self.CONTACTO_CAT_ID,
-        #         'schema':{
-        #             'CONTACTOID': self.f['address_code'],
-        #             'CIUDAD': self.f['city'],
-        #             'DIRECCION': self.f['address'],
-        #             'CODIGOPOSTAL': self.f['zip_code'],
-        #             'DEPARTAMENTO': self.f['worker_department'],
-        #             'EMAIL': self.f['email'],
-        #             'ESTADO': self.f['address_status'],
-        #             'GENERO': self.f['genero'],
-        #             'PUESTO': self.f['worker_position'],
-        #             'PAIS': self.f['country'],
-        #             'PROVINCIA': self.f['state'],
-        #             'RAZON_SOCIAL': self.f['address_name'],
-        #             'TELEFONO1': self.f['phone'],
-        #             'TELEFONO2': self.f['phone2'],
-        #             'TIPO_CONTACTO': self.f['address_type'],
-        #         }
-        #     }
-        # }
-        schema_valiables_criticas ={
-                    'BASE_DE_DATOS_ORACLE':'68ae9831a113d169e05af40d',
-                    'FECHA':'683753204328adb3fa0bfd2b',
-                    'LECBRIXSOLUT2': 'ccaaa5b15ad84734fae92bae',
-                    '%BRIXJARABE': 'ccaaa548cf22411a910aabf2',
-                    'SODAAPLICADCALD': 'ccaaa864c62694640f0c69c7',
-                    'FOSFATOSKITCAL5': 'ccaaa864c62694640f0c69ca',
-                    'FOSFATOSKITCAL6': 'ccaaa864c62694640f0c69cd',
-                    'CONDAGPURGCALD7': 'ccaaa864c62694640f0c69ce',
-                    'FOSFATOSKITCAL7': 'ccaaa864c62694640f0c69d0',
-                    'CONDTANQEB3': 'ccaaa864c62694640f0c69d1',
-                    '%BRIXJARABE': 'ccaaa548cf22411a910aabf2',
-                    '%BRIXLICORFUN': 'ccaaa548cf22411a910aabf5',
-                    '%BRIXMIELA': 'ccaaa548cf22411a910aabf3',
-                    '%BRIXMIELENVPAC': 'ccaaa548cf22411a910aabf4',
-                    '%HUMBZOT2': 'ccaaa864c62694640f0c69d2',
-                    '%HUMBZOT2': 'ccaaa5f5c7289512fa3f646b',
-                    '%HUMCACHAMEZ': 'ccaaa548cf22411a910aabfa',
-                    '%PUREZAJARABE': 'ccaaa548cf22411a910aabf6',
-                    '%PUREZAJUFILMEZ': 'ccaaa5b15ad84734fae92bb4',
-                    '%PUREZAMAGMAB': 'ccaaa548cf22411a910aabf7',
-                    '%PUREZAMIELA': 'ccaaa548cf22411a910aabf8', 
-                    '%PZAMIELENVIPAC': 'ccaaa548cf22411a910aabf9',
-                    '%SACBZOT2': 'ccaaa5f5c7289512fa3f646a',
-                    '02.fit_08_008.daca_pv': 'ccaaa864c62694640f0c69d4',
-                    '04.fit_08_001.daca_pv': 'ccaaa864c62694640f0c69d5',
-                    '08.fit_08_010.daca_pv': 'ccaaa864c62694640f0c69d3',
-                    'calent.ait2260.daca_pv': 'ccaaa5b15ad84734fae92bac',
-                    'calent.ait2280.daca_pv': 'ccaaa5b15ad84734fae92bad',
-                    'COLORJARABE': 'ccaaa548cf22411a910aabfd',
-                    'COLORJUGOCLARO': 'ccaaa548cf22411a910aabfc',
-                    'COLORJUGODILT2': 'ccaaa548cf22411a910aabfb',
-                    'COLORLICDECOL': 'ccaaa548cf22411a910aac01',
-                    'COLORLICLARIF': 'ccaaa548cf22411a910aac00',
-                    'COLORLICORFUND': 'ccaaa548cf22411a910aabff',
-                    'COLORMAGMAB': 'ccaaa548cf22411a910aabfe',
-                    'CONDAGCONDCALDE': 'ccaaa864c62694640f0c69c6',
-                    'CONDAGPURGCALD5': 'ccaaa864c62694640f0c69c8',
-                    'CONDAGPURGCALD6': 'ccaaa864c62694640f0c69cb',
-                    'CONDAGPURGCALD7': 'ccaaa864c62694640f0c69ce',
-                    'CONDTANQEB3': 'ccaaa864c62694640f0c69d1',
-                    'FOSFATOSJDILT2': 'ccaaaab67a5f67619b7097cb',
-                    'FOSFATOSKITCAL5': 'ccaaa864c62694640f0c69ca',
-                    'FOSFATOSKITCAL6': 'ccaaa864c62694640f0c69cd',
-                    'FOSFATOSKITCAL7': 'ccaaa864c62694640f0c69d0',
-                    'LECBRIXJCLARO': 'ccaaa5b15ad84734fae92baf',
-                    'LECBRIXJUFILPRE': 'ccaaa5b15ad84734fae92bb1',
-                    'LECBRIXSOLUT2': 'ccaaa5b15ad84734fae92bae',
-                    'LECPOLCACHAZAMZ': 'ccaaa5b15ad84734fae92bb6',
-                    'LECPOLCAFILPREN': 'ccaaa5b15ad84734fae92bb5',
-                    'PHAGPURGACAL5': 'ccaaa864c62694640f0c69c9',
-                    'PHAGPURGACAL6': 'ccaaa864c62694640f0c69cc',
-                    'PHAGPURGACAL7': 'ccaaa864c62694640f0c69cf',
-                    'PHLICORCLADISPL': 'ccaaa548cf22411a910aabf1',
-                    'PUREZAJUGCLARO': 'ccaaa5b15ad84734fae92bb3',
-                    'PUREZAJUGDILT2': 'ccaaabf038a9fab9950dba60',
-                    'SODAAPLICADCALD': 'ccaaa864c62694640f0c69c7',
-                    'TURB420LCLARIFI': 'ccaaa548cf22411a910aac04',
-                    'TURB420LFUNDIDO': 'ccaaa548cf22411a910aac03',
-                    'TURBIEDADJCLARO': 'ccaaa5b15ad84734fae92bb7',
-                    'TURBIEDADJDILT2': 'ccaaa548cf22411a910aac02',
-                    'TIPO_REGISTRO': '68ae9831a113d169e05af40e',
-                    'TURBILIDECOLORA': 'ccaaa548cf22411a910aac05',
-                    'LECBRIXJCLARO': 'ccaaa5b15ad84734fae92baf',
-                    'LECBRIXJUFILPRE': 'ccaaa5b15ad84734fae92bb1',
-                    'LECBRIXSOLUT2': 'ccaaa5b15ad84734fae92bae',
-                    'LECPOLCACHAZAMZ': 'ccaaa5b15ad84734fae92bb6',
-                    'LECPOLCAFILPREN': 'ccaaa5b15ad84734fae92bb5',
-                    'PHAGPURGACAL5': 'ccaaa864c62694640f0c69c9',
-                    'PHAGPURGACAL6': 'ccaaa864c62694640f0c69cc',
-                    'PHAGPURGACAL7': 'ccaaa864c62694640f0c69cf',
-                    'PHLICORCLADISPL': 'ccaaa548cf22411a910aabf1',
-                    'PUREZAJUGCLARO': 'ccaaa5b15ad84734fae92bb3',
-                    'PUREZAJUGDILT2': 'ccaaabf038a9fab9950dba60',
-                    'SODAAPLICADCALD': 'ccaaa864c62694640f0c69c7',
-                    'TURB420LCLARIFI': 'ccaaa548cf22411a910aac04',
-                    'TURB420LFUNDIDO': 'ccaaa548cf22411a910aac03',
-                    'TURBIEDADJCLARO': 'ccaaa5b15ad84734fae92bb7',
-                    'TURBIEDADJDILT2': 'ccaaa548cf22411a910aac02',
-                    'TURBILIDECOLORA': 'ccaaa548cf22411a910aac05',
-                    }
-
-        self.views = {
-            'PRODUCCION.VW_LinkAForm_Hora':{
-                'catalog_id': self.VARIABLES_CRITICAS_PRODUCCION,
-                'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM,
-                'schema':schema_valiables_criticas
-            },
-            'PRODUCCION.VW_LinkAForm_Dia':{
-                'catalog_id': self.VARIABLES_CRITICAS_PRODUCCION,
-                'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM,
-                'schema':schema_valiables_criticas
-                },
-            'vw_linkaform_fab':{
-                'catalog_id': self.VARIABLES_CRITICAS_PRODUCCION,
-                'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM,
-                'schema':schema_valiables_criticas
-                },
-            }
 
     def api_etl(self, data, schema, catalog_id, form_id):
         #data: 
@@ -216,11 +31,13 @@ class Oracle(Oracle):
         return translated_dict
 
     def create_last_variable_value_record(self):
+        """
+        Busca el ultimo valor de las variables criticas y crea un registro en el catalogo de LinkaForm
+        """
         metadata_form = self.get_variables_model(view)
         answers = self.get_last_variable_value()
         metadata_form['answers'] = answers
         res = self.lkf_api.post_forms_answers(metadata_form)
-        print('res', res)
         self.upsert_catalog_record(metadata_form, 'Ultimo Valor')
         return res
 
@@ -228,8 +45,9 @@ class Oracle(Oracle):
         metadata_form = self.get_variables_model(view)
         answers = self.get_average_values(hours)
         metadata_form['answers'] = answers
+        # print('metadata_form=', simplejson.dumps(metadata_form, indent=4))
         res = self.lkf_api.post_forms_answers(metadata_form)
-        print('res', res)
+        # print('res form answers', res)
         self.upsert_catalog_record(metadata_form, 'Promedio')
         return res        
 
@@ -246,6 +64,14 @@ class Oracle(Oracle):
         return res
 
     def get_last_db_update_data(self, db_name):
+        """
+        Busca en LinkaForm los registros que ha sincronziado y busca el mas reciente de dicha base de datos o vista en Oracle
+        Obtiene la fecha de la ultima actualizacion de la base de datos o vista en Oracle
+        db_name: nombre de la base de datos o vista en Oracle
+        
+        returns:
+        last_db_update_data: str con un datetime en formato %Y-%m-%d %H:%M:%S
+        """
         last_db_update_data = None
         db_name = db_name.lower().replace(' ', '_')
         tipo = 'registro_oracle'
@@ -352,14 +178,15 @@ class Oracle(Oracle):
         if answers_average_values.get(self.f['base_de_datos_oracle']):
             answers_average_values.pop(self.f['base_de_datos_oracle'])
             
-        print('answers_average_values', answers_average_values)
-
         return answers_average_values
 
     def get_last_variable_value(self):
+        """
+        Busca el ultimo valor de las variables criticas y crea un registro en el catalogo de LinkaForm
+        """
         print(' update values....')
         query=  [
-            { '$match': { 'form_id': 139471, 'deleted_at': {'$exists': False} } },
+            { '$match': { 'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM, 'deleted_at': {'$exists': False} } },
             { '$sort': { f"answers.{self.f['fecha']}": -1 } },
             { '$project': { 'answers': { '$objectToArray': "$answers" } } },
             { '$unwind': "$answers" },
@@ -380,7 +207,6 @@ class Oracle(Oracle):
         if answers_last_values.get(self.f['base_de_datos_oracle']):
             answers_last_values.pop(self.f['base_de_datos_oracle'])
             
-        print('answers_last_values', answers_last_values)
         return answers_last_values
 
     def get_record_id_to_sync(self, query):
@@ -393,6 +219,13 @@ class Oracle(Oracle):
         return  data.get(oracle_key)
 
     def get_variables_model(self, view, **kwargs):
+        """
+        Obtiene los metadatos de la forma figada a la vista de Oracle
+        view: nombre de la base de datos o vista en Oracle
+        kwargs: argumentos adicionales
+        returns:
+        metadata: dict modelo de la forma / libre de agregar los parametros necesarios en params
+        """
         metadata = self.lkf_api.get_metadata(view['form_id'])
         properties = {
                 "device_properties":{
@@ -426,6 +259,7 @@ class Oracle(Oracle):
         # schema = module_obj.view_a
         data = []
         for row in response:
+            print('row=', row)
             usr = {}
             ans = {}
             usr.update(metadata_catalog)
@@ -445,30 +279,33 @@ class Oracle(Oracle):
 
         if data:
             # res = self.lkf_api.post_catalog_answers_list(data)
-            print('v=', v)
             self.update_and_sync_db(v, catalog_id, form_id, data, update=update)
 
     def post_catalog(self, catalogo_metadata, rec):
-            catalogo_metadata.update({'answers': rec})
-            print('catalogo_metadata', catalogo_metadata)
-            res = self.lkf_api.post_catalog_answers(catalogo_metadata)
-            res_data = res.get('json',{})
-            status_code = res['status_code']
-            print('res_data', res_data)
-            print('status_code', status_code)
-            # if status_code in (200,201,202,204):
-            #     sync_data['"updated_at"'] = time.time()
-            #     sync_data['item_id'] = res_data['catalog_id'] if res_data.get('catalog_id') else item_id
-            #     sync_data['item_type'] = 'catalog'
-            #     sync_data['db_name'] = db_name
-            #     if db_sync:
-            #         query = {'db_name':db_name}
-            #         res = self.update(query, sync_data, upsert=True)
-            #     else:
-            #         sync_data['lkf_id'] = res_data['id']
-            #         # print('Creating', sync_data)
-            #         res = self.create(sync_data)
-            return res
+        """
+        Crea un catalogo en Linkaform
+        catalogo_metadata: metadata del catalogo
+        rec: datos del catalogo
+        """
+        catalogo_metadata.update({'answers': rec})
+        res = self.lkf_api.post_catalog_answers(catalogo_metadata)
+        res_data = res.get('json',{})
+        status_code = res['status_code']
+        # print('res_data', res_data)
+        # print('status_code', status_code)
+        # if status_code in (200,201,202,204):
+        #     sync_data['"updated_at"'] = time.time()
+        #     sync_data['item_id'] = res_data['catalog_id'] if res_data.get('catalog_id') else item_id
+        #     sync_data['item_type'] = 'catalog'
+        #     sync_data['db_name'] = db_name
+        #     if db_sync:
+        #         query = {'db_name':db_name}
+        #         res = self.update(query, sync_data, upsert=True)
+        #     else:
+        #         sync_data['lkf_id'] = res_data['id']
+        #         # print('Creating', sync_data)
+        #         res = self.create(sync_data)
+        return res
 
     def update_and_sync_db(self, db_name, catalog_id, form_id, data, update=False):
         """
@@ -536,7 +373,7 @@ class Oracle(Oracle):
         last_value_res = self.create_last_variable_value_record()
         # print('last_value_res', last_value_res)
         average_value_res = self.create_average_variable_value_record(hours)
-        print('average_value_res', average_value_res)
+        # print('average_value_res', average_value_res)
         return average_value_res
 
     def upsert_catalog_record(self, data, record_type):
@@ -558,15 +395,17 @@ class Oracle(Oracle):
             catalogo_metadata['answers'] = data
         catalogo_metadata['answers'][self.f['tipo_registro']] = record_type
         catalogo_metadata['answers'][self.f['variable_criticas']] = 'Variables críticas'
-        print('catalogo_metadata=', simplejson.dumps(catalogo_metadata, indent=4))
+        # print('catalogo_metadata=', simplejson.dumps(catalogo_metadata, indent=4))
         mango_query = { "selector": {f"answers.{self.f['tipo_registro']}": record_type} }
         record = self.lkf_api.search_catalog(self.VARIABLES_CRITICAS_PRODUCCION, mango_query)
         if record:
             rec = record[0]
             catalogo_metadata['record_id'] = rec['_id']
             res = self.lkf_api.update_catalog_answers(catalogo_metadata, record_id=rec['_id'])
+            # print('res catalogo update', res)
         else:
             res = self.lkf_api.post_catalog_answers(catalogo_metadata)
+            # print('res catalogo post', res)
         return res
 
     def verify_complete_sync(self, data, res):
@@ -582,6 +421,7 @@ class Oracle(Oracle):
         updated_records = [r for r in res if r.get('status_code') == 200]
         if (len(created_records) + len(updated_records) )!= len(data):
             raise self.LKFException('No se sincronizaron todos los registros')
+        return created_records, updated_records
 
 if __name__ == "__main__":
     """
@@ -589,7 +429,7 @@ if __name__ == "__main__":
     """
     oo  = settings.config['ORACLE_HOST']
     module_obj = Oracle(settings, sys_argv=sys.argv)
-    # module_obj.console_run()
+    module_obj.console_run()
     module_obj.db_updated_at = time.time()
     #gg = module_obj.search_views()
     #print('gg',gg)
@@ -597,11 +437,9 @@ if __name__ == "__main__":
     data = module_obj.data.get('data',{})
     option = data.get("option",'read')
 
-    db_name = data.get('db_id',"LINK_EMPLEADOS")
 
     #-FUNCTIONS
     if option == 'read':
-
         # print('module_obj.views.keys()', module_obj.views)
         views = list(module_obj.views.keys())
         for v in views:
@@ -668,12 +506,11 @@ if __name__ == "__main__":
                         GROUP BY fecha_hora
                         ORDER BY fecha_hora
                     """
-
-                #header, response = module_obj.sync_db_catalog(db_name=v, query=query)
-                #print('len response', len(response))
+                print('query=', query)
+                header, response = module_obj.sync_db_catalog(db_name=v, query=query)
                 view = module_obj.views[v]
                 schema = view['schema']
                 catalog_id = view.get('catalog_id')
                 form_id = view.get('form_id')
-                #module_obj.load_data(v, view, response, schema, catalog_id, form_id)
+                module_obj.load_data(v, view, response, schema, catalog_id, form_id)
         module_obj.update_values(v, view, form_id)
