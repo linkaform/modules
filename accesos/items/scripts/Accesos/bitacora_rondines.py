@@ -20,9 +20,9 @@ class Accesos(Accesos):
         })
 
     def calcluta_tiempo_traslados(self):
-        fecha_inicio = self.answers[self.f['fecha_inicio_rondin']]
-        fecha_inicio = self.date_2_epoch(self.answers[self.f['fecha_inicio_rondin']])
-        areas_visitadas = self.answers[self.f['grupo_areas_visitadas']]
+        fecha_inicio = self.answers.get(self.f['fecha_inicio_rondin'], None)
+        fecha_inicio = self.date_2_epoch(fecha_inicio)
+        areas_visitadas = self.answers.get(self.f['grupo_areas_visitadas'], [])
         fecha_inspeccion = 0
         duracion_total = 0
         cantidad_de_inspecciones = 0
@@ -44,13 +44,18 @@ class Accesos(Accesos):
             self.answers[self.f['porcentaje_obtenido_bitacora']] = str(round((cantidad_de_inspecciones / len(areas_visitadas)) * 100, 2)) + '%'
             self.answers[self.f['cantidad_areas_inspeccionadas']] = str(cantidad_de_inspecciones) + '/' + str(len(areas_visitadas))
         fecha_final_str = datetime.datetime.fromtimestamp(fecha_final).strftime('%Y-%m-%d %H:%M:%S') if fecha_final else ''
-        if self.answers.get(self.f['estatus_del_recorrido']) == 'realizado' and fecha_final_str:
+        if self.answers.get(self.f['estatus_del_recorrido']) in ['realizado', 'cerrado'] and fecha_final_str:
             self.answers[self.f['fecha_fin_rondin']] = fecha_final_str
         return True
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
+    
+    #! Validacion para answers vacio
+    if not acceso_obj.answers:
+        acceso_obj.answers = acceso_obj.current_record.get('answers', {})
+    
     #-FILTROS
     acceso_obj.calcluta_tiempo_traslados()
     sys.stdout.write(simplejson.dumps({
