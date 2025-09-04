@@ -56,14 +56,17 @@ class Stock(Stock):
                 #HACE TRANSACCIONES ACIDAS
                 def write_records(sess):
                     if new_record.get('answers'):
-                        # Crea los nuevo registro de salida de stock
-                        self.records_cr.insert_one(new_record, session=sess)
                         # Inserta directamente los registros nuevos de invetarios
                         # Pone un cache para que sean calulados los inventarios una
                         # vez dentro del intenvario
                         self.direct_move_in(new_record)
+                        # Crea los nuevo registro de salida de stock
+                        self.records_cr.insert_one(new_record)
                         # Pone en 0 el stock de donde salio
-                        self.move_out_stock(new_record)
+                        if self.proceso_onts:
+                            self.move_out_stock_ont(new_record)
+                        else:
+                            self.move_out_stock(new_record)
                 try:
                     # Comienza la transacción
                     session.with_transaction(
@@ -84,14 +87,19 @@ class Stock(Stock):
             # try:
             if True:
                 if new_record.get('answers'):
-                    # Crea los nuevo registro de salida de stock
-                    self.records_cr.insert_one(new_record)
                     # Inserta directamente los registros nuevos de invetarios
                     # Pone un cache para que sean calulados los inventarios una
                     # vez dentro del intenvario
-                    response = self.direct_move_in(new_record)
+                    self.direct_move_in(new_record)
+                    # Crea los nuevo registro de salida de stock
+                    self.records_cr.insert_one(new_record)
                     # Pone en 0 el stock de donde salio
-                    self.move_out_stock(new_record)
+                    print('moving out stock.....')  
+                    if self.proceso_onts:
+                        self.move_out_stock_ont(new_record)
+                    else:
+                        self.move_out_stock(new_record)
+                    print('done moving out stock')
                     #print('response = ', response)
 
             # except Exception as e:
@@ -182,6 +190,8 @@ class Stock(Stock):
         base_record['answers'][self.f['move_group']] = []
         base_record["editable"] = False 
         for idx, records in enumerate(groups):
+            print('----------------grupo ---------------------',idx)
+            print('self.proceso_onts=', self.proceso_onts)
             folio_serie_record = []
             # self.answers[self.f['move_group']] = []
             new_record = {}
@@ -213,8 +223,8 @@ class Stock(Stock):
                 else:
                     new_record['answers'][self.f['move_group']].append(row_set)
                     new_record['answers'][self.f['inv_adjust_status']] = 'done'
-            
             if new_record:
+                print('22self.proceso_onts=', self.proceso_onts)
                 self.ejecutar_transaccion(new_record)
                 product_lot = [x['ont_serie'] for x in folio_serie_record]
             # else:
@@ -222,47 +232,13 @@ class Stock(Stock):
             #     self.ejecutar_transaccion({} )
         return True
     
-    def move_out_stock(self, new_record):
-        record_data = self.get_record_move_data(new_record)
-        updated_ids = []
-
-        for idx, product_data in record_data['product'].items():
-            product_code = product_data['product_code']
-            sku = product_data['product_sku']
-            product_lot = product_data['product_lot']
-            move_qty = product_data.get('move_qty',0)
-            match_query = self.lot_match(product_code, sku, record_data['warehouse'], record_data['location'], product_lot)
-            product_db_info = self.format_cr(self.cr.find(match_query), get_one=True)
-            print('match_query',match_query)
-            updated_ids.append(product_db_info.get('_id'))
-            print('product_db_info',product_db_info)
-            product_stock = self.get_product_stock(product_code, sku=sku, lot_number=product_lot, warehouse=record_data['warehouse'], location=record_data['location'])
-            acutals = product_stock.get('actuals',0)
-            new_acutals = acutals - move_qty
-            if new_acutals <= 0:
-                status = 'done'
-            else:
-                status = 'active'
-            update_res = self.cr.update_many(match_query, {"$set":{
-                f"answers.{self.f['actual_eaches_on_hand']}":new_acutals,
-                f"answers.{self.f['product_lot_actuals']}":new_acutals,
-                f"answers.{self.f['move_out']}":move_qty,
-                f"answers.{self.f['status']}":status,
-                }})
-        self.cache_set({
-                        'cache_type': 'direct_move_in',
-                        'inserted_ids':updated_ids,
-                        })
-
     def get_record_move_data(self, data):
         move_group = data['answers'].get( self.f['move_group'], [] )
         warehouse_from = data['answers'].get(self.WH.WAREHOUSE_LOCATION_OBJ_ID)
         warehouse = warehouse_from.get( self.WH.f['warehouse'])
         warehouse_location = warehouse_from.get( self.WH.f['warehouse_location'])
         product_by_set = {}
-        print('move_group', move_group)
         for idx, rec_set in enumerate(move_group):
-            print('record_set=', rec_set)
             product_cat = rec_set.get(self.CATALOG_INVENTORY_OBJ_ID)
             product_code = product_cat.get(self.Product.f['product_code'])
             product_sku = product_cat.get(self.Product.f['product_sku'])
@@ -278,6 +254,53 @@ class Stock(Stock):
 
     def load_onts(self):
         self.read_xls_onts()
+
+    def move_out_stock_ont(self, new_record):
+        """
+        Movimiento de salida de stock para ONTs
+
+        args:
+            new_record: registro con los datos del movimiento
+        return:
+            updated_ids: lista de ids de los registros actualizados
+        
+        """
+        record_data = self.get_record_move_data(new_record)
+        updated_ids = {}
+        deleted_sync_ids = []
+        product_lots = []
+        for idx, product_data in record_data['product'].items():
+            product_code = product_data['product_code']
+            sku = product_data['product_sku']
+            product_lot = product_data['product_lot']
+            product_lots.append(product_lot)
+            move_qty = product_data.get('move_qty',0)
+            if move_qty != 1:
+                msg = 'Este movimiento esta limitado a 1'
+                self.LKFException(msg)
+        product_stock = {'actuals':1,'production':0, 'stock_in':1, 'stock_out':0, 'scrapped':0, 'cuarentin':0}
+        answers = {}
+        answers = self.direct_move_math(answers,  move_in=0, move_out=1, product_stock=product_stock)
+        set_fields = {f"answers.{key}": value for key, value in answers.items()}
+        update_query = {
+            'form_id':self.FORM_INVENTORY_ID,
+            f'answers.{self.Product.SKU_OBJ_ID}.{self.f["product_lot"]}': {'$in': product_lots},
+            f'answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f["warehouse"]}': self.warehouse_from,
+            f'answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f["warehouse_location"]}': self.location_from
+        }
+        print('udpate_query=', update_query)
+        res = self.cr.update_many(update_query, {'$set':set_fields} )
+        if res.acknowledged:
+            updated_ids = self.cr.find(update_query, {'_id':1})
+            updated_ids = [x['_id'] for x in updated_ids]
+        sync_ids = [str(x) for x in updated_ids]
+        self.lkf_api.sync_catalogs_records({
+            'catalogs_ids':[self.CATALOG_INVENTORY_ID],
+            'form_answers_ids':sync_ids,
+            'status':'deleted',
+            })
+
+        return updated_ids 
 
     def show_error_app(self, field_id, label, msg):
         raise Exception( simplejson.dumps({
@@ -363,6 +386,19 @@ class Stock(Stock):
             res_share_folder_forms = self.share_item(uri_user, folder_share, "can_share_item")
 
     def validate_move_qty(self, product_code, sku, lot_number, warehouse, location, move_qty, date_to=None, **kwargs):
+        if not lot_number:
+            msg = f"No lot number provided"
+            msg_error_app = {
+                    f"{self.f['product_lot_actuals']}": {
+                        "msg": [msg],
+                        "label": "Please check your lot inventory",
+                        "error":[]
+      
+                    }
+                }
+            #TODO set inventory as done
+            self.LKFException( simplejson.dumps( msg_error_app ) )               
+
         inv = self.get_product_stock(product_code, sku=sku,lot_number=lot_number, warehouse=warehouse, location=location,  
                 date_to=date_to, **kwargs)
         acctual_containers = inv.get('actuals')
@@ -383,14 +419,14 @@ class Stock(Stock):
         # if False:
             #trying to move more containeres that there are...
             cont_diff = move_qty - acctual_containers
-            msg = f"There actually only {acctual_containers} containers and you are trying to move {move_qty} containers."
-            msg += f"Check this out...! Your are trying to move {cont_diff} more containers than they are. "
+            msg = f"There actually only {acctual_containers} products and you are trying to move {move_qty} products."
+            msg += f"Check this out...! Your are trying to move {cont_diff} more products than they are. "
             msg += f"If this is the case, please frist make an inventory adjustment of {cont_diff} "
             msg += f"On warehouse {warehouse} at location {location} and lot number {lot_number}"
             msg_error_app = {
                     f"{self.f['inv_move_qty']}": {
                         "msg": [msg],
-                        "label": "Please check your Flats to move",
+                        "label": "Please check your products to move",
                         "error":[]
       
                     }
@@ -401,74 +437,50 @@ class Stock(Stock):
     def validate_onts(self, records):
         move_group = self.answers.get( self.f['move_group'], [] )
         product_lots = [r[0] for r in records]
+        if len(move_group) == 0:
+            self.LKFException( '', dict_error= {
+                    "msg": ['No se especifico ningun producto para mover, favor de espeficar numero de producto'], 
+                    "label": "No se especifico ningun producto para mover", "error": []}
+                    )
         base_row_set = deepcopy(move_group[0])
         lot_size = len(records)
         warehouse_from = self.answers.get(self.WH.WAREHOUSE_LOCATION_OBJ_ID)
         warehouse = warehouse_from.get( self.WH.f['warehouse'])
+        if not self.warehouse_from:
+            self.warehouse_from = warehouse
         warehouse_location = warehouse_from.get( self.WH.f['warehouse_location'])
-        product_cat = base_row_set.get(self.CATALOG_INVENTORY_OBJ_ID)
-        product_code = product_cat.get(self.Product.f['product_code'])
-        product_sku = product_cat.get(self.Product.f['product_sku'])
+        if not self.location_from:
+            self.location_from = warehouse_location
+        product_code = base_row_set.get(self.CATALOG_INVENTORY_OBJ_ID, {}).get(self.Product.f['product_code'])
+        product_sku = base_row_set.get(self.CATALOG_INVENTORY_OBJ_ID, {}).get(self.Product.f['product_sku']) 
+        print('product_code', product_code)
+        print('product_sku', product_sku)
+        print('warehouse', warehouse)
+        print('warehouse_location', warehouse_location)
+        # print('product_lots', product_lots)
+        print('lot_size', lot_size)
         stock_size = self.validate_lote_size(product_code, product_sku, warehouse, warehouse_location, product_lots, lot_size)
+        print('stock_size', stock_size)
         if stock_size == 0:
             print('valid')
         elif stock_size < 0:
             print('Error hay de menos')
-            self.LKFException(f'ERROR HAY {abs(stock_size)}, de menos')
+            self.LKFException({"msg":f"No hay stock suficiente para mover las {stock_size} unidades.", "title": "Falta de Stock"})
+            # self.LKFException(f'ERROR HAY {abs(stock_size)}, de menos')
         elif stock_size > 0:
+            self.LKFException({"msg":f"Se estan intentando sacar mas unidades de las que hay en stock.", "title": "ONT no Existente."})
             print('valido hay suficientes... pero en este caso no deberia...')
         return True
 
-    def lot_match(self, product_code, product_sku, warehouse, location, product_lot):
-        match_query ={ 
-         'form_id': self.FORM_INVENTORY_ID,  
-         'deleted_at' : {'$exists':False},
-         } 
-        match_query.update({f"answers.{self.Product.SKU_OBJ_ID}.{self.f['product_code']}":product_code})
-        match_query.update({f"answers.{self.Product.SKU_OBJ_ID}.{self.f['product_sku']}":product_sku})
-        match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse']}":warehouse})
-        match_query.update({f"answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse_location']}":location})
-        if type(product_lot) == str:
-            match_query.update({f"answers.{self.f['product_lot']}": product_lot})
-        elif type(product_lot) == list:
-            match_query.update({f"answers.{self.f['product_lot']}":{"$in": product_lot}})
-
-        return match_query
-
     def validate_lote_size(self, product_code, product_sku, warehouse, location, product_lot, lote_size):
-        match_query = self.lot_match(product_code, product_sku, warehouse, location, product_lot)
-        query = [
-            {'$match': match_query},
-            {'$project':{
-                '_id':0,
-                'product_code':f"$answers.{self.Product.SKU_OBJ_ID}.{self.f['product_code']}",
-                'warehouse':f"$answers.{self.WH.WAREHOUSE_LOCATION_OBJ_ID}.{self.f['warehouse']}",
-                'actuals':f"$answers.{self.f['actual_eaches_on_hand']}",
-            }},
-            {'$group':{
-                '_id':{
-                    'product_code':'$product_code',
-                    'warehouse':'$warehouse'
-                },
-                'actuals':{'$sum':'$actuals'}
-            }},
-            {"$project":{
-                "_id":0,
-                "product_code":"$_id.product_code",
-                "warehouse":"$_id.warehouse",
-                "actuals": "$actuals",
-            }},
-        ]
-        stock =  self.format_cr(self.cr.aggregate(query), get_one=True)
-        stock_size = stock.get('actuals',0)
+        stock_size = self.get_direct_stock(product_code, product_sku, warehouse, location, product_lot)
         return stock_size - lote_size
-
-
 
 
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
     stock_obj.console_run()
+    # print('inv_adjust_status', simplejson.dumps(stock_obj.f, indent=3))
     status = stock_obj.answers[stock_obj.f['inv_adjust_status']]
     if hasattr(stock_obj,'folio'):
         folio = stock_obj.folio
@@ -479,7 +491,7 @@ if __name__ == '__main__':
         folio = f"{folio}-{next_folio}"
     if not stock_obj.record_id:
         stock_obj.record_id = stock_obj.object_id() 
-    stock_obj.folio = folio
+    stock_obj.base_folio = folio
     stock_obj.folio = folio
     stock_obj.current_record['folio'] = folio
     stock_obj.answers[stock_obj.f['folio_recepcion']] = folio
@@ -491,8 +503,16 @@ if __name__ == '__main__':
 
     stock_obj.set_mongo_connections()
     header, records = stock_obj.read_xls_file()
+    if header:
+        if not records:
+            stock_obj.LKFException('El archivo cargado no contiene datos, favor de revisar')
     groups = []
     if stock_obj.proceso_onts:
+        onts = [x[0] for x in records]
+        if len(onts) > 5000:
+            stock_obj.LKFException( '', dict_error= {
+                    "msg": f'Limite de salida de ONTs superado. Solo se pueden dar salida a  5000 ONTs por documento y se estan cargando {len(onts)} ONTs'
+                } )
         groups = stock_obj.validate_onts(records)
         groups = stock_obj.do_groups(header, records)
         stock_obj.create_records(groups)
@@ -500,20 +520,15 @@ if __name__ == '__main__':
     #     print('no hay excel')
     #     header = None
     #     records = None
-    if header:
-        if not records:
-            stock_obj.LKFException('El archivo cargado no contiene datos, favor de revisar')
     # print('answ3rs', stock_obj.answers)
     #stock_obj.share_filter_and_forms_to_connection()
     #response = stock_obj.move_one_many_one(records)
     stock_obj.current_record['answers'] = stock_obj.answers
     if groups:
         stock_obj.folio = f"{folio}-1/{len(groups)}"
-    response = stock_obj.direct_move_in(stock_obj.current_record)
-    stock_obj.move_out_stock(stock_obj.current_record)
-    # if not stock_obj.proceso_onts:
-    #     response = stock_obj.move_one_many_one()
-    stock_obj.answers[stock_obj.f['inv_adjust_status']] =  'done'
+
+    stock_obj.make_direct_stock_move()
+   
 
     sys.stdout.write(simplejson.dumps({
         'status': 101,
