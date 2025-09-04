@@ -296,9 +296,6 @@ class Accesos(Accesos):
                             # Determinar estado basado en retraso
                             if minutos_retraso > tolerancia:
                                 status = "late"
-                                print(f"DEBUG: Usuario: {user_name}, Hora plan: {hora_plan}:{minuto_plan}, Hora real: {hora_real}:{minuto_real}")
-                                print(f"DEBUG: Minutos retraso: {minutos_retraso}, Tolerancia: {tolerancia}")
-                                print(f"DEBUG: Usuario marcado como TARDE: {user_name}")
                             else:
                                 status = "on_time"
                             
@@ -544,9 +541,6 @@ class Accesos(Accesos):
                             # Usuario con retraso
                             if user_name and user_name not in location_shift_data[location_shift_key]['attendance_dates'][attendance_date]['late']:
                                 location_shift_data[location_shift_key]['attendance_dates'][attendance_date]['late'].append(user_name)
-                                print(f"DEBUG: Usuario: {user_name}, Hora plan: {hora_plan}:{minuto_plan}, Hora real: {hora_real}:{minuto_real}")
-                                print(f"DEBUG: Minutos retraso: {minutos_retraso}, Tolerancia: {tolerancia}")
-                                print(f"DEBUG: Usuario marcado como TARDE: {user_name}")
                         else:
                             # Usuario a tiempo
                             if user_name and user_name not in location_shift_data[location_shift_key]['attendance_dates'][attendance_date]['on_time']:
