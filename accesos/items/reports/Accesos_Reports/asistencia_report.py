@@ -48,19 +48,48 @@ class Accesos(Accesos):
             "T1": {
                 "id": "T1",
                 "name": "T1: 06:00 - 14:00 hrs",
-                "timeRange": "06:00 - 14:00 hrs"
+                "entrada_hora": 6,
+                "entrada_minuto": 0,
+                "salida_hora": 14,
+                "salida_minuto": 0,
+                "timeRange": "06:00 - 14:00 hrs",
+                "tolerancia": 15,
+                "limite_retardo": 120,
+                "minutos_entrada": 360,
+                "minutos_salida": 840,
+                "es_nocturno": False
             },
             "T2": {
                 "id": "T2",
                 "name": "T2: 14:00 - 22:00 hrs",
-                "timeRange": "14:00 - 22:00 hrs"
+                "entrada_hora": 14,
+                "entrada_minuto": 0,
+                "salida_hora": 22,
+                "salida_minuto": 0,
+                "timeRange": "14:00 - 22:00 hrs",
+                "tolerancia": 15,
+                "limite_retardo": 120,
+                "minutos_entrada": 840,
+                "minutos_salida": 1320,
+                "es_nocturno": False
             },
             "T3": {
                 "id": "T3",
                 "name": "T3: 22:00 - 06:00 hrs",
-                "timeRange": "22:00 - 06:00 hrs"
+                "entrada_hora": 22,
+                "entrada_minuto": 0,
+                "salida_hora": 6,
+                "salida_minuto": 0,
+                "timeRange": "22:00 - 06:00 hrs",
+                "tolerancia": 15,
+                "limite_retardo": 120,
+                "minutos_entrada": 1320,
+                "minutos_salida": 360,
+                "es_nocturno": True
             }
         }
+
+
         
     #! =========================================== Utils functions
     # Modificar la función get_shift para que reciba también la ubicación
@@ -152,15 +181,43 @@ class Accesos(Accesos):
         ]
         response = self.format_cr(self.cr.aggregate(query))
         for record in response:
-            self.shifts[record.get('nombre_horario', '')] = { #type: ignore
-                "id": record.get('nombre_horario', ''),
-                "name": f"{record.get('nombre_horario', '')}: {record.get('hora_entrada', '')[:5]} - {record.get('hora_salida', '')[:5]} hrs",
-                "timeRange": f"{record.get('hora_entrada', '')[:5]} - {record.get('hora_salida', '')[:5]} hrs",
-                "locations": [r.get('incidente_location', '') for r in record.get('grupo_ubicaciones_horario', [])],
-                "days": record.get('dias_de_la_semana', []),
-                "tolerancia": record.get('tolerancia_retardo', ''),
-                "limite_retardo": record.get('retardo_maximo', '')
-            }
+            try:
+                # Extraer datos base
+                shift_id = record.get('nombre_horario', '')
+                hora_entrada = record.get('hora_entrada', '00:00')
+                hora_salida = record.get('hora_salida', '00:00')
+                
+                # Parsear horas y minutos una sola vez
+                entrada_hora, entrada_minuto = map(int, hora_entrada.split(':')[:2]) if ':' in hora_entrada else (0, 0)
+                salida_hora, salida_minuto = map(int, hora_salida.split(':')[:2]) if ':' in hora_salida else (0, 0)
+                
+                # Convertir valores numéricos a int
+                tolerancia = int(record.get('tolerancia_retardo', '0') or 0)
+                limite_retardo = int(record.get('retardo_maximo', '0') or 0)
+                
+                # Guardar estructura optimizada
+                self.shifts[shift_id] = { #type: ignore
+                    "id": shift_id,
+                    "name": f"{shift_id}: {hora_entrada[:5]} - {hora_salida[:5]} hrs",
+                    # Valores pre-parseados para cálculos
+                    "entrada_hora": entrada_hora,
+                    "entrada_minuto": entrada_minuto,
+                    "salida_hora": salida_hora, 
+                    "salida_minuto": salida_minuto,
+                    # Mantener timeRange para compatibilidad
+                    "timeRange": f"{hora_entrada[:5]} - {hora_salida[:5]} hrs",
+                    "locations": [r.get('incidente_location', '') for r in record.get('grupo_ubicaciones_horario', []) or []],
+                    "days": record.get('dias_de_la_semana', []),
+                    "tolerancia": tolerancia,
+                    "limite_retardo": limite_retardo,
+                    # Agregar valores calculados útiles
+                    "minutos_entrada": entrada_hora * 60 + entrada_minuto,
+                    "minutos_salida": salida_hora * 60 + salida_minuto,
+                    "es_nocturno": salida_hora < entrada_hora  # Detecta automáticamente turnos nocturnos
+                }
+            except Exception as e:
+                print(f"Error procesando turno {record.get('nombre_horario', '')}: {str(e)}")
+                continue
         print(simplejson.dumps(self.shifts, indent=4))
 
     def get_employees_list(self):
@@ -193,9 +250,8 @@ class Accesos(Accesos):
         if date_range == 'mes':
             now = datetime.now(timezone('America/Mexico_City'))
             start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            last_day_prev_month = start_of_month - timedelta(days=1)
             match.update({
-                "created_at": {"$gte": last_day_prev_month}
+            "created_at": {"$gte": start_of_month}
             })
 
         query = [
@@ -208,472 +264,578 @@ class Accesos(Accesos):
             }},
         ]
         response = self.format_cr(self.cr.aggregate(query))
-        print(simplejson.dumps(response, indent=4))
+        response = self.reformat_employees_attendance(data=response)
         format_response = {}
         if group_by == "employees":
-            format_response = self.format_employees_attendance(data=response, date_range=date_range, employees_list=employees_list)
+            format_response = self.evaluate_attendance_status(combined_records=response, employees_list=employees_list)
         elif group_by == "locations":
-            format_response = self.format_locations_attendance(data=response, date_range=date_range)
+            format_response = self.evaluate_locations_attendance(combined_records=response, employees_list=employees_list, locations=locations)
         return format_response
-
-    def format_employees_attendance(self, data, date_range="mes", employees_list=[]):
+    
+    def reformat_employees_attendance(self, data):
+        """
+        Prepara los datos de asistencia para su procesamiento:
+        - Filtra registros sin fecha de inicio/cierre
+        - Combina registros del mismo día, empleado Y UBICACIÓN
+        - Preserva registros en diferentes ubicaciones para el mismo día
+        """
+        # 1. Filtrar registros que tengan al menos una fecha (inicio o cierre)
+        valid_records = []
+        for record in data:
+            if record.get('fecha_inicio_turno') or record.get('fecha_cierre_turno'):
+                valid_records.append(record)
+        
+        # 2. Organizar por empleado, día y ubicación para combinar registros relacionados
+        employee_day_records = {}
+        
         now = datetime.now(timezone('America/Mexico_City'))
-        year = now.year
-        month = now.month
-        day = now.day
-        days_in_month = monthrange(year, month)[1]
+        current_month = now.month
+        current_year = now.year
         
-        # Asegurarse de que los turnos por defecto estén cargados
-        self.shifts = self.shifts or self.default_shifts
-        
-        # Extraer todas las ubicaciones únicas
-        all_locations = set()
-        for record in data:
+        for record in valid_records:
+            user_name = record.get('user_name')
             location = record.get('incidente_location', '')
-            if location:
-                all_locations.add(location)
-        
-        # Pre-inicializar todos los empleados de la lista
-        employees_data = {}
-        for employee_name in employees_list:
-            employees_data[employee_name] = {
-                'records': [],
-                'attendance_dates': {},  # {fecha: {'status': 'on_time|late', 'location': 'ubicacion'}}
-            }
-        
-        # Procesar registros
-        for record in data:
-            user_name = record.get('user_name', '')
             if not user_name:
                 continue
                 
-            # Asegurar que el usuario exista en employees_data
-            if user_name not in employees_data:
-                employees_data[user_name] = {
-                    'records': [],
-                    'attendance_dates': {}
-                }
-                
-            employees_data[user_name]['records'].append(record)
+            # Determinar la fecha clave y manejar turnos que cruzan de mes
+            fecha_key = None
+            is_cross_month = False
+            record_month = None
             
-            # Procesar fecha de inicio para evaluar retrasos
+            # Obtener fecha desde inicio o cierre
             if record.get('fecha_inicio_turno'):
-                fecha_str = record.get('fecha_inicio_turno')
                 try:
-                    fecha_dt = datetime.strptime(fecha_str, '%Y-%m-%d %H:%M:%S')
-                    attendance_date = fecha_dt.strftime('%Y-%m-%d')
+                    fecha_dt = datetime.strptime(record.get('fecha_inicio_turno'), '%Y-%m-%d %H:%M:%S')
+                    fecha_key = fecha_dt.strftime('%Y-%m-%d')
+                    record_month = fecha_dt.month
+                    
+                    # Si es un registro del último día del mes anterior y es nocturno
+                    if record_month != current_month and fecha_dt.hour >= 22:
+                        is_cross_month = True
+                        # Ajustar la fecha clave al primer día del mes actual para turnos nocturnos
+                        fecha_key = f"{current_year}-{current_month:02d}-01"
+                except (ValueError, TypeError):
+                    pass
+            
+            if not fecha_key and record.get('fecha_cierre_turno'):
+                try:
+                    fecha_dt = datetime.strptime(record.get('fecha_cierre_turno'), '%Y-%m-%d %H:%M:%S')
+                    fecha_key = fecha_dt.strftime('%Y-%m-%d')
+                    record_month = fecha_dt.month
+                    
+                    # Si es un registro del primer día del mes actual pero con hora temprana
+                    if record_month == current_month and fecha_dt.day == 1 and fecha_dt.hour < 8:
+                        # Podría ser un cierre de turno nocturno que empezó el mes anterior
+                        is_cross_month = True
+                except (ValueError, TypeError):
+                    pass
+            
+            if not fecha_key:
+                continue
+            
+            # Para registros que cruzan de mes, asignarlos al primer día del mes actual
+            if is_cross_month and record_month != current_month:
+                fecha_key = f"{current_year}-{current_month:02d}-01"
+                
+            # Clave compuesta para identificar registros del mismo empleado, día y ubicación
+            # IMPORTANTE: La ubicación es parte esencial de la clave
+            employee_day_key = f"{user_name}|{fecha_key}|{location}"
+            
+            if employee_day_key not in employee_day_records:
+                employee_day_records[employee_day_key] = {
+                    "user_name": user_name,
+                    "fecha": fecha_key,
+                    "location": location,
+                    "records": []
+                }
+            
+            employee_day_records[employee_day_key]["records"].append(record)
+        
+        # 3. Combinar registros relacionados
+        combined_records = []
+        
+        for employee_day_key, data_group in employee_day_records.items():
+            records = data_group["records"]
+            
+            # Si solo hay un registro, usarlo directamente
+            if len(records) == 1:
+                combined_records.append(records[0])
+                continue
+            
+            # Si hay múltiples registros DE LA MISMA UBICACIÓN, combinarlos
+            combined_record = {
+                "user_name": data_group["user_name"],
+                "incidente_location": data_group["location"],  # Preservar la ubicación específica
+                "incidente_area": None,
+                "fecha_inicio_turno": None,
+                "fecha_cierre_turno": None,
+                "foto_inicio_turno": None,
+                "foto_cierre_turno": None,
+                "comentario_inicio_turno": None,
+                "comentario_cierre_turno": None,
+                "tipo_guardia": None,
+                "estatus_guardia": None,
+                "created_at": data_group["fecha"]
+            }
+            
+            # Buscar la fecha de inicio más temprana y la fecha de cierre más tardía
+            earliest_inicio = None
+            latest_cierre = None
+            
+            for record in records:
+                # Fechas y fotos de inicio
+                if record.get('fecha_inicio_turno'):
+                    inicio_time = record.get('fecha_inicio_turno')
+                    if not earliest_inicio or inicio_time < earliest_inicio:
+                        earliest_inicio = inicio_time
+                        combined_record["foto_inicio_turno"] = record.get('foto_inicio_turno')
+                        combined_record["comentario_inicio_turno"] = record.get('comentario_inicio_turno')
+                
+                # Fechas y fotos de cierre
+                if record.get('fecha_cierre_turno'):
+                    cierre_time = record.get('fecha_cierre_turno')
+                    if not latest_cierre or cierre_time > latest_cierre:
+                        latest_cierre = cierre_time
+                        combined_record["foto_cierre_turno"] = record.get('foto_cierre_turno')
+                        combined_record["comentario_cierre_turno"] = record.get('comentario_cierre_turno')
+                
+                # Otros campos relevantes (tomar el primero que encontremos)
+                if record.get('incidente_area') and not combined_record["incidente_area"]:
+                    combined_record["incidente_area"] = record.get('incidente_area')
+                if record.get('tipo_guardia') and not combined_record["tipo_guardia"]:
+                    combined_record["tipo_guardia"] = record.get('tipo_guardia')
+                if record.get('estatus_guardia') and not combined_record["estatus_guardia"]:
+                    combined_record["estatus_guardia"] = record.get('estatus_guardia')
+            
+            # Asignar las fechas optimizadas
+            combined_record["fecha_inicio_turno"] = earliest_inicio
+            combined_record["fecha_cierre_turno"] = latest_cierre
+            
+            combined_records.append(combined_record)
+        # 4. Verificar que tengamos turnos cargados para el cálculo
+        if not self.shifts:
+            self.shifts = self.default_shifts
+        
+        return combined_records
+    
+    def evaluate_attendance_status(self, combined_records, employees_list=[]):
+        """
+        Evalúa el estado de asistencia para cada registro y devuelve la estructura final
+        para el frontend según el formato solicitado.
+        """
+        now = datetime.now(timezone('America/Mexico_City'))
+        day = now.day
+        
+        # Inicializar la estructura de datos para cada empleado
+        employees_data = {}
+        for employee_name in employees_list:
+            employees_data[employee_name] = {
+                "id": employee_name.lower().replace(' ', '_'),
+                "name": employee_name,
+                "locations": [],
+                "attendance": [],
+                "summary": {"present": 0, "late": 0, "absent": 0}
+            }
+        
+        # Evaluar cada registro combinado
+        for record in combined_records:
+            user_name = record.get('user_name')
+            if not user_name or user_name not in employees_data:
+                continue
+            
+            location = record.get('incidente_location', '')
+            if location and location not in employees_data[user_name]["locations"]:
+                employees_data[user_name]["locations"].append(location)
+            
+            # Evaluar estado si hay fecha de inicio
+            if record.get('fecha_inicio_turno'):
+                try:
+                    fecha_inicio = record.get('fecha_inicio_turno')
+                    fecha_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d %H:%M:%S')
+                    day_num = fecha_dt.day
                     hora_real = fecha_dt.hour
                     minuto_real = fecha_dt.minute
-                    location = record.get('incidente_location', '')
                     
                     if not location:
                         continue
                     
-                    # Obtener el turno para esta hora y ubicación
-                    shift_info = self.get_shift(hora_real, location, minuto_real, anticipada=30)
+                    # Obtener el turno correspondiente (con 10 min de anticipación)
+                    shift_info = self.get_shift(hora_real, location, minuto_real, anticipada=10)
                     
-                    # Extraer la tolerancia del turno
-                    tolerancia = shift_info.get('tolerancia', 0)
-                    try:
-                        tolerancia = int(tolerancia)
-                    except (ValueError, TypeError):
-                        tolerancia = 0
+                    # Extraer la tolerancia y límite de retardo
+                    tolerancia = int(shift_info.get('tolerancia', 0) or 0)
+                    limite_retardo = int(shift_info.get('limite_retardo', 0) or 0)
                     
-                    # Evaluar si hay retraso
+                    # Evaluar retraso
                     time_range = shift_info.get('timeRange', '')
                     if time_range:
                         try:
                             hora_planificada = time_range.split(" - ")[0]
                             hora_plan, minuto_plan = map(int, hora_planificada.split(":"))
                             
-                            # Calcular minutos totales desde medianoche
+                            # Calcular retraso en minutos
                             minutos_planificados = hora_plan * 60 + minuto_plan
                             minutos_reales = hora_real * 60 + minuto_real
-                            
-                            # La diferencia es el retraso
                             minutos_retraso = minutos_reales - minutos_planificados
                             
-                            # Determinar estado basado en retraso
-                            if minutos_retraso > tolerancia:
-                                status = "late"
-                            else:
-                                status = "on_time"
-                            
-                            # Guardar en attendance_dates - priorizar "on_time" si ya existe entrada
-                            if attendance_date not in employees_data[user_name]['attendance_dates']:
-                                employees_data[user_name]['attendance_dates'][attendance_date] = {
-                                    'status': status,
-                                    'location': location
-                                }
-                            elif status == "on_time" or employees_data[user_name]['attendance_dates'][attendance_date]['status'] == "late":
-                                # Priorizar "on_time" sobre "late"
-                                if status == "on_time":
-                                    employees_data[user_name]['attendance_dates'][attendance_date]['status'] = status
-                                # Siempre guardar la ubicación
-                                employees_data[user_name]['attendance_dates'][attendance_date]['location'] = location
-                                
-                        except (IndexError, ValueError):
-                            # Si no podemos calcular, asumir que está a tiempo
-                            if attendance_date not in employees_data[user_name]['attendance_dates']:
-                                employees_data[user_name]['attendance_dates'][attendance_date] = {
-                                    'status': "on_time",
-                                    'location': location
-                                }
-                except (ValueError, TypeError):
-                    pass
-            # Procesar también registros con fecha de cierre (para casos donde no hay inicio)
-            elif record.get('fecha_cierre_turno'):
-                fecha_str = record.get('fecha_cierre_turno')
-                try:
-                    fecha_dt = datetime.strptime(fecha_str, '%Y-%m-%d %H:%M:%S')
-                    attendance_date = fecha_dt.strftime('%Y-%m-%d')
-                    location = record.get('incidente_location', '')
-                    
-                    # Solo si no existe ya un registro para esta fecha
-                    if attendance_date not in employees_data[user_name]['attendance_dates']:
-                        employees_data[user_name]['attendance_dates'][attendance_date] = {
-                            'status': "on_time",  # Asumimos a tiempo si solo hay cierre
-                            'location': location or ""
-                        }
-                except (ValueError, TypeError):
-                    pass
-
-        # Organizar empleados por ubicaciones
-        employee_location_data = []
-        
-        # Primero generar las combinaciones empleado-ubicación necesarias
-        for user_name, emp_data in employees_data.items():
-            # Recopilar todas las ubicaciones donde este empleado ha estado
-            employee_locations = set()
-            
-            # Agregar las ubicaciones de sus registros de asistencia
-            for date_info in emp_data['attendance_dates'].values():
-                if date_info.get('location'):
-                    employee_locations.add(date_info['location'])
-            
-            # Si no hay registros, al menos incluir una entrada sin ubicación específica
-            if not employee_locations:
-                employee_locations.add("")
-            
-            # Crear una entrada para cada ubicación
-            for location in employee_locations:
-                employee_location_id = f"{user_name.replace(' ', '_').lower()}"
-                if location:
-                    employee_location_id += f"-{location.replace(' ', '_').lower()}"
-                
-                employee_location = {
-                    "id": employee_location_id,
-                    "name": user_name,
-                    "type": "employee",
-                    "location": location,  # Agregamos la ubicación al empleado
-                    "attendance": {},
-                    "summary": {
-                        "totalPresent": 0,
-                        "totalLate": 0,
-                        "totalAbsent": 0
-                    }
-                }
-                
-                # Llenar los datos de asistencia para esta combinación empleado-ubicación
-                for day_num in range(1, days_in_month + 1):
-                    date_str = f"{year}-{month:02d}-{day_num:02d}"
-                    
-                    # Verificar si hay registro para esta fecha
-                    if date_str in emp_data['attendance_dates']:
-                        attendance_info = emp_data['attendance_dates'][date_str]
-                        
-                        # Solo incluir si es la ubicación correcta o si no hay ubicación específica
-                        if attendance_info.get('location') == location or not location:
-                            if attendance_info['status'] == "on_time":
+                            # Determinar estado según retraso
+                            if minutos_retraso <= tolerancia:
                                 status = "present"
-                                employee_location["summary"]["totalPresent"] += 1
-                            else:  # late
-                                status = "halfDay"  # Estado para retrasos
-                                employee_location["summary"]["totalLate"] += 1
-                                
-                            # Agregar ubicación al registro diario
-                            loc = attendance_info.get('location', '')
-                            location_data = {"location": loc} if loc else {}
-                            
-                            employee_location["attendance"][str(day_num)] = {
-                                "status": status,
-                                "date": date_str,
-                                **location_data
-                            }
-                        else:
-                            # Es otra ubicación, no registrar asistencia aquí
-                            if day_num < day:
-                                status = "absent"
-                                employee_location["summary"]["totalAbsent"] += 1
+                                employees_data[user_name]["summary"]["present"] += 1
+                            elif minutos_retraso <= limite_retardo:
+                                status = "halfDay"  # Retardo dentro del límite
+                                employees_data[user_name]["summary"]["late"] += 1
                             else:
-                                status = "noRecord"
-                                
-                            employee_location["attendance"][str(day_num)] = {
-                                "status": status,
-                                "date": date_str
-                            }
-                    else:
-                        # No hay registro para esta fecha
-                        if day_num < day:
-                            status = "absent"
-                            employee_location["summary"]["totalAbsent"] += 1
-                        else:
-                            status = "noRecord"
+                                status = "absent"  # Retardo excede límite
+                                employees_data[user_name]["summary"]["absent"] += 1
                             
-                        employee_location["attendance"][str(day_num)] = {
-                            "status": status,
-                            "date": date_str
-                        }
-                
-                # Solo agregar si hay al menos un día con asistencia o si debería mostrar faltas
-                if employee_location["summary"]["totalPresent"] > 0 or employee_location["summary"]["totalLate"] > 0 or day > 1:
-                    employee_location_data.append(employee_location)
-    
-        return employee_location_data
-    
-    def format_locations_attendance(self, data, date_range="mes"):
+                            # Actualizar o agregar el día a la asistencia
+                            self._update_attendance_entry(employees_data[user_name]["attendance"], day_num, status, location)
+                            
+                        except (IndexError, ValueError):
+                            # Si no podemos calcular, asumir presente
+                            status = "present"
+                            employees_data[user_name]["summary"]["present"] += 1
+                            self._update_attendance_entry(employees_data[user_name]["attendance"], day_num, status, location)
+                            
+                except (ValueError, TypeError):
+                    pass
+                    
+            # Si solo hay fecha de cierre, registrar como presente
+            elif record.get('fecha_cierre_turno'):
+                try:
+                    fecha_cierre = record.get('fecha_cierre_turno')
+                    fecha_dt = datetime.strptime(fecha_cierre, '%Y-%m-%d %H:%M:%S')
+                    day_num = fecha_dt.day
+                    
+                    # Verificar si ya existe una entrada para este día
+                    day_exists = any(att.get("day") == day_num for att in employees_data[user_name]["attendance"])
+                    if not day_exists:
+                        status = "present"
+                        employees_data[user_name]["summary"]["present"] += 1
+                        self._update_attendance_entry(employees_data[user_name]["attendance"], day_num, status, location)
+                        
+                except (ValueError, TypeError):
+                    pass
+        
+        # Marcar ausencias para días pasados sin registro
+        for user_name, emp_data in employees_data.items():
+            days_registered = {att.get("day") for att in emp_data["attendance"]}
+            for day_num in range(1, day):
+                if day_num not in days_registered:
+                    status = "absent"
+                    emp_data["summary"]["absent"] += 1
+                    default_location = emp_data["locations"][0] if emp_data["locations"] else ""
+                    self._update_attendance_entry(emp_data["attendance"], day_num, status, default_location)
+        
+        # Formatear resultado final
+        result = {"employees": []}
+        for _, emp_data in employees_data.items():
+            # Ordenar asistencias por día
+            emp_data["attendance"].sort(key=lambda x: x["day"])
+            # Solo incluir empleados con al menos un registro
+            if emp_data["attendance"]:
+                result["employees"].append(emp_data)
+        
+        return result
+
+    def _update_attendance_entry(self, attendance_list, day, status, location):
+        """
+        Actualiza o agrega una entrada de asistencia, evitando duplicados
+        y priorizando los estados mejores (present > halfDay > absent)
+        """
+        for i, att in enumerate(attendance_list):
+            if att["day"] == day:
+                # Si el status actual es mejor que el nuevo, mantenerlo
+                current_status = att["status"]
+                if (current_status == "present" or 
+                    (current_status == "halfDay" and status == "absent")):
+                    return
+                # Actualizar con el nuevo status
+                attendance_list[i]["status"] = status
+                if location:
+                    attendance_list[i]["location"] = location
+                return
+        
+        # Si no existe, agregar nueva entrada
+        entry = {"day": day, "status": status}
+        if location:
+            entry["location"] = location
+        attendance_list.append(entry)
+
+    def evaluate_locations_attendance(self, combined_records, employees_list=[], locations=[]):
+        """
+        Evalúa el estado de asistencia para cada registro agrupado por ubicación y turno.
+        Respeta estrictamente las ubicaciones configuradas para cada turno.
+        """
         now = datetime.now(timezone('America/Mexico_City'))
         year = now.year
         month = now.month
         day = now.day
         days_in_month = monthrange(year, month)[1]
         
-        # Asegurarse de que los turnos por defecto estén cargados
-        self.shifts = self.shifts or self.default_shifts
+        # Asegurarse de que los turnos estén cargados
+        if not self.shifts:
+            self.get_guard_shifts()
         
-        # Extraer todas las ubicaciones únicas
-        all_locations = set()
-        for record in data:
-            location = record.get('incidente_location', '')
-            if location:
-                all_locations.add(location)
-        
-        # Para cada ubicación, determinar qué turnos aplican
-        location_shifts = {}
-        for location in all_locations:
-            # Buscar turnos específicos para esta ubicación
-            location_specific_shifts = []
-            for shift_id, shift_info in self.shifts.items():
-                if location in shift_info.get("locations", []):
-                    location_specific_shifts.append((shift_id, shift_info))
-            
-            # Si no hay turnos específicos, usar los predeterminados
-            if not location_specific_shifts:
-                location_shifts[location] = [
-                    ("T1", self.default_shifts["T1"]),
-                    ("T2", self.default_shifts["T2"]),
-                    ("T3", self.default_shifts["T3"])
-                ]
-            else:
-                location_shifts[location] = location_specific_shifts
-
-        # Inicializar estructura para todas las ubicaciones y sus turnos aplicables
+        # Si no se especifican ubicaciones, extraer todas las ubicaciones de los registros
+        if not locations:
+            locations_set = set()
+            for record in combined_records:
+                location = record.get('incidente_location', '')
+                if location:
+                    locations_set.add(location)
+            locations = list(locations_set)
+    
+        # Inicializar estructura para todas las ubicaciones y sus turnos
         location_shift_data = {}
-        for location, shifts in location_shifts.items():
-            for shift_id, shift_info in shifts:
-                location_shift_key = f"{location.replace(' ', '_').lower()}-{shift_id}"
+    
+        # Para cada ubicación, determinar qué turnos aplican
+        for location in locations:
+            applicable_shifts = []
+            for shift_id, shift_info in self.shifts.items():
+                shift_locations = shift_info.get("locations", [])
+                if location in shift_locations:
+                    applicable_shifts.append((shift_id, shift_info, False))  # False = no es default
+
+            # Si no hay turnos específicos para esta ubicación, usar los predeterminados
+            if not applicable_shifts:
+                for shift_id, shift_info in self.default_shifts.items():
+                    shift_info_copy = shift_info.copy()
+                    shift_info_copy["locations"] = []
+                    shift_info_copy["days"] = []  # Todos los días aplican
+                    applicable_shifts.append((shift_id, shift_info_copy, True))  # True = es default
+
+            for shift_id, shift_info, is_default in applicable_shifts:
+                location_shift_key = f"{location.replace(' ', '_').lower()}_{shift_id.lower()}"
                 location_shift_data[location_shift_key] = {
-                    'locationName': location,
-                    'shiftInfo': shift_info,
-                    'attendance_dates': {},  # Ahora será {fecha: {'on_time': [], 'late': []}}
-                    'records': []
+                    "id": location_shift_key,
+                    "locationName": location,
+                    "shiftId": shift_id,
+                    "shiftName": shift_info.get("name", f"Turno {shift_id}"),
+                    "attendance": {},
+                    "summary": {"present": 0, "late": 0, "absent": 0, "totalNotApplicable": 0},
+                    "is_default": is_default  # <-- NUEVO
                 }
-
-        # Procesar los registros
-        for record in data:
+    
+        # Evaluar cada registro combinado
+        for record in combined_records:
             location = record.get('incidente_location', '')
-            if not location:
+            user_name = record.get('user_name', '')
+            
+            if not location or not user_name:
                 continue
             
-            # Solo procesar registros con fecha de inicio para evaluar retrasos
-            if not record.get('fecha_inicio_turno'):
-                continue
-                
-            fecha_str = record.get('fecha_inicio_turno')
-            try:
-                fecha_dt = datetime.strptime(fecha_str, '%Y-%m-%d %H:%M:%S')
-                attendance_date = fecha_dt.strftime('%Y-%m-%d')
-                hora_real = fecha_dt.hour
-                minuto_real = fecha_dt.minute
-                
-                # Obtener el turno para esta hora y ubicación
-                shift_info = self.get_shift(hora_real, location, minuto_real, anticipada=30)
-                shift_id = shift_info["id"]
-                
-                location_shift_key = f"{location.replace(' ', '_').lower()}-{shift_id}"
-                user_name = record.get('user_name', '')
-                
-                # Si este turno no está en los configurados para esta ubicación, saltar
-                if location_shift_key not in location_shift_data:
-                    continue
-                    
-                # Inicializar estructura para esta fecha si no existe
-                if attendance_date not in location_shift_data[location_shift_key]['attendance_dates']:
-                    location_shift_data[location_shift_key]['attendance_dates'][attendance_date] = {
-                        'on_time': [],
-                        'late': []
-                    }
-                
-                # Verificar si hay retraso
-                # Extraer la tolerancia del turno (en minutos)
-                tolerancia = location_shift_data[location_shift_key]['shiftInfo'].get('tolerancia', 0)
+            # Evaluar registro con fecha de inicio
+            if record.get('fecha_inicio_turno'):
                 try:
-                    tolerancia = int(tolerancia)
+                    fecha_inicio = record.get('fecha_inicio_turno')
+                    fecha_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d %H:%M:%S')
+                    day_num = fecha_dt.day
+                    hora_real = fecha_dt.hour
+                    minuto_real = fecha_dt.minute
+                    
+                    # Obtener el turno correspondiente (con 10 min de anticipación)
+                    shift_info = self.get_shift(hora_real, location, minuto_real, anticipada=10)
+                    shift_id = shift_info["id"]
+                    
+                    # Construir la clave para este par ubicación-turno
+                    location_shift_key = f"{location.replace(' ', '_').lower()}_{shift_id.lower()}"
+                    
+                    # Verificar si esta combinación existe
+                    # Si no existe, crearla con los valores del turno devuelto por get_shift
+                    if location_shift_key not in location_shift_data:
+                        # Esto puede ocurrir si get_shift devuelve un turno predeterminado
+                        # que no se consideró inicialmente para esta ubicación
+                        location_shift_data[location_shift_key] = {
+                            "id": location_shift_key,
+                            "locationName": location,
+                            "shiftId": shift_id,
+                            "shiftName": shift_info.get("name", f"Turno {shift_id}"),
+                            "attendance": {},
+                            "summary": {"present": 0, "late": 0, "absent": 0, "totalNotApplicable": 0}
+                        }
+                    
+                    # Evaluar retraso
+                    tolerancia = int(shift_info.get('tolerancia', 0) or 0)
+                    limite_retardo = int(shift_info.get('limite_retardo', 0) or 0)
+                    
+                    time_range = shift_info.get('timeRange', '')
+                    if time_range:
+                        try:
+                            hora_planificada = time_range.split(" - ")[0]
+                            hora_plan, minuto_plan = map(int, hora_planificada.split(":"))
+                            
+                            # Calcular retraso en minutos
+                            minutos_planificados = hora_plan * 60 + minuto_plan
+                            minutos_reales = hora_real * 60 + minuto_real
+                            minutos_retraso = minutos_reales - minutos_planificados
+                            
+                            # Determinar estado según retraso
+                            if minutos_retraso <= tolerancia:
+                                status = "present"
+                                location_shift_data[location_shift_key]["summary"]["present"] += 1
+                            elif minutos_retraso <= limite_retardo:
+                                status = "late"
+                                location_shift_data[location_shift_key]["summary"]["late"] += 1
+                            else:
+                                # Si supera el límite de retardo, se considera ausente
+                                status = "absent"
+                                location_shift_data[location_shift_key]["summary"]["absent"] += 1
+                        
+                        except (IndexError, ValueError):
+                            # Si no podemos calcular el retraso, asumimos presente
+                            self._update_location_attendance(location_shift_data[location_shift_key], day_num, 
+                                                            "present", user_name, fecha_dt.strftime('%Y-%m-%d'))
+                            
                 except (ValueError, TypeError):
-                    tolerancia = 0
-                
-                # Extraer la hora planificada de inicio
-                time_range = location_shift_data[location_shift_key]['shiftInfo'].get('timeRange', '')
-                if time_range:
-                    try:
-                        hora_planificada = time_range.split(" - ")[0]
-                        hora_plan, minuto_plan = map(int, hora_planificada.split(":"))
-                        
-                        # Calcular minutos totales desde medianoche para ambas horas
-                        minutos_planificados = hora_plan * 60 + minuto_plan
-                        minutos_reales = hora_real * 60 + minuto_real
-                        
-                        # La diferencia es el retraso
-                        minutos_retraso = minutos_reales - minutos_planificados
-                        
-                        # Registrar el usuario en la categoría correspondiente
-                        if minutos_retraso > tolerancia:
-                            # Usuario con retraso
-                            if user_name and user_name not in location_shift_data[location_shift_key]['attendance_dates'][attendance_date]['late']:
-                                location_shift_data[location_shift_key]['attendance_dates'][attendance_date]['late'].append(user_name)
-                        else:
-                            # Usuario a tiempo
-                            if user_name and user_name not in location_shift_data[location_shift_key]['attendance_dates'][attendance_date]['on_time']:
-                                location_shift_data[location_shift_key]['attendance_dates'][attendance_date]['on_time'].append(user_name)
+                    pass
                     
-                    except (IndexError, ValueError):
-                        # Si no podemos calcular el retraso, asumimos que está a tiempo
-                        if user_name and user_name not in location_shift_data[location_shift_key]['attendance_dates'][attendance_date]['on_time']:
-                            location_shift_data[location_shift_key]['attendance_dates'][attendance_date]['on_time'].append(user_name)
-                
-                # Guardar el registro completo
-                location_shift_data[location_shift_key]['records'].append(record)
+            # Si solo hay fecha de cierre y no hay registro para este día, registrar como presente
+            elif record.get('fecha_cierre_turno'):
+                try:
+                    fecha_cierre = record.get('fecha_cierre_turno')
+                    fecha_dt = datetime.strptime(fecha_cierre, '%Y-%m-%d %H:%M:%S')
+                    day_num = fecha_dt.day
+                    hora_real = fecha_dt.hour
                     
-            except (ValueError, TypeError):
-                pass
-
-        # Formatear salida
-        formatted_locations = []
+                    # Inferir el turno basado en la hora de cierre
+                    shift_info = self.get_shift(hora_real, location, fecha_dt.minute)
+                    shift_id = shift_info["id"]
+                    location_shift_key = f"{location.replace(' ', '_').lower()}_{shift_id.lower()}"
+                    
+                    # Si esta combinación no existe, crearla
+                    if location_shift_key not in location_shift_data:
+                        location_shift_data[location_shift_key] = {
+                            "id": location_shift_key,
+                            "locationName": location,
+                            "shiftId": shift_id,
+                            "shiftName": shift_info.get("name", f"Turno {shift_id}"),
+                            "attendance": {},
+                            "summary": {"present": 0, "late": 0, "absent": 0, "totalNotApplicable": 0}
+                        }
+                    
+                    if str(day_num) not in location_shift_data[location_shift_key]["attendance"]:
+                        self._update_location_attendance(location_shift_data[location_shift_key], day_num, 
+                                                        "present", user_name, fecha_dt.strftime('%Y-%m-%d'))
+                except (ValueError, TypeError):
+                    pass
+    
+        # Procesar todos los días del mes para cada ubicación-turno
         for location_shift_key, loc_data in location_shift_data.items():
-            location_shift = {
-                "id": location_shift_key,
-                "type": "location",
-                "locationName": loc_data['locationName'],
-                "shiftInfo": loc_data['shiftInfo'],
-                "attendance": {},
-                "summary": {
-                    "totalPresent": 0,
-                    "totalLate": 0,
-                    "totalAbsent": 0,
-                    "totalNotApplicable": 0
-                }
-            }
+            shift_id = loc_data["shiftId"]
+            is_default = loc_data.get("is_default", False)
+            # Buscar primero en shifts y luego en default_shifts
+            shift_info = None
+            for shift_dict in [self.shifts, self.default_shifts]:
+                if shift_id in shift_dict:
+                    shift_info = shift_dict[shift_id]
+                    break
             
+            # Si no se encontró el turno (no debería ocurrir), usar un diccionario vacío
+            if not shift_info:
+                shift_info = {}
+                
+            # Si es default, forzar days_config vacío
+            days_config = [] if is_default else shift_info.get('days', [])
+            
+            # Procesar cada día del mes
             for day_num in range(1, days_in_month + 1):
-                date_str = f"{year}-{month:02d}-{day_num:02d}"
-                
-                # Determinar si este día de la semana aplica para este turno
-                day_date = datetime(year, month, day_num)
-                day_of_week = day_date.strftime("%A").lower()
-                
-                # Convertir a formato español/número para coincidir con el formato en shifts
-                day_mapping = {
-                    "monday": "lunes", 
-                    "tuesday": "martes", 
-                    "wednesday": "miercoles", 
-                    "thursday": "jueves", 
-                    "friday": "viernes", 
-                    "saturday": "sabado", 
-                    "sunday": "domingo"
-                }
-                
-                day_es = day_mapping.get(day_of_week, day_of_week)
-                
-                # Verificar si el día aplica para este turno
-                days_config = loc_data['shiftInfo'].get('days', [])
-
-                # Calcular el día de la semana como número (1-7)
-                day_num_week = day_date.isoweekday()  # Lunes=1, Domingo=7
-
-                # Intentar distintos formatos de días para compatibilidad
-                day_applies = (
-                    day_es in days_config or 
-                    day_of_week in days_config or 
-                    day_num_week in days_config or 
-                    str(day_num_week) in days_config or
-                    not days_config
-                )
-                
-                if not day_applies:
-                    # Este día de la semana no aplica para este turno
-                    status = "notApplicable"
-                    location_shift["summary"]["totalNotApplicable"] += 1
-                    location_shift["attendance"][str(day_num)] = {
-                        "status": status,
-                        "date": date_str
+                if str(day_num) not in loc_data["attendance"]:
+                    day_date = datetime(year, month, day_num)
+                    day_of_week = day_date.strftime("%A").lower()
+                    day_mapping = {
+                        "monday": "lunes", 
+                        "tuesday": "martes", 
+                        "wednesday": "miercoles", 
+                        "thursday": "jueves", 
+                        "friday": "viernes", 
+                        "saturday": "sabado", 
+                        "sunday": "domingo"
                     }
-                    continue
-                
-                # Si llegamos aquí, el día sí aplica para este turno
-                # Verificamos si hay asistencia registrada
-                if date_str in loc_data['attendance_dates']:
-                    attendance_data = loc_data['attendance_dates'][date_str]
-                    on_time_users = attendance_data.get('on_time', [])
-                    late_users = attendance_data.get('late', [])
-                    
-                    # Primero verificamos si hay usuarios a tiempo
-                    if on_time_users:
-                        status = "present"
-                        location_shift["summary"]["totalPresent"] += len(on_time_users)
-                        
-                        location_shift["attendance"][str(day_num)] = {
-                            "status": status,
-                            "date": date_str,
-                            "userName": on_time_users
-                        }
-                    # Luego verificamos si hay usuarios con retraso
-                    elif late_users:
-                        status = "late"
-                        location_shift["summary"]["totalLate"] += len(late_users)
-                        
-                        location_shift["attendance"][str(day_num)] = {
-                            "status": status,
-                            "date": date_str,
-                            "userName": late_users
-                        }
-                    else:
-                        # No hay usuarios registrados para este día
-                        if day_num < day:
-                            status = "absent"
-                            location_shift["summary"]["totalAbsent"] += 1
-                        else:
-                            status = "noRecord"
-                        
-                        location_shift["attendance"][str(day_num)] = {
-                            "status": status,
-                            "date": date_str
-                        }
-                else:
-                    # No hay registros para este día
-                    if day_num < day:
+                    day_es = day_mapping.get(day_of_week, day_of_week)
+                    day_applies = (
+                        not days_config or
+                        day_es in days_config or 
+                        day_of_week in days_config or 
+                        day_date.isoweekday() in days_config or 
+                        str(day_date.isoweekday()) in days_config
+                    )
+                    if not day_applies:
+                        status = "notApplicable"
+                        loc_data["summary"]["totalNotApplicable"] += 1
+                    elif day_num < day:
                         status = "absent"
-                        location_shift["summary"]["totalAbsent"] += 1
+                        loc_data["summary"]["absent"] += 1
                     else:
                         status = "noRecord"
-                        
-                    location_shift["attendance"][str(day_num)] = {
+                    loc_data["attendance"][str(day_num)] = {
+                        "day": day_num,
                         "status": status,
-                        "date": date_str
+                        "date": f"{year}-{month:02d}-{day_num:02d}"
                     }
+        
+        # Formatear el resultado final: convertir diccionario de attendance a lista ordenada
+        result = []
+        for _, location_shift in location_shift_data.items():
+            # Convertir diccionario de attendance a lista ordenada por día
+            attendance_list = []
+            for day_num in sorted(map(int, location_shift["attendance"].keys())):
+                attendance_list.append(location_shift["attendance"][str(day_num)])
             
-            formatted_locations.append(location_shift)
-        return formatted_locations
-    
+            # Reemplazar el diccionario con la lista
+            location_shift["attendance"] = attendance_list
+            
+            # Solo incluir ubicaciones con al menos un día registrado
+            if attendance_list:
+                result.append(location_shift)
+        
+        return result
+
+    def _update_location_attendance(self, location_data, day_num, status, user_name, date_str):
+        """
+        Actualiza o agrega una entrada de asistencia para una ubicación-turno
+        """
+        if str(day_num) not in location_data["attendance"]:
+            location_data["attendance"][str(day_num)] = {
+                "day": day_num,
+                "status": status,
+                "date": date_str
+            }
+            if status == "present":
+                location_data["summary"]["present"] += 1
+                location_data["attendance"][str(day_num)]["userName"] = [user_name]
+            elif status == "late":
+                location_data["summary"]["late"] += 1
+                location_data["attendance"][str(day_num)]["userName"] = [user_name]
+        else:
+            current_entry = location_data["attendance"][str(day_num)]
+            
+            # Solo actualizar si el estado actual es peor que el nuevo
+            if (current_entry["status"] == "absent" and status in ["present", "late"]) or \
+            (current_entry["status"] == "late" and status == "present"):
+                current_entry["status"] = status
+                
+                # Actualizar el contador correspondiente
+                if status == "present":
+                    if current_entry["status"] == "late":
+                        location_data["summary"]["late"] -= 1
+                    elif current_entry["status"] == "absent":
+                        location_data["summary"]["absent"] -= 1
+                    location_data["summary"]["present"] += 1
+                elif status == "late":
+                    if current_entry["status"] == "absent":
+                        location_data["summary"]["absent"] -= 1
+                    location_data["summary"]["late"] += 1
+            
+            # Agregar nombre de usuario si es necesario
+            if status in ["present", "late"]:
+                if "userName" not in current_entry:
+                    current_entry["userName"] = [user_name]
+                elif user_name not in current_entry["userName"]:
+                    current_entry["userName"].append(user_name)
+
     def get_locations(self):
         selector = {}
         fields = ["_id", f"answers.{self.Location.f['location']}"]
@@ -703,6 +865,7 @@ if __name__ == "__main__":
     if option == 'get_report':
         script_obj.get_guard_shifts()
         response = script_obj.get_employees_attendance(date_range='mes', group_by=group_by, locations=locations)
+        response = response.get('employees', []) if group_by == 'employees' else response
     elif option == 'get_locations':
         response = script_obj.get_locations()
 
