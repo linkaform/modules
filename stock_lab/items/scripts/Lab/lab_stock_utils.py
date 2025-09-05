@@ -879,7 +879,7 @@ class Stock(Stock):
                 })
         return {'new_record':metadata}
 
-    def create_proudction_lot_number(self, prod_date=None, group=None, cycle=None):
+    def create_proudction_lot_number(self, prod_date=None, group=None, cycle=None, fixed_week=False):
         if not prod_date:
             year, week_num, iso_weekday = today.isocalendar()
             # year = today.strftime('%Y')
@@ -890,6 +890,8 @@ class Stock(Stock):
             # year = prod_date.strftime('%Y')
             # day_num = prod_date.strftime('%j')
             # week_num = prod_date.strftime('%W')
+        if fixed_week:
+            week_num = fixed_week
         if not group:
             group = self.answers.get(self.f['production_working_group'])
         if not cycle:
@@ -1467,7 +1469,7 @@ class Stock(Stock):
             if adjust_lot_by == 'week':
                 prduction_date = datetime.strptime(f'{year}{cut_week}-1','%Y%W-%w')
                 # date_yearweek = date.fromisocalendar(int(str(yearWeek)[:4]), int(str(cut_week)[-2:]), 1)
-                lot_number = self.create_proudction_lot_number(prduction_date, group, cycle)
+                lot_number = self.create_proudction_lot_number(prduction_date, group, cycle ,fixed_week=cut_week)
             else:
                 prduction_date = datetime.strptime(f'{year}{day:03}','%Y%j')
                 lot_number = self.create_proudction_lot_number_by_cutday(prduction_date, group, cycle)
