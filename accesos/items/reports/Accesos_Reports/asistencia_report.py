@@ -39,7 +39,8 @@ class Accesos(Accesos):
             'dias_de_la_semana': '68b861ba34290efdd49ab24f',
             'tolerancia_retardo': '68b6427cc8f94827ebfed698',
             'retardo_maximo': '68b642e2bc17e2713cabe019',
-            'grupo_ubicaciones_horario': '68b6427cc8f94827ebfed699'
+            'grupo_ubicaciones_horario': '68b6427cc8f94827ebfed699',
+            'dias_libres_empleado': '68bb20095035e61c5745de05'
         })
         
         self.shifts = {}
@@ -228,7 +229,8 @@ class Accesos(Accesos):
             }},
             {"$project": {
                 "_id": 0,
-                "nombre_usuario": f"$answers.{self.USUARIOS_OBJ_ID}.{self.mf['nombre_usuario']}"
+                "nombre_usuario": f"$answers.{self.USUARIOS_OBJ_ID}.{self.mf['nombre_usuario']}",
+                "dias_libres": f"answers.{self.f['dias_libres_empleado']}"
             }}
         ]
         response = self.format_cr(self.cr.aggregate(query))
@@ -487,7 +489,7 @@ class Accesos(Accesos):
                                 status = "halfDay"  # Retardo dentro del límite
                                 employees_data[user_name]["summary"]["late"] += 1
                             else:
-                                status = "absent"  # Retardo excede límite
+                                status = "absentTimeOff"  # Retardo excede límite
                                 employees_data[user_name]["summary"]["absent"] += 1
                             
                             # Actualizar o agregar el día a la asistencia
