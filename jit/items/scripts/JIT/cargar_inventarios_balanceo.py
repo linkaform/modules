@@ -130,7 +130,7 @@ class CargaUniversal(CargaUniversal):
             upload_sales_records.append(this_metadata_sales)
 
         #   Inserta el documento completo a mongodb
-        ids = []
+        stock_ids = []
         if upload_records:
             res = self.cr.insert_many(upload_records)
             try:

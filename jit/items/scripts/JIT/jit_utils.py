@@ -73,6 +73,7 @@ class JIT(JIT, Stock):
                 {f"answers.{self.f['procurment_method']}": {'$exists': False}},
             ]
         }) #    or _delete
+        print('termine de borrar...')
         return True
         
     def update_procurmet(self, records, **kwargs):
