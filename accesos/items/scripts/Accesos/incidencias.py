@@ -72,7 +72,10 @@ if __name__ == "__main__":
     dateFrom = data.get("dateFrom", "")
     dateTo = data.get("dateTo", "")
     filterDate = data.get("filterDate", "")
-    incidencia_grupo_seguimiento = data.get("incidencia_grupo_seguimiento", [])
+    seguimientos = data.get("seguimientos_incidencia", [])
+    qr_code = data.get('qr_code')
+    template_id = data.get('template_id')
+    name_pdf = data.get('name_pdf')
 
     print('option', option)
     if option == 'nueva_incidencia':
@@ -82,13 +85,15 @@ if __name__ == "__main__":
     elif option == 'update_incidence':
         response = acceso_obj.update_incidence(data_incidence_update, folio)
     elif option == 'update_incidence_seguimiento':
-        response = acceso_obj.update_incidence_seguimiento(folio=folio, incidencia_grupo_seguimiento=incidencia_grupo_seguimiento)
+        response = acceso_obj.update_incidence_seguimiento(folio=folio, incidencia_grupo_seguimiento=seguimientos)
     elif option == 'delete_incidence':
         response = acceso_obj.delete_incidence(folio)
     elif option == 'catalogo_area_empleado':
         response = acceso_obj.catalogo_config_area_empleado(bitacora='Incidencias', location=location)
     elif option == 'catalogo_incidencias':
         response = acceso_obj.catalogo_incidencias(cat=cat,sub_cat=sub_cat)
+    elif option == 'get_pdf':
+        response = acceso_obj.get_pdf(qr_code=qr_code, template_id=template_id)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})

@@ -337,7 +337,8 @@ class Accesos( Accesos):
             r['visita_a'] = self.format_visita(r.get('visita_a',[]))
         return  records
 
-
+    def get_pdf_seg(self, qr_code, template_id=491, name_pdf='Pase de Entrada'):
+        return self.lkf_api.get_pdf_record(qr_code, template_id = template_id, name_pdf =name_pdf, send_url=True)
 
     def get_list_rondines(self, prioridades=[], dateFrom='', dateTo='', filterDate=""):
         match_query = {
