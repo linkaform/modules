@@ -12,7 +12,6 @@ class Oracle(Oracle):
 
     def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
-        print('de aqui...')
         #use self.lkm.catalog_id() to get catalog id
         self.name =  __class__.__name__
         self.settings = settings
