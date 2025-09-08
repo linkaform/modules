@@ -152,6 +152,7 @@ class Accesos(Accesos):
         answers = {}
         answers[self.f['option_checkin']] = 'cerrar_turno'
         answers[self.f['comment_checkout']] = 'Cierre de turno automatico.'
+        answers[self.f['end_shift']] = self.today_str(self.timezone, date_format='datetime')
         if answers:
             resp = self.lkf_api.patch_multi_record(answers=answers, form_id=135386, record_id=record_ids)
             print('======log:', resp)
@@ -189,7 +190,6 @@ class Accesos(Accesos):
         self.answers.update({
             self.f['end_shift']: fecha_actual,
         })
-        
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
