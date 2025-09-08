@@ -229,21 +229,22 @@ class Accesos(Accesos):
             }},
             {"$project": {
                 "_id": 0,
+                "employee_id": f"$answers.{self.USUARIOS_OBJ_ID}.{self.mf['id_usuario']}",
                 "nombre_usuario": f"$answers.{self.USUARIOS_OBJ_ID}.{self.mf['nombre_usuario']}",
                 "dias_libres": {"$ifNull": [f"$answers.{self.f['dias_libres_empleado']}", []]}
             }}
         ]
         response = self.format_cr(self.cr.aggregate(query))
-        format_response = list({'nombre': i.get('nombre_usuario'), 'dias_libres': i.get('dias_libres')} for i in response)
+        format_response = list({'nombre': i.get('nombre_usuario'), 'dias_libres': i.get('dias_libres'), 'employee_id': self.unlist(i.get('employee_id', 0))} for i in response)
         return format_response
 
     def get_employees_attendance(self, date_range="mes", group_by="employees", locations=[]):
         employees_list = self.get_employees_list()
-        employees_names = list({i.get('nombre', '') for i in employees_list})
+        employees_ids = list({i.get('employee_id', '') for i in employees_list})
         match = {
             "deleted_at": {"$exists": False},
             "form_id": 135386, #TODO: Modulariar ID
-            "user_name": {"$in": employees_names}
+            "user_id": {"$in": employees_ids}
         }
 
         if locations:
@@ -261,6 +262,7 @@ class Accesos(Accesos):
             {"$match": match},
             {"$project": {
                 "_id": 0,
+                "user_id": 1,
                 "created_at": 1,
                 "user_name": 1,
                 "answers": 1
@@ -424,35 +426,47 @@ class Accesos(Accesos):
     
     def evaluate_attendance_status(self, combined_records, employees_list=[]):
         """
-        Evalúa el estado de asistencia para cada registro y devuelve la estructura final
-        para el frontend según el formato solicitado.
+        Evalúa el estado de asistencia usando user_id como clave principal
+        para evitar problemas con cambios en nombres de usuario.
         """
         now = datetime.now(timezone('America/Mexico_City'))
         day = now.day
         
-        # Inicializar la estructura de datos para cada empleado
-        employees_data = {}
+        # Crear diccionario para acceso rápido por ID
+        employees_by_id = {}
         for employee in employees_list:
-            employees_data[employee.get('nombre', '')] = {
-                "id": employee.get('nombre', '').lower().replace(' ', '_'),
-                "name": employee.get('nombre', ''),
-                "locations": [],
-                "attendance": [],
-                "summary": {"present": 0, "late": 0, "absent": 0},
-                "dias_libres": employee.get('dias_libres', [])
-            }
+            emp_id = employee.get('employee_id')
+            if emp_id:  # Solo agregar si tiene ID válido
+                employees_by_id[emp_id] = {
+                    "id": emp_id,
+                    "name": employee.get('nombre', ''),
+                    "locations": [],
+                    "attendance": [],
+                    "summary": {"present": 0, "late": 0, "absent": 0},
+                    "dias_libres": employee.get('dias_libres', [])
+                }
+        
+        # Crear un mapa de user_name a user_id para registros sin ID
+        name_to_id_map = {emp.get('nombre', ''): emp.get('employee_id') for emp in employees_list if emp.get('employee_id')}
         
         # Evaluar cada registro combinado
         for record in combined_records:
+            user_id = record.get('user_id')
             user_name = record.get('user_name')
-            if not user_name or user_name not in employees_data:
+            
+            # Si no tiene ID, intentar buscar por nombre
+            if not user_id and user_name:
+                user_id = name_to_id_map.get(user_name)
+            
+            # Si no hay ID o el ID no está en nuestros empleados, omitir
+            if not user_id or user_id not in employees_by_id:
                 continue
             
             location = record.get('incidente_location', '')
-            if location and location not in employees_data[user_name]["locations"]:
-                employees_data[user_name]["locations"].append(location)
+            if location and location not in employees_by_id[user_id]["locations"]:
+                employees_by_id[user_id]["locations"].append(location)
             
-            # Evaluar estado si hay fecha de inicio
+            # Continuar con la misma lógica de evaluación...
             if record.get('fecha_inicio_turno'):
                 try:
                     fecha_inicio = record.get('fecha_inicio_turno')
@@ -486,22 +500,21 @@ class Accesos(Accesos):
                             # Determinar estado según retraso
                             if minutos_retraso <= tolerancia:
                                 status = "present"
-                                employees_data[user_name]["summary"]["present"] += 1
+                                employees_by_id[user_id]["summary"]["present"] += 1
                             elif minutos_retraso <= limite_retardo:
-                                status = "halfDay"  # Retardo dentro del límite
-                                employees_data[user_name]["summary"]["late"] += 1
+                                status = "halfDay"
+                                employees_by_id[user_id]["summary"]["late"] += 1
                             else:
-                                status = "absentTimeOff"  # Retardo excede límite
-                                employees_data[user_name]["summary"]["absent"] += 1
+                                status = "absentTimeOff"
+                                employees_by_id[user_id]["summary"]["absent"] += 1
                             
                             # Actualizar o agregar el día a la asistencia
-                            self._update_attendance_entry(employees_data[user_name]["attendance"], day_num, status, location)
+                            self._update_attendance_entry(employees_by_id[user_id]["attendance"], day_num, status, location)
                             
                         except (IndexError, ValueError):
-                            # Si no podemos calcular, asumir presente
                             status = "present"
-                            employees_data[user_name]["summary"]["present"] += 1
-                            self._update_attendance_entry(employees_data[user_name]["attendance"], day_num, status, location)
+                            employees_by_id[user_id]["summary"]["present"] += 1
+                            self._update_attendance_entry(employees_by_id[user_id]["attendance"], day_num, status, location)
                             
                 except (ValueError, TypeError):
                     pass
@@ -513,18 +526,17 @@ class Accesos(Accesos):
                     fecha_dt = datetime.strptime(fecha_cierre, '%Y-%m-%d %H:%M:%S')
                     day_num = fecha_dt.day
                     
-                    # Verificar si ya existe una entrada para este día
-                    day_exists = any(att.get("day") == day_num for att in employees_data[user_name]["attendance"])
+                    day_exists = any(att.get("day") == day_num for att in employees_by_id[user_id]["attendance"])
                     if not day_exists:
                         status = "present"
-                        employees_data[user_name]["summary"]["present"] += 1
-                        self._update_attendance_entry(employees_data[user_name]["attendance"], day_num, status, location)
+                        employees_by_id[user_id]["summary"]["present"] += 1
+                        self._update_attendance_entry(employees_by_id[user_id]["attendance"], day_num, status, location)
                         
                 except (ValueError, TypeError):
                     pass
-        
+    
         # Marcar ausencias para días pasados sin registro
-        for user_name, emp_data in employees_data.items():
+        for user_id, emp_data in employees_by_id.items():
             days_registered = {att.get("day") for att in emp_data["attendance"]}
             for day_num in range(1, day):
                 if day_num not in days_registered:
@@ -532,10 +544,10 @@ class Accesos(Accesos):
                     emp_data["summary"]["absent"] += 1
                     default_location = emp_data["locations"][0] if emp_data["locations"] else ""
                     self._update_attendance_entry(emp_data["attendance"], day_num, status, default_location)
-        
+    
         # Formatear resultado final
         result = {"employees": []}
-        for _, emp_data in employees_data.items():
+        for _, emp_data in employees_by_id.items():
             # Ordenar asistencias por día
             emp_data["attendance"].sort(key=lambda x: x["day"])
             # Solo incluir empleados con al menos un registro
