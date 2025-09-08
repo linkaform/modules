@@ -230,19 +230,20 @@ class Accesos(Accesos):
             {"$project": {
                 "_id": 0,
                 "nombre_usuario": f"$answers.{self.USUARIOS_OBJ_ID}.{self.mf['nombre_usuario']}",
-                "dias_libres": f"answers.{self.f['dias_libres_empleado']}"
+                "dias_libres": {"$ifNull": [f"$answers.{self.f['dias_libres_empleado']}", []]}
             }}
         ]
         response = self.format_cr(self.cr.aggregate(query))
-        format_response = list({i.get('nombre_usuario') for i in response})
+        format_response = list({'nombre': i.get('nombre_usuario'), 'dias_libres': i.get('dias_libres')} for i in response)
         return format_response
 
     def get_employees_attendance(self, date_range="mes", group_by="employees", locations=[]):
         employees_list = self.get_employees_list()
+        employees_names = list({i.get('nombre', '') for i in employees_list})
         match = {
             "deleted_at": {"$exists": False},
             "form_id": 135386, #TODO: Modulariar ID
-            "user_name": {"$in": employees_list}
+            "user_name": {"$in": employees_names}
         }
 
         if locations:
@@ -431,13 +432,14 @@ class Accesos(Accesos):
         
         # Inicializar la estructura de datos para cada empleado
         employees_data = {}
-        for employee_name in employees_list:
-            employees_data[employee_name] = {
-                "id": employee_name.lower().replace(' ', '_'),
-                "name": employee_name,
+        for employee in employees_list:
+            employees_data[employee.get('nombre', '')] = {
+                "id": employee.get('nombre', '').lower().replace(' ', '_'),
+                "name": employee.get('nombre', ''),
                 "locations": [],
                 "attendance": [],
-                "summary": {"present": 0, "late": 0, "absent": 0}
+                "summary": {"present": 0, "late": 0, "absent": 0},
+                "dias_libres": employee.get('dias_libres', [])
             }
         
         # Evaluar cada registro combinado
