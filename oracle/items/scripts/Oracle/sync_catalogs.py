@@ -1,5 +1,5 @@
 # coding: utf-8
-import sys, simplejson, time, datetime
+import sys, simplejson, time, datetime, re
 from linkaform_api import settings
 from bson import ObjectId
 
@@ -116,6 +116,9 @@ class Oracle(Oracle):
                     'TELEFONO1': self.f['phone'],
                     'TELEFONO2': self.f['phone2'],
                     'TIPO_CONTACTO': self.f['address_type'],
+                    'EMAIL_CLIENTE_1': self.f['email_contacto'],
+                    'EMAIL_CLIENTE_2': self.f['email_cliente_2'],
+                    'EMAIL_CLIENTE_3': self.f['email_cliente_3']
                 }
             }
         }
@@ -190,11 +193,14 @@ class Oracle(Oracle):
                     'RAZON_SOCIAL': self.f['razon_social'],
                     'DIRECCION_CAT': self.f['address_name'],
                     'RUC': self.f['rfc_razon_social'],
+                    'EMAIL_CLIENTE_1': self.f['email_contacto'],
+                    'EMAIL_CLIENTE_2': self.f['email_cliente_2'],
+                    'EMAIL_CLIENTE_3': self.f['email_cliente_3']
                     }
             },
             'LINK_EQUIPOS':{
-                'catalog_id': self.Vehiculo.ACTIVOS_FIJOS_CAT_ID,
-                'schema':{
+              'catalog_id': self.Vehiculo.ACTIVOS_FIJOS_CAT_ID,
+              'schema':{
                     'VEHICULO_TALID': self.f['oracle_id'],
                     'CATEGORIA': self.f['categoria_marca'],
                     'EQUIPO': self.f['tipo_equipo'],
@@ -330,6 +336,7 @@ class Oracle(Oracle):
                 row['ESTADO'] = 'Activo'
                 row['DIRECCION_CAT'] = row['RAZON_SOCIAL']
                 row['TIPO_CONTACTO'] = 'Empresa'
+                row.update(self.setup_client_email(row))
             usr = {}
 
             usr.update(metadata_catalog)
@@ -372,6 +379,19 @@ class Oracle(Oracle):
             # res = self.lkf_api.post_catalog_answers_list(data)
             self.update_and_sync_db(v, eq['catalog_id'], data, update=update)
 
+    def setup_client_email(self, row):
+        # Verifica si existe la llave 'EMAIL_LINKAFORM'
+        if 'EMAIL_LINKAFORM' in row and row['EMAIL_LINKAFORM']:
+            # Obtiene el string y separa por comas
+            emails = re.split(r'[;,]', row['EMAIL_LINKAFORM'])
+            emails = [email.strip() for email in emails if email.strip()]
+            # Limita a máximo 3 correos
+            emails = emails[:3]
+            # Agrega cada email como CLIENT_EMAIL1, CLIENT_EMAIL2, ...
+            for i, email in enumerate(emails, start=1):
+                row[f'EMAIL_CLIENTE_{i}'] = email
+        return row
+
     def update_and_sync_db(self, db_name, item_id, data, update=False):
         for rec in data:
             if rec.get('sync_data'):
@@ -392,7 +412,7 @@ class Oracle(Oracle):
                 else:
                     self.post_catalog(db_name, item_id, rec, sync_data)
             else:
-                res = self.post_catalog(db_name, item_id, rec, db_sync=False)
+                self.post_catalog(db_name, item_id, rec, db_sync=False)
 
     def post_catalog(self, db_name, item_id, rec, sync_data={}, db_sync=False):
         res = self.lkf_api.post_catalog_answers(rec)
@@ -440,25 +460,21 @@ if __name__ == "__main__":
                     'DESCRIPCION': module_obj.f['worker_position'],
                     }
         for v in views:
-            print('-----------------------------------------------------------')
+            print('-------------------------{}----------------------------------'.format(v))
             if True:
                 record_ids, last_update,  = module_obj.get_last_db_update_data(v)
-                # last_update_date
                 update = False
                 query = None
-                # last_update = 9
                 print('v',v)
                 if db_to_reset == v:
                     print('RESETING DB: ', v)
                     last_update = None
-                print('last_update', last_update)
                 if last_update:
                     update = True
                     #se restan 6 hrs para aplicar GMT-6:00
                     last_update = last_update - 6*60*60
                     date_time = datetime.datetime.fromtimestamp(last_update)
                     last_update_date = date_time.strftime('%Y-%m-%d %H:%M:%S')
-                    print('last_update_date', last_update_date)
                     a = f"TO_TIMESTAMP('{last_update_date}', 'YYYY-MM-DD HH24:MI:SS.FF6')"
                     query = f'SELECT * FROM {v} WHERE FEC_MODIF  > {a}'
 

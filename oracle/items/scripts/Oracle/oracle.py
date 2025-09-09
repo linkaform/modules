@@ -14,6 +14,10 @@ class Oracle(Oracle):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
         self.name =  __class__.__name__
         self.settings = settings
+        self.f.update({
+            'email_cliente_2':'68c050237fcf44c0212517e0',
+            'email_cliente_3':'68c050237fcf44c0212517e1',
+        })
 
 
     def sync_db_catalog(self, db_name, query={}):
