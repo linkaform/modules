@@ -5,7 +5,7 @@ from linkaform_api import settings
 from account_settings import *
 
 from accesos_utils import Accesos
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 
 class Accesos(Accesos):
@@ -128,6 +128,7 @@ class Accesos(Accesos):
                         "_id": 1,
                         "created_at": 1,
                         "estatus": f"$answers.{self.checkin_fields['checkin_type']}",
+                        "fecha_inicio": f"$answers.{self.f['start_shift']}",
                     }},
                 ],
                 "as": "checkin_records"
@@ -142,24 +143,44 @@ class Accesos(Accesos):
         if response:
             checkin_records = response.get('checkin_records', [])
             if checkin_records:
-                list_records_ids = [str(i.get('_id')) for i in checkin_records]
-                self.automatic_close_turn(record_ids=list_records_ids)
+                self.automatic_close_turn(records=checkin_records)
             else:
                 return
         return
-    
-    def automatic_close_turn(self, record_ids=[]):
+
+    def automatic_close_turn(self, records=[]):
+        list_records_ids = [str(i.get('_id')) for i in records]
+        fecha_inicio = ''
+        for record in records:
+            fecha_inicio = record.get('fecha_inicio', '')
+            if fecha_inicio:
+                fecha_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d %H:%M:%S')
+                
+        if fecha_inicio:
+            tz = pytz.timezone(self.timezone if self.timezone else 'America/Monterrey')
+            fecha_inicio = tz.localize(fecha_inicio)
+            fecha_fin = fecha_inicio + timedelta(hours=8)
+            now = datetime.now(tz)
+            if now > fecha_fin:
+                fecha_cierre = fecha_fin.strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                fecha_cierre = now.strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            fecha_cierre = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
         answers = {}
         answers[self.f['option_checkin']] = 'cerrar_turno'
         answers[self.f['comment_checkout']] = 'Cierre de turno automatico.'
+        answers[self.f['end_shift']] = fecha_cierre
         if answers:
-            resp = self.lkf_api.patch_multi_record(answers=answers, form_id=135386, record_id=record_ids)
-            print('======log:', resp)
-            if resp.get('status_code') in [200, 201, 202]:
-                print('==============> TURNO CERRADO AUTOMATICAMENTE')
-            else: 
-                print('==============> ERROR EN: TURNO CERRADO AUTOMATICAMENTE')
-                    
+            update_fields = {f"answers.{k}": v for k, v in answers.items()}
+            res = self.cr.update_many({
+                'form_id': 135386,
+                'deleted_at': {'$exists': False},
+                '_id': {"$in": [ObjectId(rid) for rid in list_records_ids]},
+            }, {"$set": update_fields})
+            print('======log:', res.modified_count, ' registros cerrados automaticamente.')
+
     def check_in_manual(self):
         self.verify_guard_status()
         
@@ -189,7 +210,6 @@ class Accesos(Accesos):
         self.answers.update({
             self.f['end_shift']: fecha_actual,
         })
-        
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
