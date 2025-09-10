@@ -15,6 +15,7 @@ class Oracle(Oracle):
         self.name =  __class__.__name__
         self.settings = settings
         self.f.update({
+            'email_cliente_1':'663a7ee1e48382c5b1230907',
             'email_cliente_2':'68c050237fcf44c0212517e0',
             'email_cliente_3':'68c050237fcf44c0212517e1',
         })

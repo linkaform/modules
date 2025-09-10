@@ -18,7 +18,6 @@ class Oracle(Oracle):
         self.name =  __class__.__name__
         self.load('Employee', **self.kwargs)
         self.load(module='activo_fijo', module_class='Vehiculo', import_as='Vehiculo', **self.kwargs)
-
         self.VEHICULOS_CAT = self.lkm.catalog_id('vehiculos')
         self.VEHICULOS_CAT_ID = self.VEHICULOS_CAT.get('id')
         self.VEHICULOS_CAT_OBJ_ID = self.VEHICULOS_CAT.get('obj_id')
@@ -116,7 +115,7 @@ class Oracle(Oracle):
                     'TELEFONO1': self.f['phone'],
                     'TELEFONO2': self.f['phone2'],
                     'TIPO_CONTACTO': self.f['address_type'],
-                    'EMAIL_CLIENTE_1': self.f['email_contacto'],
+                    'EMAIL_CLIENTE_1': self.f['email_cliente_1'],
                     'EMAIL_CLIENTE_2': self.f['email_cliente_2'],
                     'EMAIL_CLIENTE_3': self.f['email_cliente_3']
                 }
@@ -193,7 +192,7 @@ class Oracle(Oracle):
                     'RAZON_SOCIAL': self.f['razon_social'],
                     'DIRECCION_CAT': self.f['address_name'],
                     'RUC': self.f['rfc_razon_social'],
-                    'EMAIL_CLIENTE_1': self.f['email_contacto'],
+                    'EMAIL_CLIENTE_1': self.f['email_cliente_1'],
                     'EMAIL_CLIENTE_2': self.f['email_cliente_2'],
                     'EMAIL_CLIENTE_3': self.f['email_cliente_3']
                     }
@@ -303,8 +302,8 @@ class Oracle(Oracle):
         data = []
         departamento_puesto = {}
         eq = self.views[v]
+        print('Loading Data for view: ',v)
         for row in response:
-            print('v=',v)
             if v == 'LINK_EQUIPOS':
                 row['CATEGORIA'] = [row['EQUIPO'],]
                 row['NOMBRE'] = str(row['VEHICULO_TALID'])
@@ -402,17 +401,24 @@ class Oracle(Oracle):
                 if record_id:
                     rec['record_id'] = record_id[0]
                     rec.pop('_id')
+                    print('Updating record_id rec=', rec)
                     res = self.lkf_api.update_catalog_answers(rec, record_id=record_id[0])
                     res_data = res.get('json',{})
                     status_code = res['status_code']
                     if status_code in (200,201,202,204):
+                        print('query=',query)
                         sync_data['updated_at'] = time.time()
                         sres = self.update(query, sync_data, upsert=True)
                         # self.create(sync_data)
+                    else:
+                        print('Error updating record_id', sync_data)
                 else:
-                    self.post_catalog(db_name, item_id, rec, sync_data)
+                    res = self.post_catalog(db_name, item_id, rec, sync_data)
+                    print('Updated record_id res=',res)
             else:
-                self.post_catalog(db_name, item_id, rec, db_sync=False)
+                print('Creating record_id')
+                res = self.post_catalog(db_name, item_id, rec, db_sync=False)
+                print('Created record_id res=',res)
 
     def post_catalog(self, db_name, item_id, rec, sync_data={}, db_sync=False):
         res = self.lkf_api.post_catalog_answers(rec)
@@ -447,7 +453,6 @@ if __name__ == "__main__":
     db_to_reset = module_obj.data.get('reset_db')
 
     db_name = data.get('db_id',"LINK_EMPLEADOS")
-
     #-FUNCTIONS
     if option == 'read':
 
