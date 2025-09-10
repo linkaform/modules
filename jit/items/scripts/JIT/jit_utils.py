@@ -327,7 +327,7 @@ class JIT(JIT, Stock):
 class SIPRE:
 
     def __init__(self):
-        self.host = "http://162.215.128.43:808/api/"
+        self.host = "http://50.6.206.150:808/api/"
         self.token_endpoint = "AuthResponse/GetToken"
         self.stock_endpoint = "WhiReStock/Resumen/{}/{}"
         self.create_xfer_endpoint = "WhiTransfer/Crear"
