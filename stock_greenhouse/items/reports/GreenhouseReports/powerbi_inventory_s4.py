@@ -1,5 +1,6 @@
 #-*- coding: utf-8 -*-
 
+from textwrap import indent
 import simplejson, sys
 
 from gh_stock_report import Reports
@@ -23,8 +24,27 @@ class Reports(Reports):
                     {"$project":{
                         "_id":1,
                         'plant_code': f"$answers.{self.SKU_OBJ_ID}.{self.f['product_code']}",
-                        'qty_per_container':  {"$arrayElemAt": [f"$answers.{self.SKU_OBJ_ID}.{self.f['prod_qty_per_container']}",0]},
+                        'size': f"$answers.{self.SKU_OBJ_ID}.{self.f['reicpe_start_size']}",
+                        'warehouse': f"$answers.{self.WAREHOUSE_OBJ_ID}.{self.f['warehouse']}",
+                        "qty_per_container": {
+                            "$convert": {
+                            "input": {
+                                "$arrayElemAt": [
+                                f"$answers.{self.SKU_OBJ_ID}.{self.f['prod_qty_per_container']}",
+                                0
+                                ]
+                            },
+                            "to": "int",
+                            "onError": None,
+                            "onNull": None
+                            }
+                        },
                         'ready_year_week': f"$answers.{self.f['product_lot']}",
+                        'production': f"$answers.{self.f['production']}",
+                        'sales': f"$answers.{self.f['sales']}",
+                        'adjustments': f"$answers.{self.f['adjustments']}",
+                        'scrapped': f"$answers.{self.f['scrapped']}",
+                        'inventory_status': f"$answers.{self.f['inventory_status']}",
                         'actuals': f"$answers.{self.f['actuals']}",
                         }
                     },
@@ -51,4 +71,4 @@ if __name__ == "__main__":
     report_obj = Reports(settings, sys_argv=sys.argv, use_api=True)
     report_obj.console_run()
     query = report_obj.get_query()
-    print(simplejson.dumps(query))
+    print(simplejson.dumps(query['query'], indent=4))
