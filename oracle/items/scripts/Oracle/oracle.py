@@ -122,21 +122,21 @@ class Oracle(Oracle):
         """Aqui configuramos las vistas que vamos a mandar llamar, declaramos su schema, form_id y catalog_id de ser necesario"""
         self.views = {
             
-            'PRODUCCION.VW_LinkAForm_Hora':{
-                'catalog_id': self.VARIABLES_CRITICAS_PRODUCCION,
-                'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM,
-                'schema':schema_valiables_criticas
-            },
+            # 'PRODUCCION.VW_LinkAForm_Hora':{
+            #     'catalog_id': self.VARIABLES_CRITICAS_PRODUCCION,
+            #     'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM,
+            #     'schema':schema_valiables_criticas
+            # },
             'PRODUCCION.VW_LinkAForm_Dia':{
                 'catalog_id': self.VARIABLES_CRITICAS_PRODUCCION,
                 'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM,
                 'schema':schema_valiables_criticas
                 },
-            'vw_linkaform_fab':{
-                'catalog_id': self.VARIABLES_CRITICAS_PRODUCCION,
-                'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM,
-                'schema':schema_valiables_criticas
-                },
+            # 'vw_linkaform_fab':{
+            #     'catalog_id': self.VARIABLES_CRITICAS_PRODUCCION,
+            #     'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM,
+            #     'schema':schema_valiables_criticas
+            #     },
             }
 
     def sync_db_catalog(self, db_name, query={}):

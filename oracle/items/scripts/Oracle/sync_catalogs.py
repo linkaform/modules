@@ -450,64 +450,95 @@ if __name__ == "__main__":
                 print('last_update', last_update)
                 update = False
                 query = None
+                # last_update = None
                 if last_update:
                     if len(last_update) == 19:
                         last_update = last_update[:-3]
-                    query = f"""
-                        WITH base AS (
-                        SELECT
-                            TRUNC(DATA) + (TO_DATE(HORA, 'HH24:MI') - TRUNC(TO_DATE(HORA, 'HH24:MI'))) AS fecha_hora,
-                            VARIA,
-                            VALOR_N
-                        FROM PRODUCCION.VW_LinkAForm_Hora
-                        WHERE TRUNC(DATA) + (TO_DATE(HORA, 'HH24:MI') - TRUNC(TO_DATE(HORA, 'HH24:MI')))
-                        > TO_DATE('{last_update}', 'YYYY-MM-DD HH24:MI')
-                        ),
-                        ranked AS (
-                        SELECT
-                            fecha_hora, VARIA, VALOR_N,
-                            ROW_NUMBER() OVER (
-                            PARTITION BY fecha_hora, VARIA
-                            ORDER BY fecha_hora DESC
-                            ) AS rn
-                        FROM base
-                        )
-                        SELECT
-                        fecha_hora,
-                        JSON_OBJECTAGG(VARIA VALUE VALOR_N) AS answers
-                        FROM ranked
-                        WHERE rn = 1
-                        GROUP BY fecha_hora
-                        ORDER BY fecha_hora
+                    if v == 'PRODUCCION.VW_LinkAForm_Hora':
+                        query = f"""
+                            WITH base AS (
+                            SELECT
+                                TRUNC(DATA) + (TO_DATE(HORA, 'HH24:MI') - TRUNC(TO_DATE(HORA, 'HH24:MI'))) AS fecha_hora,
+                                VARIA,
+                                VALOR_N
+                            FROM {v}
+                            WHERE TRUNC(DATA) + (TO_DATE(HORA, 'HH24:MI') - TRUNC(TO_DATE(HORA, 'HH24:MI')))
+                            > TO_DATE('{last_update}', 'YYYY-MM-DD HH24:MI')
+                            ),
+                            ranked AS (
+                            SELECT
+                                fecha_hora, VARIA, VALOR_N,
+                                ROW_NUMBER() OVER (
+                                PARTITION BY fecha_hora, VARIA
+                                ORDER BY fecha_hora DESC
+                                ) AS rn
+                            FROM base
+                            )
+                            SELECT
+                            fecha_hora,
+                            JSON_OBJECTAGG(VARIA VALUE VALOR_N) AS answers
+                            FROM ranked
+                            WHERE rn = 1
+                            GROUP BY fecha_hora
+                            ORDER BY fecha_hora
                     """
+                    elif v == 'PRODUCCION.VW_LinkAForm_Dia':
+                        query = f"""SELECT DATA AS fecha_hora, JSON_OBJECTAGG(VARIA VALUE VALOR_DIA) AS answers
+                            FROM {v}
+                            WHERE DATA > TO_DATE('{last_update}', 'YYYY-MM-DD')
+                            ORDER BY fecha_hora ASC"""
                 else:
-                    query = f"""
-                        WITH base AS (
-                        SELECT
-                            TRUNC(DATA) + (TO_DATE(HORA, 'HH24:MI') - TRUNC(TO_DATE(HORA, 'HH24:MI'))) AS fecha_hora,
-                            VARIA,
-                            VALOR_N
-                        FROM PRODUCCION.VW_LinkAForm_Hora
-                        ),
-                        ranked AS (
-                        SELECT
-                            fecha_hora, VARIA, VALOR_N,
-                            ROW_NUMBER() OVER (
-                            PARTITION BY fecha_hora, VARIA
-                            ORDER BY fecha_hora DESC
-                            ) AS rn
-                        FROM base
-                        )
-                        SELECT
-                        fecha_hora,
-                        JSON_OBJECTAGG(VARIA VALUE VALOR_N) AS answers
-                        FROM ranked
-                        WHERE rn = 1
-                        GROUP BY fecha_hora
-                        ORDER BY fecha_hora
-                    """
+                    if v == 'PRODUCCION.VW_LinkAForm_Hora':
+                        query = f"""
+                            WITH base AS (
+                            SELECT
+                                TRUNC(DATA) + (TO_DATE(HORA, 'HH24:MI') - TRUNC(TO_DATE(HORA, 'HH24:MI'))) AS fecha_hora,
+                                VARIA,
+                                VALOR_N
+                            FROM {v}
+                            ),
+                            ranked AS (
+                            SELECT
+                                fecha_hora, VARIA, VALOR_N,
+                                ROW_NUMBER() OVER (
+                                PARTITION BY fecha_hora, VARIA
+                                ORDER BY fecha_hora DESC
+                                ) AS rn
+                            FROM base
+                            )
+                            SELECT
+                            fecha_hora,
+                            JSON_OBJECTAGG(VARIA VALUE VALOR_N) AS answers
+                            FROM ranked
+                            WHERE rn = 1
+                            GROUP BY fecha_hora
+                            ORDER BY fecha_hora
+                        """
+                    elif v == 'PRODUCCION.VW_LinkAForm_Dia':
+                        query  =f"""SELECT DATA AS fecha_hora, VARIA, VALOR_DIA from {v} ORDER BY fecha_hora ASC"""
+                        query = """WITH base AS (
+                                SELECT DATA AS fecha_hora, VARIA, VALOR_DIA
+                                FROM PRODUCCION.VW_LinkAForm_Dia
+                                ),
+                                dedup AS (
+                                SELECT
+                                    fecha_hora,
+                                    VARIA,
+                                    MAX(VALOR_DIA) AS valor_dia_txt   -- elige un valor no nulo si existe
+                                FROM base
+                                GROUP BY fecha_hora, VARIA
+                                )
+                                SELECT
+                                    fecha_hora,
+                                    JSON_OBJECTAGG(VARIA VALUE TO_CHAR(valor_dia_txt) RETURNING VARCHAR2(32767)) AS answers
+                                FROM dedup
+                                GROUP BY fecha_hora
+                                ORDER BY fecha_hora"""
+
                 print('query=', query)
                 header, response = module_obj.sync_db_catalog(db_name=v, query=query)
+                print('response=', response)
+                print('header=', header)
                 view = module_obj.views[v]
                 schema = view['schema']
                 catalog_id = view.get('catalog_id')
