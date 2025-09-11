@@ -53,15 +53,29 @@ class Reports(Reports):
             "selectColumns":[],
             "input_schema":  [
               { "plant_code": "text" },
-              { "qty_per_container": "text" },
+              { "size": "text" },
+              { "warehouse": "text" },
+              { "qty_per_container": "integer" },
               { "ready_year_week": "integer" },
+              { "production": "integer" },
+              { "sales": "integer" },
+              { "adjustments": "integer" },
+              { "scrapped": "integer" },
+              { "inventory_status": "text" },
               { "actuals": "integer" },
             ],
             "output_schema":
             [
               { "plant_code": "text" },
+              { "size": "text" },
+              { "warehouse": "text" },
               { "qty_per_container": "integer" },
               { "ready_year_week": "integer" },
+              { "production": "integer" },
+              { "sales": "integer" },
+              { "adjustments": "integer" },
+              { "scrapped": "integer" },
+              { "inventory_status": "text" },
               { "actuals": "integer" },
             ]
         }
@@ -71,4 +85,4 @@ if __name__ == "__main__":
     report_obj = Reports(settings, sys_argv=sys.argv, use_api=True)
     report_obj.console_run()
     query = report_obj.get_query()
-    print(simplejson.dumps(query['query'], indent=4))
+    print(simplejson.dumps(query))

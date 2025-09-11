@@ -21,6 +21,19 @@ class Reports(Reports):
                     {"$project":{
                         "_id":1,
                         'plant_code': f"$answers.{self.SKU_OBJ_ID}.{self.f['product_code']}",
+                        "qty_per_container": {
+                            "$convert": {
+                            "input": {
+                                "$arrayElemAt": [
+                                f"$answers.{self.SKU_OBJ_ID}.{self.f['prod_qty_per_container']}",
+                                0
+                                ]
+                            },
+                            "to": "int",
+                            "onError": None,
+                            "onNull": None
+                            }
+                        },
                         'required': f"$answers.{self.f['production_requier_containers']}",
                         'year': f"$answers.{self.f['production_year']}",
                         'week': f"$answers.{self.f['production_week']}",
@@ -32,6 +45,7 @@ class Reports(Reports):
             "selectColumns":[],
             "input_schema":  [
               { "plant_code": "text" },
+              { "qty_per_container": "integer" },
               { "required": "integer" },
               { "year": "integer" },
               { "week": "integer" },
@@ -40,6 +54,7 @@ class Reports(Reports):
             "output_schema":
             [
               { "plant_code": "text" },
+              { "qty_per_container": "integer" },
               { "required": "integer" },
               { "year": "integer" },
               { "week": "integer" },
