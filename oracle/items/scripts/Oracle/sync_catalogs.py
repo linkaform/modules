@@ -1,4 +1,5 @@
 # coding: utf-8
+from copy import deepcopy
 import sys, simplejson, time, datetime
 from linkaform_api import settings
 from account_settings import *
@@ -35,21 +36,28 @@ class Oracle(Oracle):
         Busca el ultimo valor de las variables criticas y crea un registro en el catalogo de LinkaForm
         """
         metadata_form = self.get_variables_model(view)
-        answers = self.get_last_variable_value()
-        metadata_form['answers'] = answers
-        res = self.lkf_api.post_forms_answers(metadata_form)
-        self.upsert_catalog_record(metadata_form, 'Ultimo Valor')
+        data = self.get_variable_values()
+        record_answers = self.get_answers_by_kind(data)
+        # print('record_answers', record_answers)
+        for kind, answers in record_answers.items():
+            metadata = deepcopy(metadata_form)
+            metadata['answers'] = answers
+            if 'ultimos_' in kind:
+                pass
+            else:
+                res = self.lkf_api.post_forms_answers(metadata)
+            self.upsert_catalog_record(metadata, kind)
         return res
 
-    def create_average_variable_value_record(self, hours=24):
-        metadata_form = self.get_variables_model(view)
-        answers = self.get_average_values(hours)
-        metadata_form['answers'] = answers
-        # print('metadata_form=', simplejson.dumps(metadata_form, indent=4))
-        res = self.lkf_api.post_forms_answers(metadata_form)
-        # print('res form answers', res)
-        self.upsert_catalog_record(metadata_form, 'Promedio')
-        return res        
+    # def create_average_variable_value_record(self, hours=24):
+    #     metadata_form = self.get_variables_model(view)
+    #     answers = self.get_average_values(hours)
+    #     metadata_form['answers'] = answers
+    #     # print('metadata_form=', simplejson.dumps(metadata_form, indent=4))
+    #     res = self.lkf_api.post_forms_answers(metadata_form)
+    #     # print('res form answers', res)
+    #     self.upsert_catalog_record(metadata_form, 'Promedio')
+    #     return res        
 
     def find_db_id(self, data):
         res = {}
@@ -63,18 +71,18 @@ class Oracle(Oracle):
             res['sync_data']['db_updated_at'] = data[self.db_id_fields[common_key]]
         return res
 
-    def get_last_db_update_data(self, db_name):
+    def get_last_db_update_data(self, db_name, tipo='registro_oracle'):
         """
         Busca en LinkaForm los registros que ha sincronziado y busca el mas reciente de dicha base de datos o vista en Oracle
         Obtiene la fecha de la ultima actualizacion de la base de datos o vista en Oracle
         db_name: nombre de la base de datos o vista en Oracle
+        tipo: tipo de registro en LinkaForm
         
         returns:
         last_db_update_data: str con un datetime en formato %Y-%m-%d %H:%M:%S
         """
         last_db_update_data = None
         db_name = db_name.lower().replace(' ', '_')
-        tipo = 'registro_oracle'
         query = [
                 {
                     '$match': {
@@ -101,86 +109,194 @@ class Oracle(Oracle):
                 last_db_update_data = doc.get('date')
         return last_db_update_data
 
-    def get_average_values(self, hours=24):
-        query = [
-        { '$match': { 'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM } },
-        {'$addFields': {
-            'fecha_parsed': {
-                '$dateFromString': {
-                    'dateString': f"$answers.{self.f['fecha']}",
-                    'format': "%Y-%m-%d %H:%M:%S",
-                    'onError': None,
-                    'onNull': None
-                }
-            },
-            'created_at_dt': {
-                '$switch': {
-                    'branches': [
-                        # Numérico (epoch segundos) -> toDate(ms)
-                        {
-                            'case': { '$in': [{ '$type': '$created_at' }, ["double", "int", "long", "decimal"]] },
-                            'then': {
-                                '$toDate': { '$multiply': [{ '$toLong': '$created_at' }, 1000] }
-                            }
-                        },
-                        {
-                            'case': { '$eq': [{ '$type': '$created_at' }, "date"] },
-                            'then': "$created_at"
-                        },
-                        {
-                            'case': { '$eq': [{ '$type': '$created_at' }, "string"] },
-                            'then': { '$toDate': "$created_at" }
-                        }
-                    ],
-                    'default': None
-                }
-            }
-        }},
-        {'$addFields': {
-            'fecha_dt': { '$ifNull': ["$fecha_parsed", "$created_at_dt"] },
-            'window_start': { '$dateSubtract': { 'startDate': '$$NOW', 'unit': "hour", 'amount': hours } }
-            }
-        },
-        { '$match': { '$expr': { '$gte': ["$fecha_dt", "$window_start"] } } },
-        { '$project': { 'answers': { '$objectToArray': "$answers" }, "fecha_dt":1 }},
-        { '$unwind': "$answers" },
-        {'$match': {
-            "answers.k": {
-                '$nin': [
-                    self.f['fecha'], # FECHA
-                    self.f['base_de_datos_oracle'], # BASE_DE_DATOS_ORACLE
-                    self.f['tipo_registro']  # TIPO_REGISTRO
-                ]
-            }
-        }},
-        {'$addFields': {
-            'val_num': {
-                '$convert': { 'input': '$answers.v', 'to': "double", 'onError': None, 'onNull': None }
-            }
-        }},
-        { '$match': { 'val_num': { '$ne': None } } },
-        {'$group': {
-            '_id': "$answers.k",
-            'promedio_24h': { '$avg': '$val_num' },
-            'ultima_fecha': { '$max': '$fecha_dt' },
-            'n': { '$sum': 1 }
-        }},
-        { '$sort': { '_id': 1 } }
-        ]
-        # print('query', simplejson.dumps(query, indent=4))
-        answers_average_values = {}
-        with self.cr.aggregate(query) as cursor:
-            for doc in cursor:
-                answers_average_values[doc['_id']] = round(doc['promedio_24h'], 2)
-                answers_average_values[self.f['fecha']] = doc['ultima_fecha'].strftime("%Y-%m-%d %H:%M:%S")
+    def get_answers_by_kind(self, data):
+        result = {
+        'ultimo_valor': {},
+        'promedio': {},
+        'maximo': {},
+        'minimo': {},
+        'desviacion_estandar': {},
+        'ultimos_0': {},
+        'ultimos_1': {},
+        'ultimos_2': {},
+        'ultimos_3': {},
+        'ultimos_4': {},
+        }
+        
+        # Iterate through each item in the input data
+        for variable_data in data:
+            variable_id = variable_data['_id']
+            # Agregar cada estadística al diccionario correspondiente
+            result['ultimo_valor'][variable_id] = variable_data.get('ultimo_valor')
+            result['ultimo_valor'][self.f['fecha']] = variable_data.get('fecha')
+            result['promedio'][variable_id] = variable_data.get('promedio')
+            result['promedio'][self.f['fecha']] = variable_data.get('fecha')
+            result['maximo'][variable_id] = variable_data.get('maximo')
+            result['maximo'][self.f['fecha']] = variable_data.get('fecha')
+            result['minimo'][variable_id] = variable_data.get('minimo')
+            result['minimo'][self.f['fecha']] = variable_data.get('fecha')
+            result['desviacion_estandar'][variable_id] = variable_data.get('desviacion_estandar')
+            result['desviacion_estandar'][self.f['fecha']] = variable_data.get('fecha')
+            for idx, value in enumerate(variable_data.get('ultimos_5',[])):
+                result[f'ultimos_{idx}'][variable_id] = value
+                result[f'ultimos_{idx}'][self.f['fecha']] = variable_data.get('fecha')
+        return result
 
-        answers_average_values[self.f['tipo_registro']] = 'promedio'
-        if answers_average_values.get(self.f['base_de_datos_oracle']):
-            answers_average_values.pop(self.f['base_de_datos_oracle'])
+    # def get_average_values(self, hours=24):
+    #     query = [
+    #     { '$match': { 'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM } },
+    #     {'$addFields': {
+    #         'fecha_parsed': {
+    #             '$dateFromString': {
+    #                 'dateString': f"$answers.{self.f['fecha']}",
+    #                 'format': "%Y-%m-%d %H:%M:%S",
+    #                 'onError': None,
+    #                 'onNull': None
+    #             }
+    #         },
+    #         'created_at_dt': {
+    #             '$switch': {
+    #                 'branches': [
+    #                     # Numérico (epoch segundos) -> toDate(ms)
+    #                     {
+    #                         'case': { '$in': [{ '$type': '$created_at' }, ["double", "int", "long", "decimal"]] },
+    #                         'then': {
+    #                             '$toDate': { '$multiply': [{ '$toLong': '$created_at' }, 1000] }
+    #                         }
+    #                     },
+    #                     {
+    #                         'case': { '$eq': [{ '$type': '$created_at' }, "date"] },
+    #                         'then': "$created_at"
+    #                     },
+    #                     {
+    #                         'case': { '$eq': [{ '$type': '$created_at' }, "string"] },
+    #                         'then': { '$toDate': "$created_at" }
+    #                     }
+    #                 ],
+    #                 'default': None
+    #             }
+    #         }
+    #     }},
+    #     {'$addFields': {
+    #         'fecha_dt': { '$ifNull': ["$fecha_parsed", "$created_at_dt"] },
+    #         'window_start': { '$dateSubtract': { 'startDate': '$$NOW', 'unit': "hour", 'amount': hours } }
+    #         }
+    #     },
+    #     { '$match': { '$expr': { '$gte': ["$fecha_dt", "$window_start"] } } },
+    #     { '$project': { 'answers': { '$objectToArray': "$answers" }, "fecha_dt":1 }},
+    #     { '$unwind': "$answers" },
+    #     {'$match': {
+    #         "answers.k": {
+    #             '$nin': [
+    #                 self.f['fecha'], # FECHA
+    #                 self.f['base_de_datos_oracle'], # BASE_DE_DATOS_ORACLE
+    #                 self.f['tipo_registro']  # TIPO_REGISTRO
+    #             ]
+    #         }
+    #     }},
+    #     {'$addFields': {
+    #         'val_num': {
+    #             '$convert': { 'input': '$answers.v', 'to': "double", 'onError': None, 'onNull': None }
+    #         }
+    #     }},
+    #     { '$match': { 'val_num': { '$ne': None } } },
+    #     {'$group': {
+    #         '_id': "$answers.k",
+    #         'promedio_24h': { '$avg': '$val_num' },
+    #         'ultima_fecha': { '$max': '$fecha_dt' },
+    #         'n': { '$sum': 1 }
+    #     }},
+    #     { '$sort': { '_id': 1 } }
+    #     ]
+    #     # print('query', simplejson.dumps(query, indent=4))
+    #     answers_average_values = {}
+    #     with self.cr.aggregate(query) as cursor:
+    #         for doc in cursor:
+    #             answers_average_values[doc['_id']] = round(doc['promedio_24h'], 2)
+    #             answers_average_values[self.f['fecha']] = doc['ultima_fecha'].strftime("%Y-%m-%d %H:%M:%S")
+
+    #     answers_average_values[self.f['tipo_registro']] = 'promedio'
+    #     if answers_average_values.get(self.f['base_de_datos_oracle']):
+    #         answers_average_values.pop(self.f['base_de_datos_oracle'])
             
-        return answers_average_values
+    #     return answers_average_values
 
-    def get_last_variable_value(self):
+    def get_variable_values(self):
+        query = [
+                { '$match': { 
+                    'form_id': 139471, 
+                    'deleted_at': { '$exists': False } 
+                } },
+                { '$sort': { 'answers.683753204328adb3fa0bfd2b': -1 } },
+                {'$limit':50},
+                { '$project': { 
+                    'fecha': '$answers.683753204328adb3fa0bfd2b',
+                    'answers': { '$objectToArray': '$answers' }
+                } },
+                { '$unwind': '$answers' },
+                { '$match': { 
+                    'answers.k': { 
+                        '$nin': [
+                            '683753204328adb3fa0bfd2b', 
+                            '68ae9831a113d169e05af40d', 
+                            '68ae9831a113d169e05af40e'
+                        ] 
+                    }
+                } },
+                { '$group': {
+                    '_id': '$answers.k',
+                    'todos_datos': { 
+                        '$push': { 
+                            'fecha': '$fecha', 
+                            'valor': '$answers.v'
+                        }
+                    }
+                } },
+                { '$addFields': {
+                    'datos_ordenados': {
+                        '$sortArray': {
+                            'input': '$todos_datos',
+                            'sortBy': { 'fecha': -1 }
+                        }
+                    }
+                } },
+                { '$addFields': {
+                    'ultimos_5': { '$slice': ['$datos_ordenados', 0, 5] },
+                    'todos_valores_numericos': {
+                        '$map': {
+                            'input': '$datos_ordenados',
+                            'as': 'dato',
+                            'in': { '$toDouble': '$$dato.valor' }
+                        }
+                    }
+                } },
+                { '$addFields': {
+                    'ultimo_valor': { '$toDouble': { '$arrayElemAt': ['$ultimos_5.valor', 0] } },
+                    'promedio': { '$avg': '$todos_valores_numericos' },
+                    'desviacion_estandar': { '$stdDevPop': '$todos_valores_numericos' },
+                    'minimo': { '$min': '$todos_valores_numericos' },
+                    'maximo': { '$max': '$todos_valores_numericos' },
+                    'count': { '$size': '$todos_valores_numericos' },
+                    'fecha': { '$max' : '$datos_ordenados.fecha' }
+                } },
+
+                {'$project': {
+                    '_id': 1,
+                    'variable': 1,
+                    'ultimo_valor': 1,
+                    'promedio': 1,
+                    'desviacion_estandar': 1,
+                    'minimo': 1,
+                    'maximo': 1,
+                    'count': 1,
+                    'ultimos_5': 1,
+                    'fecha': 1
+                }}
+            ]
+        resultados = list(self.cr.aggregate(query))
+        return resultados
+
+    def get_last_variable_value_back(self):
         """
         Busca el ultimo valor de las variables criticas y crea un registro en el catalogo de LinkaForm
         """
@@ -188,20 +304,23 @@ class Oracle(Oracle):
         query=  [
             { '$match': { 'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM, 'deleted_at': {'$exists': False} } },
             { '$sort': { f"answers.{self.f['fecha']}": -1 } },
+            { '$limit': 5 },  # Limitar a los 5 documentos más recientes
+            { '$project': { 'answers':  "$answers" } },
             { '$project': { 'answers': { '$objectToArray': "$answers" } } },
             { '$unwind': "$answers" },
             {
                 '$group': {
                 '_id': "$answers.k",
-                'ultimo_valor': { '$first': "$answers.v" }
+                'ultimos_valores': { '$push': "$answers.v" }
                 }
             }
             ]
-        # print('query', query)
+        print('query=', simplejson.dumps(query, indent=4))
         answers_last_values = {}
         with self.cr.aggregate(query) as cursor:
             for doc in cursor:
-                answers_last_values[doc['_id']] = doc['ultimo_valor']
+                print('doc', doc)
+                answers_last_values[doc['_id']] = doc['ultimos_valores']
         
         answers_last_values[self.f['tipo_registro']] = 'ultimo_valor'
         if answers_last_values.get(self.f['base_de_datos_oracle']):
@@ -278,8 +397,10 @@ class Oracle(Oracle):
             data.append(usr)
 
         if data:
-            # res = self.lkf_api.post_catalog_answers_list(data)
-            self.update_and_sync_db(v, catalog_id, form_id, data, update=update)
+            # res = self.lkf_api.post_catalog_answers_list(data)\
+            print('TODO BORRAR aqui iriria a update_and_sync_db')
+            #self.update_and_sync_db(v, catalog_id, form_id, data, update=update)
+        return data
 
     def post_catalog(self, catalogo_metadata, rec):
         """
@@ -371,10 +492,7 @@ class Oracle(Oracle):
         """
         
         last_value_res = self.create_last_variable_value_record()
-        # print('last_value_res', last_value_res)
-        average_value_res = self.create_average_variable_value_record(hours)
-        # print('average_value_res', average_value_res)
-        return average_value_res
+        return last_value_res
 
     def upsert_catalog_record(self, data, record_type):
         """
@@ -384,28 +502,30 @@ class Oracle(Oracle):
         if data.get('answers'):
             catalogo_metadata['answers'] = {}
             for k,v in data.get('answers').items():
+
                 if k not in (self.f['fecha']):
-                    catalogo_metadata['answers'][k] = f"{v} | {record_type}"
+                    record_type = record_type.replace('_', ' ').title()
+                    r_type = record_type
+                    if isinstance(v, dict):
+                        r_type = v['fecha']
+                        v = v['valor']
+                    valor_formateado = f"{v:.2f}" if isinstance(v, float) else f"{v}.00"
+                    catalogo_metadata['answers'][k] = f"{r_type.ljust(18)}: {valor_formateado:>8}"
                 else:
-                    if record_type == 'Promedio':
-                        pass
-                    else:
+                    if record_type != 'Ultimo Valor':
                         catalogo_metadata['answers'][k] = v
         else:
             catalogo_metadata['answers'] = data
         catalogo_metadata['answers'][self.f['tipo_registro']] = record_type
         catalogo_metadata['answers'][self.f['variable_criticas']] = 'Variables críticas'
-        # print('catalogo_metadata=', simplejson.dumps(catalogo_metadata, indent=4))
         mango_query = { "selector": {f"answers.{self.f['tipo_registro']}": record_type} }
         record = self.lkf_api.search_catalog(self.VARIABLES_CRITICAS_PRODUCCION, mango_query)
         if record:
             rec = record[0]
             catalogo_metadata['record_id'] = rec['_id']
             res = self.lkf_api.update_catalog_answers(catalogo_metadata, record_id=rec['_id'])
-            # print('res catalogo update', res)
         else:
             res = self.lkf_api.post_catalog_answers(catalogo_metadata)
-            # print('res catalogo post', res)
         return res
 
     def verify_complete_sync(self, data, res):
@@ -483,10 +603,12 @@ if __name__ == "__main__":
                             ORDER BY fecha_hora
                     """
                     elif v == 'PRODUCCION.VW_LinkAForm_Dia':
+                        #last_update = '2025-09-09 23:59'
                         query = f"""SELECT DATA AS fecha_hora, JSON_OBJECTAGG(VARIA VALUE VALOR_DIA) AS answers
                             FROM {v}
-                            WHERE DATA > TO_DATE('{last_update}', 'YYYY-MM-DD')
-                            ORDER BY fecha_hora ASC"""
+                            WHERE DATA > TO_DATE('{last_update[:10]}', 'YYYY-MM-DD')
+                            GROUP BY DATA
+                            ORDER BY DATA ASC"""
                 else:
                     if v == 'PRODUCCION.VW_LinkAForm_Hora':
                         query = f"""
@@ -537,11 +659,12 @@ if __name__ == "__main__":
 
                 print('query=', query)
                 header, response = module_obj.sync_db_catalog(db_name=v, query=query)
-                print('response=', response)
-                print('header=', header)
+                # print('response=', response)
+                # print('header=', header)
                 view = module_obj.views[v]
                 schema = view['schema']
                 catalog_id = view.get('catalog_id')
                 form_id = view.get('form_id')
-                module_obj.load_data(v, view, response, schema, catalog_id, form_id)
-        module_obj.update_values(v, view, form_id)
+                data = module_obj.load_data(v, view, response, schema, catalog_id, form_id)
+        if data:
+            module_obj.update_values(v, view, form_id)
