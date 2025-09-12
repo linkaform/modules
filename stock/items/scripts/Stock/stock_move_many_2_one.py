@@ -223,6 +223,7 @@ class Stock(Stock):
                 else:
                     new_record['answers'][self.f['move_group']].append(row_set)
                     new_record['answers'][self.f['inv_adjust_status']] = 'done'
+            
             if new_record:
                 print('22self.proceso_onts=', self.proceso_onts)
                 self.ejecutar_transaccion(new_record)
@@ -294,6 +295,7 @@ class Stock(Stock):
             updated_ids = self.cr.find(update_query, {'_id':1})
             updated_ids = [x['_id'] for x in updated_ids]
         sync_ids = [str(x) for x in updated_ids]
+        print(f"... sincronizando catalogo Stock Inventory con {len(sync_ids)} registros")
         self.lkf_api.sync_catalogs_records({
             'catalogs_ids':[self.CATALOG_INVENTORY_ID],
             'form_answers_ids':sync_ids,
@@ -507,6 +509,7 @@ if __name__ == '__main__':
         if not records:
             stock_obj.LKFException('El archivo cargado no contiene datos, favor de revisar')
     groups = []
+
     if stock_obj.proceso_onts:
         onts = [x[0] for x in records]
         if len(onts) > 5000:
@@ -514,7 +517,9 @@ if __name__ == '__main__':
                     "msg": f'Limite de salida de ONTs superado. Solo se pueden dar salida a  5000 ONTs por documento y se estan cargando {len(onts)} ONTs'
                 } )
         groups = stock_obj.validate_onts(records)
+        
         groups = stock_obj.do_groups(header, records)
+
         stock_obj.create_records(groups)
     # except:
     #     print('no hay excel')
@@ -524,11 +529,11 @@ if __name__ == '__main__':
     #stock_obj.share_filter_and_forms_to_connection()
     #response = stock_obj.move_one_many_one(records)
     stock_obj.current_record['answers'] = stock_obj.answers
+
     if groups:
         stock_obj.folio = f"{folio}-1/{len(groups)}"
 
     stock_obj.make_direct_stock_move()
-   
 
     sys.stdout.write(simplejson.dumps({
         'status': 101,
