@@ -979,6 +979,11 @@ class Produccion_PCI( Produccion_PCI ):
             upload_file = {'error': 'Ocurrió un error al subir el documento, favor de contactar a Soporte'}
             print('Ocurrió un error al subir el documento:',str(e))
         pdf_file.close()
+
+        # si no trae def_field_id entonces es la carga de PDF, hay que pegar también la fecha de carga
+        if not def_field_id:
+            upload_file['60882afbf33276990d3f8edf'] = p_utils.get_date_now()
+
         return upload_file
 
     def upload_pdf_disto(self, folio_record_os, form_id_record_os, files_found, def_field_id=''):
