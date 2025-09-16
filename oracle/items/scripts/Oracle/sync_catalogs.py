@@ -378,7 +378,7 @@ class Oracle(Oracle):
         # schema = module_obj.view_a
         data = []
         for row in response:
-            print('row=', row)
+            print('row1=', row)
             usr = {}
             ans = {}
             usr.update(metadata_catalog)
@@ -399,7 +399,7 @@ class Oracle(Oracle):
         if data:
             # res = self.lkf_api.post_catalog_answers_list(data)\
             print('TODO BORRAR aqui iriria a update_and_sync_db')
-            #self.update_and_sync_db(v, catalog_id, form_id, data, update=update)
+            self.update_and_sync_db(v, catalog_id, form_id, data, update=update)
         return data
 
     def post_catalog(self, catalogo_metadata, rec):
@@ -427,6 +427,24 @@ class Oracle(Oracle):
         #         # print('Creating', sync_data)
         #         res = self.create(sync_data)
         return res
+
+    def set_oracle_server(self, view_name):
+        """
+        Set the oracle server
+        """
+        if view_name == 'REPORTES.vw_linkaform_fab':
+            self.ORACLE_SERVICE_NAME = self.settings.config.get('ORACLE_SERVICE_NAME_2')
+            self.ORACLE_SID = self.settings.config.get('ORACLE_SID_2')
+            self.ORACLE_USERNAME = self.settings.config.get('ORACLE_USERNAME_2')
+            self.ORACLE_PASSWORD = self.settings.config.get('ORACLE_PASSWORD_2')
+            self.oracle = self.connect_to_oracle()
+            print('serivce 2')
+        else:
+            self.ORACLE_SERVICE_NAME = self.settings.config.get('ORACLE_SERVICE_NAME_1')
+            self.ORACLE_SID = self.settings.config.get('ORACLE_SID_1')
+            self.ORACLE_USERNAME = self.settings.config.get('ORACLE_USERNAME_1')
+            self.ORACLE_PASSWORD = self.settings.config.get('ORACLE_PASSWORD_1')
+        return True
 
     def update_and_sync_db(self, db_name, catalog_id, form_id, data, update=False):
         """
@@ -568,6 +586,7 @@ if __name__ == "__main__":
                 last_update = module_obj.get_last_db_update_data(v)
                 # last_update_date
                 print('last_update', last_update)
+                module_obj.set_oracle_server(v)
                 update = False
                 query = None
                 # last_update = None
@@ -609,6 +628,16 @@ if __name__ == "__main__":
                             WHERE DATA > TO_DATE('{last_update[:10]}', 'YYYY-MM-DD')
                             GROUP BY DATA
                             ORDER BY DATA ASC"""
+                    elif v == 'REPORTES.vw_linkaform_fab':
+                        query = f"""
+                            SELECT 
+                            FECHA,
+                            JSON_OBJECTAGG(VARIABLENOMBRE VALUE VALOR RETURNING VARCHAR2(32767)) AS ANSWERS
+                            FROM {v}
+                            WHERE FECHA >= {last_update}
+                            GROUP BY FECHA
+                            ORDER BY FECHA ASC
+                        """
                 else:
                     if v == 'PRODUCCION.VW_LinkAForm_Hora':
                         query = f"""
@@ -656,6 +685,13 @@ if __name__ == "__main__":
                                 FROM dedup
                                 GROUP BY fecha_hora
                                 ORDER BY fecha_hora"""
+                    elif v == 'REPORTES.vw_linkaform_fab':
+                        query = f"""SELECT 
+                                    FECHA,
+                                    JSON_OBJECTAGG(VARIABLENOMBRE VALUE VALOR RETURNING VARCHAR2(32767)) AS ANSWERS
+                                    FROM {v}
+                                    GROUP BY FECHA
+                                    ORDER BY FECHA ASC"""
 
                 print('query=', query)
                 header, response = module_obj.sync_db_catalog(db_name=v, query=query)
