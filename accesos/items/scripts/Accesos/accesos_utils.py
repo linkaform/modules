@@ -10,6 +10,20 @@ class Accesos( Accesos):
 
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
+        self.f.update({
+            'duracion_rondin':'6639b47565d8e5c06fe97cf3',
+            'duracion_traslado_area':'6760a9581e31b10a38a22f1f',
+            'fecha_inspeccion_area':'6760a908a43b1b0e41abad6b',
+            'fecha_inicio_rondin':'6760a8e68cef14ecd7f8b6fe',
+            'status_rondin':'6639b2744bb44059fc59eb62',
+            'grupo_areas_visitadas':'66462aa5d4a4af2eea07e0d1',
+            'nombre_recorrido':'6644fb97e14dcb705407e0ef',
+            })
+
+        #BORRAR
+        self.CONFIGURACION_RECORRIDOS = self.lkm.catalog_id('configuracion_de_recorridos')
+        self.CONFIGURACION_RECORRIDOS_ID = self.CONFIGURACION_RECORRIDOS.get('id')
+        self.CONFIGURACION_RECORRIDOS_OBJ_ID = self.CONFIGURACION_RECORRIDOS.get('obj_id')
 
         # self.bitacora_fields.update({
         #     "catalogo_pase_entrada": "66a83ad652d2643c97489d31",

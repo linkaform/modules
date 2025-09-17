@@ -76,6 +76,7 @@ if __name__ == "__main__":
     qr_code = data.get('qr_code')
     template_id = data.get('template_id')
     name_pdf = data.get('name_pdf')
+    estatus = data.get('estatus')
 
     print('option', option)
     if option == 'nueva_incidencia':
@@ -85,7 +86,7 @@ if __name__ == "__main__":
     elif option == 'update_incidence':
         response = acceso_obj.update_incidence(data_incidence_update, folio)
     elif option == 'update_incidence_seguimiento':
-        response = acceso_obj.update_incidence_seguimiento(folio=folio, incidencia_grupo_seguimiento=seguimientos)
+        response = acceso_obj.update_incidence_seguimiento(folio=folio, incidencia_grupo_seguimiento=seguimientos, estatus=estatus)
     elif option == 'delete_incidence':
         response = acceso_obj.delete_incidence(folio)
     elif option == 'catalogo_area_empleado':
