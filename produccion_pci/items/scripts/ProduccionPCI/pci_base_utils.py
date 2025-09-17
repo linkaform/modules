@@ -1017,7 +1017,9 @@ class PCI_Utils():
             all_records (list): Renglones del excel
         """
         max_row_accepted = 5000
-        if self.get_num_rows_in_xls(file_url) > max_row_accepted:
+        num_rows_found = self.get_num_rows_in_xls(file_url)
+        if num_rows_found > max_row_accepted:
+            print('[ERROR] numero de renglones =',num_rows_found)
             return {'error': f'El excel rebasa el límite de renglones permitidos {max_row_accepted}. Favor de revisar'}, None
         
         sheet = pyexcel.get_sheet(url = file_url)
