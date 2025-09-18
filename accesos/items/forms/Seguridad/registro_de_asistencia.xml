@@ -357,8 +357,7 @@
                     </properties>
                     <required>True</required>
                     <rules>
-                        <item>adc161ead112e4</item>
-                        <item>5d8611cd319e0</item>
+                        <item>88014841ff3414</item>
                     </rules>
                     <show_for_rule>True</show_for_rule>
                     <validations>{}</validations>
@@ -368,15 +367,9 @@
                     <affecting_rules>
                         <item>
                             <applied>False</applied>
-                            <rule_id>adc161ead112e4</rule_id>
+                            <rule_id>88014841ff3414</rule_id>
                             <rule_index>3</rule_index>
                             <rule_type>show</rule_type>
-                        </item>
-                        <item>
-                            <applied>False</applied>
-                            <rule_id>5d8611cd319e0</rule_id>
-                            <rule_index>4</rule_index>
-                            <rule_type>required</rule_type>
                         </item>
                     </affecting_rules>
                     <buttons_ids>[]</buttons_ids>
@@ -450,8 +443,8 @@
                     <catalog>None</catalog>
                     <catalog_fields>[]</catalog_fields>
                     <catalog_relation>None</catalog_relation>
-                    <default>False</default>
-                    <default_value />
+                    <default>True</default>
+                    <default_value>iniciar_turno</default_value>
                     <descriptor>None</descriptor>
                     <fav>True</fav>
                     <field_id>663bffc28d00553254f274e0</field_id>
@@ -505,7 +498,7 @@
                         <parameters>[]</parameters>
                         <pfd_print>always</pfd_print>
                         <pfd_style>Tabla_respuestas</pfd_style>
-                        <selected>None</selected>
+                        <selected>0</selected>
                         <send_email>False</send_email>
                         <send_record>False</send_record>
                         <send_to_lkf>False</send_to_lkf>
@@ -520,10 +513,10 @@
                     </properties>
                     <required>True</required>
                     <rules>
-                        <item>6fb20691b17724</item>
-                        <item>6fb20691b17724</item>
-                        <item>114d22d31c83c24</item>
-                        <item>14c688569d1dd2</item>
+                        <item>118d149418a46d4</item>
+                        <item>cec6aa23161e5c</item>
+                        <item>24341e55269bd8d</item>
+                        <item>24341e55269bd8d</item>
                     </rules>
                     <show_for_rule>True</show_for_rule>
                     <validations>{}</validations>
@@ -533,8 +526,8 @@
                     <affecting_rules>
                         <item>
                             <applied>False</applied>
-                            <rule_id>114d22d31c83c24</rule_id>
-                            <rule_index>1</rule_index>
+                            <rule_id>118d149418a46d4</rule_id>
+                            <rule_index>0</rule_index>
                             <rule_type>show</rule_type>
                         </item>
                     </affecting_rules>
@@ -621,8 +614,8 @@
                     <affecting_rules>
                         <item>
                             <applied>False</applied>
-                            <rule_id>14c688569d1dd2</rule_id>
-                            <rule_index>2</rule_index>
+                            <rule_id>cec6aa23161e5c</rule_id>
+                            <rule_index>1</rule_index>
                             <rule_type>show</rule_type>
                         </item>
                     </affecting_rules>
@@ -709,8 +702,8 @@
                     <affecting_rules>
                         <item>
                             <applied>False</applied>
-                            <rule_id>6fb20691b17724</rule_id>
-                            <rule_index>0</rule_index>
+                            <rule_id>24341e55269bd8d</rule_id>
+                            <rule_index>2</rule_index>
                             <rule_type>invisible</rule_type>
                         </item>
                     </affecting_rules>
@@ -783,8 +776,8 @@
                     <affecting_rules>
                         <item>
                             <applied>False</applied>
-                            <rule_id>6fb20691b17724</rule_id>
-                            <rule_index>0</rule_index>
+                            <rule_id>24341e55269bd8d</rule_id>
+                            <rule_index>2</rule_index>
                             <rule_type>invisible</rule_type>
                         </item>
                     </affecting_rules>
@@ -857,8 +850,8 @@
                     <affecting_rules>
                         <item>
                             <applied>False</applied>
-                            <rule_id>114d22d31c83c24</rule_id>
-                            <rule_index>1</rule_index>
+                            <rule_id>118d149418a46d4</rule_id>
+                            <rule_index>0</rule_index>
                             <rule_type>show</rule_type>
                         </item>
                     </affecting_rules>
@@ -931,8 +924,8 @@
                     <affecting_rules>
                         <item>
                             <applied>False</applied>
-                            <rule_id>14c688569d1dd2</rule_id>
-                            <rule_index>2</rule_index>
+                            <rule_id>cec6aa23161e5c</rule_id>
+                            <rule_index>1</rule_index>
                             <rule_type>show</rule_type>
                         </item>
                     </affecting_rules>
@@ -1040,5 +1033,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1757015857.0</updated_at>
+    <updated_at>1758239532.0</updated_at>
 </lkf>
