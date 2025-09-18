@@ -9,7 +9,7 @@
             <next>168</next>
             <padding_zeros>3</padding_zeros>
             <prefix>%y%m%d-</prefix>
-            <suffix />
+            <suffix>None</suffix>
         </folio>
     </advanced_options>
     <allow_page_navigation>True</allow_page_navigation>
@@ -224,7 +224,7 @@
                         <catalog_field_id>{{ catalog.configuracion_de_recorridos.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.configuracion_de_recorridos.id }}</catalog_id>
                         <field_type>text</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -898,7 +898,7 @@
                         <catalog_field_id>{{ catalog.areas_de_las_ubicaciones.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.areas_de_las_ubicaciones.id }}</catalog_id>
                         <field_type>text</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -1415,7 +1415,7 @@
                         <catalog_field_id>None</catalog_field_id>
                         <catalog_id>{{ catalog.lista_de_incidentes.id }}</catalog_id>
                         <field_type>None</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -1503,7 +1503,7 @@
                         <catalog_field_id>{{ catalog.lista_de_incidentes.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.lista_de_incidentes.id }}</catalog_id>
                         <field_type>text</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -1583,7 +1583,7 @@
                         <catalog_field_id>{{ catalog.lista_de_incidentes.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.lista_de_incidentes.id }}</catalog_id>
                         <field_type>text</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -1663,7 +1663,7 @@
                         <catalog_field_id>{{ catalog.lista_de_incidentes.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.lista_de_incidentes.id }}</catalog_id>
                         <field_type>text</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>False</last>
                         <related_catalog>{}</related_catalog>
@@ -2293,5 +2293,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1755903874.0</updated_at>
+    <updated_at>1758153323.0</updated_at>
 </lkf>
