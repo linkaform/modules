@@ -16,6 +16,7 @@ class Accesos(Accesos):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
         self.load(module='Location', **self.kwargs)
         self.CHECKIN_MANUAL = self.lkm.form_id('checkin_manual','id')
+        self.REGISTRO_ASISTENCIA = self.lkm.form_id('registro_de_asistencia','id')
         
         self.f.update({
             'option_checkin': '663bffc28d00553254f274e0',
@@ -101,52 +102,23 @@ class Accesos(Accesos):
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
-                "form_id": self.EMPLEADOS,
-                f"answers.{self.USUARIOS_OBJ_ID}.{self.mf['id_usuario']}": self.user.get('user_id'),
+                "form_id": self.REGISTRO_ASISTENCIA,
+                f"answers.{self.f['start_shift']}": {"$exists": True},
+                f"answers.{self.f['end_shift']}": {"$exists": False},
+                "user_id": self.user.get('user_id'),
             }},
             {"$project": {
-                "_id": 0,
-                "nombre_completo": f"$answers.{self.USUARIOS_OBJ_ID}.{self.mf['nombre_usuario']}"
-            }},
-            {"$lookup": {
-                "from": "form_answer",
-                "let": {
-                    "nombre_comp": "$nombre_completo"
-                },
-                "pipeline": [
-                    {"$match": {
-                        "deleted_at": {"$exists": False},
-                        "form_id": 135386, #TODO MODULARIZAR ID
-                        "$expr": {
-                            "$and": [
-                                {"$eq": ["$user_name", "$$nombre_comp"]},
-                                {"$eq": [f"$answers.{self.checkin_fields['checkin_type']}", "iniciar_turno"]},
-                            ]
-                        }
-                    }},
-                    {"$project": {
-                        "_id": 1,
-                        "created_at": 1,
-                        "estatus": f"$answers.{self.checkin_fields['checkin_type']}",
-                        "fecha_inicio": f"$answers.{self.f['start_shift']}",
-                    }},
-                ],
-                "as": "checkin_records"
-            }},
-            {"$project": {
-                "checkin_records": 1,
-                "_id": 1
-            }},
+                "_id": 1,
+                "created_at": 1,
+                "estatus": f"$answers.{self.checkin_fields['checkin_type']}",
+                "fecha_inicio": f"$answers.{self.f['start_shift']}",
+            }}
+
         ]
         response = self.format_cr(self.cr.aggregate(query))
-        response = self.unlist(response)
         if response:
-            checkin_records = response.get('checkin_records', [])
-            if checkin_records:
-                self.automatic_close_turn(records=checkin_records)
-            else:
-                return
-        return
+            self.automatic_close_turn(records=response)
+        return True
 
     def automatic_close_turn(self, records=[]):
         list_records_ids = [str(i.get('_id')) for i in records]
@@ -156,56 +128,55 @@ class Accesos(Accesos):
             if fecha_inicio:
                 fecha_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d %H:%M:%S')
                 
-        if fecha_inicio:
-            tz = pytz.timezone(self.timezone if self.timezone else 'America/Monterrey')
-            fecha_inicio = tz.localize(fecha_inicio)
-            fecha_fin = fecha_inicio + timedelta(hours=8)
-            now = datetime.now(tz)
-            if now > fecha_fin:
-                fecha_cierre = fecha_fin.strftime('%Y-%m-%d %H:%M:%S')
+            if fecha_inicio:
+                tz = pytz.timezone(self.timezone if self.timezone else 'America/Monterrey')
+                fecha_inicio = tz.localize(fecha_inicio)
+                fecha_fin = fecha_inicio + timedelta(hours=8)
+                now = datetime.now(tz)
+                if now > fecha_fin:
+                    fecha_cierre = fecha_fin.strftime('%Y-%m-%d %H:%M:%S')
+                else:
+                    fecha_cierre = now.strftime('%Y-%m-%d %H:%M:%S')
             else:
-                fecha_cierre = now.strftime('%Y-%m-%d %H:%M:%S')
-        else:
-            fecha_cierre = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
-        answers = {}
-        answers[self.f['option_checkin']] = 'cerrar_turno'
-        answers[self.f['comment_checkout']] = 'Cierre de turno automatico.'
-        answers[self.f['end_shift']] = fecha_cierre
-        if answers:
-            update_fields = {f"answers.{k}": v for k, v in answers.items()}
-            res = self.cr.update_many({
-                'form_id': 135386,
-                'deleted_at': {'$exists': False},
-                '_id': {"$in": [ObjectId(rid) for rid in list_records_ids]},
-            }, {"$set": update_fields})
-            print('======log:', res.modified_count, ' registros cerrados automaticamente.')
+                fecha_cierre = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            answers = {}
+            answers[self.f['option_checkin']] = 'cerrar_turno'
+            answers[self.f['comment_checkout']] = 'Cierre de turno automatico.'
+            answers[self.f['end_shift']] = fecha_cierre
+            if answers:
+                update_fields = {f"answers.{k}": v for k, v in answers.items()}
+                res = self.cr.update_one({
+                    'form_id': self.REGISTRO_ASISTENCIA,
+                    'deleted_at': {'$exists': False},
+                    '_id': ObjectId(record['_id']),
+                }, {"$set": update_fields})
+                print('======log:', res.modified_count, ' registros cerrados automaticamente.')
 
     def check_in_manual(self):
         self.verify_guard_status()
-        
         if self.answers.get(self.f['start_shift']):
-            msg = 'Ya se ha registrado el inicio del turno.'
-            self.LKFException({'msg': msg, 'title': 'Turno ya iniciado'})
-            
-        tz = pytz.timezone(self.timezone)
-        now = datetime.now(tz)
-        fecha_actual = now.strftime('%Y-%m-%d %H:%M:%S')
+            fecha_actual = self.answers.get(self.f['start_shift'])
+            # self.LKFException({'msg': msg, 'title': 'Turno ya iniciado'})
+        else:
+            tz = pytz.timezone(self.timezone)
+            now = datetime.now(tz)
+            fecha_actual = now.strftime('%Y-%m-%d %H:%M:%S')
         
         self.answers.update({
             self.f['start_shift']: fecha_actual,
+            self.f['option_checkin']: 'cerrar_turno',
         })
         
     def check_out_manual(self):
         self.verify_guard_status()
         
         if self.answers.get(self.f['end_shift']):
-            msg = 'Ya se ha registrado el fin del turno.'
-            self.LKFException({'msg': msg, 'title': 'Turno ya finalizado'})
-
-        tz = pytz.timezone(self.timezone)
-        now = datetime.now(tz)
-        fecha_actual = now.strftime('%Y-%m-%d %H:%M:%S')
+            fecha_actual = self.answers.get(self.f['end_shift'])
+        else:
+            tz = pytz.timezone(self.timezone)
+            now = datetime.now(tz)
+            fecha_actual = now.strftime('%Y-%m-%d %H:%M:%S')
         
         self.answers.update({
             self.f['end_shift']: fecha_actual,
@@ -218,9 +189,9 @@ if __name__ == "__main__":
     data_rondin = json.loads(sys.argv[1])
     acceso_obj.timezone = data_rondin.get('timezone', 'America/Mexico_City')
     
-    if acceso_obj.answers.get(acceso_obj.f['start_shift']) and acceso_obj.answers.get(acceso_obj.f['end_shift']):
-        msg = 'Este check in ya ha sido registrado con inicio y cierre, crea uno nuevo.'
-        acceso_obj.LKFException({'msg': msg, 'title': 'Turno ya registrado'})
+    # if acceso_obj.answers.get(acceso_obj.f['start_shift']) and acceso_obj.answers.get(acceso_obj.f['end_shift']):
+    #     msg = 'Este check in ya ha sido registrado con inicio y cierre, crea uno nuevo.'
+    #     acceso_obj.LKFException({'msg': msg, 'title': 'Turno ya registrado'})
 
     response = {}
     if option == 'iniciar_turno':
@@ -228,7 +199,6 @@ if __name__ == "__main__":
     elif option == 'cerrar_turno':
         acceso_obj.check_out_manual()
 
-    print('ANSWERSSSSSSSSSSSSS', simplejson.dumps(acceso_obj.answers, indent=3))
     sys.stdout.write(simplejson.dumps({
         'status': 101,
         'replace_ans': acceso_obj.answers
