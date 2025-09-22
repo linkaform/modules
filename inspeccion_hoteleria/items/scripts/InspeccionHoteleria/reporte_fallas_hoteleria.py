@@ -1819,6 +1819,10 @@ if __name__ == '__main__':
     if option == 'get_hoteles':
         response = module_obj.get_hoteles()
     elif option == 'get_report':
+        if not hoteles:
+            hoteles = module_obj.get_hoteles()
+            hoteles = hoteles.get('hoteles', [])
+            hoteles = [hotel.get('nombre_hotel', '') for hotel in hoteles]
         response = module_obj.get_report(anio=anio, cuatrimestres=cuatrimestres, hoteles=hoteles)
     elif option == 'get_habitaciones_by_hotel':
         response = module_obj.get_habitaciones_by_hotel(hotel_name=hotel_name, fallas=fallas)
