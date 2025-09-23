@@ -274,6 +274,8 @@ class Accesos(Accesos):
         format_response = {}
         if group_by == "employees":
             format_response = self.evaluate_attendance_status(combined_records=response, employees_list=employees_list)
+            format_response = sorted(format_response.get('employees', []), key=lambda x: x.get("name", ""))
+            format_response = {"employees": format_response}
         elif group_by == "locations":
             format_response = self.get_report_locations(registros=result)
         return format_response
