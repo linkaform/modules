@@ -261,7 +261,7 @@ class Accesos(Accesos):
         query = [
             {"$match": match},
             {"$project": {
-                "_id": 0,
+                "_id": 1,
                 "user_id": 1,
                 "created_at": 1,
                 "user_name": 1,
@@ -270,12 +270,231 @@ class Accesos(Accesos):
         ]
         response = self.format_cr(self.cr.aggregate(query))
         response = self.reformat_employees_attendance(data=response)
+        result = self.format_location_data(registros=response)
         format_response = {}
         if group_by == "employees":
             format_response = self.evaluate_attendance_status(combined_records=response, employees_list=employees_list)
         elif group_by == "locations":
-            format_response = self.evaluate_locations_attendance(combined_records=response, employees_list=employees_list, locations=locations)
+            format_response = self.get_report_locations(registros=result)
         return format_response
+    
+    def format_location_data(self, registros):
+        """
+        Empareja registros de inicio y cierre de turno por usuario y ubicación.
+        Solo conserva pares válidos (con inicio y cierre).
+        Devuelve una lista de dicts con los _id usados y toda la info relevante.
+        """
+        from collections import defaultdict
+
+        # Agrupar por usuario y ubicación
+        agrupados = defaultdict(list)
+        for reg in registros:
+            user = reg.get('user_name')
+            ubicacion = reg.get('incidente_location')
+            if user and ubicacion:
+                agrupados[(user, ubicacion)].append(reg)
+
+        resultado = []
+        for (user, ubicacion), lista in agrupados.items():
+            # Separar los que tienen inicio y cierre
+            inicios = [r for r in lista if r.get('fecha_inicio_turno')]
+            cierres = [r for r in lista if r.get('fecha_cierre_turno')]
+
+            # Emparejar por fecha más cercana (puedes ajustar la lógica si lo necesitas)
+            usados_ids = set()
+            for inicio in inicios:
+                fecha_inicio = inicio.get('fecha_inicio_turno')
+                id_inicio = inicio.get('_id')
+                # Buscar el cierre más cercano posterior al inicio
+                cierre_candidato = None
+                min_diff = None
+                for cierre in cierres:
+                    fecha_cierre = cierre.get('fecha_cierre_turno')
+                    id_cierre = cierre.get('_id')
+                    if id_cierre in usados_ids:
+                        continue
+                    try:
+                        dt_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d %H:%M:%S')
+                        dt_cierre = datetime.strptime(fecha_cierre, '%Y-%m-%d %H:%M:%S')
+                        diff = (dt_cierre - dt_inicio).total_seconds()
+                        if diff >= 0 and (min_diff is None or diff < min_diff):
+                            min_diff = diff;
+                            cierre_candidato = cierre
+                    except Exception:
+                        continue
+                if cierre_candidato:
+                    # Emparejado: conservar ambos _id y toda la info relevante
+                    ids = []
+                    if id_inicio: ids.append(id_inicio)
+                    id_cierre = cierre_candidato.get('_id')
+                    if id_cierre: ids.append(id_cierre)
+                    usados_ids.update(ids)
+                    resultado.append({
+                        "user_name": user,
+                        "incidente_location": ubicacion,
+                        "incidente_area": inicio.get('incidente_area') or cierre_candidato.get('incidente_area'),
+                        "fecha_inicio_turno": fecha_inicio,
+                        "fecha_cierre_turno": cierre_candidato.get('fecha_cierre_turno'),
+                        "ids": ids,
+                        "registros": [inicio, cierre_candidato]
+                    })
+        # print(simplejson.dumps(resultado, indent=4))
+        return resultado
+        
+    def get_report_locations(self, registros):
+        """
+        Formatea la data para el frontend agrupando por ubicación y turno.
+        Evalúa el turno, estado de asistencia y genera la estructura por día.
+        """
+        from collections import defaultdict
+        now = datetime.now(timezone('America/Mexico_City'))
+        year, month = now.year, now.month
+        days_in_month = monthrange(year, month)[1]
+
+        # Usar shifts cargados o default
+        shifts = self.shifts if self.shifts else self.default_shifts
+
+        # Agrupar registros por ubicación y turno
+        report = defaultdict(lambda: defaultdict(list))  # {ubicacion: {turno_id: [registros]}}
+
+        for reg in registros:
+            location = reg.get('incidente_location')
+            fecha_inicio = reg.get('fecha_inicio_turno')
+            fecha_cierre = reg.get('fecha_cierre_turno')
+            user_name = reg.get('user_name')
+            if not location or not fecha_inicio or not fecha_cierre or not user_name:
+                continue
+
+            # Determinar a qué turno pertenece el registro
+            dt_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d %H:%M:%S')
+            dt_cierre = datetime.strptime(fecha_cierre, '%Y-%m-%d %H:%M:%S')
+            hora_real = dt_inicio.hour
+            minuto_real = dt_inicio.minute
+
+            # Buscar el turno correcto
+            turno = None
+            for shift_id, shift in shifts.items():
+                if location in shift.get("locations", []):
+                    entrada = shift["entrada_hora"] * 60 + shift["entrada_minuto"]
+                    salida = shift["salida_hora"] * 60 + shift["salida_minuto"]
+                    minutos_inicio = hora_real * 60 + minuto_real
+
+                    # Turno nocturno
+                    if shift.get("es_nocturno"):
+                        if minutos_inicio >= entrada or minutos_inicio < salida:
+                            turno = shift
+                            break
+                    else:
+                        # Ventana anticipada: permitir llegar antes del turno
+                        anticipada = 15  # Puedes ajustar este valor
+                        if entrada - anticipada <= minutos_inicio < salida:
+                            turno = shift
+                            break
+            # Si no se encontró, usar default
+            if not turno:
+                for shift_id, shift in self.default_shifts.items():
+                    entrada = shift["entrada_hora"] * 60 + shift["entrada_minuto"]
+                    salida = shift["salida_hora"] * 60 + shift["salida_minuto"]
+                    minutos_inicio = hora_real * 60 + minuto_real
+                    if shift.get("es_nocturno"):
+                        if minutos_inicio >= entrada or minutos_inicio < salida:
+                            turno = shift
+                            break
+                    else:
+                        anticipada = 15
+                        if entrada - anticipada <= minutos_inicio < salida:
+                            turno = shift
+                            break
+
+            if not turno:
+                continue  # No se pudo asignar turno
+
+            turno_id = turno["id"]
+            report[location][turno_id].append(reg)
+
+        # Generar estructura final por ubicación y turno
+        result = []
+        for location, turnos in report.items():
+            for turno_id, registros_turno in turnos.items():
+                turno = shifts.get(turno_id, self.default_shifts.get(turno_id))
+                attendance = []
+                # Crear mapa de registros por día y usuario
+                registros_por_dia_usuario = defaultdict(dict)
+                for reg in registros_turno:
+                    dt_inicio = datetime.strptime(reg.get('fecha_inicio_turno'), '%Y-%m-%d %H:%M:%S')
+                    day_num = dt_inicio.day
+                    user_name = reg.get('user_name')
+                    registros_por_dia_usuario[(day_num, user_name)] = reg
+
+                turno_summary = {"present": 0, "halfDay": 0, "absent": 0}
+                for day_num in range(1, days_in_month + 1):
+                    # Agrupa todos los usuarios que tienen registro ese día en ese turno/ubicación
+                    usuarios_en_dia = [r.get('user_name') for r in registros_turno
+                                       if datetime.strptime(r.get('fecha_inicio_turno'), '%Y-%m-%d %H:%M:%S').day == day_num]
+                    usuarios_en_dia = list(set(usuarios_en_dia))  # Elimina duplicados
+
+                    if usuarios_en_dia:
+                        for user_name in usuarios_en_dia:
+                            reg = registros_por_dia_usuario.get((day_num, user_name))
+                            status = "noRecord"
+                            fecha_inicio = None
+                            fecha_cierre = None
+                            if reg:
+                                fecha_inicio = reg.get('fecha_inicio_turno')
+                                fecha_cierre = reg.get('fecha_cierre_turno')
+                                dt_inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d %H:%M:%S')
+                                hora_real = dt_inicio.hour
+                                minuto_real = dt_inicio.minute
+                                entrada = turno["entrada_hora"] * 60 + turno["entrada_minuto"]
+                                tolerancia = int(turno.get("tolerancia", 0))
+                                limite_retardo = int(turno.get("limite_retardo", 0))
+                                minutos_reales = hora_real * 60 + minuto_real
+                                minutos_retraso = minutos_reales - entrada
+                                anticipada = 15
+                                if minutos_retraso < -anticipada:
+                                    status = "present"
+                                elif minutos_retraso <= tolerancia:
+                                    status = "present"
+                                    turno_summary["present"] += 1
+                                elif minutos_retraso <= limite_retardo:
+                                    status = "halfDay"
+                                    turno_summary["halfDay"] += 1
+                                else:
+                                    status = "absentTimeOff"
+                                    turno_summary["absent"] += 1
+                            attendance.append({
+                                "day": day_num,
+                                "user_names": usuarios_en_dia,  # <-- lista de usuarios
+                                "status": status,
+                                "fecha_inicio_turno": fecha_inicio,
+                                "fecha_cierre_turno": fecha_cierre,
+                                "turno_id": turno_id,
+                                "location": location
+                            })
+                    else:
+                        if day_num < now.day:
+                            status = "absent"
+                            turno_summary["absent"] += 1
+                        else:
+                            status = "noRecord"
+                        # Día sin usuarios en ese turno/ubicación
+                        attendance.append({
+                            "day": day_num,
+                            "user_names": [],
+                            "status": status,
+                            "fecha_inicio_turno": None,
+                            "fecha_cierre_turno": None,
+                            "turno_id": turno_id,
+                            "location": location
+                        })
+                result.append({
+                    "location": location,
+                    "turno_id": turno_id,
+                    "turno_name": turno.get("name"),
+                    "attendance": attendance,
+                    "summary": turno_summary
+                })
+        return result
     
     def reformat_employees_attendance(self, data):
         """
