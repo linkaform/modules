@@ -40,12 +40,16 @@ class Oracle(Oracle):
         record_answers = self.get_answers_by_kind(data)
         # print('record_answers', record_answers)
         for kind, answers in record_answers.items():
+            print('kind=', kind)
             metadata = deepcopy(metadata_form)
             metadata['answers'] = answers
-            if 'ultimos_' in kind:
-                pass
-            else:
+            # if 'ultimos_' in kind:
+            #     pass
+            # else:
+            if kind == 'ultimo_valor':
+                print('aqui va a hacer el post......')
                 res = self.lkf_api.post_forms_answers(metadata)
+            print('y hace el upsert....')
             self.upsert_catalog_record(metadata, kind)
         return res
 
@@ -110,6 +114,7 @@ class Oracle(Oracle):
         return last_db_update_data
 
     def get_answers_by_kind(self, data):
+        #todo buscar fecha maxima
         result = {
         'ultimo_valor': {},
         'promedio': {},
@@ -224,13 +229,14 @@ class Oracle(Oracle):
     def get_variable_values(self):
         query = [
                 { '$match': { 
-                    'form_id': 139471, 
-                    'deleted_at': { '$exists': False } 
+                    'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM , 
+                    'deleted_at': { '$exists': False },
+                    'answers.'+self.f['tipo_registro'] : 'registro_oracle'
                 } },
-                { '$sort': { 'answers.683753204328adb3fa0bfd2b': -1 } },
+                { '$sort': { 'answers.'+self.f['fecha'] : -1 } },
                 {'$limit':50},
                 { '$project': { 
-                    'fecha': '$answers.683753204328adb3fa0bfd2b',
+                    'fecha': '$answers.'+self.f['fecha'],
                     'answers': { '$objectToArray': '$answers' }
                 } },
                 { '$unwind': '$answers' },
@@ -300,7 +306,6 @@ class Oracle(Oracle):
         """
         Busca el ultimo valor de las variables criticas y crea un registro en el catalogo de LinkaForm
         """
-        print(' update values....')
         query=  [
             { '$match': { 'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM, 'deleted_at': {'$exists': False} } },
             { '$sort': { f"answers.{self.f['fecha']}": -1 } },
@@ -315,11 +320,9 @@ class Oracle(Oracle):
                 }
             }
             ]
-        print('query=', simplejson.dumps(query, indent=4))
         answers_last_values = {}
         with self.cr.aggregate(query) as cursor:
             for doc in cursor:
-                print('doc', doc)
                 answers_last_values[doc['_id']] = doc['ultimos_valores']
         
         answers_last_values[self.f['tipo_registro']] = 'ultimo_valor'
@@ -378,7 +381,6 @@ class Oracle(Oracle):
         # schema = module_obj.view_a
         data = []
         for row in response:
-            print('row1=', row)
             usr = {}
             ans = {}
             usr.update(metadata_catalog)
@@ -386,19 +388,17 @@ class Oracle(Oracle):
                 ans = simplejson.loads(row.get('answers',row.get('ANSWERS')))
                 ans['BASE_DE_DATOS_ORACLE'] = v.lower().replace(' ', '_')
                 ans['TIPO_REGISTRO'] = 'registro_oracle'
-                ans['FECHA'] = row.get('FECHA_HORA')
+                ans['FECHA'] = row.get('FECHA_HORA', row.get('FECHA'))
+                if last_update == str(ans['FECHA'])[:16]:
+                    continue
             usr['answers'] = self.api_etl(ans, schema, catalog_id, form_id)
             usr['_id'] = usr['answers'].get('_id')
             usr['sync_data'] = usr['answers'].pop('sync_data') if usr['answers'].get('sync_data') else {}
             usr['sync_data']['oracle_id'] = self.get_oracle_id(row)
             usr['sync_data']['db_id'] = row.get('fecha','none')
-            # print('row', row.get('GENERO'))
-
             data.append(usr)
 
         if data:
-            # res = self.lkf_api.post_catalog_answers_list(data)\
-            print('TODO BORRAR aqui iriria a update_and_sync_db')
             self.update_and_sync_db(v, catalog_id, form_id, data, update=update)
         return data
 
@@ -412,8 +412,6 @@ class Oracle(Oracle):
         res = self.lkf_api.post_catalog_answers(catalogo_metadata)
         res_data = res.get('json',{})
         status_code = res['status_code']
-        # print('res_data', res_data)
-        # print('status_code', status_code)
         # if status_code in (200,201,202,204):
         #     sync_data['"updated_at"'] = time.time()
         #     sync_data['item_id'] = res_data['catalog_id'] if res_data.get('catalog_id') else item_id
@@ -433,13 +431,15 @@ class Oracle(Oracle):
         Set the oracle server
         """
         if view_name == 'REPORTES.vw_linkaform_fab':
+            print('serivce 2')
+            self.ORACLE_HOST = self.settings.config.get('ORACLE_HOST_2')
             self.ORACLE_SERVICE_NAME = self.settings.config.get('ORACLE_SERVICE_NAME_2')
             self.ORACLE_SID = self.settings.config.get('ORACLE_SID_2')
             self.ORACLE_USERNAME = self.settings.config.get('ORACLE_USERNAME_2')
             self.ORACLE_PASSWORD = self.settings.config.get('ORACLE_PASSWORD_2')
             self.oracle = self.connect_to_oracle()
-            print('serivce 2')
         else:
+            self.ORACLE_HOST = self.settings.config.get('ORACLE_HOST')
             self.ORACLE_SERVICE_NAME = self.settings.config.get('ORACLE_SERVICE_NAME_1')
             self.ORACLE_SID = self.settings.config.get('ORACLE_SID_1')
             self.ORACLE_USERNAME = self.settings.config.get('ORACLE_USERNAME_1')
@@ -462,17 +462,14 @@ class Oracle(Oracle):
         print('form_id=', form_id)
         if form_id:
             # print('data=', data)
-            # print(' SOLO EL PRIMERO DATA[0] record=', data[0])
+            print(' SOLO EL PRIMERO DATA[0] record=', data[0])
             res = self.lkf_api.post_forms_answers_list(data)
             self.verify_complete_sync(data, res)
-            # print('res=', res)
         elif catalog_id:
             for rec in data:
-                print('rec=', rec)
                 if rec.get('sync_data'):
                     sync_data = rec.pop('sync_data')
                     #creates
-                    # print('sync_data', sync_data)
                     query = {'db_id': sync_data['db_id'], 'item_id': rec.get('catalog_id', rec.get('form_id'))}
                     record_id = None #self.get_record_id_to_sync(query)
                     if record_id:
@@ -530,7 +527,7 @@ class Oracle(Oracle):
                     valor_formateado = f"{v:.2f}" if isinstance(v, float) else f"{v}.00"
                     catalogo_metadata['answers'][k] = f"{r_type.ljust(18)}: {valor_formateado:>8}"
                 else:
-                    if record_type != 'Ultimo Valor':
+                    if record_type == 'Ultimo Valor':
                         catalogo_metadata['answers'][k] = v
         else:
             catalogo_metadata['answers'] = data
@@ -570,7 +567,6 @@ if __name__ == "__main__":
     module_obj.console_run()
     module_obj.db_updated_at = time.time()
     #gg = module_obj.search_views()
-    #print('gg',gg)
     # print('account settings', module_obj.settings.config)
     data = module_obj.data.get('data',{})
     option = data.get("option",'read')
@@ -638,6 +634,33 @@ if __name__ == "__main__":
                             GROUP BY FECHA
                             ORDER BY FECHA ASC
                         """
+                        query =f"""
+                                WITH cand AS (
+                                SELECT
+                                    FECHA,
+                                    VARIABLENOMBRE,
+                                    VALOR,
+                                    TO_CHAR(FECHA, 'MI') AS min_mark
+                                FROM {v}
+                                WHERE FECHA > TO_DATE('{last_update}', 'YYYY-MM-DD HH24:MI')
+                                AND TO_CHAR(FECHA, 'MI') IN ('30','59')
+                                ),
+                                ultimos AS (
+                                SELECT
+                                    min_mark,
+                                    MAX(FECHA) AS max_fecha
+                                FROM cand
+                                GROUP BY min_mark
+                                )
+                                SELECT
+                                c.FECHA,
+                                JSON_OBJECTAGG(c.VARIABLENOMBRE VALUE c.VALOR RETURNING VARCHAR2(32767)) AS ANSWERS
+                                FROM cand c
+                                JOIN ultimos u
+                                ON c.min_mark = u.min_mark
+                                AND c.FECHA     = u.max_fecha
+                                GROUP BY c.FECHA
+                                ORDER BY c.FECHA ASC"""
                 else:
                     if v == 'PRODUCCION.VW_LinkAForm_Hora':
                         query = f"""
@@ -691,16 +714,44 @@ if __name__ == "__main__":
                                     JSON_OBJECTAGG(VARIABLENOMBRE VALUE VALOR RETURNING VARCHAR2(32767)) AS ANSWERS
                                     FROM {v}
                                     GROUP BY FECHA
-                                    ORDER BY FECHA ASC"""
+                                    ORDER BY FECHA ASC
+                                    FETCH FIRST 50 ROWS ONLY"""
 
-                print('query=', query)
+                        query = f"""
+                                WITH cand AS (
+                                SELECT
+                                    FECHA,
+                                    VARIABLENOMBRE,
+                                    VALOR,
+                                    TO_CHAR(FECHA, 'MI') AS min_mark
+                                FROM {v}
+                                -- WHERE FECHA >= :last_update
+                                WHERE TO_CHAR(FECHA, 'MI') IN ('30','59')
+                                ),
+                                ultimos AS (
+                                SELECT
+                                    min_mark,
+                                    MAX(FECHA) AS max_fecha
+                                FROM cand
+                                GROUP BY min_mark
+                                )
+                                SELECT
+                                c.FECHA,
+                                JSON_OBJECTAGG(c.VARIABLENOMBRE VALUE c.VALOR RETURNING VARCHAR2(32767)) AS ANSWERS
+                                FROM cand c
+                                JOIN ultimos u
+                                ON c.min_mark = u.min_mark
+                                AND c.FECHA     = u.max_fecha
+                                GROUP BY c.FECHA
+                                ORDER BY c.FECHA ASC"""
+
                 header, response = module_obj.sync_db_catalog(db_name=v, query=query)
-                # print('response=', response)
-                # print('header=', header)
                 view = module_obj.views[v]
                 schema = view['schema']
                 catalog_id = view.get('catalog_id')
                 form_id = view.get('form_id')
                 data = module_obj.load_data(v, view, response, schema, catalog_id, form_id)
+        
         if data:
+            print('if data update values')
             module_obj.update_values(v, view, form_id)

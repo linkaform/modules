@@ -93,7 +93,6 @@ class Oracle(Oracle):
                     'PHLICORCLADISPL': 'ccaaa548cf22411a910aabf1',
                     'PUREZAJUGCLARO': 'ccaaa5b15ad84734fae92bb3',
                     'PUREZAJUGDILT2': 'ccaaabf038a9fab9950dba60',
-                    'SODAAPLICADCALD': 'ccaaa864c62694640f0c69c7',
                     'TURB420LCLARIFI': 'ccaaa548cf22411a910aac04',
                     'TURB420LFUNDIDO': 'ccaaa548cf22411a910aac03',
                     'TURBIEDADJCLARO': 'ccaaa5b15ad84734fae92bb7',
@@ -111,26 +110,26 @@ class Oracle(Oracle):
                     'PHLICORCLADISPL': 'ccaaa548cf22411a910aabf1',
                     'PUREZAJUGCLARO': 'ccaaa5b15ad84734fae92bb3',
                     'PUREZAJUGDILT2': 'ccaaabf038a9fab9950dba60',
-                    'SODAAPLICADCALD': 'ccaaa864c62694640f0c69c7',
                     'TURB420LCLARIFI': 'ccaaa548cf22411a910aac04',
                     'TURB420LFUNDIDO': 'ccaaa548cf22411a910aac03',
                     'TURBIEDADJCLARO': 'ccaaa5b15ad84734fae92bb7',
                     'TURBIEDADJDILT2': 'ccaaa548cf22411a910aac02',
                     'TURBILIDECOLORA': 'ccaaa548cf22411a910aac05',
+                    'WT_TCH.TCH_PV': 'ccaaa5f5c7289512fa3f646c',
                     }
 
         """Aqui configuramos las vistas que vamos a mandar llamar, declaramos su schema, form_id y catalog_id de ser necesario"""
         self.views = {
-            # 'PRODUCCION.VW_LinkAForm_Hora':{
-                # 'catalog_id': self.VARIABLES_CRITICAS_PRODUCCION,
-                # 'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM,
-                # 'schema':schema_valiables_criticas
-            # },
-            # 'PRODUCCION.VW_LinkAForm_Dia':{
-                # 'catalog_id': self.VARIABLES_CRITICAS_PRODUCCION,
-                # 'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM,
-                # 'schema':schema_valiables_criticas
-                # },
+            'PRODUCCION.VW_LinkAForm_Hora':{
+                'catalog_id': self.VARIABLES_CRITICAS_PRODUCCION,
+                'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM,
+                'schema':schema_valiables_criticas
+            },
+            'PRODUCCION.VW_LinkAForm_Dia':{
+                'catalog_id': self.VARIABLES_CRITICAS_PRODUCCION,
+                'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM,
+                'schema':schema_valiables_criticas
+                },
             'REPORTES.vw_linkaform_fab':{
                 'catalog_id': self.VARIABLES_CRITICAS_PRODUCCION,
                 'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM,
