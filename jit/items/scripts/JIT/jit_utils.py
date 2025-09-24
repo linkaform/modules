@@ -307,7 +307,7 @@ class JIT(JIT, Stock):
             max_stock = rule.get('max_stock', 0.0)
             min_stock = rule.get('min_stock', 0.0)
             compra_sugerida = round(max_stock - (actuals + stock_en_transito))
-            if compra_sugerida < 0:
+            if compra_sugerida <= 0:
                 continue
             ans[self.Product.SKU_OBJ_ID].update({
                 self.f['family']: [family],
