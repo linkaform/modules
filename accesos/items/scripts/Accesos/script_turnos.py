@@ -45,6 +45,7 @@ if __name__ == "__main__":
     filterDate = data.get("filterDate", "")
     limit = data.get("limit", 10)
     offset = data.get("offset", 0)
+    fotografia=data.get("fotografia",[])
     #-FUNCTIONS
     print('option', option)
     if option == 'load_shift':
@@ -68,11 +69,11 @@ if __name__ == "__main__":
         response = acceso_obj.get_catalog_locations(location)
     elif option == 'checkin':
         # used
-        response = acceso_obj.do_checkin(location, area, employee_list)
+        response = acceso_obj.do_checkin(location, area, employee_list, fotografia=fotografia)
     elif option == 'checkout':
         # used
         response = acceso_obj.do_checkout(checkin_id=checkin_id, \
-            location=location, area= area, guards=guards, forzar=forzar, comments=comments)
+            location=location, area= area, guards=guards, forzar=forzar, comments=comments, fotografia=fotografia)
     elif option == 'get_user_menu':
         response = acceso_obj.get_config_accesos()
     elif option == 'search_access_pass':
