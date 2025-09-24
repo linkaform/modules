@@ -130,7 +130,6 @@ class CargaUniversal(CargaUniversal):
             upload_sales_records.append(this_metadata_sales)
 
         #   Inserta el documento completo a mongodb
-        ids = []
         stock_ids = []
         sale_ids = []
         if upload_records:
