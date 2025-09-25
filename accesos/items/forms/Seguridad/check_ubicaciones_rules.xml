@@ -193,5 +193,39 @@
             <rule_type>invisible</rule_type>
             <user_conditions>{}</user_conditions>
         </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>in=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>681fa6a8d916c74b691e174b</field_id>
+                        <group_id>None</group_id>
+                        <id>681fa6a8d916c74b691e174b</id>
+                        <label>Fin del Rondin</label>
+                        <type>select</type>
+                    </field>
+                    <value>finalizado</value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>68d5cbdb12b8e764193190a7</field_id>
+                    <group_id>None</group_id>
+                    <id>68d5cbdb12b8e764193190a7</id>
+                    <label>Comentarios generales del rondin</label>
+                    <type>textarea</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Regla 6</name>
+            <operator>and</operator>
+            <rule_id>121318da24431f34</rule_id>
+            <rule_type>show</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
     </rules>
 </lkf>
