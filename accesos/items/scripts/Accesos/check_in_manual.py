@@ -35,6 +35,7 @@ class Accesos(Accesos):
             'tolerancia_retardo': '68b6427cc8f94827ebfed698',
             'retardo_maximo': '68b642e2bc17e2713cabe019',
             'grupo_turnos': '68b6427cc8f94827ebfed699',
+            'status_turn': '68d5bbb57691dec5a7640358'
         })
         
     def do_checkin(self, location, area, employee_list=[], check_in_manual={}):
@@ -164,7 +165,8 @@ class Accesos(Accesos):
 
     def get_guard_data(self, guard_id, location, hora_inicio):
         dt_inicio = datetime.strptime(hora_inicio, "%Y-%m-%d %H:%M:%S")
-        hora_minuto_segundo = dt_inicio.strftime("%H:%M:%S")
+        hora_minuto_segundo_minus10 = (dt_inicio - timedelta(minutes=10)).strftime("%H:%M:%S")
+        hora_minuto_segundo_plus10 = (dt_inicio + timedelta(minutes=10)).strftime("%H:%M:%S")
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
@@ -183,8 +185,8 @@ class Accesos(Accesos):
                         "form_id": self.HORARIOS,
                         "$expr": {
                             "$and": [
-                                {"$lte": [f"$answers.{self.f['hora_entrada']}", hora_minuto_segundo]},
-                                {"$gt":  [f"$answers.{self.f['hora_salida']}", hora_minuto_segundo]}
+                                {"$lte": [f"$answers.{self.f['hora_entrada']}", hora_minuto_segundo_plus10]},
+                                {"$gt":  [f"$answers.{self.f['hora_salida']}", hora_minuto_segundo_minus10]}
                             ]
                         }
                     }},
@@ -220,6 +222,29 @@ class Accesos(Accesos):
         response = self.unlist(response)
         return response
 
+    def calculate_status(self, hora_inicio, guard_data):
+        dt_inicio = datetime.strptime(hora_inicio, "%Y-%m-%d %H:%M:%S")
+        minutos_inicio = dt_inicio.hour * 60 + dt_inicio.minute
+        turno_inicio = guard_data.get('hora_inicio', '00:00:00')
+        dt_turno_inicio = datetime.strptime(turno_inicio, "%H:%M:%S")
+        minutos_turno_inicio = dt_turno_inicio.hour * 60 + dt_turno_inicio.minute
+
+        tolerancia = int(guard_data.get('tolerancia_retardo', 0))
+        retardo_maximo = int(guard_data.get('retardo_maximo', 0))
+
+        minutos_retraso = minutos_inicio - minutos_turno_inicio
+
+        if -10 <= minutos_retraso <= 10:
+            return "present"
+        elif 10 < minutos_retraso <= tolerancia:
+            return "halfday"
+        elif tolerancia < minutos_retraso <= retardo_maximo:
+            return "absenttimeoff"
+        elif minutos_retraso > retardo_maximo:
+            return "absent"
+        else:
+            return ""
+
     def check_in_manual(self):
         #! Se cierra cualquier turno anterior que este abierto
         self.verify_guard_status()
@@ -248,6 +273,12 @@ class Accesos(Accesos):
             self.f['hora_salida']: employee_data.get('hora_fin', ''),
             self.f['tolerancia_retardo']: employee_data.get('tolerancia_retardo', ''),
             self.f['retardo_maximo']: employee_data.get('retardo_maximo', ''),
+        })
+        
+        #! Se calcula status de la llegada del guardia
+        status = self.calculate_status(hora_inicio, employee_data)
+        self.answers.update({
+            self.f['status_turn']: status,
         })
         
     def get_last_check_in(self, guard_id):
@@ -307,6 +338,7 @@ class Accesos(Accesos):
                 self.f['hora_salida']: last_check_in.get('hora_salida', ''),
                 self.f['tolerancia_retardo']: last_check_in.get('tolerancia_retardo', ''),
                 self.f['retardo_maximo']: last_check_in.get('retardo_maximo', ''),
+                self.f['status_turn']: last_check_in.get('status_turn', ''),
             })
             response = self.delete_record(last_check_in.get('folio', ''))
             if response:
@@ -340,6 +372,7 @@ if __name__ == "__main__":
     elif option == 'cerrar_turno':
         acceso_obj.check_out_manual()
 
+    print(simplejson.dumps(acceso_obj.answers, indent=3))
     sys.stdout.write(simplejson.dumps({
         'status': 101,
         'replace_ans': acceso_obj.answers
