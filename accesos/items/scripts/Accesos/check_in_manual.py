@@ -17,6 +17,7 @@ class Accesos(Accesos):
         self.load(module='Location', **self.kwargs)
         self.CHECKIN_MANUAL = self.lkm.form_id('checkin_manual','id')
         self.REGISTRO_ASISTENCIA = self.lkm.form_id('registro_de_asistencia','id')
+        self.HORARIOS = self.lkm.form_id('horarios','id')
         
         self.f.update({
             'option_checkin': '663bffc28d00553254f274e0',
@@ -25,7 +26,15 @@ class Accesos(Accesos):
             'comment_checkout': '68798dd1205f333d8f53a1c7',
             'start_shift': '6879828d0234f02649cad390',
             'end_shift': '6879828d0234f02649cad391',
-            'foto_end': '6879823d856f580aa0e05a3b'
+            'foto_end': '6879823d856f580aa0e05a3b',
+            
+            'dias_libres': '68bb20095035e61c5745de05',
+            'nombre_horario': '68b6427cc8f94827ebfed695',
+            'hora_entrada': '68b6427cc8f94827ebfed696',
+            'hora_salida': '68b6427cc8f94827ebfed697',
+            'tolerancia_retardo': '68b6427cc8f94827ebfed698',
+            'retardo_maximo': '68b642e2bc17e2713cabe019',
+            'grupo_turnos': '68b6427cc8f94827ebfed699',
         })
         
     def do_checkin(self, location, area, employee_list=[], check_in_manual={}):
@@ -153,8 +162,68 @@ class Accesos(Accesos):
                 }, {"$set": update_fields})
                 print('======log:', res.modified_count, ' registros cerrados automaticamente.')
 
+    def get_guard_data(self, guard_id, location, hora_inicio):
+        dt_inicio = datetime.strptime(hora_inicio, "%Y-%m-%d %H:%M:%S")
+        hora_minuto_segundo = dt_inicio.strftime("%H:%M:%S")
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.EMPLEADOS,
+                f"answers.{self.USUARIOS_OBJ_ID}.{self.f['new_user_id']}": guard_id,
+            }},
+            {"$project": {
+                "_id": 0,
+                "dias_libres": f"$answers.{self.f['dias_libres']}",
+            }},
+            {"$lookup": {
+                "from": "form_answer",
+                "pipeline": [
+                    {"$match": {
+                        "deleted_at": {"$exists": False},
+                        "form_id": self.HORARIOS,
+                        "$expr": {
+                            "$and": [
+                                {"$lte": [f"$answers.{self.f['hora_entrada']}", hora_minuto_segundo]},
+                                {"$gt":  [f"$answers.{self.f['hora_salida']}", hora_minuto_segundo]}
+                            ]
+                        }
+                    }},
+                    {"$unwind": f"$answers.{self.f['grupo_turnos']}"},
+                    {"$match": {
+                        "$expr": {
+                            "$eq": [f"$answers.{self.f['grupo_turnos']}.{self.UBICACIONES_CAT_OBJ_ID}.{self.f['location']}", location]
+                        }
+                    }},
+                    {"$project": {
+                        "_id": 0,
+                        "hora_inicio": f"$answers.{self.f['hora_entrada']}",
+                        "hora_fin": f"$answers.{self.f['hora_salida']}",
+                        "nombre_horario": f"$answers.{self.f['nombre_horario']}",
+                        "tolerancia_retardo": f"$answers.{self.f['tolerancia_retardo']}",
+                        "retardo_maximo": f"$answers.{self.f['retardo_maximo']}",
+                        "areas": f"$answers.{self.f['grupo_turnos']}",
+                    }}
+                ],
+                "as": "turno"
+            }},
+            {"$project": {
+                "dias_libres": 1,
+                "turno": {
+                    "$ifNull": [
+                        {"$arrayElemAt": ["$turno", 0]},
+                        ""
+                    ]
+                }
+            }}
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
+        response = self.unlist(response)
+        return response
+
     def check_in_manual(self):
+        #! Se cierra cualquier turno anterior que este abierto
         self.verify_guard_status()
+        
         if self.answers.get(self.f['start_shift']):
             fecha_actual = self.answers.get(self.f['start_shift'])
             # self.LKFException({'msg': msg, 'title': 'Turno ya iniciado'})
@@ -168,8 +237,80 @@ class Accesos(Accesos):
             self.f['option_checkin']: 'cerrar_turno',
         })
         
+        #! Se obtiene la informacion del guardia como Horario y Turno en el que esta haciendo su check in
+        location = self.answers.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID, {}).get(self.f['location'], '')
+        hora_inicio = self.answers.get(self.f['start_shift'], '')
+        employee_data = self.get_guard_data(self.user.get('user_id'), location, hora_inicio)
+        self.answers.update({
+            self.f['dias_libres']: employee_data.get('dias_libres', []),
+            self.f['nombre_horario']: employee_data.get('nombre_horario', ''),
+            self.f['hora_entrada']: employee_data.get('hora_inicio', ''),
+            self.f['hora_salida']: employee_data.get('hora_fin', ''),
+            self.f['tolerancia_retardo']: employee_data.get('tolerancia_retardo', ''),
+            self.f['retardo_maximo']: employee_data.get('retardo_maximo', ''),
+        })
+        
+    def get_last_check_in(self, guard_id):
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.REGISTRO_ASISTENCIA,
+                "user_id": guard_id,
+                f"answers.{self.f['start_shift']}": {"$exists": True},
+                f"answers.{self.f['end_shift']}": {"$exists": False},
+            }},
+            {"$sort": {"created_at": -1}},
+            {"$limit": 1},
+            {"$project": {
+                "_id": 1,
+                "folio": 1,
+                "answers": 1,
+            }},
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
+        response = self.unlist(response)
+        return response
+        
+    def delete_record(self, folio: str):
+        """Elimina un registro por su folio.
+        Args:
+            folio (str): El folio del registro a eliminar.
+        Returns:
+            bool: True si el registro fue eliminado, False en caso contrario.
+        Raises:
+            Exception: Si el folio no es proporcionado.
+        """
+        if not folio:
+            raise Exception("Folio is required to delete a registro.")
+        
+        response = self.cr.delete_one({
+            'form_id': self.REGISTRO_ASISTENCIA,
+            'folio': folio
+        })
+        
+        if response.deleted_count > 0:
+            response = True
+        else:
+            response = False
+        return response
+        
     def check_out_manual(self):
-        self.verify_guard_status()
+        last_check_in = self.get_last_check_in(self.user.get('user_id'))
+        if last_check_in:
+            self.answers.update({
+                self.f['start_shift']: last_check_in.get('start_shift', None),
+                self.f['comment_checkin']: last_check_in.get('comment_checkin', ''),
+                self.f['image_checkin']: last_check_in.get('image_checkin', []),
+                self.f['dias_libres']: last_check_in.get('dias_libres', []),
+                self.f['nombre_horario']: last_check_in.get('nombre_horario', ''),
+                self.f['hora_entrada']: last_check_in.get('hora_entrada', ''),
+                self.f['hora_salida']: last_check_in.get('hora_salida', ''),
+                self.f['tolerancia_retardo']: last_check_in.get('tolerancia_retardo', ''),
+                self.f['retardo_maximo']: last_check_in.get('retardo_maximo', ''),
+            })
+            response = self.delete_record(last_check_in.get('folio', ''))
+            if response:
+                print(f"Registro con folio {last_check_in.get('folio', '')} eliminado exitosamente.")
         
         if self.answers.get(self.f['end_shift']):
             fecha_actual = self.answers.get(self.f['end_shift'])
