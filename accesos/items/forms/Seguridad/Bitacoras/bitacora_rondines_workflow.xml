@@ -328,6 +328,7 @@
                             <item>josepato@linkaform.com</item>
                             <item>paco@linkaform.com</item>
                             <item>alejandro.veloz@advansgroup.mx</item>
+                            <item>juan.lemus@advansgroup.mx</item>
                         </emails>
                         <embed_company_picture>True</embed_company_picture>
                         <fields_attached>[]</fields_attached>
@@ -368,7 +369,7 @@
                     <created>True</created>
                     <deleted>False</deleted>
                     <edited>True</edited>
-                    <run_multiple_times>True</run_multiple_times>
+                    <run_multiple_times>False</run_multiple_times>
                     <runtime>after</runtime>
                 </record>
                 <wf_fields>
