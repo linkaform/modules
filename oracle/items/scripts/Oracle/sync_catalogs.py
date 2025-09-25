@@ -744,8 +744,10 @@ if __name__ == "__main__":
                                 AND c.FECHA     = u.max_fecha
                                 GROUP BY c.FECHA
                                 ORDER BY c.FECHA ASC"""
-
+                print('query=',query)
                 header, response = module_obj.sync_db_catalog(db_name=v, query=query)
+                print('header=',header)
+                print('response=',response[:3])
                 view = module_obj.views[v]
                 schema = view['schema']
                 catalog_id = view.get('catalog_id')
