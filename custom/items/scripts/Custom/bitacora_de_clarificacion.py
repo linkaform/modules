@@ -50,7 +50,7 @@ class Custom(Custom):
 
         return convert_int( val_split[0] ), convert_int( val_split[1] )
 
-    def process_variables(self, dict_variables, data_config, answers_to_get_values, value_as_str):
+    def process_variables(self, dict_variables, data_config, answers_to_get_values, value_as_str, processing_catalog_values=False):
         """
         Procesa el diccionario de variables y las compara con las configuraciones que tiene en el catalogo
         
@@ -77,6 +77,13 @@ class Custom(Custom):
 
             # se obtiene el valor en el answers
             value_var = self.unlist( answers_to_get_values.get(var_field_id) )
+
+            # Si se están procesando los valors de los campos de Catalogo hay que revisar que venga la leyenda "Ultimo Valor" para considerarlo
+            if processing_catalog_values:
+                # Hago el if value_var por casos donde el valor viene como []
+                if not value_var or "ultimo valor" not in value_var.lower():
+                    continue
+                value_var = value_var.split(':')[1].strip()
             
             # Si no hay informacion capturada por el usuario, o no hay minimos y maximos definidos se continúa con el siguiente campo
             if not value_var or not any( [min_var, max_var] ):
@@ -115,8 +122,12 @@ class Custom(Custom):
             if isinstance(value_var, str):
                 value_var = float(value_var)
 
-            str_unidad_medida = var_data.get('help_text') or ""
-            str_unidad_medida = str_unidad_medida.split('|')[0].strip()
+            value_help_text = var_data.get('help_text') or ""
+
+            help_text_split = value_help_text.split('|')
+            str_unidad_medida = help_text_split[1].strip() if len(help_text_split) > 1 else ""
+
+            # str_unidad_medida = str_unidad_medida.split('|')[0].strip()
             
             if min_var and not max_var:
                 str_rango = f"> {min_var} {str_unidad_medida}"
@@ -172,7 +183,7 @@ class Custom(Custom):
 
         # Se procesan las variables que están en un catálogo
         for field_catalog, fields_variables in fields_to_catalog.items():
-            group_vars_fuera_de_rango.extend( self.process_variables(fields_variables, config_ranges_variables, answers.get(field_catalog, {}), value_as_str) )
+            group_vars_fuera_de_rango.extend( self.process_variables(fields_variables, config_ranges_variables, answers.get(field_catalog, {}), value_as_str, processing_catalog_values=True) )
 
         # Se procesan las variables que están a primer nivel del answers
         group_vars_fuera_de_rango.extend( self.process_variables(fields_generals, config_ranges_variables, answers, value_as_str) )
