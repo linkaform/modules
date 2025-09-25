@@ -21,6 +21,9 @@ class Accesos(Accesos):
         self.load(module='Location', **self.kwargs)
         self.f.update({
             'tag_id_area_ubicacion': '6762f7b0922cc2a2f57d4044',
+            'realizado_por': '68cd752bf911c0d6bb1e8e96',
+            'comentarios_generales_rondin': '68d5cbdb12b8e764193190a7',
+            'bitacora_comentario': '6639b6180bb793945af2742d'
         })
 
     #! Utils functions ==========
@@ -40,6 +43,7 @@ class Accesos(Accesos):
         data = {}
         data.update({
             '_id': ObjectId(self.record_id),
+            'user_name': self.user_name,
             'location': self.location,
             'folio': self.folio,
             'timestamp': self.timestamp,
@@ -48,7 +52,7 @@ class Accesos(Accesos):
         })
         return self.create(data, collection='rondin_caches')
 
-    def search_cache(self, winner_id=None, location=None):
+    def search_cache(self, winner_id=None, location=None, user_name=None):
         """
         Search active caches, optionally filtered by location.
         If both winner_id and location are provided, exclude the entry with that _id and location.
@@ -59,6 +63,8 @@ class Accesos(Accesos):
         if winner_id and location:
             # Exclude the specific _id for that location
             match_query['_id'] = {'$ne': ObjectId(winner_id)}
+        if user_name:
+            match_query['user_name'] = user_name
         query = [
             {'$match': match_query}
         ]
@@ -95,22 +101,30 @@ class Accesos(Accesos):
     
     def select_winner(self, cache):
         """
-        Select a winner rondin from the cache for each location.
-        Winner is the entry with the smallest timestamp per location within the last hour.
+        Select a winner rondin from the cache for each location-user combination.
+        Winner is the entry with the smallest timestamp per location-user within the last hour.
         If timestamps tie, use the smallest random value as tiebreaker.
         If all entries are older than 1 hour, select the oldest as closed_winner.
-        There can be at most 1 winner and 1 closed_winner per location.
+        There can be at most 1 winner and 1 closed_winner per location-user combination.
         Return a list of dicts with winner info.
         """
         winners = []
-        by_location = defaultdict(list)
+        by_location_user = defaultdict(list)
         now = time.time()
+        
+        # Agrupar por ubicación y usuario
         for item in cache:
             loc = item.get('location')
-            if loc is not None:
-                by_location[loc].append(item)
+            user = item.get('user_name', '')
+            if loc is not None and user:
+                key = f"{loc}_{user}"
+                by_location_user[key].append(item)
 
-        for loc, items in by_location.items():
+        for location_user_key, items in by_location_user.items():
+            # Extract location and user from the first item (all have same location and user)
+            location = items[0].get('location')
+            user = items[0].get('user_name', '')
+            
             # Separate items by age
             within_hour = []
             older_than_hour = []
@@ -127,7 +141,13 @@ class Accesos(Accesos):
                     within_hour,
                     key=lambda x: (x.get('timestamp', float('inf')), x.get('random', float('inf')))
                 )
-                winners.append({'winner_id': str(winner.get('_id')), 'location': loc, 'winner_record': winner, 'type': 'winner'})
+                winners.append({
+                    'winner_id': str(winner.get('_id')), 
+                    'location': location, 
+                    'user': user,
+                    'winner_record': winner, 
+                    'type': 'winner'
+                })
 
             # Closed winner: oldest outside the last hour
             if older_than_hour:
@@ -135,7 +155,13 @@ class Accesos(Accesos):
                     older_than_hour,
                     key=lambda x: (x.get('timestamp', float('inf')), x.get('random', float('inf')))
                 )
-                winners.append({'winner_id': str(closed_winner.get('_id')), 'location': loc, 'winner_record': closed_winner, 'type': 'closed_winner'})
+                winners.append({
+                    'winner_id': str(closed_winner.get('_id')), 
+                    'location': location, 
+                    'user': user,
+                    'winner_record': closed_winner, 
+                    'type': 'closed_winner'
+                })
 
         return winners
     
@@ -152,6 +178,7 @@ class Accesos(Accesos):
                 "deleted_at": {"$exists": False},
                 "form_id": self.BITACORA_RONDINES,
                 f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": self.location,
+                f"answers.{self.f['realizado_por']}": self.user_name,
                 # f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.f['nombre_del_recorrido']}": {"$in": format_names},
                 f"answers.{self.f['estatus_del_recorrido']}": 'en_proceso',
             }},
@@ -180,6 +207,7 @@ class Accesos(Accesos):
                 "deleted_at": {"$exists": False},
                 "form_id": self.BITACORA_RONDINES,
                 f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": location,
+                f"answers.{self.f['realizado_por']}": self.user_name,
                 f"answers.{self.f['estatus_del_recorrido']}": {"$in": ['cerrado', 'realizado']},
                 f"answers.{self.f['fecha_inicio_rondin']}": {"$regex": fecha_regex}
             }},
@@ -215,7 +243,9 @@ class Accesos(Accesos):
 
         conf_recorrido = {}
         for key, value in rondin.items():
-            if key == 'fecha_programacion':
+            if key == 'realizado_por':
+                answers[self.f['realizado_por']] = value
+            elif key == 'fecha_programacion':
                 answers[self.f['fecha_programacion']] = value
             elif key == 'fecha_inicio_rondin':
                 answers[self.f['fecha_inicio_rondin']] = value
@@ -333,6 +363,7 @@ class Accesos(Accesos):
         
         if data_rondin.get('answers', {}).get(self.f['check_status']) == 'finalizado':
             answers[self.f['estatus_del_recorrido']] = 'realizado'
+            answers[self.f['bitacora_comentario']] = data_rondin.get('answers', {}).get(self.f['comentarios_generales_rondin'], '')
 
         # print("ans", simplejson.dumps(answers, indent=4))
 
@@ -399,7 +430,7 @@ class Accesos(Accesos):
         print('winner in bitacora:', winner)
         answers[self.f['fecha_programacion']] = winner.get('timestamp') and datetime.fromtimestamp(winner.get('timestamp'), tz).strftime('%Y-%m-%d %H:%M:%S')
         answers[self.f['fecha_inicio_rondin']] = winner.get('timestamp') and datetime.fromtimestamp(winner.get('timestamp'), tz).strftime('%Y-%m-%d %H:%M:%S')
-
+        answers[self.f['realizado_por']] = self.user_name or ''
         answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = {
             self.f['ubicacion_recorrido']: ubicacion_del_recorrido,
             self.f['nombre_del_recorrido']: nombre_del_recorrido
@@ -518,12 +549,18 @@ class Accesos(Accesos):
             )
 
 if __name__ == "__main__":
-    script_obj = Accesos(settings, sys_argv=sys.argv)
+    script_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
     script_obj.console_run()
     script_obj.cr_cache = script_obj.net.get_collections(collection='rondin_caches')
     # print(simplejson.dumps(script_obj.answers, indent=3))
     data_rondin = json.loads(sys.argv[1])
+
+    # jwt_complete = simplejson.loads(sys.argv[2]) # cachas el JWT del usuario que Envia el registro
+    # config['USER_JWT_KEY'] = jwt_complete['jwt'].split(' ')[1] # Lo guardas en el parametro USER_JWT_KEY
+    # settings.config.update(config) # Actualizas el settings
+
     script_obj.timestamp = data_rondin.get('start_timestamp', '')
+    script_obj.user_name = data_rondin.get('user_name', '')
     tz = pytz.timezone('America/Mexico_City')
     # cache = script_obj.search_cache()
     # print('cache', cache)
@@ -579,7 +616,7 @@ if __name__ == "__main__":
                     #! 7-1 Se busca una bitacora cerrada para la hora en que se hizo este check
                     bitacora = script_obj.search_closed_bitacora_by_hour(winner.get('location'), winner_hour)
                     time.sleep(5)
-                    winner_checks = script_obj.search_cache(winner_id=winner.get('winner_id'), location=winner.get('location'))
+                    winner_checks = script_obj.search_cache(winner_id=winner.get('winner_id'), location=winner.get('location'), user_name=script_obj.user_name)
                     print('winner_checks:============', len(winner_checks))
                     #! 7-1-1 Se filtran los checks que pertenezcan a la hora del check ganador
                     filter_winner_checks = []
@@ -610,7 +647,7 @@ if __name__ == "__main__":
                     print('No ha pasado más de 1 hora desde el winner_date.')
                     bitacora = script_obj.search_active_bitacora_by_rondin(recorridos=recorridos)
                     time.sleep(5)
-                    winner_checks = script_obj.search_cache(winner_id=winner.get('winner_id'), location=winner.get('location'))
+                    winner_checks = script_obj.search_cache(winner_id=winner.get('winner_id'), location=winner.get('location'), user_name=script_obj.user_name)
                     winner_checks.append(winner.get('winner_record', {}))
                     if bitacora:
                         #! 7-2-2. Actualizar una bitacora con los checks realizados
