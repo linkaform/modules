@@ -107,7 +107,7 @@ class Accesos(Accesos):
         format_response = list({'nombre': i.get('nombre_usuario'), 'employee_id': self.unlist(i.get('employee_id', 0))} for i in response)
         return format_response
 
-    def get_employees_attendance(self, group_by="employees", locations=[]):
+    def get_employees_attendance(self, group_by="locations", locations=[]):
         employees_list = self.get_employees_list()
         employees_ids = list(i.get('employee_id', '') for i in employees_list)
         now = datetime.now(timezone('America/Mexico_City'))
@@ -117,7 +117,9 @@ class Accesos(Accesos):
             "deleted_at": {"$exists": False},
             "form_id": self.REGISTRO_ASISTENCIA,
             "user_id": {"$in": employees_ids},
-            "created_at": {"$gte": start_of_month}
+            "created_at": {"$gte": start_of_month},
+            f"answers.{self.f['start_shift']}": {"$exists": True},
+            f"answers.{self.f['end_shift']}": {"$exists": True},
         }
         
         if locations:
@@ -145,10 +147,81 @@ class Accesos(Accesos):
         if group_by == "employees":
             format_response = self.format_employees_attendance(response, employees_list)
         elif group_by == "locations":
-            format_response = {}
+            format_response = self.format_locations_attendance(response, employees_list)
         return format_response
     
-    def format_employees_attendance(self, response, employees_list):
+    def format_locations_attendance(self, data, employees_list):
+        now = datetime.now(timezone('America/Mexico_City'))
+        days_in_month = monthrange(now.year, now.month)[1]
+        id_to_name = {emp['employee_id']: emp['nombre'] for emp in employees_list}
+
+        # Estructura: {ubicacion: {turno_ref: {dia: [empleado-status, ...]}}}
+        result = []
+
+        # Recorre todos los registros de todos los empleados
+        for emp_id, registros in data.items():
+            for reg in registros:
+                location = reg.get('incidente_location', 'Sin ubicación')
+                nombre_horario = reg.get('nombre_horario', '')
+                hora_entrada = reg.get('hora_entrada', '')
+                hora_salida = reg.get('hora_salida', '')
+                turno_ref = f"{nombre_horario} {hora_entrada}-{hora_salida}"
+
+                # Inicializa estructura si no existe
+                found = None
+                for loc in result:
+                    if loc["ubicacion"] == location and loc["turno_ref"] == turno_ref:
+                        found = loc
+                        break
+                if not found:
+                    found = {
+                        "ubicacion": location,
+                        "turno_ref": turno_ref,
+                        "asistencia_mes": [{"dia": day, "empleados": []} for day in range(1, days_in_month + 1)],
+                        "resumen": {"asistencias": 0, "retardos": 0, "faltas": 0}
+                    }
+                    result.append(found)
+
+                # Días libres del empleado
+                dias_libres = reg.get('dias_libres_empleado', [])
+
+                # Status y día del registro
+                fecha_inicio = reg.get('fecha_inicio_turno')
+                status = reg.get('status_turn', '')
+                nombre_empleado = id_to_name.get(emp_id, str(emp_id))
+                if fecha_inicio:
+                    dia = int(fecha_inicio[8:10])
+                    # Si es día libre, status = "dia_libre"
+                    dia_semana = datetime(now.year, now.month, dia).strftime("%A").lower()
+                    dia_map = {
+                        "monday": "lunes", "tuesday": "martes", "wednesday": "miercoles",
+                        "thursday": "jueves", "friday": "viernes", "saturday": "sabado", "sunday": "domingo"
+                    }
+                    dia_es = dia_map.get(dia_semana, dia_semana)
+                    if dias_libres and dia_es in dias_libres:
+                        status = "dia_libre"
+                    found["asistencia_mes"][dia - 1]["empleados"].append(f"{nombre_empleado}-{status}")
+                    # Contabilización
+                    if status == "presente":
+                        found["resumen"]["asistencias"] += 1
+                    elif status == "retardo":
+                        found["resumen"]["retardos"] += 1
+                    elif status == "falta" or status == "falta_por_retardo":
+                        found["resumen"]["faltas"] += 1
+
+        # Completa los días sin registro para cada turno/ubicación
+        for loc in result:
+            for day_info in loc["asistencia_mes"]:
+                if not day_info["empleados"]:
+                    dia = day_info["dia"]
+                    if dia < now.day:
+                        day_info["empleados"] = ["sin_registro-sin_registro"]
+                    else:
+                        day_info["empleados"] = ["sin_registro-sin_registro"]
+
+        return result
+    
+    def format_employees_attendance(self, data, employees_list):
         now = datetime.now(timezone('America/Mexico_City'))
         days_in_month = monthrange(now.year, now.month)[1]
 
@@ -157,7 +230,7 @@ class Accesos(Accesos):
 
         result = []
 
-        for emp_id, registros in response.items():
+        for emp_id, registros in data.items():
             # Agrupar registros por ubicación
             ubicaciones = {}
             for reg in registros:
@@ -324,7 +397,7 @@ if __name__ == "__main__":
     data = script_obj.data
     data = data.get('data', [])
     date_range = data.get('date_range', 'mes')
-    group_by = data.get('group_by', 'employees')
+    group_by = data.get('group_by', 'locations')
     locations = data.get('locations', [])
     option = data.get('option', 'get_guard_turn_details')
     turn_id = data.get('turn_id', '')
