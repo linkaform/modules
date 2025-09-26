@@ -35,6 +35,7 @@ class Accesos(Accesos):
             'tolerancia_retardo': '68b6427cc8f94827ebfed698',
             'retardo_maximo': '68b642e2bc17e2713cabe019',
             'grupo_turnos': '68b6427cc8f94827ebfed699',
+            'horas_trabajadas': '68d6b0d5f7865907a86c37d7',
             'status_turn': '68d5bbb57691dec5a7640358'
         })
         
@@ -131,7 +132,6 @@ class Accesos(Accesos):
         return True
 
     def automatic_close_turn(self, records=[]):
-        list_records_ids = [str(i.get('_id')) for i in records]
         fecha_inicio = ''
         for record in records:
             fecha_inicio = record.get('fecha_inicio', '')
@@ -235,13 +235,11 @@ class Accesos(Accesos):
         minutos_retraso = minutos_inicio - minutos_turno_inicio
 
         if -10 <= minutos_retraso <= 10:
-            return "present"
-        elif 10 < minutos_retraso <= tolerancia:
-            return "halfday"
+            return "presente"
         elif tolerancia < minutos_retraso <= retardo_maximo:
-            return "absenttimeoff"
+            return "retardo"
         elif minutos_retraso > retardo_maximo:
-            return "absent"
+            return "falta_por_retardo"
         else:
             return ""
 
@@ -355,6 +353,15 @@ class Accesos(Accesos):
             self.f['end_shift']: fecha_actual,
         })
 
+    def set_work_hours(self, start_time, end_time):
+        dt_inicio = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+        dt_cierre = datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+        delta = dt_cierre - dt_inicio
+        horas = delta.total_seconds() / 3600
+        self.answers.update({
+            self.f['horas_trabajadas']: round(horas, 2),
+        })
+
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
     acceso_obj.console_run()
@@ -362,15 +369,15 @@ if __name__ == "__main__":
     data_rondin = json.loads(sys.argv[1])
     acceso_obj.timezone = data_rondin.get('timezone', 'America/Mexico_City')
     
-    # if acceso_obj.answers.get(acceso_obj.f['start_shift']) and acceso_obj.answers.get(acceso_obj.f['end_shift']):
-    #     msg = 'Este check in ya ha sido registrado con inicio y cierre, crea uno nuevo.'
-    #     acceso_obj.LKFException({'msg': msg, 'title': 'Turno ya registrado'})
-
     response = {}
     if option == 'iniciar_turno':
         acceso_obj.check_in_manual()
     elif option == 'cerrar_turno':
         acceso_obj.check_out_manual()
+
+    if acceso_obj.answers.get(acceso_obj.f['start_shift']) and acceso_obj.answers.get(acceso_obj.f['end_shift']) \
+            and not acceso_obj.answers.get(acceso_obj.f['horas_trabajadas']):
+        acceso_obj.set_work_hours(acceso_obj.answers.get(acceso_obj.f['start_shift']), acceso_obj.answers.get(acceso_obj.f['end_shift']))
 
     print(simplejson.dumps(acceso_obj.answers, indent=3))
     sys.stdout.write(simplejson.dumps({
