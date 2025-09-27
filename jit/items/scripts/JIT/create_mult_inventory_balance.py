@@ -3,7 +3,7 @@ Script para crear multiples balanceo de inventario.
 """
 # -*- coding: utf-8 -*-
 import sys, simplejson
-from time import time
+import time
 
 from jit_utils import JIT
 
