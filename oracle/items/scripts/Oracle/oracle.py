@@ -109,7 +109,6 @@ class Oracle(Oracle):
                     'PHAGPURGACAL7': 'ccaaa864c62694640f0c69cf',
                     'PHLICORCLADISPL': 'ccaaa548cf22411a910aabf1',
                     'PUREZAJUGCLARO': 'ccaaa5b15ad84734fae92bb3',
-                    'PUREZAJUGDILT2': 'ccaaabf038a9fab9950dba60',
                     'TURB420LCLARIFI': 'ccaaa548cf22411a910aac04',
                     'TURB420LFUNDIDO': 'ccaaa548cf22411a910aac03',
                     'TURBIEDADJCLARO': 'ccaaa5b15ad84734fae92bb7',

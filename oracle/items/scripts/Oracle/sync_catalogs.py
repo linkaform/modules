@@ -48,10 +48,10 @@ class Oracle(Oracle):
             # else:
             if kind == 'ultimo_valor':
                 print('aqui va a hacer el post......')
-                res = self.lkf_api.post_forms_answers(metadata)
+                #res = self.lkf_api.post_forms_answers(metadata)
             print('y hace el upsert....')
             self.upsert_catalog_record(metadata, kind)
-        return res
+        return True
 
     # def create_average_variable_value_record(self, hours=24):
     #     metadata_form = self.get_variables_model(view)
@@ -113,6 +113,7 @@ class Oracle(Oracle):
                 last_db_update_data = doc.get('date')
         return last_db_update_data
 
+
     def get_answers_by_kind(self, data):
         #todo buscar fecha maxima
         result = {
@@ -126,14 +127,21 @@ class Oracle(Oracle):
         'ultimos_2': {},
         'ultimos_3': {},
         'ultimos_4': {},
+        'ultimos_5': {},
         }
-        
         # Iterate through each item in the input data
         for variable_data in data:
+            if variable_data.get('fecha') and not result['ultimo_valor'].get(self.f['fecha']):
+                result['ultimo_valor'][self.f['fecha']] = variable_data.get('fecha')
+                print('starting fecha', result['ultimo_valor'][self.f['fecha']])
+            if variable_data.get('fecha') and result['ultimo_valor'].get(self.f['fecha']) \
+                and variable_data.get('fecha') > result['ultimo_valor'].get(self.f['fecha']):
+                result['ultimo_valor'][self.f['fecha']] = variable_data.get('fecha')
+                print('new fecha', result['ultimo_valor'][self.f['fecha']])
             variable_id = variable_data['_id']
             # Agregar cada estadística al diccionario correspondiente
             result['ultimo_valor'][variable_id] = variable_data.get('ultimo_valor')
-            result['ultimo_valor'][self.f['fecha']] = variable_data.get('fecha')
+            # result['ultimo_valor'][self.f['fecha']] = variable_data.get('fecha')
             result['promedio'][variable_id] = variable_data.get('promedio')
             result['promedio'][self.f['fecha']] = variable_data.get('fecha')
             result['maximo'][variable_id] = variable_data.get('maximo')
@@ -143,8 +151,11 @@ class Oracle(Oracle):
             result['desviacion_estandar'][variable_id] = variable_data.get('desviacion_estandar')
             result['desviacion_estandar'][self.f['fecha']] = variable_data.get('fecha')
             for idx, value in enumerate(variable_data.get('ultimos_5',[])):
-                result[f'ultimos_{idx}'][variable_id] = value
-                result[f'ultimos_{idx}'][self.f['fecha']] = variable_data.get('fecha')
+                if idx == 0:
+                    #me salto el ultimo valor ya que es igual que el ultimo
+                    continue
+                result[f'ultimos_{idx-1}'][variable_id] = value
+                result[f'ultimos_{idx-1}'][self.f['fecha']] = variable_data.get('fecha')
         return result
 
     # def get_average_values(self, hours=24):
@@ -234,7 +245,7 @@ class Oracle(Oracle):
                     'answers.'+self.f['tipo_registro'] : 'registro_oracle'
                 } },
                 { '$sort': { 'answers.'+self.f['fecha'] : -1 } },
-                {'$limit':50},
+                {'$limit':100},
                 { '$project': { 
                     'fecha': '$answers.'+self.f['fecha'],
                     'answers': { '$objectToArray': '$answers' }
@@ -267,7 +278,7 @@ class Oracle(Oracle):
                     }
                 } },
                 { '$addFields': {
-                    'ultimos_5': { '$slice': ['$datos_ordenados', 0, 5] },
+                    'ultimos_5': { '$slice': ['$datos_ordenados', 0, 6] },
                     'todos_valores_numericos': {
                         '$map': {
                             'input': '$datos_ordenados',
@@ -397,7 +408,6 @@ class Oracle(Oracle):
             usr['sync_data']['oracle_id'] = self.get_oracle_id(row)
             usr['sync_data']['db_id'] = row.get('fecha','none')
             data.append(usr)
-
         if data:
             self.update_and_sync_db(v, catalog_id, form_id, data, update=update)
         return data
@@ -517,9 +527,8 @@ class Oracle(Oracle):
         if data.get('answers'):
             catalogo_metadata['answers'] = {}
             for k,v in data.get('answers').items():
-
+                record_type = record_type.replace('_', ' ').title()
                 if k not in (self.f['fecha']):
-                    record_type = record_type.replace('_', ' ').title()
                     r_type = record_type
                     if isinstance(v, dict):
                         r_type = v['fecha']
