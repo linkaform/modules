@@ -116,7 +116,7 @@ class Accesos(Accesos):
                 "form_id": self.REGISTRO_ASISTENCIA,
                 f"answers.{self.f['start_shift']}": {"$exists": True},
                 f"answers.{self.f['end_shift']}": {"$exists": False},
-                "user_id": self.user.get('user_id'),
+                "user_id": self.user_id,
             }},
             {"$project": {
                 "_id": 1,
@@ -263,7 +263,7 @@ class Accesos(Accesos):
         #! Se obtiene la informacion del guardia como Horario y Turno en el que esta haciendo su check in
         location = self.answers.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID, {}).get(self.f['location'], '')
         hora_inicio = self.answers.get(self.f['start_shift'], '')
-        employee_data = self.get_guard_data(self.user.get('user_id'), location, hora_inicio)
+        employee_data = self.get_guard_data(self.user_id, location, hora_inicio)
         self.answers.update({
             self.f['dias_libres']: employee_data.get('dias_libres', []),
             self.f['nombre_horario']: employee_data.get('nombre_horario', ''),
@@ -324,8 +324,8 @@ class Accesos(Accesos):
         return response
         
     def check_out_manual(self):
-        last_check_in = self.get_last_check_in(self.user.get('user_id'))
-        if last_check_in:
+        last_check_in = self.get_last_check_in(self.user_id)
+        if last_check_in and self.record_id != str(last_check_in.get('_id', '')):
             self.answers.update({
                 self.f['start_shift']: last_check_in.get('start_shift', None),
                 self.f['comment_checkin']: last_check_in.get('comment_checkin', ''),
@@ -367,6 +367,7 @@ if __name__ == "__main__":
     acceso_obj.console_run()
     option = acceso_obj.answers.get(acceso_obj.f['option_checkin'], '')
     data_rondin = json.loads(sys.argv[1])
+    acceso_obj.user_id = data_rondin.get('user_id', acceso_obj.user.get('user_id'))
     acceso_obj.timezone = data_rondin.get('timezone', 'America/Mexico_City')
     
     response = {}

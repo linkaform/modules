@@ -35,8 +35,26 @@ class Accesos( Accesos):
             'retardo_maximo': '68b642e2bc17e2713cabe019',
             'grupo_turnos': '68b6427cc8f94827ebfed699',
             'horas_trabajadas': '68d6b0d5f7865907a86c37d7',
-            'status_turn': '68d5bbb57691dec5a7640358'
-            })
+            'status_turn': '68d5bbb57691dec5a7640358',
+            
+            'tipo_guardia': '68acee270f2af5e173b7f92e',
+            'nombre_guardia_suplente': '68acb67685a044b5fdd869b2',
+            'estatus_guardia': '663bffc28d00553254f274e0',
+            'foto_inicio_turno': '6855e761adab5d93274da7d7',
+            'foto_cierre_turno': '6879823d856f580aa0e05a3b',
+            'fecha_inicio_turno': '6879828d0234f02649cad390',
+            'fecha_cierre_turno': '6879828d0234f02649cad391',
+            'comentario_inicio_turno': '66a5b9bed0c44910177eb724',
+            'comentario_cierre_turno': '68798dd1205f333d8f53a1c7',
+            'nombre_horario': '68b6427cc8f94827ebfed695',
+            'hora_entrada': '68b6427cc8f94827ebfed696',
+            'hora_salida': '68b6427cc8f94827ebfed697',
+            'dias_de_la_semana': '68b861ba34290efdd49ab24f',
+            'tolerancia_retardo': '68b6427cc8f94827ebfed698',
+            'retardo_maximo': '68b642e2bc17e2713cabe019',
+            'grupo_ubicaciones_horario': '68b6427cc8f94827ebfed699',
+            'dias_libres_empleado': '68bb20095035e61c5745de05'
+        })
 
         #BORRAR
         self.CONFIGURACION_RECORRIDOS = self.lkm.catalog_id('configuracion_de_recorridos')
