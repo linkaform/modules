@@ -390,6 +390,20 @@ class Accesos(Accesos):
         }
         return format_response
 
+    def get_locations(self):
+        selector = {}
+        fields = ["_id", f"answers.{self.Location.f['location']}"]
+
+        mango_query = {
+            "selector": selector,
+            "fields": fields,
+            "limit": 200
+        }
+
+        row_catalog = self.lkf_api.search_catalog(self.Location.UBICACIONES_CAT_ID, mango_query)
+        format_row_catalog = [i.get(self.Location.f['location']) for i in row_catalog]
+        return format_row_catalog
+
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
     script_obj.console_run()
