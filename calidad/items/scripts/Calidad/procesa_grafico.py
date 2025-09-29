@@ -15,7 +15,7 @@ class Calidad(Calidad):
 
     def set_status_proceso(self, current_record, record_id, new_estatus, msg=''):
         current_record['answers'].update({ self.f['status_reporte']: new_estatus, self.f['observaciones_reporte']: msg })
-        lkf_api.patch_record(current_record, record_id, jwt_settings_key='USER_JWT_KEY')
+        self.lkf_api.patch_record(current_record, record_id, jwt_settings_key='USER_JWT_KEY')
 
     """
     # Obtiene el registro del catálogo según el nombre del Producto
@@ -30,7 +30,7 @@ class Calidad(Calidad):
                 ]}},
             "limit":1,
             "skip":0}
-        res = lkf_api.search_catalog( self.PRODUCTOS_CALIDAD_ID, mango_query)
+        res = self.lkf_api.search_catalog( self.PRODUCTOS_CALIDAD_ID, mango_query)
         return res
 
     """
@@ -186,7 +186,7 @@ class Calidad(Calidad):
         fecha_fin = answers.get(self.f['fecha_fin_reporte'], '')
 
         # Obtengo el label de los campos, después me servirá para los nombres de cada gráfico a generar
-        form_fields = lkf_api.get_form_id_fields(current_record['form_id'], jwt_settings_key='USER_JWT_KEY')
+        form_fields = self.lkf_api.get_form_id_fields(current_record['form_id'], jwt_settings_key='USER_JWT_KEY')
         fields = form_fields[0]['fields']
         dict_fields_current_form = { f.get('field_id', ''): f.get('label', '') for f in fields }
 
@@ -288,7 +288,7 @@ class Calidad(Calidad):
                     self.f['status_reporte']: 'realizado',
                     self.f['observaciones_reporte']: ''
                     })
-                lkf_api.patch_record(current_record, record_id, jwt_settings_key='USER_JWT_KEY')
+                self.lkf_api.patch_record(current_record, record_id, jwt_settings_key='USER_JWT_KEY')
             else:
                 self.set_status_proceso(current_record, record_id, 'error', msg='No se encontró información')
 
@@ -296,7 +296,6 @@ if __name__ == "__main__":
     script_obj = Calidad(settings, sys_argv=sys.argv)
     script_obj.console_run()
     current_record = simplejson.loads( sys.argv[1] )
-    lkf_api = utils.Cache(settings)
     current_record = script_obj.lkf_api.drop_fields_for_patch(current_record)
     record_id = script_obj.record_id
     script_obj.set_status_proceso(current_record, record_id, 'procesando')
