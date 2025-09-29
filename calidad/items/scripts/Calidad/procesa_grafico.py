@@ -196,29 +196,21 @@ class Calidad(Calidad):
         dict_proceso_maquina = {}
         dict_producto = {}
         field_id_to_graphs = ''
-        field_forma_inspeccion = ''
         for field_id in dict_fields_current_form.keys():
             # Se identica el grupo repetitivo donde se pegarán los graficos
             if re.match(r"^fffff", field_id):
                 field_id_to_graphs = field_id
-            # Identicar el id de la forma de inspeccion de donde se obtienen los datos para generar la grafica
-            # Se podria quitar si dejamos el id desde el modulo
-            if re.match(r"^eeeee", field_id):
-                field_forma_inspeccion = field_id
         if not field_id_to_graphs:
             print('No hay campo grupo repetitivo donde el id empiece por fffff para depositar las gráficas generadas')
             self.set_status_proceso(current_record, record_id, 'error', msg='No hay campo grupo repetitivo donde el id empiece por fffff para depositar las gráficas generadas')
             return False
-        if not field_forma_inspeccion:
-            print('No hay campo de forma de inspección')
-            self.set_status_proceso(current_record, record_id, 'error', msg='No hay campo de forma de inspección')
+        if not self.INSPECCION_CALIDAD:
+            print('No se identifico el ID de la forma de inspección de calidad')
+            self.set_status_proceso(current_record, record_id, 'error', msg='No se identifico el ID de la forma de inspección de calidad')
             return False
 
         # Obtengo el label de los campos, después me servirá para los nombres de cada gráfico a generar
-        if self.INSPECCION_CALIDAD:
-            form_id_inspeccion = self.INSPECCION_CALIDAD
-        else:
-            form_id_inspeccion = answers.get( field_forma_inspeccion, 0 )
+        form_id_inspeccion = self.INSPECCION_CALIDAD
         form_fields = self.lkf_api.get_form_id_fields(form_id_inspeccion, jwt_settings_key='USER_JWT_KEY')
         fields = form_fields[0]['fields']
         dict_fields_label = { f.get('field_id', ''): f.get('label', '') for f in fields }
