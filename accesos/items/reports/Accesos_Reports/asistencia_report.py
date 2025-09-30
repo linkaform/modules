@@ -271,8 +271,8 @@ class Accesos(Accesos):
                     "resumen": resumen
                 })
         return result
-    
-    def get_guard_turn_details(self):
+
+    def get_guard_turn_details(self, names=[], selected_day=None, location=None):
         now = datetime.now(timezone('America/Mexico_City'))
         start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         end_of_month = now.replace(day=monthrange(now.year, now.month)[1], hour=23, minute=59, second=59, microsecond=999999)
@@ -281,11 +281,12 @@ class Accesos(Accesos):
             {"$match": {
                 "deleted_at": {"$exists": False},
                 "form_id": 140286,  # self.REGISTRO_ASISTENCIA
-                "user_id": self.user.get('user_id'),
+                "created_by_name": {"$in": names},
+                f"answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.Location.f['location']}": location,
                 f"answers.{self.f['start_shift']}": {
                     "$gte": start_of_month.strftime("%Y-%m-%d %H:%M:%S"),
                     "$lte": end_of_month.strftime("%Y-%m-%d %H:%M:%S")
-                }
+                },
             }},
             {"$sort": {
                 f"answers.{self.f['start_shift']}": 1
@@ -296,10 +297,10 @@ class Accesos(Accesos):
             }}
         ]
         response = self.format_cr(self.cr.aggregate(query))
-        format_response = self.format_guard_turn_details(response)
+        format_response = self.format_guard_turn_details(response, selected_day=selected_day)
         return format_response
 
-    def format_guard_turn_details(self, data):
+    def format_guard_turn_details(self, data, selected_day=None):
         now = datetime.now(timezone('America/Mexico_City'))
         today_str = now.strftime("%Y-%m-%d")
         porcentaje_asistencias = 0.0
@@ -323,7 +324,7 @@ class Accesos(Accesos):
             if fecha_inicio:
                 dia = int(item['fecha_inicio_turno'][8:10])
                 dias_con_registro[dia] = status
-                if fecha_inicio.startswith(today_str):
+                if selected_day and dia == selected_day:
                     today_item = item
             if item.get('status_turn') == 'presente':
                 porcentaje_asistencias += 1
@@ -367,6 +368,7 @@ class Accesos(Accesos):
                 'faltas': faltas
             },
         }
+        print(simplejson.dumps(format_response, indent=4))
         return format_response
 
     def get_locations(self):
@@ -394,6 +396,9 @@ if __name__ == "__main__":
     locations = data.get('locations', [])
     option = data.get('option', 'get_guard_turn_details')
     turn_id = data.get('turn_id', '')
+    names = data.get('names', [])
+    selected_day = data.get('selected_day', 1)
+    location = data.get('location', '')
 
     response = {}
     if option == 'get_report':
@@ -401,7 +406,7 @@ if __name__ == "__main__":
     elif option == 'get_locations':
         response = script_obj.get_locations()
     elif option == 'get_guard_turn_details':
-        response = script_obj.get_guard_turn_details()
+        response = script_obj.get_guard_turn_details(names=names, selected_day=selected_day, location=location)
 
     print(simplejson.dumps(response, indent=4))
     script_obj.HttpResponse({"data": response})
