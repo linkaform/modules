@@ -39,6 +39,12 @@ class Accesos(Accesos):
             'status_turn': '68d5bbb57691dec5a7640358'
         })
         
+        self.default_shifts = {
+            "T1": {"start": "06:00:00", "end": "14:00:00", "tolerance": 15, "max_delay": 120},
+            "T2": {"start": "14:00:00", "end": "22:00:00", "tolerance": 15, "max_delay": 120},
+            "T3": {"start": "22:00:00", "end": "06:00:00", "tolerance": 15, "max_delay": 120},
+        }
+        
     def do_checkin(self, location, area, employee_list=[], check_in_manual={}):
         if not self.is_boot_available(location, area):
             msg = f"No se puede hacer check in en la caseta en la ubicación {location} y área {area}."
@@ -213,13 +219,54 @@ class Accesos(Accesos):
                 "turno": {
                     "$ifNull": [
                         {"$arrayElemAt": ["$turno", 0]},
-                        ""
+                        "sin_registro"
                     ]
                 }
             }}
         ]
         response = self.format_cr(self.cr.aggregate(query))
         response = self.unlist(response)
+        if response.get('turno') == 'sin_registro':
+            dt_inicio = datetime.strptime(hora_inicio, "%Y-%m-%d %H:%M:%S")
+            hora_inicio_time = dt_inicio.time()
+
+            turno_seleccionado = None
+            min_diff = None
+
+            for nombre_turno, datos_turno in self.default_shifts.items():
+                h_start = datetime.strptime(datos_turno["start"], "%H:%M:%S").time()
+                # Calcula diferencia en minutos (puede ser negativa si el turno es después de la hora actual)
+                diff = (
+                    (datetime.combine(datetime.today(), hora_inicio_time) -
+                    datetime.combine(datetime.today(), h_start)).total_seconds() / 60
+                )
+                # Si la hora de inicio del turno es antes o igual a la hora actual y la diferencia es la menor (más reciente)
+                if diff >= 0:
+                    if min_diff is None or diff < min_diff:
+                        min_diff = diff
+                        turno_seleccionado = {**datos_turno, "nombre_horario": nombre_turno}
+
+            # Si no encontró ninguno (por ejemplo, turno nocturno), toma el primero cuyo inicio sea después de la hora actual
+            if turno_seleccionado is None:
+                for nombre_turno, datos_turno in self.default_shifts.items():
+                    h_start = datetime.strptime(datos_turno["start"], "%H:%M:%S").time()
+                    diff = (
+                        (datetime.combine(datetime.today(), h_start) -
+                        datetime.combine(datetime.today(), hora_inicio_time)).total_seconds() / 60
+                    )
+                    if diff > 0:
+                        turno_seleccionado = {**datos_turno, "nombre_horario": nombre_turno}
+                        break
+
+            if turno_seleccionado:
+                response.update({
+                    'hora_inicio': turno_seleccionado['start'],
+                    'hora_fin': turno_seleccionado['end'],
+                    'nombre_horario': turno_seleccionado['nombre_horario'],
+                    'turno': turno_seleccionado['nombre_horario'],
+                    'tolerancia_retardo': turno_seleccionado['tolerance'],
+                    'retardo_maximo': turno_seleccionado['max_delay'],
+                })
         return response
 
     def calculate_status(self, hora_inicio, guard_data):
@@ -269,8 +316,8 @@ class Accesos(Accesos):
             self.f['nombre_horario']: employee_data.get('nombre_horario', ''),
             self.f['hora_entrada']: employee_data.get('hora_inicio', ''),
             self.f['hora_salida']: employee_data.get('hora_fin', ''),
-            self.f['tolerancia_retardo']: employee_data.get('tolerancia_retardo', ''),
-            self.f['retardo_maximo']: employee_data.get('retardo_maximo', ''),
+            self.f['tolerancia_retardo']: employee_data.get('tolerancia_retardo', 0),
+            self.f['retardo_maximo']: employee_data.get('retardo_maximo', 0),
         })
         
         #! Se calcula status de la llegada del guardia
