@@ -45,51 +45,6 @@ class Accesos(Accesos):
         })
         
         self.shifts = {}
-        
-        self.default_shifts = {
-            "T1": {
-                "id": "T1",
-                "name": "T1: 06:00 - 14:00 hrs",
-                "entrada_hora": 6,
-                "entrada_minuto": 0,
-                "salida_hora": 14,
-                "salida_minuto": 0,
-                "timeRange": "06:00 - 14:00 hrs",
-                "tolerancia": 15,
-                "limite_retardo": 120,
-                "minutos_entrada": 360,
-                "minutos_salida": 840,
-                "es_nocturno": False
-            },
-            "T2": {
-                "id": "T2",
-                "name": "T2: 14:00 - 22:00 hrs",
-                "entrada_hora": 14,
-                "entrada_minuto": 0,
-                "salida_hora": 22,
-                "salida_minuto": 0,
-                "timeRange": "14:00 - 22:00 hrs",
-                "tolerancia": 15,
-                "limite_retardo": 120,
-                "minutos_entrada": 840,
-                "minutos_salida": 1320,
-                "es_nocturno": False
-            },
-            "T3": {
-                "id": "T3",
-                "name": "T3: 22:00 - 06:00 hrs",
-                "entrada_hora": 22,
-                "entrada_minuto": 0,
-                "salida_hora": 6,
-                "salida_minuto": 0,
-                "timeRange": "22:00 - 06:00 hrs",
-                "tolerancia": 15,
-                "limite_retardo": 120,
-                "minutos_entrada": 1320,
-                "minutos_salida": 360,
-                "es_nocturno": True
-            }
-        }
 
     def get_employees_list(self):
         query = [
@@ -115,7 +70,7 @@ class Accesos(Accesos):
         
         match = {
             "deleted_at": {"$exists": False},
-            "form_id": self.REGISTRO_ASISTENCIA,
+            "form_id": 140286,  # self.REGISTRO_ASISTENCIA
             "user_id": {"$in": employees_ids},
             "created_at": {"$gte": start_of_month},
             f"answers.{self.f['start_shift']}": {"$exists": True},
@@ -291,6 +246,30 @@ class Accesos(Accesos):
                     "asistencia_mes": asistencia_mes,
                     "resumen": resumen
                 })
+                
+        empleados_con_registro = set(data.keys())
+        for emp in employees_list:
+            emp_id = emp['employee_id']
+            if emp_id not in empleados_con_registro:
+                asistencia_mes = []
+                resumen = {"asistencias": 0, "retardos": 0, "faltas": 0}
+                for day in range(1, days_in_month + 1):
+                    if day < now.day:
+                        status = "falta"
+                        resumen["faltas"] += 1
+                    else:
+                        status = "sin_registro"
+                    asistencia_mes.append({
+                        "dia": day,
+                        "status": status,
+                    })
+                result.append({
+                    "employee_id": emp_id,
+                    "nombre": emp['nombre'],
+                    "ubicacion": "Sin ubicación",
+                    "asistencia_mes": asistencia_mes,
+                    "resumen": resumen
+                })
         return result
     
     def get_guard_turn_details(self):
@@ -301,7 +280,7 @@ class Accesos(Accesos):
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
-                "form_id": self.REGISTRO_ASISTENCIA,
+                "form_id": 140286,  # self.REGISTRO_ASISTENCIA
                 "user_id": self.user.get('user_id'),
                 f"answers.{self.f['start_shift']}": {
                     "$gte": start_of_month.strftime("%Y-%m-%d %H:%M:%S"),
