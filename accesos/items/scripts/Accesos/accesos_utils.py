@@ -10,6 +10,57 @@ class Accesos( Accesos):
 
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
+        self.f.update({
+            'duracion_rondin':'6639b47565d8e5c06fe97cf3',
+            'duracion_traslado_area':'6760a9581e31b10a38a22f1f',
+            'fecha_inspeccion_area':'6760a908a43b1b0e41abad6b',
+            'fecha_inicio_rondin':'6760a8e68cef14ecd7f8b6fe',
+            'status_rondin':'6639b2744bb44059fc59eb62',
+            'grupo_areas_visitadas':'66462aa5d4a4af2eea07e0d1',
+            'nombre_recorrido':'6644fb97e14dcb705407e0ef',
+            
+            'option_checkin': '663bffc28d00553254f274e0',
+            'image_checkin': '6855e761adab5d93274da7d7',
+            'comment_checkin': '66a5b9bed0c44910177eb724',
+            'comment_checkout': '68798dd1205f333d8f53a1c7',
+            'start_shift': '6879828d0234f02649cad390',
+            'end_shift': '6879828d0234f02649cad391',
+            'foto_end': '6879823d856f580aa0e05a3b',
+            
+            'dias_libres': '68bb20095035e61c5745de05',
+            'nombre_horario': '68b6427cc8f94827ebfed695',
+            'hora_entrada': '68b6427cc8f94827ebfed696',
+            'hora_salida': '68b6427cc8f94827ebfed697',
+            'tolerancia_retardo': '68b6427cc8f94827ebfed698',
+            'retardo_maximo': '68b642e2bc17e2713cabe019',
+            'grupo_turnos': '68b6427cc8f94827ebfed699',
+            'horas_trabajadas': '68d6b0d5f7865907a86c37d7',
+            'status_turn': '68d5bbb57691dec5a7640358',
+            
+            'tipo_guardia': '68acee270f2af5e173b7f92e',
+            'nombre_guardia_suplente': '68acb67685a044b5fdd869b2',
+            'estatus_guardia': '663bffc28d00553254f274e0',
+            'foto_inicio_turno': '6855e761adab5d93274da7d7',
+            'foto_cierre_turno': '6879823d856f580aa0e05a3b',
+            'fecha_inicio_turno': '6879828d0234f02649cad390',
+            'fecha_cierre_turno': '6879828d0234f02649cad391',
+            'comentario_inicio_turno': '66a5b9bed0c44910177eb724',
+            'comentario_cierre_turno': '68798dd1205f333d8f53a1c7',
+            'nombre_horario': '68b6427cc8f94827ebfed695',
+            'hora_entrada': '68b6427cc8f94827ebfed696',
+            'hora_salida': '68b6427cc8f94827ebfed697',
+            'dias_de_la_semana': '68b861ba34290efdd49ab24f',
+            'tolerancia_retardo': '68b6427cc8f94827ebfed698',
+            'retardo_maximo': '68b642e2bc17e2713cabe019',
+            'grupo_ubicaciones_horario': '68b6427cc8f94827ebfed699',
+            'dias_libres_empleado': '68bb20095035e61c5745de05'
+        })
+
+        #BORRAR
+        self.CONFIGURACION_RECORRIDOS = self.lkm.catalog_id('configuracion_de_recorridos')
+        self.CONFIGURACION_RECORRIDOS_ID = self.CONFIGURACION_RECORRIDOS.get('id')
+        self.CONFIGURACION_RECORRIDOS_OBJ_ID = self.CONFIGURACION_RECORRIDOS.get('obj_id')
+        self.REGISTRO_ASISTENCIA = self.lkm.form_id('registro_de_asistencia','id')
 
         # self.bitacora_fields.update({
         #     "catalogo_pase_entrada": "66a83ad652d2643c97489d31",
@@ -337,7 +388,8 @@ class Accesos( Accesos):
             r['visita_a'] = self.format_visita(r.get('visita_a',[]))
         return  records
 
-
+    def get_pdf_seg(self, qr_code, template_id=491, name_pdf='Pase de Entrada'):
+        return self.lkf_api.get_pdf_record(qr_code, template_id = template_id, name_pdf =name_pdf, send_url=True)
 
     def get_list_rondines(self, prioridades=[], dateFrom='', dateTo='', filterDate=""):
         match_query = {
