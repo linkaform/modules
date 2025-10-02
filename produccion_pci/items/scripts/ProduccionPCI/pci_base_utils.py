@@ -260,7 +260,7 @@ class PCI_Utils():
                 return str(actual_key) + '-' + str(next_key)
         return actual_key
 
-    def check_folio(self, form_id_admin, folio, telefono, area):
+    def check_folio(self, form_id_admin, folio, telefono, area, in_this_account=False):
         # form_id_admin = self.dict_equivalences_forms_id[form_id]
         query_folio_os = {
             'form_id':  form_id_admin, 'deleted_at' : {'$exists':False}, 
@@ -272,7 +272,10 @@ class PCI_Utils():
             query_folio_os.pop('folio')
             query_folio_os['answers.633d9f63eb936fb6ec9bf580'] = 'degradado'
         print('query_folio_os =',query_folio_os)
-        record = self.cr_admin.find_one(query_folio_os, {'folio':1, 'answers':1, 'connection_id':1, 'user_id':1, 'created_at': 1})
+        if not in_this_account:
+            record = self.cr_admin.find_one(query_folio_os, {'folio':1, 'answers':1, 'connection_id':1, 'user_id':1, 'created_at': 1})
+        else:
+            record = self.cr.find_one(query_folio_os, {'folio':1, 'answers':1, 'connection_id':1, 'user_id':1, 'created_at': 1})
         return record
 
     def check_folio_pagado(self, folio):
