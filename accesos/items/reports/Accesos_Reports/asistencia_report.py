@@ -70,7 +70,8 @@ class Accesos(Accesos):
         
         match = {
             "deleted_at": {"$exists": False},
-            "form_id": 140286,  # self.REGISTRO_ASISTENCIA
+            # "form_id": 140286,
+            "form_id": self.REGISTRO_ASISTENCIA,
             "user_id": {"$in": employees_ids},
             "created_at": {"$gte": start_of_month},
             f"answers.{self.f['start_shift']}": {"$exists": True},
@@ -280,7 +281,8 @@ class Accesos(Accesos):
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
-                "form_id": 140286,  # self.REGISTRO_ASISTENCIA
+                # "form_id": 140286,
+                "form_id": self.REGISTRO_ASISTENCIA,
                 "created_by_name": {"$in": names},
                 f"answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.Location.f['location']}": location,
                 f"answers.{self.f['start_shift']}": {

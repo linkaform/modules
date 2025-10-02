@@ -332,6 +332,8 @@ class Accesos(Accesos):
                 "deleted_at": {"$exists": False},
                 "form_id": self.REGISTRO_ASISTENCIA,
                 "user_id": guard_id,
+                f"answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.Location.f['location']}": self.location,
+                f"answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.Location.f['area']}": self.area,
                 f"answers.{self.f['start_shift']}": {"$exists": True},
                 f"answers.{self.f['end_shift']}": {"$exists": False},
             }},
@@ -372,12 +374,13 @@ class Accesos(Accesos):
         
     def check_out_manual(self):
         last_check_in = self.get_last_check_in(self.user_id)
+        print('===log: last_check_in', simplejson.dumps(last_check_in, indent=3))
         if last_check_in and self.record_id != str(last_check_in.get('_id', '')):
             self.answers.update({
-                self.f['start_shift']: last_check_in.get('start_shift', None),
+                self.f['start_shift']: last_check_in.get('fecha_inicio_turno', ''),
                 self.f['comment_checkin']: last_check_in.get('comment_checkin', ''),
                 self.f['image_checkin']: last_check_in.get('image_checkin', []),
-                self.f['dias_libres']: last_check_in.get('dias_libres', []),
+                self.f['dias_libres']: last_check_in.get('dias_libres_empleado', []),
                 self.f['nombre_horario']: last_check_in.get('nombre_horario', ''),
                 self.f['hora_entrada']: last_check_in.get('hora_entrada', ''),
                 self.f['hora_salida']: last_check_in.get('hora_salida', ''),
@@ -416,6 +419,8 @@ if __name__ == "__main__":
     data_rondin = json.loads(sys.argv[1])
     acceso_obj.user_id = data_rondin.get('user_id', acceso_obj.user.get('user_id'))
     acceso_obj.timezone = data_rondin.get('timezone', 'America/Mexico_City')
+    acceso_obj.location = acceso_obj.answers.get(acceso_obj.CONF_AREA_EMPLEADOS_CAT_OBJ_ID, {}).get(acceso_obj.f['location'], '')
+    acceso_obj.area = acceso_obj.answers.get(acceso_obj.CONF_AREA_EMPLEADOS_CAT_OBJ_ID, {}).get(acceso_obj.f['area'], '')
     
     response = {}
     if option == 'iniciar_turno':
@@ -427,7 +432,7 @@ if __name__ == "__main__":
             and not acceso_obj.answers.get(acceso_obj.f['horas_trabajadas']):
         acceso_obj.set_work_hours(acceso_obj.answers.get(acceso_obj.f['start_shift']), acceso_obj.answers.get(acceso_obj.f['end_shift']))
 
-    print(simplejson.dumps(acceso_obj.answers, indent=3))
+    print('===log: answers', simplejson.dumps(acceso_obj.answers, indent=3))
     sys.stdout.write(simplejson.dumps({
         'status': 101,
         'replace_ans': acceso_obj.answers
