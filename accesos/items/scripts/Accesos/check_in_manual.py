@@ -281,14 +281,16 @@ class Accesos(Accesos):
 
         minutos_retraso = minutos_inicio - minutos_turno_inicio
 
-        if -10 <= minutos_retraso <= 10:
+        if minutos_retraso < -10:
+            return "falta"
+        elif -10 <= minutos_retraso <= 10:
             return "presente"
-        elif tolerancia < minutos_retraso <= retardo_maximo:
+        elif 10 < minutos_retraso <= tolerancia:
             return "retardo"
-        elif minutos_retraso > retardo_maximo:
+        elif tolerancia < minutos_retraso <= retardo_maximo:
             return "falta_por_retardo"
         else:
-            return ""
+            return "falta"
 
     def check_in_manual(self):
         #! Se cierra cualquier turno anterior que este abierto
