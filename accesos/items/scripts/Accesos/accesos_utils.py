@@ -865,7 +865,7 @@ class Accesos( Accesos):
                         fecha = tz.localize(datetime.strptime(fecha_str, '%Y-%m-%d %H:%M:%S'))
                         if not ultima_fecha or fecha > ultima_fecha:
                             ultima_fecha = fecha
-                if ultima_fecha and ahora > ultima_fecha + timedelta(hours=1):
+                if ultima_fecha and ahora > ultima_fecha + timedelta(minutes=15):
                     rondines_en_proceso_vencidos.append(rondin)
 
         rondines_ids = []
