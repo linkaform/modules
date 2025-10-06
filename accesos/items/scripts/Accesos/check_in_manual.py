@@ -377,7 +377,7 @@ class Accesos(Accesos):
     def check_out_manual(self):
         last_check_in = self.get_last_check_in(self.user_id)
         print('===log: last_check_in', simplejson.dumps(last_check_in, indent=3))
-        if last_check_in and self.record_id != str(last_check_in.get('_id', '')):
+        if last_check_in and self.record_id != str(last_check_in.get('_id', '')) and not self.answers.get(self.f['start_shift']):
             self.answers.update({
                 self.f['start_shift']: last_check_in.get('fecha_inicio_turno', ''),
                 self.f['comment_checkin']: last_check_in.get('comment_checkin', ''),
