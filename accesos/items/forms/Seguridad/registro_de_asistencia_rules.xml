@@ -1,8 +1,92 @@
 <?xml version='1.0' encoding='utf-8'?>
 <lkf>
     <form_id>{{ form.registro_de_asistencia.id }}</form_id>
-    <id>68b9eee7986cfd6caa9ab22f</id>
+    <id>68cc849116847a5750697799</id>
     <rules>
+        <item>
+            <conditions>
+                <item>
+                    <condition>in=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>663bffc28d00553254f274e0</field_id>
+                        <group_id>None</group_id>
+                        <id>663bffc28d00553254f274e0</id>
+                        <label>Estatus</label>
+                        <type>radio</type>
+                    </field>
+                    <value>iniciar_turno</value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>6855e761adab5d93274da7d7</field_id>
+                    <group_id>None</group_id>
+                    <id>6855e761adab5d93274da7d7</id>
+                    <label>Fotografia - Inicio de Turno</label>
+                    <type>images</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>66a5b9bed0c44910177eb724</field_id>
+                    <group_id>None</group_id>
+                    <id>66a5b9bed0c44910177eb724</id>
+                    <label>Comentarios - Inicio de Turno</label>
+                    <type>textarea</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Inicio</name>
+            <operator>and</operator>
+            <rule_id>118d149418a46d4</rule_id>
+            <rule_type>show</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>in=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>663bffc28d00553254f274e0</field_id>
+                        <group_id>None</group_id>
+                        <id>663bffc28d00553254f274e0</id>
+                        <label>Estatus</label>
+                        <type>radio</type>
+                    </field>
+                    <value>cerrar_turno</value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>6879823d856f580aa0e05a3b</field_id>
+                    <group_id>None</group_id>
+                    <id>6879823d856f580aa0e05a3b</id>
+                    <label>Fotografia - Cierre de Turno</label>
+                    <type>images</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>68798dd1205f333d8f53a1c7</field_id>
+                    <group_id>None</group_id>
+                    <id>68798dd1205f333d8f53a1c7</id>
+                    <label>Comentarios - Cierre de Turno</label>
+                    <type>textarea</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Regla 2</name>
+            <operator>and</operator>
+            <rule_id>cec6aa23161e5c</rule_id>
+            <rule_type>show</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
         <item>
             <conditions>
                 <item>
@@ -12,7 +96,7 @@
                         <field_id>663bffc28d00553254f274e0</field_id>
                         <group_id>None</group_id>
                         <id>663bffc28d00553254f274e0</id>
-                        <label>Accion</label>
+                        <label>Estatus</label>
                         <type>radio</type>
                     </field>
                     <value> </value>
@@ -24,7 +108,7 @@
                         <field_id>663bffc28d00553254f274e0</field_id>
                         <group_id>None</group_id>
                         <id>663bffc28d00553254f274e0</id>
-                        <label>Accion</label>
+                        <label>Estatus</label>
                         <type>radio</type>
                     </field>
                     <value> </value>
@@ -99,110 +183,26 @@
                 </item>
                 <item>
                     <catalog_id>None</catalog_id>
-                    <field_id>68d5bbb57691dec5a7640358</field_id>
-                    <group_id>None</group_id>
-                    <id>68d5bbb57691dec5a7640358</id>
-                    <label>Status</label>
-                    <type>radio</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
                     <field_id>68d6b0d5f7865907a86c37d7</field_id>
                     <group_id>None</group_id>
                     <id>68d6b0d5f7865907a86c37d7</id>
                     <label>Horas Trabajadas</label>
                     <type>decimal</type>
                 </item>
-            </fields_ruled>
-            <group_conditions>{}</group_conditions>
-            <name>Regla 1</name>
-            <operator>or</operator>
-            <rule_id>6fb20691b17724</rule_id>
-            <rule_type>invisible</rule_type>
-            <user_conditions>{}</user_conditions>
-        </item>
-        <item>
-            <conditions>
-                <item>
-                    <condition>in=</condition>
-                    <field>
-                        <catalog_id>None</catalog_id>
-                        <field_id>663bffc28d00553254f274e0</field_id>
-                        <group_id>None</group_id>
-                        <id>663bffc28d00553254f274e0</id>
-                        <label>Accion</label>
-                        <type>radio</type>
-                    </field>
-                    <value>iniciar_turno</value>
-                </item>
-            </conditions>
-            <element_ids>[]</element_ids>
-            <empty>False</empty>
-            <fields_ruled>
                 <item>
                     <catalog_id>None</catalog_id>
-                    <field_id>6855e761adab5d93274da7d7</field_id>
+                    <field_id>68d5bbb57691dec5a7640358</field_id>
                     <group_id>None</group_id>
-                    <id>6855e761adab5d93274da7d7</id>
-                    <label>Fotografia - Inicio de Turno</label>
-                    <type>images</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>66a5b9bed0c44910177eb724</field_id>
-                    <group_id>None</group_id>
-                    <id>66a5b9bed0c44910177eb724</id>
-                    <label>Comentarios - Inicio de Turno</label>
-                    <type>textarea</type>
-                </item>
-            </fields_ruled>
-            <group_conditions>{}</group_conditions>
-            <name>Regla 2</name>
-            <operator>and</operator>
-            <rule_id>114d22d31c83c24</rule_id>
-            <rule_type>show</rule_type>
-            <user_conditions>{}</user_conditions>
-        </item>
-        <item>
-            <conditions>
-                <item>
-                    <condition>in=</condition>
-                    <field>
-                        <catalog_id>None</catalog_id>
-                        <field_id>663bffc28d00553254f274e0</field_id>
-                        <group_id>None</group_id>
-                        <id>663bffc28d00553254f274e0</id>
-                        <label>Accion</label>
-                        <type>radio</type>
-                    </field>
-                    <value>cerrar_turno</value>
-                </item>
-            </conditions>
-            <element_ids>[]</element_ids>
-            <empty>False</empty>
-            <fields_ruled>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>6879823d856f580aa0e05a3b</field_id>
-                    <group_id>None</group_id>
-                    <id>6879823d856f580aa0e05a3b</id>
-                    <label>Fotografia - Cierre de Turno</label>
-                    <type>images</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>68798dd1205f333d8f53a1c7</field_id>
-                    <group_id>None</group_id>
-                    <id>68798dd1205f333d8f53a1c7</id>
-                    <label>Comentarios - Cierre de Turno</label>
-                    <type>textarea</type>
+                    <id>68d5bbb57691dec5a7640358</id>
+                    <label>Status</label>
+                    <type>radio</type>
                 </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>
             <name>Regla 3</name>
-            <operator>and</operator>
-            <rule_id>14c688569d1dd2</rule_id>
-            <rule_type>show</rule_type>
+            <operator>or</operator>
+            <rule_id>24341e55269bd8d</rule_id>
+            <rule_type>invisible</rule_type>
             <user_conditions>{}</user_conditions>
         </item>
         <item>
@@ -235,108 +235,8 @@
             <group_conditions>{}</group_conditions>
             <name>Regla 4</name>
             <operator>and</operator>
-            <rule_id>adc161ead112e4</rule_id>
+            <rule_id>88014841ff3414</rule_id>
             <rule_type>show</rule_type>
-            <user_conditions>{}</user_conditions>
-        </item>
-        <item>
-            <conditions>
-                <item>
-                    <condition>in=</condition>
-                    <field>
-                        <catalog_id>None</catalog_id>
-                        <field_id>68acee270f2af5e173b7f92e</field_id>
-                        <group_id>None</group_id>
-                        <id>68acee270f2af5e173b7f92e</id>
-                        <label>Guardia</label>
-                        <type>radio</type>
-                    </field>
-                    <value>guardia_suplente</value>
-                </item>
-            </conditions>
-            <element_ids>[]</element_ids>
-            <empty>False</empty>
-            <fields_ruled>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>68acb67685a044b5fdd869b2</field_id>
-                    <group_id>None</group_id>
-                    <id>68acb67685a044b5fdd869b2</id>
-                    <label>Nombre Completo - Guardia Suplente</label>
-                    <type>text</type>
-                </item>
-            </fields_ruled>
-            <group_conditions>{}</group_conditions>
-            <name>Regla 5</name>
-            <operator>and</operator>
-            <rule_id>5d8611cd319e0</rule_id>
-            <rule_type>required</rule_type>
-            <user_conditions>{}</user_conditions>
-        </item>
-        <item>
-            <conditions>
-                <item>
-                    <condition>in=</condition>
-                    <field>
-                        <catalog_id>None</catalog_id>
-                        <field_id>663bffc28d00553254f274e0</field_id>
-                        <group_id>None</group_id>
-                        <id>663bffc28d00553254f274e0</id>
-                        <label>Accion</label>
-                        <type>radio</type>
-                    </field>
-                    <value>cerrar_turno</value>
-                </item>
-            </conditions>
-            <element_ids>[]</element_ids>
-            <empty>False</empty>
-            <fields_ruled>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>{{ catalog.configuracion_areas_y_empleados.obj_id}}</field_id>
-                    <group_id>None</group_id>
-                    <id>66a83ab5ca3453e21ea08d19</id>
-                    <label>Datos</label>
-                    <type>catalog</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>663e5c57f5b8a7ce8211ed0b</field_id>
-                    <group_id>None</group_id>
-                    <id>663e5c57f5b8a7ce8211ed0b</id>
-                    <label>Ubicación</label>
-                    <type>catalog-select</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>663e5d44f5b8a7ce8211ed0f</field_id>
-                    <group_id>None</group_id>
-                    <id>663e5d44f5b8a7ce8211ed0f</id>
-                    <label>Caseta</label>
-                    <type>catalog-select</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>68acee270f2af5e173b7f92e</field_id>
-                    <group_id>None</group_id>
-                    <id>68acee270f2af5e173b7f92e</id>
-                    <label>Guardia</label>
-                    <type>radio</type>
-                </item>
-                <item>
-                    <catalog_id>None</catalog_id>
-                    <field_id>68acb67685a044b5fdd869b2</field_id>
-                    <group_id>None</group_id>
-                    <id>68acb67685a044b5fdd869b2</id>
-                    <label>Nombre Completo - Guardia Suplente</label>
-                    <type>text</type>
-                </item>
-            </fields_ruled>
-            <group_conditions>{}</group_conditions>
-            <name>Regla 6</name>
-            <operator>and</operator>
-            <rule_id>135610331f6d4ad</rule_id>
-            <rule_type>disabled</rule_type>
             <user_conditions>{}</user_conditions>
         </item>
     </rules>
