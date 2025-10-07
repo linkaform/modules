@@ -21,6 +21,7 @@ class Accesos(Accesos):
         self.load(module='Location', **self.kwargs)
         self.f.update({
             'tag_id_area_ubicacion': '6762f7b0922cc2a2f57d4044',
+            'status_check_ubicacion': '68e41c904da05123bf9326ee'
         })
 
     #! Utils functions ==========
@@ -146,15 +147,22 @@ class Accesos(Accesos):
         format_names = []
         for recorrido in recorridos:
             format_names.append(recorrido.get('nombre_recorrido', ''))
+            
+        match_query = {
+            "deleted_at": {"$exists": False},
+            "form_id": self.BITACORA_RONDINES,
+            f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": self.location,
+            f"answers.{self.f['estatus_del_recorrido']}": 'en_proceso',
+            f"answers.{self.f['grupo_areas_visitadas']}": {'$exists': True}
+        }
+        
+        if format_names:
+            match_query.update({
+                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.f['nombre_del_recorrido']}": {"$in": format_names},
+            })
         
         query = [
-            {'$match': {
-                "deleted_at": {"$exists": False},
-                "form_id": self.BITACORA_RONDINES,
-                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": self.location,
-                # f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.f['nombre_del_recorrido']}": {"$in": format_names},
-                f"answers.{self.f['estatus_del_recorrido']}": 'en_proceso',
-            }},
+            {'$match': match_query},
             {'$sort': {'created_at': -1}},
             {'$limit': 1},
             {'$project': {
@@ -473,22 +481,6 @@ class Accesos(Accesos):
         ]
         resp = self.cr.aggregate(query)
         resp = list(resp)
-        if not resp:
-            query = [
-                {'$match': {
-                    'deleted_at': {'$exists': False},
-                    'form_id': self.CONFIGURACION_DE_RECORRIDOS_FORM,
-                    f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": self.location,
-                    f"answers.{self.f['grupo_de_areas_recorrido']}": {'$exists': True}
-                }},
-                {'$project': {
-                    '_id': 1,
-                    'nombre_recorrido': f"$answers.{self.f['nombre_del_recorrido']}",
-                    'ubicacion_recorrido': f"$answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.f['ubicacion_recorrido']}"
-                }},
-            ]
-            resp = self.cr.aggregate(query)
-            resp = list(resp)
         return resp
     
     def get_areas_recorrido(self, record_id):
@@ -516,6 +508,17 @@ class Accesos(Accesos):
                 {'_id': ObjectId(winner_id)},
                 {'$set': {'winner': True}}
             )
+            
+    def update_check_ubicacion(self):
+        response = self.cr.update_one({
+            'form_id': self.form_id,
+            '_id': ObjectId(self.record_id),
+        },{'$set': {
+            f'answers.{self.f["status_check_ubicacion"]}': 'Area no configurada'
+        }})
+        if response.matched_count > 0:
+            print(f"===== log: Status actualizado. Area no configurada.")
+        return response.matched_count
 
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
@@ -537,6 +540,10 @@ if __name__ == "__main__":
     
     #! 1. Obtener los recorridos existentes para el area ejecutada
     recorridos = script_obj.search_rondin_by_area()
+    if not recorridos:
+        print('===== log: No se encontró un recorrido para esta ubicación y área.')
+        resp = script_obj.update_check_ubicacion()
+        sys.exit(0)
     
     #! 2. Se crea un cache con la informacion de el check
     script_obj.create_cache()
