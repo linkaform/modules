@@ -209,7 +209,7 @@ class Accesos(Accesos):
         Retorna: La respuesta de la api al hacer el patch de un registro
         Error: La respuesta de la api al hacer el patch de un registro
         """
-        tz = pytz.timezone('America/Mexico_City')
+        tz = pytz.timezone(self.timezone)
         today = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
         rondin = self.unlist(rondin)
         rondin_en_progreso = True
@@ -402,7 +402,7 @@ class Accesos(Accesos):
         })
         answers = {}
 
-        tz = pytz.timezone('America/Mexico_City')
+        tz = pytz.timezone(self.timezone)
 
         print('winner in bitacora:', winner)
         answers[self.f['fecha_programacion']] = winner.get('timestamp') and datetime.fromtimestamp(winner.get('timestamp'), tz).strftime('%Y-%m-%d %H:%M:%S')
@@ -527,7 +527,8 @@ if __name__ == "__main__":
     # print(simplejson.dumps(script_obj.answers, indent=3))
     data_rondin = json.loads(sys.argv[1])
     script_obj.timestamp = data_rondin.get('start_timestamp', '')
-    tz = pytz.timezone('America/Mexico_City')
+    script_obj.timezone = data_rondin.get('timezone', 'America/Mexico_City')
+    tz = pytz.timezone(script_obj.timezone)
     # cache = script_obj.search_cache()
     # print('cache', cache)
     # script_obj.clear_cache()
