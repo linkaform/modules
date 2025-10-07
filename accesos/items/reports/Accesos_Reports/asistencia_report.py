@@ -316,6 +316,8 @@ class Accesos(Accesos):
         days_in_month = monthrange(now.year, now.month)[1]
         dias_con_registro = {}
         today_item = None
+        actual_guard_status = 'Inactivo'
+        dias_libres_count = 0
         
         dias_libres = []
         #! POSIBLE CAMBIO: Se consideran solo los dias libres del primer registro del mes
@@ -352,6 +354,7 @@ class Accesos(Accesos):
             dia_es = dia_map.get(dia_semana, dia_semana)
             if dias_libres and dia_es in dias_libres:
                 status = "dia_libre"
+                dias_libres_count += 1
             elif day in dias_con_registro:
                 status = dias_con_registro[day]
             elif day < now.day:
@@ -363,16 +366,29 @@ class Accesos(Accesos):
                 "dia": day,
                 "status": status
             })
+            
+            if day == now.day:
+                status_hoy = status
+        
+        if status_hoy not in ["sin_registro", "falta"]:
+            actual_guard_status = 'Activo'
+        
+        dias_evaluados = days_in_month - dias_libres_count
+        if dias_evaluados > 0:
+            porcentaje_asistencias = 100 - ((faltas / dias_evaluados) * 100)
+        else:
+            porcentaje_asistencias = 0
         
         format_response = {
             'guardia_generales': today_item if today_item else {},
             'asistencia_mes': asistencia_mes,
             'indicadores_generales': {
-                'porcentaje_asistencias': round((porcentaje_asistencias / days_in_month) * 100, 2),
+                'porcentaje_asistencias': round(porcentaje_asistencias, 2),
                 'retardos': retardos,
                 'horas_trabajadas': f"{round(horas_trabajadas, 2)} / 168",
                 'faltas': faltas
             },
+            'actual_guard_status': actual_guard_status
         }
         print(simplejson.dumps(format_response, indent=4))
         return format_response
