@@ -226,7 +226,9 @@ class Accesos(Accesos):
         ]
         response = self.format_cr(self.cr.aggregate(query))
         response = self.unlist(response)
-        if response.get('turno') == 'sin_registro':
+        if not response:
+            response = {}
+        if response.get('turno') == 'sin_registro' or not response.get('turno'):
             dt_inicio = datetime.strptime(hora_inicio, "%Y-%m-%d %H:%M:%S")
             hora_inicio_time = dt_inicio.time()
 
@@ -266,6 +268,7 @@ class Accesos(Accesos):
                     'turno': turno_seleccionado['nombre_horario'],
                     'tolerancia_retardo': turno_seleccionado['tolerance'],
                     'retardo_maximo': turno_seleccionado['max_delay'],
+                    'dias_libres': response.get('dias_libres', []),
                 })
         return response
 
