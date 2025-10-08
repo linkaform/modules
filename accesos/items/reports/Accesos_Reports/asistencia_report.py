@@ -298,7 +298,7 @@ class Accesos(Accesos):
                 f"answers.{self.f['start_shift']}": 1
             }},
             {"$project": {
-                "_id": 0,
+                "_id": 1,
                 "answers": 1,
             }}
         ]
@@ -344,6 +344,7 @@ class Accesos(Accesos):
                 horas_trabajadas += float(item.get('horas_trabajadas', 0.0))
         
         asistencia_mes = []
+        dias_libres_count = 0
         for day in range(1, days_in_month + 1):
             # Verifica si es día libre
             dia_semana = datetime(now.year, now.month, day).strftime("%A").lower()
@@ -370,10 +371,7 @@ class Accesos(Accesos):
             if day == now.day:
                 status_hoy = status
         
-        if status_hoy not in ["sin_registro", "falta"]:
-            actual_guard_status = 'Activo'
-        
-        dias_evaluados = days_in_month - dias_libres_count
+        dias_evaluados = now.day - dias_libres_count
         if dias_evaluados > 0:
             porcentaje_asistencias = 100 - ((faltas / dias_evaluados) * 100)
         else:
@@ -385,7 +383,7 @@ class Accesos(Accesos):
             'indicadores_generales': {
                 'porcentaje_asistencias': round(porcentaje_asistencias, 2),
                 'retardos': retardos,
-                'horas_trabajadas': f"{round(horas_trabajadas, 2)} / 168",
+                'horas_trabajadas': f"{round(horas_trabajadas)} / 168",
                 'faltas': faltas
             },
             'actual_guard_status': actual_guard_status
