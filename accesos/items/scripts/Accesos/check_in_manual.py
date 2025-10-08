@@ -284,13 +284,11 @@ class Accesos(Accesos):
 
         minutos_retraso = minutos_inicio - minutos_turno_inicio
 
-        if minutos_retraso < -10:
-            return "falta"
-        elif -10 <= minutos_retraso <= 10:
+        if -10 <= minutos_retraso <= tolerancia:
             return "presente"
-        elif 10 < minutos_retraso <= tolerancia:
-            return "retardo"
         elif tolerancia < minutos_retraso <= retardo_maximo:
+            return "retardo"
+        elif minutos_retraso > retardo_maximo:
             return "falta_por_retardo"
         else:
             return "falta"
