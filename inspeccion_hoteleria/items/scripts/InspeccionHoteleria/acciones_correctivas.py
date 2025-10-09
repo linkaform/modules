@@ -24,6 +24,13 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         self.cr_inspeccion = self.net.get_collections(collection='inspeccion_hoteleria')
         self.fallas_dict = {}
         
+        # forms
+        self.ACCIONES_CORRECTIVAS_FORM = self.lkm.form_id('acciones_correctivas', 'id')
+        # catalogs
+        self.ACCIONES_CORRECTIVAS_CAT = self.lkm.catalog_id('acciones_correctivas')
+        self.ACCIONES_CORRECTIVAS_CAT_ID = self.ACCIONES_CORRECTIVAS_CAT.get('id')
+        self.ACCIONES_CORRECTIVAS_CAT_OBJ_ID = self.ACCIONES_CORRECTIVAS_CAT.get('obj_id')
+        
         self.f.update({
             'desviacion': '68e6e30b5224da81e53a7156',
             'question_ref': '68e80711c6c1f1375e4b8b51',
