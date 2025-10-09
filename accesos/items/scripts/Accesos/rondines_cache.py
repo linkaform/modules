@@ -152,7 +152,7 @@ class Accesos(Accesos):
             "deleted_at": {"$exists": False},
             "form_id": self.BITACORA_RONDINES,
             f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": self.location,
-            f"answers.{self.f['estatus_del_recorrido']}": 'en_proceso',
+            f"answers.{self.f['estatus_del_recorrido']}": {'$in': ['en_proceso', 'programado']},
             f"answers.{self.f['grupo_areas_visitadas']}": {'$exists': True}
         }
         
