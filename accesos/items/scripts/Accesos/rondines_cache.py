@@ -510,15 +510,18 @@ class Accesos(Accesos):
             )
             
     def update_check_ubicacion(self):
-        response = self.cr.update_one({
-            'form_id': self.form_id,
-            '_id': ObjectId(self.record_id),
-        },{'$set': {
-            f'answers.{self.f["status_check_ubicacion"]}': 'Area no configurada'
-        }})
-        if response.matched_count > 0:
+        # response = self.cr.update_one({
+        #     'form_id': self.form_id,
+        #     '_id': ObjectId(self.record_id),
+        # },{'$set': {
+        #     f'answers.{self.f["status_check_ubicacion"]}': 'Area no configurada'
+        # }})
+        data = self.lkf_api.get_metadata(self.form_id)
+        data['answers'] = {self.f["status_check_ubicacion"]: 'Area no configurada'}
+        response = self.lkf_api.patch_record(data=data, record_id=self.record_id)
+        if response.get('status_code') in (200,201):
             print(f"===== log: Status actualizado. Area no configurada.")
-        return response.matched_count
+        return response.get('status_code')
 
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
