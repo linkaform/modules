@@ -416,5 +416,91 @@
                 </wf_fields>
             </rules>
         </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>68e8108c226af6c1624b8ad6</_id>
+                    <action_id>7</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <arguments>
+                            <option>create_acciones_correctivas</option>
+                        </arguments>
+                        <integration>None</integration>
+                        <script>
+                            <created_at>2025-10-09T19:44:01.753334</created_at>
+                            <deleted_at>None</deleted_at>
+                            <end_date>None</end_date>
+                            <id>{{ script.acciones_correctivas.id }}</id>
+                            <is_fileShared>False</is_fileShared>
+                            <itype>script</itype>
+                            <name>{{ script.acciones_correctivas.name }}</name>
+                            <start_date>2025-10-09T19:44:01.750384</start_date>
+                            <updated_at>2025-10-09T19:44:01.762073</updated_at>
+                        </script>
+                        <scriptArguments>
+                            <item>
+                                <label>option</label>
+                                <value>create_acciones_correctivas</value>
+                            </item>
+                        </scriptArguments>
+                        <scriptQuery>None</scriptQuery>
+                        <selectedUser>None</selectedUser>
+                        <user>SCRIPT_OWNER</user>
+                        <userOptions>
+                            <item>
+                                <id>SCRIPT_OWNER</id>
+                                <name>Dueño del script</name>
+                            </item>
+                            <item>
+                                <id>FORM_OWNER</id>
+                                <name>Dueño de la forma</name>
+                            </item>
+                            <item>
+                                <id>OWNER_ACCOUNT_EMAIL</id>
+                                <name>Dueño de la cuenta</name>
+                            </item>
+                            <item>
+                                <id>RECORD_USER</id>
+                                <name>Usuario que contesta</name>
+                            </item>
+                        </userOptions>
+                    </configuration>
+                    <name>Se ejecuta el script</name>
+                </item>
+            </actions>
+            <id>68e8108c226af6c1624b8ae0</id>
+            <name>Creacion de acciones correctivas</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2025-10-10T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2025-10-09T17:25:46.349Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>True</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>[]</triggers>
+                </wf_fields>
+            </rules>
+        </item>
     </workflows>
 </lkf>

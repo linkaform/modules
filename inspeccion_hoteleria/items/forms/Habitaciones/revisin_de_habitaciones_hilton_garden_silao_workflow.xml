@@ -123,7 +123,7 @@
 
       &lt;div style="display:none"&gt;
         {% set temp = 0 %}
-        {% arithmetic 'temp' record.points '/' 381 %}
+        {% arithmetic 'temp' record.points '/' 367 %}
         {% set resultado = 0 %}
         {% arithmetic 'resultado' temp '*' 100 %}
       &lt;/div&gt;
