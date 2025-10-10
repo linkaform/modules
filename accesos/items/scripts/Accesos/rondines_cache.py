@@ -180,7 +180,7 @@ class Accesos(Accesos):
                 f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": self.location,
                 f"answers.{self.USUARIOS_OBJ_ID}.{self.f['new_user_complete_name']}": self.user_name,
                 # f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.f['nombre_del_recorrido']}": {"$in": format_names},
-                f"answers.{self.f['estatus_del_recorrido']}": 'en_proceso',
+                f"answers.{self.f['estatus_del_recorrido']}": {'$in': ['en_proceso', 'programado']},
             }},
             {'$sort': {'created_at': -1}},
             {'$limit': 1},
@@ -540,15 +540,17 @@ class Accesos(Accesos):
             )
             
     def update_check_ubicacion(self):
-        response = self.cr.update_one({
-            'form_id': self.form_id,
-            '_id': ObjectId(self.record_id),
-        },{'$set': {
-            f'answers.{self.f["status_check_ubicacion"]}': 'Area no configurada'
-        }})
-        if response.matched_count > 0:
+        # response = self.cr.update_one({
+        #     'form_id': self.form_id,
+        #     '_id': ObjectId(self.record_id),
+        # },{'$set': {
+        #     f'answers.{self.f["status_check_ubicacion"]}': 'Area no configurada'
+        # }})
+        answers = {self.f["status_check_ubicacion"]: 'Area no configurada'}
+        response = self.lkf_api.patch_multi_record(answers=answers, form_id=self.form_id, record_id= [self.record_id,])
+        if response.get('status_code') in (200,201,202):
             print(f"===== log: Status actualizado. Area no configurada.")
-        return response.matched_count
+        return response.get('status_code')
 
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
