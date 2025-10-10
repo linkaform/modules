@@ -590,6 +590,7 @@ if __name__ == "__main__":
             if True:
                 last_update = module_obj.get_last_db_update_data(v)
                 # last_update_date
+                # last_update = None
                 print('last_update', last_update)
                 module_obj.set_oracle_server(v)
                 update = False
