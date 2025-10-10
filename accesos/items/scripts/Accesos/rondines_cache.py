@@ -557,7 +557,7 @@ if __name__ == "__main__":
     script_obj.console_run()
     script_obj.cr_cache = script_obj.net.get_collections(collection='rondin_caches')
     # print(simplejson.dumps(script_obj.answers, indent=3))
-    data_rondin = json.loads(sys.argv[1])
+    data_rondin = script_obj.current_record
     script_obj.user_name = data_rondin.get('created_by_name', '')
     script_obj.user_id = data_rondin.get('created_by_id', '')
     script_obj.user_email = data_rondin.get('created_by_email', '')
