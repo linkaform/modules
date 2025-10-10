@@ -243,9 +243,12 @@ class Accesos(Accesos):
 
         conf_recorrido = {}
         for key, value in rondin.items():
-            if key == 'realizado_por':
-                # answers[self.f['realizado_por']] = value
-                continue
+            if key == 'new_user_complete_name':
+                answers[self.USUARIOS_OBJ_ID] = {
+                    self.f['new_user_complete_name']: value,
+                    self.f['new_user_id']: [self.user_id],
+                    self.f['new_user_email']: [self.user_email]
+                }
             elif key == 'fecha_programacion':
                 answers[self.f['fecha_programacion']] = value
             elif key == 'fecha_inicio_rondin':
@@ -571,8 +574,6 @@ if __name__ == "__main__":
     
     #! 1. Obtener los recorridos existentes para el area ejecutada
     recorridos = script_obj.search_rondin_by_area()
-    bitacora = script_obj.search_active_bitacora_by_rondin(recorridos=recorridos)
-    breakpoint()
     if not recorridos:
         print('===== log: No se encontró un recorrido para esta ubicación y área.')
         resp = script_obj.update_check_ubicacion()

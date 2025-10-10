@@ -61,7 +61,6 @@ class Accesos( Accesos):
         self.CONFIGURACION_RECORRIDOS_ID = self.CONFIGURACION_RECORRIDOS.get('id')
         self.CONFIGURACION_RECORRIDOS_OBJ_ID = self.CONFIGURACION_RECORRIDOS.get('obj_id')
         self.REGISTRO_ASISTENCIA = self.lkm.form_id('registro_de_asistencia','id')
-        self.CONFIGURACION_RECORRIDOS_FORM = self.lkm.form_id('configuracion_de_recorridos','id')
 
         # self.bitacora_fields.update({
         #     "catalogo_pase_entrada": "66a83ad652d2643c97489d31",
@@ -866,7 +865,7 @@ class Accesos( Accesos):
                         fecha = tz.localize(datetime.strptime(fecha_str, '%Y-%m-%d %H:%M:%S'))
                         if not ultima_fecha or fecha > ultima_fecha:
                             ultima_fecha = fecha
-                if ultima_fecha and ahora > ultima_fecha + timedelta(minutes=15):
+                if ultima_fecha and ahora > ultima_fecha + timedelta(hours=1):
                     rondines_en_proceso_vencidos.append(rondin)
 
         rondines_ids = []
