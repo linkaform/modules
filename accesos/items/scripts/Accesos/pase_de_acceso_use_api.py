@@ -30,6 +30,7 @@ if __name__ == "__main__":
     update_obj = data.get("update_obj",{})
     envio = data.get("envio",[])
     account_id = data.get("account_id", "")
+    template_id= data.get("template_id")
     
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
@@ -70,6 +71,8 @@ if __name__ == "__main__":
             response = acceso_obj.get_pdf(qr_code, template_id=553)
         else:
             response = acceso_obj.get_pdf(qr_code)
+    elif option == 'get_pdf_incidencias':
+            response = acceso_obj.get_pdf(qr_code, template_id=template_id)
     elif option == 'get_user_contacts':
         response = acceso_obj.get_user_contacts()
     elif option == 'get_config_modulo_seguridad':
