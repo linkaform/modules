@@ -202,19 +202,25 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
         field_label = doc.get('field_label', {})
         acciones_correctivas = doc.get('acciones_correctivas', {})
-        media_after = doc.get('media_after', {})
-        comments_after = doc.get('comments_after', {})
+        media = doc.get('media', {})
+        media_acciones_correctivas = doc.get('media_acciones_correctivas', {})
+        comments = doc.get('comments', {})
+        comments_acciones_correctivas = doc.get('comments_acciones_correctivas', {})
 
         if falla_id in field_label:
             acciones_correctivas[falla_id] = field_label.pop(falla_id)
-            media_after[falla_id] = data.get(self.f['accion_correctiva_foto'], [])
-            comments_after[falla_id] = data.get(self.f['accion_correctiva_comentario'], "")
+            media_acciones_correctivas.setdefault(falla_id, {})['before'] = media.pop(falla_id, [])
+            media_acciones_correctivas.setdefault(falla_id, {})['after'] = data.get(self.f['accion_correctiva_foto'], [])
+            comments_acciones_correctivas.setdefault(falla_id, {})['before'] = comments.pop(falla_id, "")
+            comments_acciones_correctivas.setdefault(falla_id, {})['after'] = data.get(self.f['accion_correctiva_comentario'], "")
 
             update_data = {
                 "field_label": field_label,
-                "field_label_after": acciones_correctivas,
-                "media_after": media_after,
-                "comments_after": comments_after,
+                "field_label_acciones_correctivas": acciones_correctivas,
+                "media": media,
+                "media_acciones_correctivas": media_acciones_correctivas,
+                "comments": comments,
+                "comments_acciones_correctivas": comments_acciones_correctivas,
             }
             self.cr_inspeccion.update_one(
                 {"_id": ObjectId(record_id)},
