@@ -151,7 +151,7 @@ class Produccion_PCI( Produccion_PCI ):
         }, {'answers': 1, 'folio': 1, 'form_id': 1})
         return record_cobre
 
-    def create_record_cambio_tec(self,  os_cobre, alfanumerico, puerto, terminal_optica, current_folio, email_conexion ):
+    def create_record_cambio_tec(self,  os_cobre, alfanumerico, alfanumerico_pic, puerto, terminal_optica, current_folio, email_conexion ):
         metadata_cambio = lkf_api.get_metadata(p_utils.FORM_ID_CAMBIO_TECNOLOGIA)
         metadata_cambio['answers'] = {
             '667091a65afe99d4ceba0392': os_cobre['folio'], # Folio
@@ -161,7 +161,8 @@ class Produccion_PCI( Produccion_PCI ):
             'f1054000a010000000000021': os_cobre['answers']['f1054000a0100000000000a4'], # Tipo de tarea
             'f1054000a0100000000000d5': os_cobre['answers']['f1054000a010000000000003'], # Distrito
             'f1054000a010000000000002': os_cobre['answers']['f1054000a010000000000002'].upper().replace('_', ' '), # Cope
-            'f1054000a0200000000000a3': alfanumerico,
+            'f1054000a0200000000000a3': alfanumerico_pic,
+            self.f['field_no_serie_contratista']: alfanumerico,
             'f1054000a020000000000aa2': puerto, # Puerto
             'f1054000a020000000000aa1': terminal_optica,
             '6670a0a6fe5560837d1cc9bc': 'pendiente',
@@ -209,14 +210,15 @@ class Produccion_PCI( Produccion_PCI ):
             if os_cobre_found:
                 print("Registro encontrado en la forma {} creando registro de Cambio de tecnologia".format(os_cobre_found['form_id']))
 
-                pos_alfanumerico = self.position_field_in_xls( pos_field_id, None, by_field_id=['f1054000a0200000000000a3'] )
+                pos_alfanumerico = self.position_field_in_xls( pos_field_id, None, by_field_id=[self.f['field_no_serie_contratista']] )
                 alfanumerico = record[pos_alfanumerico] if pos_alfanumerico else ''
+                alfanumerico_pic = os_cobre_found['answers'].get('f1054000a020000000000003', '')
                 
                 puerto = record[ header_dict['puerto'] ] if header_dict.get('puerto') else None
                 
                 terminal_optica = record[ header_dict['terminal_optica'] ] if header_dict.get('terminal_optica') else ''
                 
-                resp_create_cambio = self.create_record_cambio_tec( os_cobre_found, alfanumerico, puerto, terminal_optica, current_record['folio'], dict_info_connections.get(connection_id, {}).get('username', '') )
+                resp_create_cambio = self.create_record_cambio_tec( os_cobre_found, alfanumerico, alfanumerico_pic, puerto, terminal_optica, current_record['folio'], dict_info_connections.get(connection_id, {}).get('username', '') )
                 print('resp_create_cambio =',resp_create_cambio)
                 if resp_create_cambio.get('status_code') != 201:
                     result['create']['error'] = 'Ocurrió un error al crear el registro de cambio de tecnologia'
@@ -499,7 +501,7 @@ class Produccion_PCI( Produccion_PCI ):
                     continue
                 elif lbl == 'Distrito' and (answer.get('f1054000a0100000000000d5',False) or answer.get('f1054000a010000000000003',False)):
                     continue
-                elif lbl == 'Alfanumérico' and answer.get('f1054000a0200000000000a3',False) and len(str(answer.get('f1054000a0200000000000a3', ''))) == 12:
+                elif lbl in ['Alfanumérico', 'Modem - Numero de Serie']: # elif lbl == 'Alfanumérico' and answer.get('f1054000a0200000000000a3',False) and len(str(answer.get('f1054000a0200000000000a3', ''))) == 12:
                     continue
             if str(pos).find('-') > 0:
                 position = int(pos.split('-')[0])
@@ -736,7 +738,7 @@ class Produccion_PCI( Produccion_PCI ):
 
             elif element['scritp_type'] == 'num_serie' and type(position) == int:
                 if record[position]:
-                    answer['f1054000a0200000000000a3'] = record[position]
+                    answer[self.f['field_no_serie_contratista']] = record[position]
             if type(position) != int:
                 if position not in ['clase','tipo','tipo de tarea', 'etapa']:
                     answer.update(lkf_api.make_infosync_json(position, element, best_effort=True))
@@ -815,7 +817,7 @@ class Produccion_PCI( Produccion_PCI ):
                     answer['f1054000a020000000000007'] = 0
                     answer['f1054000a020000000000004'] = 'aerea'
                 if tecnologia_orden == 'fibra':
-                    alfanumerico = str(answer.get('f1054000a0200000000000a3',''))
+                    alfanumerico = str(answer.get(self.f['field_no_serie_contratista'],''))
                     if not is_cargado_desde_pic:
                         if len(alfanumerico) != 12:
                             error.append('Longitud de alfanumerico diferente de 12')

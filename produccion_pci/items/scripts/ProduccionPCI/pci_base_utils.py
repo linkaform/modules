@@ -33,7 +33,9 @@ class PCI_Utils():
 
         self.equivalcens_map = { 
             'Aerea': ['AEREA', 'M. AEREO'],
-            'Alfanumérico':['SERIE ONT ALFANUMÉRICO','ONT ALFANUMÉRICO','SERIE ONT ALFANUMERICO','Serie ONT Alfanumerico', 'Serie ONT Alfanumérico',
+            # 'Alfanumérico':['SERIE ONT ALFANUMÉRICO','ONT ALFANUMÉRICO','SERIE ONT ALFANUMERICO','Serie ONT Alfanumerico', 'Serie ONT Alfanumérico',
+            #     'Serie ONT alfanumerico','Serie ONT alfanumérico','serie ONT alfanumerico', 'serie ONT alfanumérico','serie ONT Alfanumerico', 'serie ONT Alfanumérico'],
+            'Numero de Serie Contratista':['SERIE ONT ALFANUMÉRICO','ONT ALFANUMÉRICO','SERIE ONT ALFANUMERICO','Serie ONT Alfanumerico', 'Serie ONT Alfanumérico',
                 'Serie ONT alfanumerico','Serie ONT alfanumérico','serie ONT alfanumerico', 'serie ONT alfanumérico','serie ONT Alfanumerico', 'serie ONT Alfanumérico'],
             'Clase de Servicio': ['CLASE_SERV', 'Clase', 'Clase Servicio', 'Clase de Servicio'],
             'Created At': ['Fecha Pendiente', 'Fecha de Pendiente', 'FECHA DE PENDIENTES'],
@@ -786,6 +788,10 @@ class PCI_Utils():
                     pos_field_id[pos_key] = { 'scritp_type': name_to_type.get( name_field_to_process, name_field_to_process.lower().replace(' ', '_') ) }
                     if name_field_to_process == 'usuario_reporta':
                         pos_field_id[pos_key]['field_id'] = 'f1054000a030000000000111'
+
+                    # Forzar que si es num_serie apunte al campo del Contratista
+                    if name_field_to_process == 'Num. Serie':
+                        pos_field_id[pos_key]['field_id'] = lkf_obj.f['field_no_serie_contratista']
 
         for title_field in ['Folio', 'Etapa', 'Tipo', 'Clase de Servicio', 'Tipo de Tarea', 'Aerea', 'Subterranea', 'Created At', 'Contratista', 'Tecnico', \
         'Fecha de Liquidacion', 'Fecha de Asignacion', 'Cope', 'Num. Serie', 'cambio_tecnologia', 'usuario_reporta']:
