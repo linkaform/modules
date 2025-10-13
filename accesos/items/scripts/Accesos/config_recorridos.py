@@ -195,9 +195,9 @@ class Schedule(Schedule):
                         self.Accesos.CONFIGURACION_RECORRIDOS_OBJ_ID: {
                             self.Location.f['location']: self.answers.get(self.Location.UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['location'], ''),
                             self.Accesos.mf['nombre_del_recorrido']: self.answers.get(self.Accesos.mf['nombre_del_recorrido'], ''),
-                            self.Accesos.f['fecha_programacion']: first_date,
-                            self.Accesos.mf['estatus_del_recorrido']: "programado",
-                        }
+                        },
+                        self.Accesos.f['fecha_programacion']: first_date,
+                        self.Accesos.mf['estatus_del_recorrido']: "programado",
                     },
                 }
             }
