@@ -31,6 +31,7 @@ class Schedule(Schedule):
             'assigned_users': 'abcde0001000000000020002',
             'field_map': 'abcded001000000000000001',
             'group_field_map': 'abcde0001000000000000008',
+            'action': 'abcde00010000000a0000001',
         })
         
     def schedule_task_recorrido(self):
@@ -44,7 +45,7 @@ class Schedule(Schedule):
         #TODO obtener el huzo horario del usuario y calcular us tzoffset
         tz_offset = self.current_record.get('tz_offset', -300) 
         dag_id = self.answers.get(self.mf['dag_id'])
-        action = self.answers.get('abcde00010000000a0000001')
+        action = self.answers.get(self.f['action'])
         if not self.answers or  action in ('eliminar', 'delete'):
             if dag_id:
                 return self.delete_cron(cron_id = dag_id)
