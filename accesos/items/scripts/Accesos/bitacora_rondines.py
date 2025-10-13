@@ -48,48 +48,6 @@ class Accesos(Accesos):
             self.answers[self.f['fecha_fin_rondin']] = fecha_final_str
         return True
 
-    def get_active_guards_in_location(self, location):
-        """
-        Obtiene el guardia que esta presente en dicha ubicacion.
-        """
-        query = [
-            {"$match": {
-                "deleted_at": {"$exists": False},
-                "form_id": self.REGISTRO_ASISTENCIA,
-                f"answers.{self.f['start_shift']}": {"$exists": True},
-                f"answers.{self.f['end_shift']}": {"$exists": False},
-                f"answers.{self.Employee.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.f['ubicacion']}": location,
-            }},
-            {"$project": {
-                "_id": 1,
-                "created_at": 1,
-                "created_by_id": 1,
-                "created_by_name": 1,
-                "created_by_email": 1,
-            }},
-            {"$sort": {
-                "created_at": -1
-            }},
-            {"$limit": 1}
-
-        ]
-        response = self.format_cr(self.cr.aggregate(query), get_one=True)
-        return response
-
-    def assigne_bitacora(self):
-        """
-        Asigna un bitacora a el guardia que este presente en dicha ubicacion.
-        """
-        location = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID,{}).get(self.f['ubicacion'], None)
-        if not location:
-            return True
-        user = self.get_active_guards_in_location(location=location)
-        if user:
-            self.answers[self.USUARIOS_OBJ_ID] = self.answers.get(self.USUARIOS_OBJ_ID, {})
-            self.answers[self.USUARIOS_OBJ_ID][self.f['new_user_complete_name']] = user.get('created_by_name')
-            self.answers[self.USUARIOS_OBJ_ID][self.f['new_user_email']] = [user.get('created_by_email'),]
-            self.answers[self.USUARIOS_OBJ_ID][self.f['new_user_id']] = [user.get('created_by_id'),]
-
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
@@ -97,10 +55,6 @@ if __name__ == "__main__":
     #! Validacion para answers vacio
     if not acceso_obj.answers:
         acceso_obj.answers = acceso_obj.current_record.get('answers', {})
-
-    status = acceso_obj.answers.get(acceso_obj.f['status_rondin'], '')
-    if status in ['programado']:
-        acceso_obj.assigne_bitacora()
     
     #-FILTROS
     acceso_obj.calcluta_tiempo_traslados()

@@ -226,9 +226,7 @@ class Accesos(Accesos):
         ]
         response = self.format_cr(self.cr.aggregate(query))
         response = self.unlist(response)
-        if not response:
-            response = {}
-        if response.get('turno') == 'sin_registro' or not response.get('turno'):
+        if response.get('turno') == 'sin_registro':
             dt_inicio = datetime.strptime(hora_inicio, "%Y-%m-%d %H:%M:%S")
             hora_inicio_time = dt_inicio.time()
 
@@ -268,7 +266,6 @@ class Accesos(Accesos):
                     'turno': turno_seleccionado['nombre_horario'],
                     'tolerancia_retardo': turno_seleccionado['tolerance'],
                     'retardo_maximo': turno_seleccionado['max_delay'],
-                    'dias_libres': response.get('dias_libres', []),
                 })
         return response
 
@@ -284,14 +281,14 @@ class Accesos(Accesos):
 
         minutos_retraso = minutos_inicio - minutos_turno_inicio
 
-        if -10 <= minutos_retraso <= tolerancia:
+        if -10 <= minutos_retraso <= 10:
             return "presente"
         elif tolerancia < minutos_retraso <= retardo_maximo:
             return "retardo"
         elif minutos_retraso > retardo_maximo:
             return "falta_por_retardo"
         else:
-            return "falta"
+            return ""
 
     def check_in_manual(self):
         #! Se cierra cualquier turno anterior que este abierto
@@ -378,7 +375,7 @@ class Accesos(Accesos):
     def check_out_manual(self):
         last_check_in = self.get_last_check_in(self.user_id)
         print('===log: last_check_in', simplejson.dumps(last_check_in, indent=3))
-        if last_check_in and self.record_id != str(last_check_in.get('_id', '')) and not self.answers.get(self.f['start_shift']):
+        if last_check_in and self.record_id != str(last_check_in.get('_id', '')):
             self.answers.update({
                 self.f['start_shift']: last_check_in.get('fecha_inicio_turno', ''),
                 self.f['comment_checkin']: last_check_in.get('comment_checkin', ''),
