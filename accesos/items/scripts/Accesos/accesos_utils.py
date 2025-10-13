@@ -72,7 +72,6 @@ class Accesos( Accesos):
         # })
 
         self.CONFIGURACION_DE_RECORRIDOS_FORM = self.lkm.form_id('configuracion_de_recorridos','id')
-        self.BITACORA_RONDINES = self.lkm.form_id('bitacora_rondines','id')
 
         self.f.update({
             'areas_del_rondin': '66462aa5d4a4af2eea07e0d1',
