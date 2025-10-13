@@ -99,7 +99,10 @@ class Schedule(Schedule):
         status = self.answers.get(self.f['status'])
         field_map = {self.f['field_map']: self.answers.get(self.f['field_map'], '')}
         group_field_map = {self.f['group_field_map']: self.answers.get(self.f['group_field_map'], '')}
+
+        # asigne_to = self.answers.get('abcde0001000000000020001',[])
         asigne_to = ['todos_los_usuarios_que_tengan_el_formulario_compartido']
+
         assigned_users = self.answers.get(self.f['assigned_users'], [])
         custom_cron = False
         schedule_config = self.get_schedule_config(self.answers)
@@ -108,8 +111,12 @@ class Schedule(Schedule):
         body = {}
         print('self.CATALOGO_FORMAS_CAT_OBJ_ID',self.CATALOGO_FORMAS_CAT_OBJ_ID)
         print('self.form_id',self.mf['form_id'])
+        
+        # item_id = self.answers.get(self.CATALOGO_FORMAS_CAT_OBJ_ID,{}).get(self.mf['form_id'],[])[0]
+        # item_type = self.answers.get(self.CATALOGO_FORMAS_CAT_OBJ_ID,{}).get(self.mf['form_type'],[])[0]
         item_id = self.Accesos.BITACORA_RONDINES
         item_type = 'form'
+        
         if not item_type or not item_id:
             msg_error_app = {
                 "error":{"msg": ["Error al obtener el tipo de recurso (item)"], "label": "Cron Id", "error":["Error al obtener el tipo de recurso (item)"]},
