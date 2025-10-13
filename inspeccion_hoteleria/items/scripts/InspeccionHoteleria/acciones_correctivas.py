@@ -169,6 +169,9 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             return {'success': True, 'message': 'No hay acciones correctivas que crear'}
         
     def complete_accion_correctiva(self, data):
+        # doc = self.cr_inspeccion.find_one({"_id": ObjectId('6866d0da564385449a772fbf')})
+        # doc.pop('_id', None)
+        # print('====log: doc', simplejson.dumps(doc, indent=4))
         accion_correctiva_cat = data.pop('68e6e2ed68928c80a3297485', {}) #TODO: Modularizar objid de acciones correctivas catalog
         hotel_name = accion_correctiva_cat.get(self.Location.f['location'])
         hab_num = accion_correctiva_cat.get(self.Location.f['area'])
