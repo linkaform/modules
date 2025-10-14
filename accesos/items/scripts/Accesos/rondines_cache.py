@@ -580,8 +580,12 @@ if __name__ == "__main__":
     if not recorridos:
         print('===== log: No se encontró un recorrido para esta ubicación y área.')
         resp = script_obj.update_check_ubicacion()
-        sys.exit(0)
-    
+        text_no_conf = 'Esta area no pertenece a este rondin.'
+        script_obj.answers[script_obj.f['comentario_check_area']] = (
+            script_obj.answers.get(script_obj.f['comentario_check_area'], '') + '\n' + text_no_conf
+            if script_obj.answers.get(script_obj.f['comentario_check_area'], '') else text_no_conf
+        )
+
     #! 2. Se crea un cache con la informacion de el check
     script_obj.create_cache()
     time.sleep(5)
