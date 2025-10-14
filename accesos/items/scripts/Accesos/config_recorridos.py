@@ -181,7 +181,7 @@ class Schedule(Schedule):
                 "name":task_name,
                 "operator_lib":"lkf_operator",
                 "operator":"CreateAndAssignTask",
-                "options":{"no_assign": True},
+                # "options":{"no_assign": True},
                 "params":{
                     "form_id":item_id,
                     "answers": {
