@@ -75,7 +75,6 @@ class Schedule(Schedule):
             if response.get('satus_code') == 200:
                 response['is_paused'] = False
 
-
         first_date = self.answers.get(self.mf['fecha_primer_evento'])
         #por default se corre en UTC+0
         start_date = first_date
@@ -97,23 +96,19 @@ class Schedule(Schedule):
         duration = self.answers.get(self.f['duration'], 1) * 3600
         description = self.answers.get(self.f['description'], '')
         status = self.answers.get(self.f['status'])
-        field_map = {self.f['field_map']: self.answers.get(self.f['field_map'], '')}
-        group_field_map = {self.f['group_field_map']: self.answers.get(self.f['group_field_map'], '')}
+        # field_map = {self.f['field_map']: self.answers.get(self.f['field_map'], '')}
+        # group_field_map = {self.f['group_field_map']: self.answers.get(self.f['group_field_map'], '')}
 
         # asigne_to = self.answers.get('abcde0001000000000020001',[])
-        asigne_to = ['todos_los_usuarios_que_tengan_el_formulario_compartido']
+        asigne_to = []
 
-        assigned_users = self.answers.get(self.f['assigned_users'], [])
+        # assigned_users = self.answers.get(self.f['assigned_users'], [])
         custom_cron = False
         schedule_config = self.get_schedule_config(self.answers)
+        print('schedule_config=', schedule_config)
         if not schedule_config:
             error_msg = 'No se encontro configuracion'
         body = {}
-        print('self.CATALOGO_FORMAS_CAT_OBJ_ID',self.CATALOGO_FORMAS_CAT_OBJ_ID)
-        print('self.form_id',self.mf['form_id'])
-        
-        # item_id = self.answers.get(self.CATALOGO_FORMAS_CAT_OBJ_ID,{}).get(self.mf['form_id'],[])[0]
-        # item_type = self.answers.get(self.CATALOGO_FORMAS_CAT_OBJ_ID,{}).get(self.mf['form_type'],[])[0]
         item_id = self.Accesos.BITACORA_RONDINES
         item_type = 'form'
         
@@ -125,11 +120,7 @@ class Schedule(Schedule):
         if type(item_type) == list:
             item_type = item_type[0]
         item_type = item_type.lower()
-        if item_type == 'script':
-            task_type = 'LKFRunScript'
-        if not item_id:
-            error_msg = 'Es requerido tener una forma seleccionada'
-        
+
         if dag_id:
             body['id'] = dag_id
         body['subscription_id'] = item_id
@@ -161,6 +152,7 @@ class Schedule(Schedule):
         }
 
         if custom_cron:
+            #TODO BRORRA se me hace que era para poner tu cron directo...
             body['dag_params'].update({'schedule_interval':custom_cron})
         else:
             body['dag_params'].update({'schedule_config':schedule_config})
@@ -189,6 +181,7 @@ class Schedule(Schedule):
                 "name":task_name,
                 "operator_lib":"lkf_operator",
                 "operator":"CreateAndAssignTask",
+                "options":{"no_assign": True},
                 "params":{
                     "form_id":item_id,
                     "answers": {
@@ -205,60 +198,43 @@ class Schedule(Schedule):
             body['tasks'].append(task)
             downstream_task_id += 1
             body['tasks'][0]['downstream_task_id'].append(downstream_task_id)
-            all_user_ids = []
-            assigne_2_group = []
-            if 'todos_los_usuarios_que_tengan_el_formulario_compartido' in  asigne_to:
-                fileshare_user_ids = self.get_form_fileshare(item_id)
-                all_user_ids += self.convert_usr_id_to_dict(fileshare_user_ids)
-            for gset in assigned_users:
-                if gset.get(self.f['asignar_a']) == 'grupo':
-                    udata = gset.get(self.GROUP_OBJ_ID,{})
-                    group_id = self.unlist(udata.get(self.f['group_id']))
-                    group_name = self.unlist(udata.get(self.f['group_name']))
-                    assigne_type = gset.get(self.f['asignar_de_grupo'])
-                    if assigne_type == 'un_solo_registro':
-                        assigne_2_group.append({'group_id':group_id, 'group_name':group_name})
-                    else:
-                        group_users = self.lkf_api.get_group_users(group_id)
-                        all_user_ids += self.update_users(all_user_ids, group_users)
-                elif gset.get(self.f['asignar_a']) == 'usuario':
-                    udata = gset.get(self.USUARIOS_OBJ_ID,{})
-                    data = {
-                        "name":udata.get(self.Accesos.f['new_user_complete_name']),
-                        "email":udata.get(self.Accesos.f['new_user_email'],[])[0],
-                        "username":udata.get(self.Accesos.f['new_user_username'],[])[0],
-                        "user_id":udata.get(self.Accesos.f['new_user_id'],[])[0],
-                        "account_id":self.account_id,
-                        "resource_kind":"user"
-                    }
-                    all_user_ids += self.update_users(all_user_ids, data)
-            if all_user_ids:
-                body['assign'] = {'assign_users':[]}
-            elif assigne_2_group:
-                body['assign'] = {'assign_group': assigne_2_group}
+            # all_user_ids = []
+            # assigne_2_group = []
+            # if 'todos_los_usuarios_que_tengan_el_formulario_compartido' in  asigne_to:
+            #     fileshare_user_ids = self.get_form_fileshare(item_id)
+            #     all_user_ids += self.convert_usr_id_to_dict(fileshare_user_ids)
+            # for gset in assigned_users:
+            #     if gset.get(self.f['asignar_a']) == 'grupo':
+            #         udata = gset.get(self.GROUP_OBJ_ID,{})
+            #         group_id = self.unlist(udata.get(self.f['group_id']))
+            #         group_name = self.unlist(udata.get(self.f['group_name']))
+            #         assigne_type = gset.get(self.f['asignar_de_grupo'])
+            #         if assigne_type == 'un_solo_registro':
+            #             assigne_2_group.append({'group_id':group_id, 'group_name':group_name})
+            #         else:
+            #             group_users = self.lkf_api.get_group_users(group_id)
+            #             all_user_ids += self.update_users(all_user_ids, group_users)
+            #     elif gset.get(self.f['asignar_a']) == 'usuario':
+            #         udata = gset.get(self.USUARIOS_OBJ_ID,{})
+            #         data = {
+            #             "name":udata.get(self.Accesos.f['new_user_complete_name']),
+            #             "email":udata.get(self.Accesos.f['new_user_email'],[])[0],
+            #             "username":udata.get(self.Accesos.f['new_user_username'],[])[0],
+            #             "user_id":udata.get(self.Accesos.f['new_user_id'],[])[0],
+            #             "account_id":self.account_id,
+            #             "resource_kind":"user"
+            #         }
+            #         all_user_ids += self.update_users(all_user_ids, data)
+            # if all_user_ids:
+            #     body['assign'] = {'assign_users':[]}
+            # elif assigne_2_group:
+            #     body['assign'] = {'assign_group': assigne_2_group}
 
-            for assige_usr in all_user_ids:
-                body['assign']['assign_users'].append(assige_usr)
+            # for assige_usr in all_user_ids:
+            #     body['assign']['assign_users'].append(assige_usr)
             print('body=', simplejson.dumps(body, indent=3))
             response.update(self.subscribe_cron(body))
-        elif task_type == 'LKFRunScript':
-            task = {
-                "name":task_name,
-                "operator_lib":"lkf_operator",
-                "operator":task_type,
-                "description":task_st,
-                "summary":description,
-                "params":{
-                    "script_id":item_id,
-                }
-            }
-            breakpoint()
-            #TODO place the script parameters answers
-            task["params"].update(self.get_script_map())
-            body['tasks'].append(task)
-            downstream_task_id += 1
-            body['tasks'][0]['downstream_task_id'].append(downstream_task_id)
-            response.update(self.subscribe_cron(body))
+
         return response    
         
  
@@ -268,7 +244,7 @@ if __name__ == "__main__":
     schedule_obj.console_run()
     lkf_api = schedule_obj.lkf_api
     res = schedule_obj.schedule_task_recorrido()
-    print("res", res)
+    print("res=", res)
     data = res.get('data')
     if res.get('status_code') == 0:
         print('Ningun cambio')
