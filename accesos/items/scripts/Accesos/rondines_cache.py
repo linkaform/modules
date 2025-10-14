@@ -23,7 +23,8 @@ class Accesos(Accesos):
             'tag_id_area_ubicacion': '6762f7b0922cc2a2f57d4044',
             'realizado_por': '68cd752bf911c0d6bb1e8e96',
             'comentarios_generales_rondin': '68d5cbdb12b8e764193190a7',
-            'bitacora_comentario': '6639b6180bb793945af2742d'
+            'bitacora_comentario': '6639b6180bb793945af2742d',
+            'status_check_ubicacion': '68e41c904da05123bf9326ee'
         })
 
     #! Utils functions ==========
