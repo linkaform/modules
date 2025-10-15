@@ -131,7 +131,7 @@ class Accesos(Accesos):
             older_than_hour = []
             for item in items:
                 ts = item.get('timestamp', 0)
-                if ts and now - ts <= 3600:
+                if ts and now - ts <= 900:
                     within_hour.append(item)
                 else:
                     older_than_hour.append(item)
@@ -609,7 +609,7 @@ if __name__ == "__main__":
             winner_date = winner_timestamp and datetime.fromtimestamp(winner_timestamp, tz).strftime('%Y-%m-%d %H:%M:%S')
             now = datetime.now(tz)
             if winner_date:
-                winner_dt = datetime.strptime(winner_date, '%Y-%m-%d %H:%M:%S').replace(tzinfo=tz)
+                winner_dt = tz.localize(datetime.strptime(winner_date, '%Y-%m-%d %H:%M:%S'))
                 diff = now - winner_dt
                 winner_hour = winner_dt.strftime('%Y-%m-%d %H')
                 
@@ -621,9 +621,9 @@ if __name__ == "__main__":
                 else:
                     print("No hay rondines que cerrar")
 
-                #! 7. Verificamos si ha pasado mas de 1 hora de este check pasado
-                if diff.total_seconds() > 3600 and winner.get('type') == 'closed_winner':
-                    print('Ha pasado más de 1 hora desde el winner_date.')
+                #! 7. Verificamos si ha pasado mas de 15 minutos de este check pasado
+                if diff.total_seconds() > 900 and winner.get('type') == 'closed_winner':
+                    print('Ha pasado más de 15 minutos desde el winner_date.')
                     #! 7-1 Se busca una bitacora cerrada para la hora en que se hizo este check
                     bitacora = script_obj.search_closed_bitacora_by_hour(winner.get('location'), winner_hour)
                     time.sleep(5)
