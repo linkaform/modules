@@ -35,7 +35,9 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'desviacion': '68e6e30b5224da81e53a7156',
             'question_ref': '68e80711c6c1f1375e4b8b51',
             'accion_correctiva_comentario': '68e6e392aacdc172c9fb6533',
-            'accion_correctiva_foto': '68e6e392aacdc172c9fb6534'
+            'accion_correctiva_foto': '68e6e392aacdc172c9fb6534',
+            'comentarios_acciones_correctivas': '68eee8bad43b9a4d7ab283cd',
+            'evidencia_acciones_correctivas': '68eed52e9b4da1b268b28364',
         })
         
         self.labels_to_exclude = [
@@ -129,6 +131,58 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             format_row_catalog = row_catalog[0]
         return format_row_catalog
     
+    def get_comments_and_media_questions(self, questions, hotel_name, hab_num):
+        search_hotel = self.form_ids.get(hotel_name.replace(' ', '_').lower(), '')
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": search_hotel,
+                f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": hotel_name,
+                f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['area']}": hab_num,
+            }},
+            {"$sort": {"created_at": -1}},
+            {"$limit": 1},
+            {"$project": {
+                "_id": 1,
+            }},
+            {
+                '$lookup': {
+                    'from': 'inspeccion_hoteleria',
+                    'localField': '_id',
+                    'foreignField': '_id',
+                    'pipeline': [
+                        {'$project': {
+                                '_id': 0,
+                                'comments': 1,
+                                'media': 1,
+                            }
+                        }
+                    ],
+                    'as': 'inspeccion'
+                }
+            },
+            {
+                '$unwind': {
+                    'path': '$inspeccion',
+                    'preserveNullAndEmptyArrays': True
+                }
+            },
+            {"$project": {
+                "_id": 0,
+                "inspeccion": 1,
+            }}
+        ]
+        resp = self.cr.aggregate(query)
+        format_resp = list(resp)
+        if resp:
+            inspeccion_data = self.unlist(format_resp).get('inspeccion', {})
+            comments = inspeccion_data.get('comments', {}) if inspeccion_data else {}
+            media = inspeccion_data.get('media', {}) if inspeccion_data else {}
+            filtered_comments = {key: value for key, value in comments.items() if key in questions}
+            filtered_media = {key: value for key, value in media.items() if key in questions}
+            return filtered_comments, filtered_media
+        return {}, {}
+    
     def create_acciones_correctivas_in_catalog(self, data):
         self.get_labels()
         location_data = data.pop(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {})
@@ -144,6 +198,8 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         # print('====log: hotel_name', hotel_name)
         # print('====log: hab_num', hab_num)
         # print('====log: questions_with_no', questions_with_no)
+        evaluate_keys = [key for key in questions_with_no.keys()]
+        comments, media = self.get_comments_and_media_questions(evaluate_keys, hotel_name, hab_num)
         list_acciones_correctivas = []
         for key, value in questions_with_no.items():
             metadata = self.lkf_api.get_catalog_metadata(141320) #TODO: Modularizar id de catalogo de accioens correctivas
@@ -151,7 +207,9 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 self.Location.f['location']: hotel_name,
                 self.Location.f['area']: hab_num,
                 self.f['desviacion']: self.fallas_dict.get(key),
-                self.f['question_ref']: key
+                self.f['question_ref']: key,
+                self.f['comentarios_acciones_correctivas']: comments.get(key, ''),
+                self.f['evidencia_acciones_correctivas']: media.get(key, ''),
             }
             metadata['answers'] = answers
             list_acciones_correctivas.append(metadata)
