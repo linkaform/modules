@@ -75,7 +75,7 @@ class Accesos(Accesos):
             "user_id": {"$in": employees_ids},
             "created_at": {"$gte": start_of_month},
             f"answers.{self.f['start_shift']}": {"$exists": True},
-            f"answers.{self.f['end_shift']}": {"$exists": True},
+            # f"answers.{self.f['end_shift']}": {"$exists": True},
             f"answers.{self.f['status_turn']}": {
                 "$exists": True,
                 "$ne": ""
