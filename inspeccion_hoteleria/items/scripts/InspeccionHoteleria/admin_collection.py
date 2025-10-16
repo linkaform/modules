@@ -170,23 +170,24 @@ if __name__ == '__main__':
     module_obj.cr_inspeccion = module_obj.net.get_collections(collection='inspeccion_collection')
     # Limpiar collection
     # module_obj.dev_clear_collection()
+    # breakpoint()
     # Obtener toda la collection
     # module_obj.dev_get_inspecciones_collection(141323)
     
     # Cargar todos los registros de inspeccion_collection    
-    records = module_obj.get_form_records(141323)
-    print('Total records found:', len(records))
-    for record in records:
-        module_obj.record_id = record.get('_id')
-        module_obj.answers = record.get('answers')
-        module_obj.form_id = record.get('form_id')
-        module_obj.folio = record.get('folio')
-        module_obj.created_at = record.get('created_at')
-        score_per_page = module_obj.get_grading_obj()
-        res = module_obj.save_results(score_per_page)
-        print('res==========', res)
+    # records = module_obj.get_form_records(141323)
+    # print('Total records found:', len(records))
+    # for record in records:
+    #     module_obj.record_id = record.get('_id')
+    #     module_obj.answers = record.get('answers')
+    #     module_obj.form_id = record.get('form_id')
+    #     module_obj.folio = record.get('folio')
+    #     module_obj.created_at = record.get('created_at')
+    #     score_per_page = module_obj.get_grading_obj()
+    #     res = module_obj.save_results(score_per_page)
+    #     print('res==========', res)
     
     # Esto es lo que ejecuta cada registro creado para la coleccion inspeccion_collection
-    # score_per_page = module_obj.get_grading_obj()
-    # res = module_obj.save_results(score_per_page)
-    # print('res==========', res)    
+    score_per_page = module_obj.get_grading_obj()
+    res = module_obj.save_results(score_per_page)
+    print('res==========', res)

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import re
 import sys, simplejson
 from bson import ObjectId
 import unicodedata
@@ -12,6 +13,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
+        self.load(module='Location', **self.kwargs)
         
         self.f.update({
             'state_name': '67b60b3f323c68b77070858f',
@@ -103,7 +105,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             Ejemplo: [{'name': 'Estado1'}, {'name': 'Estado2'}, ...
         """
         selector = {}
-        fields = ["_id", f"answers.{self.f['state_name']}"]
+        fields = ["_id", f"answers.{self.Location.f['location']}"]
 
         mango_query = {
             "selector": selector,
@@ -111,12 +113,12 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             "limit": 3000,
         }
 
-        res = self.lkf_api.search_catalog(129505, mango_query)
+        res = self.lkf_api.search_catalog(141691, mango_query)
         if res:
             seen = set()
             format_res = []
             for r in res:
-                state_name = r.get(self.f['state_name'], '')
+                state_name = r.get(self.Location.f['location'], '')
                 if state_name and state_name not in seen:
                     format_res.append({
                         'id': r['_id'],
@@ -131,23 +133,23 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         
         if states:
             selector.update({
-                f"answers.{self.f['state_name']}": {"$in": states},
+                f"answers.{self.Location.f['location']}": {"$in": states},
             })
-            
-        fields = ["_id", f"answers.{self.f['nes']}", f"answers.{self.f['state_name']}"]
-        
+
+        fields = ["_id", f"answers.{self.Location.f['area']}", f"answers.{self.Location.f['location']}"]
+
         mango_query = {
             "selector": selector,
             "fields": fields,
             "limit": 3000,
         }
-        res = self.lkf_api.search_catalog(129504, mango_query)
+        res = self.lkf_api.search_catalog(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_ID, mango_query)
         
         formated_res = []
         if res:
             for r in res:
-                nes = r.get(self.f['nes'])
-                state = r.get(self.f['state_name'])
+                nes = r.get(self.Location.f['area'])
+                state = r.get(self.Location.f['location'])
                 formated_res.append({
                     'id': r['_id'],
                     'nes': self.unlist(nes),
@@ -159,22 +161,23 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         all_nes = self.get_nes(states)
         
         match = {
-            "form_id": 129506,
+            "form_id": 141323,
             "deleted_at": {"$exists": False},
         }
         
         if states:
             match.update({
-                f"answers.67b60531f2e5f0e87a807dbc.{self.f['state_name']}": {"$in": states}
+                f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": {"$in": states}
             })
         
         query = [
             {"$match": match},
             {"$project": {
                 '_id': 1,
+                'folio': 1,
                 'created_at': 1,
-                'state': f"$answers.67b60531f2e5f0e87a807dbc.{self.f['state_name']}",
-                'label': f"$answers.67b60531f2e5f0e87a807dbc.{self.f['nes']}",
+                'state': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}",
+                'label': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['area']}",
             }},
             {"$lookup": {
                 "from": "inspeccion_collection",
@@ -198,6 +201,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             }},
             {"$project": {
                 "_id": 1,
+                "folio": 1,
                 "created_at": 1,
                 "state": 1,
                 "label": 1,
@@ -276,23 +280,28 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                             r['status'] = 'info'
                         else:
                             r['status'] = 'pending'
-                                                
+                            
+        #! Temp: ordenamiento temporal por número en label
+        final_response.sort(
+            key=lambda x: int(re.search(r'\d+', x.get('label', '0')).group()) if re.search(r'\d+', x.get('label', '0')) else 0 # type: ignore
+        )
+        print('response:', simplejson.dumps(final_response, indent=3))
         return final_response
 
     def get_auditoria_by_id(self, record_id):
         query = [
             {"$match": {
-                "form_id": 129506,
+                "form_id": 141323,
                 "_id": ObjectId(record_id),
             }},
             {"$project": {
                 "_id": 1,
                 "folio": 1,
                 "created_at": 1,
-                "nes": f"$answers.67b60531f2e5f0e87a807dbc.{self.f['nes']}",
+                "nes": f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['area']}",
                 "gerente": f"$answers.67b60531f2e5f0e87a807dbc.{self.f['gerente_operativo']}",
                 "supervisor": f"$answers.67b60531f2e5f0e87a807dbc.{self.f['supervisor_operativo']}",
-                "zona": f"$answers.67b60531f2e5f0e87a807dbc.{self.f['zona']}",
+                "zona": f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}",
                 "acciones_correctivas": {
                     "$size": {
                         "$ifNull": [f"$answers.{self.f['acciones_correctivas_set']}", []]
@@ -338,6 +347,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         response = self.unlist(response)
         response["_id"] = str(response["_id"])
         response['created_at'] = response['created_at'].strftime('%Y-%m-%d')
+        print('response:', simplejson.dumps(response, indent=3))
         return response
 
     def get_labels(self, form_id=None):
@@ -355,12 +365,12 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
     def get_list_fallas(self, states=None):
         match_query = {
             "deleted_at": {"$exists": False},
-            "form_id": 129506,
+            "form_id": 141323,
         }
         
         if states:
             match_query.update({
-                f"answers.67b60531f2e5f0e87a807dbc.{self.f['state_name']}": {"$in": states}
+                f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": {"$in": states}
             })
 
         group_fields = {"_id": "$form_id"}
@@ -370,8 +380,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                     "$cond": [
                         {
                             "$or": [
-                                {"$eq": [f"$answers.{id_falla}", "no_cumple"]},
-                                {"$eq": [f"$answers.{id_falla}", "no_cumple_pero_muestra_seguimiento"]}
+                                {"$eq": [f"$answers.{id_falla}", "no"]},
                             ]
                         },
                         1,
@@ -400,20 +409,20 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         all_nes = self.get_nes(states)
 
         match = {
-            "form_id": 129506,
+            "form_id": 141323,
             "deleted_at": {"$exists": False},
         }
         
         if states:
             match.update({
-                f"answers.67b60531f2e5f0e87a807dbc.{self.f['state_name']}": {"$in": states}
+                f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": {"$in": states}
             })
 
         query = [
             {"$match": match},
             {"$project": {
                 '_id': 1,
-                'label': f"$answers.67b60531f2e5f0e87a807dbc.{self.f['nes']}"
+                'label': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['area']}"
             }},
             {"$lookup": {
                 "from": "inspeccion_collection",
@@ -493,13 +502,13 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
     def get_table_section(self, states=None):
         match = {
-            "form_id": 129506,
+            "form_id": 141323,
             "deleted_at": {"$exists": False},
         }
         
         if states:
             match.update({
-                f"answers.67b60531f2e5f0e87a807dbc.{self.f['state_name']}": {"$in": states}
+                f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": {"$in": states}
             })
 
         query = [
@@ -507,8 +516,8 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             {"$project": {
                 '_id': 1,
                 'created_at': 1,
-                'state': f"$answers.67b60531f2e5f0e87a807dbc.{self.f['state_name']}",
-                'label': f"$answers.67b60531f2e5f0e87a807dbc.{self.f['nes']}"
+                'state': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}",
+                'label': f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['area']}"
             }},
             {"$lookup": {
                 "from": "inspeccion_collection",
@@ -591,7 +600,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         for record in response:
             record['created_at'] = record['created_at'].strftime('%Y-%m-%d')
             record['_id'] = str(record['_id'])
-            record['label'] = self.unlist(record['label'])
+            # record['label'] = self.unlist(record['label'])
         
         return response, table_section
 
@@ -601,18 +610,18 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
     def get_pie_chart(self, states=None):
         match_query = {
             "deleted_at": {"$exists": False},
-            "form_id": 129506,
+            "form_id": 141323,
         }
         
         if states:
             match_query.update({
-                f"answers.67b60531f2e5f0e87a807dbc.{self.f['state_name']}": {"$in": states}
+                f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": {"$in": states}
             })
 
         # CORREGIDO: Crear project_fields para incluir estado y todas las fallas
         project_fields = {
             "_id": 0,
-            "state": f"$answers.67b60531f2e5f0e87a807dbc.{self.f['state_name']}",
+            "state": f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}",
         }
         
         # Agregar todos los campos de fallas al project
@@ -628,8 +637,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                     "$cond": [
                         {
                             "$or": [
-                                {"$eq": [f"$falla_{nombre_falla}", "no_cumple"]},
-                                {"$eq": [f"$falla_{nombre_falla}", "no_cumple_pero_muestra_seguimiento"]}
+                                {"$eq": [f"$falla_{nombre_falla}", "no"]},
                             ]
                         },
                         1,
@@ -682,7 +690,7 @@ if __name__ == "__main__":
             'states': states
         }
     elif option == 'get_report':
-        class_obj.get_labels(129506)
+        class_obj.get_labels(141323)
         cards = class_obj.get_cards(states=states)
         fallas = class_obj.get_list_fallas(states=states)
         table_section, mejor_peor_auditoria = class_obj.get_table_section(states=states)
@@ -708,7 +716,7 @@ if __name__ == "__main__":
             'pdf': pdf,
         }
     elif option == 'get_pie_chart':
-        class_obj.get_labels(129506)
+        class_obj.get_labels(141323)
         pie_chart = class_obj.get_pie_chart(states=states)
         response = {
             'pie_chart_data': pie_chart
