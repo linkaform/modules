@@ -19,7 +19,7 @@ class Oracle(Oracle):
         #data: 
         translated_dict = {}
         for key, value in data.items():
-            if schema.get(key) and value:
+            if schema.get(key) and value != None:
                 if type(value) in (str, int, float) and self.etl_values.get(value):
                     translated_dict[schema[key]] = self.etl_values[value]
                 elif type(value) == datetime.datetime:

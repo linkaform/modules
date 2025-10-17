@@ -98,10 +98,8 @@ class Oracle(Oracle):
                     'TIPO_REGISTRO': '68ae9831a113d169e05af40e',
                     'TURBILIDECOLORA': 'ccaaa548cf22411a910aac05',
                     'LECBRIXJCLARO': 'ccaaa5b15ad84734fae92baf',
-                    'LECBRIXJUFILPRE': 'ccaaa5b15ad84734fae92bb1',
                     'LECBRIXSOLUT2': 'ccaaa5b15ad84734fae92bae',
                     'LECPOLCACHAZAMZ': 'ccaaa5b15ad84734fae92bb6',
-                    'LECPOLCAFILPREN': 'ccaaa5b15ad84734fae92bb5',
                     'PHAGPURGACAL5': 'ccaaa864c62694640f0c69c9',
                     'PHAGPURGACAL6': 'ccaaa864c62694640f0c69cc',
                     'PHAGPURGACAL7': 'ccaaa864c62694640f0c69cf',
@@ -112,7 +110,7 @@ class Oracle(Oracle):
                     'TURBIEDADJCLARO': 'ccaaa5b15ad84734fae92bb7',
                     'TURBIEDADJDILT2': 'ccaaa548cf22411a910aac02',
                     'TURBILIDECOLORA': 'ccaaa548cf22411a910aac05',
-                    'WT_TCH.TCH_PV': 'ccaaa5f5c7289512fa3f646c',
+                    '21.wt_tch.tch_pv': 'ccaaa5f5c7289512fa3f646c',
                     }
 
         """Aqui configuramos las vistas que vamos a mandar llamar, declaramos su schema, form_id y catalog_id de ser necesario"""
