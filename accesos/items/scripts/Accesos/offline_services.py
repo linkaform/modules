@@ -88,11 +88,13 @@ if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
     data = acceso_obj.data.get('data', {})
-    option = data.get("option", 'sync_to_lkf')
+    option = data.get("option", 'test')
 
     if option == 'get_user_catalogs':
         response = acceso_obj.get_user_catalogs()
     elif option == 'sync_to_lkf':
         response = acceso_obj.sync_to_lkf()
+    elif option == 'test':
+        breakpoint()
 
     sys.stdout.write(simplejson.dumps(response))
