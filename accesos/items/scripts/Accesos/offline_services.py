@@ -80,12 +80,47 @@ class Accesos(Accesos):
             print('---------------', record)
         breakpoint()
 
+    def get_couch_records(self):
+        cr_db = self.lkf_api.couch.set_db('incidencias_10')
+        mango_query = {
+            "selector": {},
+            "fields": ["_id", "_rev"]
+        }
+        records = cr_db.find(mango_query)
+        for record in records:
+            print('---------------', record)
+        breakpoint()
+
+    def get_couch_record(self, _id, _rev=None):
+        cr_db = self.couch.set_db('incidencias_10')
+        record = cr_db.get(_id) 
+        print('record', record)
+        if record.rev == _rev:
+           print('si lo encontre') 
+           record['status'] = 'recived'
+           cr_db.save(record)
+        else:
+            print('no lo encontre')
+            record = None
+        return record
+
+        
+
 if __name__ == "__main__":
+    print('sys.argv', sys.argv)
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
+
+    acceso_obj.get_couch_record("Agresión a guardia_1760570056978",'26-f006671009c26600deb9f151f1c1cdeb')
+    breakpoint()
+    records = cdb.find({})
+    for record in records:
+        print('---------------', record)
+
+
     data = acceso_obj.data.get('data', {})
     option = data.get("option", 'test')
-
+    response = {}
     if option == 'get_user_catalogs':
         response = acceso_obj.get_user_catalogs()
     elif option == 'sync_to_lkf':
