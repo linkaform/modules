@@ -16,9 +16,6 @@ class Accesos(Accesos):
         self.load(module='Location', **self.kwargs)
         self.couch = couch_util.Couch_utils(self.settings)
 
-    def s(self):
-        breakpoint()
-        
     def get_user_catalogs(self):
         soter_catalogs = [
             self.LISTA_INCIDENCIAS_CAT_ID,
@@ -82,7 +79,6 @@ class Accesos(Accesos):
         for record in records:
             print('---------------', record)
         breakpoint()
-            
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
