@@ -1,7 +1,6 @@
 # coding: utf-8
 import sys, simplejson, json
 from linkaform_api import settings
-from linkaform_api  import couch_util
 from account_settings import *
 
 from accesos_utils import Accesos
@@ -14,7 +13,6 @@ class Accesos(Accesos):
         # Module Globals#
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
         self.load(module='Location', **self.kwargs)
-        self.couch = couch_util.Couch_utils(self.settings)
 
     def get_user_catalogs(self):
         soter_catalogs = [
@@ -68,63 +66,83 @@ class Accesos(Accesos):
         except Exception as e:
             return {'status_code': 400, 'msg': 'error', 'data': str(e)}
         return {'status_code': 200, 'msg': 'success', 'data': dbs}
-    
-    def sync_to_lkf(self):
-        cr_db = self.lkf_api.couch.set_db('incidencias_10')
-        mango_query = {
-            "selector": {},
-            "fields": ["_id", "_rev"]
-        }
-        records = cr_db.find(mango_query)
-        for record in records:
-            print('---------------', record)
-        breakpoint()
 
-    def get_couch_records(self):
-        cr_db = self.lkf_api.couch.set_db('incidencias_10')
-        mango_query = {
-            "selector": {},
-            "fields": ["_id", "_rev"]
-        }
-        records = cr_db.find(mango_query)
-        for record in records:
-            print('---------------', record)
-        breakpoint()
+    def sync_incidence_to_lkf(self, record_type, id, rev):
+        #TODO: Dinamizar id del usuario para su db
+        self.cr_db = self.lkf_api.couch.set_db(f'{record_type}_10')
+
+        status = {}
+        record = self.get_couch_record(id, rev)
+        record = dict(record)
+        record_id = record.pop('_id', None)
+        
+        #! Evaluar otra forma de limpiar los campos o si seran necesarios posteriormente
+        record.pop('_rev', None)
+        record.pop('_revs_info', None)
+        record.pop('fotos', None)
+        record.pop('status', None)
+        record.pop('type', None)
+        
+        if isinstance(record, dict) and 'status_code' in record:
+            return record
+        elif isinstance(record, dict) and 'folio' in record:
+            folio = record.pop('folio', None)
+            response = self.update_incidence(record, folio)
+        else:
+            response = acceso_obj.create_incidence(record)
+
+        record = self.cr_db.get(record_id)
+        if response.get('status_code') in [200, 201, 202]:
+            folio = response.get('json', {}).get('folio', '')
+            record['status'] = 'synced'
+            record['folio'] = folio
+            self.cr_db.save(record)
+            status = {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
+        else:
+            record['status'] = 'error'
+            self.cr_db.save(record)
+            status = {'status_code': 400, 'type': 'error', 'msg': response, 'data': {}}
+        return status
 
     def get_couch_record(self, _id, _rev=None):
-        cr_db = self.couch.set_db('incidencias_10')
-        record = cr_db.get(_id) 
-        print('record', record)
-        if record.rev == _rev:
-           print('si lo encontre') 
-           record['status'] = 'recived'
-           cr_db.save(record)
-        else:
-            print('no lo encontre')
-            record = None
-        return record
-
+        if not _id:
+            return {'status_code': 400, 'type': 'error', 'msg': 'ID is required', 'data': {}}
         
+        record = self.cr_db.get(_id, revs_info=True)
+        if not record:
+            return {'status_code': 404, 'type': 'error', 'msg': 'Record not found', 'data': {}}
+
+        current_rev = record.rev
+        all_revs = [r['rev'] for r in record['_revs_info'] if r['status'] == 'available']
+
+        if _rev == current_rev:
+            print('✅ Revisión actual encontrada')
+            record['status'] = 'recived'
+            self.cr_db.save(record)
+            return record
+        elif _rev in all_revs:
+            print('⚠️ Revisión vieja')
+            return {'status_code': 461, 'type': 'error', 'msg': 'Old revision found', 'data': {}}
+        else:
+            print('🕓 Revisión aún no propagada')
+            return {'status_code': 462, 'type': 'error', 'msg': 'Revision not yet propagated', 'data': {}}
 
 if __name__ == "__main__":
-    print('sys.argv', sys.argv)
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
-
-    acceso_obj.get_couch_record("Agresión a guardia_1760570056978",'26-f006671009c26600deb9f151f1c1cdeb')
-    breakpoint()
-    records = cdb.find({})
-    for record in records:
-        print('---------------', record)
-
-
     data = acceso_obj.data.get('data', {})
-    option = data.get("option", 'test')
+    option = data.get("option", 'sync_incidence_to_lkf')
+    record_type = data.get("record_type", "incidencias")
+    _id = data.get("_id", None)
+    _rev = data.get("_rev", None)
+
     response = {}
     if option == 'get_user_catalogs':
         response = acceso_obj.get_user_catalogs()
-    elif option == 'sync_to_lkf':
-        response = acceso_obj.sync_to_lkf()
+    elif option == 'sync_incidence_to_lkf':
+        #! Hay que revisar que hacer con el record_type si solo sera una funcion para todos los apartados de Accesos
+        #! O si seran varias funciones cada una con su tipo
+        response = acceso_obj.sync_incidence_to_lkf(record_type=record_type, id=_id, rev=_rev)
     elif option == 'test':
         breakpoint()
 
