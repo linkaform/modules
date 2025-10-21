@@ -1,5 +1,6 @@
 # coding: utf-8
 import sys, simplejson, json
+import unicodedata
 from linkaform_api import settings
 from account_settings import *
 
@@ -13,6 +14,22 @@ class Accesos(Accesos):
         # Module Globals#
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
         self.load(module='Location', **self.kwargs)
+        
+    def clean_text(self, texto):
+        """
+        Limpia texto: minúsculas, espacios y puntos por guiones bajos, elimina acentos
+        """
+        if not isinstance(texto, str):
+            return ""
+        
+        texto = texto.lower()                # Minúsculas
+        texto = texto.replace(" ", "_")      # Espacios → guiones bajos
+        texto = texto.replace(".", "_")      # Puntos → guiones bajos
+        
+        # Eliminar acentos
+        texto = unicodedata.normalize('NFKD', texto).encode('ascii', 'ignore').decode('ascii')
+        
+        return texto
 
     def get_user_catalogs(self):
         soter_catalogs = [
@@ -35,6 +52,7 @@ class Accesos(Accesos):
         ]
         dbs = {}
         try:
+            fields_invertido = {v: k for k, v in self.f.items()}
             for catalog_id in soter_catalogs:
                 item = {}
                 version = "00.00"
@@ -47,7 +65,7 @@ class Accesos(Accesos):
                 for field in catalog_fields:
                     if not field.get('field_type') in ['catalog']:
                         field_items.update({
-                            field.get('field_id'): field.get('label')
+                            field.get('field_id'): fields_invertido.get(field.get('field_id'), self.clean_text(field.get('label', '')))
                         })
                 
                 if catalog_updated_at:
@@ -131,7 +149,7 @@ if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
     data = acceso_obj.data.get('data', {})
-    option = data.get("option", 'sync_incidence_to_lkf')
+    option = data.get("option", 'get_user_catalogs')
     record_type = data.get("record_type", "incidencias")
     _id = data.get("_id", None)
     _rev = data.get("_rev", None)
