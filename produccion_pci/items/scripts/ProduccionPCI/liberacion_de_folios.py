@@ -891,46 +891,58 @@ class Produccion_PCI( Produccion_PCI ):
                 '''
                 ***************************************************
                 '''
-                list_rec.append( 0 if is_clase_10_20 else un_par_bajante )
-                list_rec.append(plusvalia_tramo_adicional)
-                list_rec.append(ans.get('5f1721afa63c9a750b820482',0)) # Bonificacion por distancia y volumen de 1 a 5 o.s construidas
-                list_rec.append(ans.get('5f1721afa63c9a750b820483',0)) # Bonificacion por distancia y volumen de 6 a 15 o.s construidas
-                list_rec.append(ans.get('5f1721afa63c9a750b820484',0)) # Bonificacion por distancia y volumen de 16 a 25 o.s construidas
-                list_rec.append(ans.get('5f1721afa63c9a750b820485',0)) # Bonificacion por distancia y volumen mas de 25 o.s construidas
+                
+                # ============================== Para SR todo esto no se cobra ==============================
+
+                # list_rec.append( 0 if is_clase_10_20 else un_par_bajante )
+                # list_rec.append(plusvalia_tramo_adicional)
+                # list_rec.append(ans.get('5f1721afa63c9a750b820482',0)) # Bonificacion por distancia y volumen de 1 a 5 o.s construidas
+                # list_rec.append(ans.get('5f1721afa63c9a750b820483',0)) # Bonificacion por distancia y volumen de 6 a 15 o.s construidas
+                # list_rec.append(ans.get('5f1721afa63c9a750b820484',0)) # Bonificacion por distancia y volumen de 16 a 25 o.s construidas
+                # list_rec.append(ans.get('5f1721afa63c9a750b820485',0)) # Bonificacion por distancia y volumen mas de 25 o.s construidas
+
+                list_rec.extend([0] * 6)
                 
                 # Montaje de puente en distribuidor general
-                if not montaje_puente_dist_gral:
-                    montaje_puente_dist_gral = 1 if is_clase_10_20 else 2
-                list_rec.append(montaje_puente_dist_gral)
+                # if not montaje_puente_dist_gral:
+                #     montaje_puente_dist_gral = 1 if is_clase_10_20 else 2
+                # list_rec.append(montaje_puente_dist_gral)
+                list_rec.append(0)
                 
                 # Construccion o rehabilitacion de cableado interior para 1 aparato.- Solo se llena en las Estimaciones
-                # if proceso == 'estimaciones':
-                val_construccion_rehabilitacion = ans.get('605cd146f499106724acb8c7', 0)
-                val_construccion_rehabilitacion = 1 if (is_clase_10_20 and not val_construccion_rehabilitacion) else 0
+                # # if proceso == 'estimaciones':
+                # val_construccion_rehabilitacion = ans.get('605cd146f499106724acb8c7', 0)
+                # val_construccion_rehabilitacion = 1 if (is_clase_10_20 and not val_construccion_rehabilitacion) else 0
                 
-                list_rec.append(val_construccion_rehabilitacion)
-                list_rec.append(cableado_interior_extension)
-                list_rec.append(ans.get('5f1721afa63c9a750b820487',0)) # INSTALACIÓN DE POSTE DE 25'
-                list_rec.append(ans.get('5f1721afa63c9a750b820488',0)) # Pruebas de transmision de datos vdsl en roseta de datos con equipo homologado
-                list_rec.append(0 if is_clase_10_20 else cableado_interior_modem_infinitum)
-                if division == 'sur' and tipo_tarea[0] == 'D':
-                    list_rec.append(ans.get('5f1721afa63c9a750b82048a',0)) # IDENTIFICACION DE NUMERO TELEFONICO EN RED PRINCIPAL, INCLUYE MARCACION *080
-                    list_rec.append(ans.get('5f1721afa63c9a750b82048b',0)) # IDENTIFICACION DE NUMERO TELEFONICO EN RED SECUNDARIA, INCLUYE MARCACION *080
-                else:
-                    list_rec.append(0)
-                    list_rec.append(0)
-                list_rec.append(ans.get('5f1721afa63c9a750b82048c',0)) # UBICACIÓN DEL CLIENTE Y PRUEBA DE TRANSMISION VDSL EN TERMINAL AEREA
-                list_rec.append(ans.get('5f1721afa63c9a750b82048d',0)) # PRUEBA DE TRANSMISION VDSL ADICIONAL EN TERMINAL AREA
-                list_rec.append(ans.get('5f90e812f84ca4590ebc5947',0)) # QUEJA
-                list_rec.append(ans.get('5f90e812f84ca4590ebc5946',0)) # Migración TBA
+                # list_rec.append(val_construccion_rehabilitacion)
+                # list_rec.append(cableado_interior_extension)
+                # list_rec.append(ans.get('5f1721afa63c9a750b820487',0)) # INSTALACIÓN DE POSTE DE 25'
+                # list_rec.append(ans.get('5f1721afa63c9a750b820488',0)) # Pruebas de transmision de datos vdsl en roseta de datos con equipo homologado
+                # list_rec.append(0 if is_clase_10_20 else cableado_interior_modem_infinitum)
+                list_rec.extend([0] * 5)
+                
+                # if division == 'sur' and tipo_tarea[0] == 'D':
+                #     list_rec.append(ans.get('5f1721afa63c9a750b82048a',0)) # IDENTIFICACION DE NUMERO TELEFONICO EN RED PRINCIPAL, INCLUYE MARCACION *080
+                #     list_rec.append(ans.get('5f1721afa63c9a750b82048b',0)) # IDENTIFICACION DE NUMERO TELEFONICO EN RED SECUNDARIA, INCLUYE MARCACION *080
+                # else:
+                #     list_rec.append(0)
+                #     list_rec.append(0)
+                list_rec.extend([0] * 2)
+                
+                # list_rec.append(ans.get('5f1721afa63c9a750b82048c',0)) # UBICACIÓN DEL CLIENTE Y PRUEBA DE TRANSMISION VDSL EN TERMINAL AEREA
+                # list_rec.append(ans.get('5f1721afa63c9a750b82048d',0)) # PRUEBA DE TRANSMISION VDSL ADICIONAL EN TERMINAL AREA
+                # list_rec.append(ans.get('5f90e812f84ca4590ebc5947',0)) # QUEJA
+                # list_rec.append(ans.get('5f90e812f84ca4590ebc5946',0)) # Migración TBA
+                list_rec.extend([0] * 4)
 
                 # Línea de cliente básica de 1 par (bajante) (sin modem)
-                if is_clase_10_20:
-                    val_cliente_basica = ans.get('609bf813b3f4e5c00cf76ee0', 0)
-                    val_cliente_basica = 1 if not val_cliente_basica else val_cliente_basica
-                    list_rec.append( val_cliente_basica )
-                else:
-                    list_rec.append(0)
+                # if is_clase_10_20:
+                #     val_cliente_basica = ans.get('609bf813b3f4e5c00cf76ee0', 0)
+                #     val_cliente_basica = 1 if not val_cliente_basica else val_cliente_basica
+                #     list_rec.append( val_cliente_basica )
+                # else:
+                #     list_rec.append(0)
+                list_rec.append(0)
                 # Otras varias columnas llegan de las nuevas columnas que se agregaron en la carga de producción, revisar notas en el excel de las estimaciones
                 '''
                 Validaciones para estimar las A4
@@ -1023,32 +1035,36 @@ class Produccion_PCI( Produccion_PCI ):
                 list_rec.extend(list_bajante_subterranea)
                 # Estos radiales solo aplican para Fibra Metro
 
+                # ============================== Para SR todo esto no se cobra ==============================
+
                 # Si el tipo de trabajo empieza con FC solo se cobran los bajantes, lo demás ya no
-                if tipo_trabajo == 'fc' or record_is_a4 or record_is_cfe:
-                    radial_banqueta = ''
-                    radial_cepa = ''
-                    reparacion_tropezon = ''
-                else:
-                    radial_banqueta = ans.get('5f1f5efb3198fe9c5ccef32d','') # Radial en banqueta
-                    radial_cepa = ans.get('5f1f5efb3198fe9c5ccef32e','') # Radial en cepa libre
-                    reparacion_tropezon = ans.get('5f1f5efb3198fe9c5ccef32f','') # Reparacion de tropezon en radial
+                # if tipo_trabajo == 'fc' or record_is_a4 or record_is_cfe:
+                radial_banqueta = ''
+                radial_cepa = ''
+                reparacion_tropezon = ''
+                # else:
+                #     radial_banqueta = ans.get('5f1f5efb3198fe9c5ccef32d','') # Radial en banqueta
+                #     radial_cepa = ans.get('5f1f5efb3198fe9c5ccef32e','') # Radial en cepa libre
+                #     reparacion_tropezon = ans.get('5f1f5efb3198fe9c5ccef32f','') # Reparacion de tropezon en radial
 
                 # Se integra el concepto Desmontaje en Migracion
                 # solo aplica en tipos de tarea TS Clase de Servicio 1L y 2L con etapa 7S, tecnología G ejm ( TS1L7SG y  TS2L7SG)
                 # no afecta al 7V ya que sera 7S tons se descarta en automático
                 # MAQTEL el unico contratista que tiene otros precios un poco mas altos, tambien te pasare su precio
                 desmontaje_en_migracion = 0
-                if ('7S' in tipo_tarea) and (clase in ['1L', '2L']) and (tipo_trabajo == 'ts') and ('G' in tipo_tarea):
-                    desmontaje_en_migracion = 1
+                # if ('7S' in tipo_tarea) and (clase in ['1L', '2L']) and (tipo_trabajo == 'ts') and ('G' in tipo_tarea):
+                #     desmontaje_en_migracion = 1
                 list_rec.append( desmontaje_en_migracion )
 
                 visitas_adicionales = '' # Visitas adicional / cada insfraestructura nueva
                 conexion_bajante_x_fusion = '' # Conexion de bajante de F.O. por fusion
 
                 # INSTALACIÓN DE POSTE DE 25'
-                instalacion_poste = ans.get('5f1721afa63c9a750b820487',0)
+                # instalacion_poste = ans.get('5f1721afa63c9a750b820487',0)
+                instalacion_poste = 0
 
-                list_rec.extend([visitas_adicionales, conexion_bajante_x_fusion, radial_banqueta, radial_cepa, reparacion_tropezon, migracion_exitosa_vsi, migracion_exitosa_voz_cobre_a_fibra, instalacion_poste])
+                list_rec.extend([visitas_adicionales, conexion_bajante_x_fusion, radial_banqueta, radial_cepa, reparacion_tropezon, \
+                    migracion_exitosa_vsi, migracion_exitosa_voz_cobre_a_fibra, instalacion_poste])
                 # ============ Integro los conceptos minimos que se cobran si son a4 ============
                 if record_is_a4 and not record_is_cfe:
                     list_rec.extend([1] * 8 + [0] * 3)

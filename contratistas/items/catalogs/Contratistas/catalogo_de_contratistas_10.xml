@@ -7,8 +7,8 @@
         <redirect_url>default</redirect_url>
     </confirmation>
     <description />
-    <_rev>5-fa61edc7fb0438c9d7d892cf34c5b8cd</_rev>
-    <updated_at>2022-05-28T00:54:01.680300+00:00Z</updated_at>
+    <_rev>3-e9ca1c7d1fe032acb250799ff451ff9f</_rev>
+    <updated_at>2025-10-15T00:42:28.345112+00:00Z</updated_at>
     <sync>
         <element_request>{}</element_request>
         <input_parameters>[]</input_parameters>
@@ -16,7 +16,7 @@
     <filters>{}</filters>
     <name>Catalogo de Contratistas 1.0</name>
     <edit_public_records>False</edit_public_records>
-    <created_at>2022-05-28T00:54:01.680300+00:00Z</created_at>
+    <created_at>2025-10-15T00:42:28.345112+00:00Z</created_at>
     <advanced_options>
         <active>True</active>
         <folio>
@@ -25,9 +25,9 @@
             <config>False</config>
         </folio>
     </advanced_options>
-    <catalog_id>84743</catalog_id>
+    <catalog_id>141867</catalog_id>
     <sync_last_update>None</sync_last_update>
-    <_id>629172a91b50efa246eabc77</_id>
+    <_id>68eeedf48a7bcf031e878fa5</_id>
     <public>False</public>
     <catalog_pages>
         <item>
@@ -39,10 +39,11 @@
                         <size>complete</size>
                         <custom>None</custom>
                     </properties>
+                    <key>None</key>
                     <catalog_fields>[]</catalog_fields>
                     <field_id>5f344a0476c82e1bebc991d6</field_id>
                     <required>False</required>
-                    <fav>None</fav>
+                    <fav>True</fav>
                     <related_catalog_key>[]</related_catalog_key>
                     <relation_type>None</relation_type>
                     <label>ID de Usuario</label>
@@ -59,6 +60,7 @@
                         <size>complete</size>
                         <custom>None</custom>
                     </properties>
+                    <key>None</key>
                     <catalog_fields>[]</catalog_fields>
                     <field_id>5f344a0476c82e1bebc991d7</field_id>
                     <required>False</required>
@@ -80,10 +82,11 @@
                         <size>complete</size>
                         <custom>None</custom>
                     </properties>
+                    <key>None</key>
                     <catalog_fields>[]</catalog_fields>
                     <field_id>5f344a0476c82e1bebc991d8</field_id>
                     <required>False</required>
-                    <fav>None</fav>
+                    <fav>True</fav>
                     <related_catalog_key>[]</related_catalog_key>
                     <relation_type>None</relation_type>
                     <label>Correo Electrónico</label>
@@ -101,10 +104,11 @@
                         <step>1</step>
                         <custom>None</custom>
                     </properties>
+                    <key>None</key>
                     <catalog_fields>[]</catalog_fields>
                     <field_id>5f344a0476c82e1bebc991d9</field_id>
                     <required>False</required>
-                    <fav>None</fav>
+                    <fav>True</fav>
                     <related_catalog_key>[]</related_catalog_key>
                     <relation_type>None</relation_type>
                     <label>Teléfono de Contacto</label>
@@ -121,6 +125,7 @@
                         <size>complete</size>
                         <custom>None</custom>
                     </properties>
+                    <key>None</key>
                     <catalog_fields>[]</catalog_fields>
                     <field_id>5f344a0476c82e1bebc991da</field_id>
                     <required>False</required>
@@ -141,6 +146,7 @@
                         <size>complete</size>
                         <custom>None</custom>
                     </properties>
+                    <key>None</key>
                     <catalog_fields>[]</catalog_fields>
                     <field_id>5f344a0476c82e1bebc991db</field_id>
                     <required>False</required>
@@ -161,6 +167,7 @@
                         <size>complete</size>
                         <custom>None</custom>
                     </properties>
+                    <key>None</key>
                     <catalog_fields>[]</catalog_fields>
                     <field_id>5f344a0476c82e1bebc991dc</field_id>
                     <required>False</required>
@@ -182,24 +189,32 @@
                         <orientation>vertical</orientation>
                         <custom>0</custom>
                     </properties>
+                    <key>None</key>
+                    <catalog_fields>[]</catalog_fields>
                     <field_id>5f8eff3c85a98dcae9f05dfb</field_id>
                     <required>False</required>
                     <fav>True</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
                     <label>Autorización PIC MOVIL</label>
+                    <catalog>{}</catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
                     <options>
                         <item>
                             <selected>False</selected>
-                            <label>Sí</label>
+                            <option>None</option>
                             <value>sí</value>
-                            <points>None</points>
+                            <label>Sí</label>
                         </item>
                         <item>
                             <selected>False</selected>
-                            <label>No</label>
+                            <option>None</option>
                             <value>no</value>
-                            <points>None</points>
+                            <label>No</label>
                         </item>
                     </options>
+                    <related_catalog>None</related_catalog>
                 </item>
                 <item>
                     <field_type>radio</field_type>
@@ -209,160 +224,227 @@
                         <orientation>vertical</orientation>
                         <custom>0</custom>
                     </properties>
+                    <key>None</key>
+                    <catalog_fields>[]</catalog_fields>
                     <field_id>5f9a41469bcab68b640bd94b</field_id>
                     <required>False</required>
                     <fav>True</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
                     <label>Autorización Expediente</label>
+                    <catalog>{}</catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
                     <options>
                         <item>
                             <selected>False</selected>
-                            <label>Sí</label>
+                            <option>None</option>
                             <value>sí</value>
-                            <points>None</points>
+                            <label>Sí</label>
                         </item>
                         <item>
                             <selected>False</selected>
-                            <label>No</label>
+                            <option>None</option>
                             <value>no</value>
-                            <points>None</points>
+                            <label>No</label>
                         </item>
                     </options>
+                    <related_catalog>None</related_catalog>
                 </item>
                 <item>
                     <field_type>radio</field_type>
+                    <properties>
+                        <selected>None</selected>
+                        <openChoice>False</openChoice>
+                        <orientation>vertical</orientation>
+                        <custom>0</custom>
+                    </properties>
+                    <key>None</key>
+                    <catalog_fields>[]</catalog_fields>
                     <field_id>5fac1c22380db843149b7330</field_id>
                     <required>False</required>
                     <fav>True</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
                     <label>Autorización PDF</label>
+                    <catalog>{}</catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
                     <options>
                         <item>
                             <selected>False</selected>
-                            <label>Sí</label>
+                            <option>None</option>
                             <value>sí</value>
-                            <points>None</points>
+                            <label>Sí</label>
                         </item>
                         <item>
                             <selected>False</selected>
-                            <label>No</label>
+                            <option>None</option>
                             <value>no</value>
-                            <points>None</points>
+                            <label>No</label>
                         </item>
                     </options>
+                    <related_catalog>None</related_catalog>
+                </item>
+                <item>
+                    <field_type>radio</field_type>
                     <properties>
                         <selected>None</selected>
                         <openChoice>False</openChoice>
                         <orientation>vertical</orientation>
                         <custom>0</custom>
                     </properties>
-                </item>
-                <item>
-                    <field_type>radio</field_type>
-                    <required>False</required>
+                    <key>None</key>
+                    <catalog_fields>[]</catalog_fields>
                     <field_id>5fcab88c51dfeb3d86212027</field_id>
-                    <options>
-                        <item>
-                            <selected>False</selected>
-                            <label>Sí</label>
-                            <value>sí</value>
-                            <points>None</points>
-                        </item>
-                        <item>
-                            <selected>False</selected>
-                            <label>No</label>
-                            <value>no</value>
-                            <points>None</points>
-                        </item>
-                    </options>
+                    <required>False</required>
+                    <fav>None</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
                     <label>Autorización Orden de Compra</label>
+                    <catalog>{}</catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
+                    <options>
+                        <item>
+                            <selected>False</selected>
+                            <option>None</option>
+                            <value>sí</value>
+                            <label>Sí</label>
+                        </item>
+                        <item>
+                            <selected>False</selected>
+                            <option>None</option>
+                            <value>no</value>
+                            <label>No</label>
+                        </item>
+                    </options>
+                    <related_catalog>None</related_catalog>
+                </item>
+                <item>
+                    <field_type>radio</field_type>
                     <properties>
                         <selected>None</selected>
                         <openChoice>False</openChoice>
                         <orientation>vertical</orientation>
                         <custom>0</custom>
                     </properties>
-                </item>
-                <item>
-                    <field_type>radio</field_type>
-                    <required>False</required>
+                    <key>None</key>
+                    <catalog_fields>[]</catalog_fields>
                     <field_id>60be5fd1a9b326fec09658c2</field_id>
-                    <options>
-                        <item>
-                            <selected>False</selected>
-                            <label>Sí</label>
-                            <value>sí</value>
-                            <points>None</points>
-                        </item>
-                        <item>
-                            <selected>False</selected>
-                            <label>No</label>
-                            <value>no</value>
-                            <points>None</points>
-                        </item>
-                    </options>
+                    <required>False</required>
+                    <fav>None</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
                     <label>Autorización Carga de Producción sin PDF</label>
+                    <catalog>{}</catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
+                    <options>
+                        <item>
+                            <selected>False</selected>
+                            <option>None</option>
+                            <value>sí</value>
+                            <label>Sí</label>
+                        </item>
+                        <item>
+                            <selected>False</selected>
+                            <option>None</option>
+                            <value>no</value>
+                            <label>No</label>
+                        </item>
+                    </options>
+                    <related_catalog>None</related_catalog>
+                </item>
+                <item>
+                    <field_type>radio</field_type>
                     <properties>
                         <selected>None</selected>
                         <openChoice>False</openChoice>
                         <orientation>vertical</orientation>
                         <custom>0</custom>
                     </properties>
-                </item>
-                <item>
-                    <field_type>radio</field_type>
-                    <required>False</required>
+                    <key>None</key>
+                    <catalog_fields>[]</catalog_fields>
                     <field_id>60ec8bf3157e19fe8b393b42</field_id>
-                    <options>
-                        <item>
-                            <selected>False</selected>
-                            <label>Sí</label>
-                            <value>sí</value>
-                            <points>None</points>
-                        </item>
-                        <item>
-                            <selected>False</selected>
-                            <label>No</label>
-                            <value>no</value>
-                            <points>None</points>
-                        </item>
-                    </options>
+                    <required>False</required>
+                    <fav>None</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
                     <label>Autorización Carga de Producción sin Distometro</label>
-                    <properties>
-                        <selected>None</selected>
-                        <openChoice>False</openChoice>
-                        <orientation>vertical</orientation>
-                        <custom>0</custom>
-                    </properties>
-                </item>
-                <item>
-                    <field_type>radio</field_type>
-                    <required>False</required>
-                    <field_id>613111dd9630c7d6baa69776</field_id>
+                    <catalog>{}</catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
                     <options>
                         <item>
                             <selected>False</selected>
-                            <label>Sí</label>
+                            <option>None</option>
                             <value>sí</value>
-                            <points>None</points>
+                            <label>Sí</label>
                         </item>
                         <item>
                             <selected>False</selected>
-                            <label>No</label>
+                            <option>None</option>
                             <value>no</value>
-                            <points>None</points>
+                            <label>No</label>
                         </item>
                     </options>
-                    <label>Autorización Carga Cobre mayor a 300</label>
+                    <related_catalog>None</related_catalog>
+                </item>
+                <item>
+                    <field_type>radio</field_type>
                     <properties>
                         <selected>None</selected>
                         <openChoice>False</openChoice>
                         <orientation>vertical</orientation>
                         <custom>0</custom>
                     </properties>
+                    <key>None</key>
+                    <catalog_fields>[]</catalog_fields>
+                    <field_id>613111dd9630c7d6baa69776</field_id>
+                    <required>False</required>
+                    <fav>None</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
+                    <label>Autorización Carga Cobre mayor a 300</label>
+                    <catalog>{}</catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
+                    <options>
+                        <item>
+                            <selected>False</selected>
+                            <option>None</option>
+                            <value>sí</value>
+                            <label>Sí</label>
+                        </item>
+                        <item>
+                            <selected>False</selected>
+                            <option>None</option>
+                            <value>no</value>
+                            <label>No</label>
+                        </item>
+                    </options>
+                    <related_catalog>None</related_catalog>
                 </item>
                 <item>
                     <field_type>radio</field_type>
-                    <required>False</required>
+                    <properties>
+                        <selected>None</selected>
+                        <openChoice>False</openChoice>
+                        <orientation>vertical</orientation>
+                        <custom>None</custom>
+                    </properties>
+                    <key>None</key>
+                    <catalog_fields>[]</catalog_fields>
                     <field_id>614e4cd2c1770ff99f38ac33</field_id>
+                    <required>False</required>
+                    <fav>None</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
+                    <label>Socio Comercial</label>
+                    <catalog>{}</catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
                     <options>
                         <item>
                             <points>None</points>
@@ -419,44 +501,27 @@
                             <label>IAC CONECTA</label>
                         </item>
                     </options>
-                    <label>Socio Comercial</label>
+                    <related_catalog>None</related_catalog>
+                </item>
+                <item>
+                    <field_type>radio</field_type>
                     <properties>
                         <selected>None</selected>
                         <openChoice>False</openChoice>
                         <orientation>vertical</orientation>
                         <custom>None</custom>
                     </properties>
-                </item>
-                <item>
-                    <field_type>radio</field_type>
-                    <required>False</required>
+                    <key>None</key>
+                    <catalog_fields>[]</catalog_fields>
                     <field_id>618057ba8f81fd9179bcd329</field_id>
-                    <options>
-                        <item>
-                            <points>None</points>
-                            <selected>False</selected>
-                            <value>ingenieria_avanzada_en_construccion</value>
-                            <label>Ingenieria Avanzada en construccion</label>
-                        </item>
-                        <item>
-                            <points>None</points>
-                            <selected>False</selected>
-                            <value>ingenieria_avanzada_en_redes</value>
-                            <label>Ingenieria Avanzada en Redes</label>
-                        </item>
-                    </options>
+                    <required>False</required>
+                    <fav>None</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
                     <label>Razón Social para Facturas FTTH</label>
-                    <properties>
-                        <selected>None</selected>
-                        <openChoice>False</openChoice>
-                        <orientation>vertical</orientation>
-                        <custom>None</custom>
-                    </properties>
-                </item>
-                <item>
-                    <field_type>radio</field_type>
-                    <required>False</required>
-                    <field_id>6180593cb518bbdc7cde8d8d</field_id>
+                    <catalog>{}</catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
                     <options>
                         <item>
                             <points>None</points>
@@ -471,115 +536,217 @@
                             <label>Ingenieria Avanzada en Redes</label>
                         </item>
                     </options>
+                    <related_catalog>None</related_catalog>
+                </item>
+                <item>
+                    <field_type>radio</field_type>
+                    <properties>
+                        <selected>None</selected>
+                        <openChoice>False</openChoice>
+                        <orientation>vertical</orientation>
+                        <custom>None</custom>
+                    </properties>
+                    <key>None</key>
+                    <catalog_fields>[]</catalog_fields>
+                    <field_id>6180593cb518bbdc7cde8d8d</field_id>
+                    <required>False</required>
+                    <fav>None</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
                     <label>Razón Social para Facturas COBRE</label>
+                    <catalog>{}</catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
+                    <options>
+                        <item>
+                            <points>None</points>
+                            <selected>False</selected>
+                            <value>ingenieria_avanzada_en_construccion</value>
+                            <label>Ingenieria Avanzada en construccion</label>
+                        </item>
+                        <item>
+                            <points>None</points>
+                            <selected>False</selected>
+                            <value>ingenieria_avanzada_en_redes</value>
+                            <label>Ingenieria Avanzada en Redes</label>
+                        </item>
+                    </options>
+                    <related_catalog>None</related_catalog>
+                </item>
+                <item>
+                    <field_type>radio</field_type>
                     <properties>
                         <selected>None</selected>
                         <openChoice>False</openChoice>
                         <orientation>vertical</orientation>
-                        <custom>None</custom>
+                        <custom>0</custom>
                     </properties>
-                </item>
-                <item>
-                    <field_type>radio</field_type>
-                    <required>False</required>
+                    <key>None</key>
+                    <catalog_fields>[]</catalog_fields>
                     <field_id>619e7a46c79af2f6eaf888c5</field_id>
-                    <options>
-                        <item>
-                            <selected>False</selected>
-                            <label>Sí</label>
-                            <value>sí</value>
-                            <points>None</points>
-                        </item>
-                        <item>
-                            <selected>False</selected>
-                            <label>No</label>
-                            <value>no</value>
-                            <points>None</points>
-                        </item>
-                    </options>
+                    <required>False</required>
+                    <fav>None</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
                     <label>Autorización para Facturar</label>
-                    <properties>
-                        <selected>None</selected>
-                        <openChoice>False</openChoice>
-                        <orientation>vertical</orientation>
-                        <custom>0</custom>
-                    </properties>
+                    <catalog>{}</catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
+                    <options>
+                        <item>
+                            <selected>False</selected>
+                            <option>None</option>
+                            <value>sí</value>
+                            <label>Sí</label>
+                        </item>
+                        <item>
+                            <selected>False</selected>
+                            <option>None</option>
+                            <value>no</value>
+                            <label>No</label>
+                        </item>
+                    </options>
+                    <related_catalog>None</related_catalog>
                 </item>
                 <item>
                     <field_type>date</field_type>
-                    <required>False</required>
+                    <properties>
+                        <custom>None</custom>
+                        <format>vertical</format>
+                    </properties>
+                    <key>None</key>
+                    <catalog_fields>[]</catalog_fields>
                     <field_id>621d3062e20a70a963559a11</field_id>
-                    <properties>
-                        <custom>None</custom>
-                        <format>vertical</format>
-                    </properties>
+                    <required>False</required>
+                    <fav>None</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
                     <label>Fecha para validar facturacion</label>
+                    <catalog>{}</catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
+                    <options>[]</options>
+                    <related_catalog>None</related_catalog>
                 </item>
                 <item>
                     <field_type>radio</field_type>
-                    <required>False</required>
+                    <properties>
+                        <selected>None</selected>
+                        <openChoice>False</openChoice>
+                        <orientation>vertical</orientation>
+                        <custom>0</custom>
+                    </properties>
+                    <key>None</key>
+                    <catalog_fields>[]</catalog_fields>
                     <field_id>623cb114fe4f97bb0f5848a6</field_id>
+                    <required>False</required>
+                    <fav>None</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
+                    <label>Retención RESICO Cobre</label>
+                    <catalog>{}</catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
                     <options>
                         <item>
                             <selected>False</selected>
-                            <label>Sí</label>
+                            <option>None</option>
                             <value>sí</value>
-                            <points>None</points>
+                            <label>Sí</label>
                         </item>
                         <item>
                             <selected>False</selected>
-                            <label>No</label>
+                            <option>None</option>
                             <value>no</value>
-                            <points>None</points>
+                            <label>No</label>
                         </item>
                     </options>
-                    <label>Retención RESICO Cobre</label>
-                    <properties>
-                        <selected>None</selected>
-                        <openChoice>False</openChoice>
-                        <orientation>vertical</orientation>
-                        <custom>0</custom>
-                    </properties>
+                    <related_catalog>None</related_catalog>
                 </item>
                 <item>
                     <field_type>radio</field_type>
-                    <required>False</required>
-                    <field_id>623cb114fe4f97bb0f5848a7</field_id>
-                    <options>
-                        <item>
-                            <selected>False</selected>
-                            <label>Sí</label>
-                            <value>sí</value>
-                            <points>None</points>
-                        </item>
-                        <item>
-                            <selected>False</selected>
-                            <label>No</label>
-                            <value>no</value>
-                            <points>None</points>
-                        </item>
-                    </options>
-                    <label>Retención RESICO Fibra</label>
                     <properties>
                         <selected>None</selected>
                         <openChoice>False</openChoice>
                         <orientation>vertical</orientation>
                         <custom>0</custom>
                     </properties>
+                    <key>None</key>
+                    <catalog_fields>[]</catalog_fields>
+                    <field_id>623cb114fe4f97bb0f5848a7</field_id>
+                    <required>False</required>
+                    <fav>None</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
+                    <label>Retención RESICO Fibra</label>
+                    <catalog>{}</catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
+                    <options>
+                        <item>
+                            <selected>False</selected>
+                            <option>None</option>
+                            <value>sí</value>
+                            <label>Sí</label>
+                        </item>
+                        <item>
+                            <selected>False</selected>
+                            <option>None</option>
+                            <value>no</value>
+                            <label>No</label>
+                        </item>
+                    </options>
+                    <related_catalog>None</related_catalog>
                 </item>
                 <item>
                     <field_type>date</field_type>
-                    <required>False</required>
-                    <field_id>6242329cec526feb9b6eab7c</field_id>
                     <properties>
                         <custom>None</custom>
                         <format>vertical</format>
                     </properties>
+                    <key>None</key>
+                    <catalog_fields>[]</catalog_fields>
+                    <field_id>6242329cec526feb9b6eab7c</field_id>
+                    <required>False</required>
+                    <fav>None</fav>
+                    <related_catalog_key>[]</related_catalog_key>
+                    <relation_type>None</relation_type>
                     <label>Fecha para Nómina</label>
+                    <catalog>{}</catalog>
+                    <catalog_id>None</catalog_id>
+                    <view_fields>[]</view_fields>
+                    <options>[]</options>
+                    <related_catalog>None</related_catalog>
+                </item>
+                <item>
+                    <field_type>radio</field_type>
+                    <required>False</required>
+                    <field_id>665f70d3a7463635ed0e0b81</field_id>
+                    <options>
+                        <item>
+                            <selected>False</selected>
+                            <option>None</option>
+                            <value>sí</value>
+                            <label>Sí</label>
+                        </item>
+                        <item>
+                            <selected>False</selected>
+                            <option>None</option>
+                            <value>no</value>
+                            <label>No</label>
+                        </item>
+                    </options>
+                    <label>Contratista CARSO</label>
+                    <properties>
+                        <selected>None</selected>
+                        <openChoice>False</openChoice>
+                        <orientation>vertical</orientation>
+                        <custom>0</custom>
+                    </properties>
                 </item>
             </page_fields>
-            <page_description>None</page_description>
             <page_name>Página 1</page_name>
+            <page_description>None</page_description>
         </item>
     </catalog_pages>
 </lkf>

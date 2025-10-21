@@ -54,6 +54,8 @@ class Produccion_PCI(Produccion_PCI):
         # self.FORMA_ORDEN_COMPRA_COBRE_OCCIDENTE = self.lkm.form_id('orden_compra_contratista_cobre_occidente_socio', 'id')
         self.FORM_ID_PRECIOS_FTTH = self.lkm.form_id('precios_fibra_socio', 'id')
         self.FORM_ID_PRECIOS_COBRE = self.lkm.form_id('precios_cobre_socio', 'id')
+        
+        self.FORM_ID_NOMINA = 141928 # self.lkm.form_id('nomina', 'id') Por ahora fijo hasta que se incluya en el modulo
 
         self.FORMA_GENERAR_LIBERACIONES_Y_OCS = self.lkm.form_id('generar_liberaciones_fibra_y_cobre_socio', 'id')
 
@@ -71,6 +73,9 @@ class Produccion_PCI(Produccion_PCI):
         self.MONTO_MAXIMO_POR_OC = 200000 # Monto maximo por OCs en Cobre
         self.dias_para_marcar_desfase = 15 # Maximo de dias permitidos para carga antes de marcar como cobro minimo
         self.porcentaje_descuento_x_desfase = 0.05 # Porcentaje de descuento por folios marcados con desfase en carga
+
+        self.bono_produccion_cant_fols_min = 12 # Cantidad mínima de expedientes para aplicar bono
+        self.bono_produccion_monto = 50 # Monto del bono por expedientes
 
         # Equivalencias de las formas de orden de servicio en las cuentas de SC y en Admin
         self.dict_equivalences_forms_id = { 
@@ -96,10 +101,14 @@ class Produccion_PCI(Produccion_PCI):
         }
 
         self.all_divisiones = [
+            # {'tecnologia':'fibra','division':'occidente'},
+            
             {'tecnologia':'fibra','division':'metro'}, {'tecnologia':'fibra','division':'sur'}, 
             {'tecnologia':'fibra','division':'norte'}, {'tecnologia':'fibra','division':'occidente'},
-            {'tecnologia':'cobre','division':'metro'}, {'tecnologia':'cobre','division':'sur'}, 
-            {'tecnologia':'cobre','division':'norte'}, {'tecnologia':'cobre','division':'occidente'}
+            
+            # Cobre no se ocupa en SR
+            # {'tecnologia':'cobre','division':'metro'}, {'tecnologia':'cobre','division':'sur'}, 
+            # {'tecnologia':'cobre','division':'norte'}, {'tecnologia':'cobre','division':'occidente'}
         ]
 
         self.f.update({

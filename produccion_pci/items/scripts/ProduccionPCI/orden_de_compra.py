@@ -18,25 +18,57 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
 
+    def get_descuentos_form_nomina(self):
+        records_nomina = self.get_records(
+            self.FORM_ID_NOMINA, 
+            query_answers={'answers.68ef3a6f7b3f032ba9879047': 'pendiente'},
+            select_columns=['folio', 'answers']
+        )
+        descuentos_nomina = {}
+        for rec_nomina in records_nomina:
+            answer_nomina = rec_nomina['answers']
+            
+            correo_contratista = self.unlist( answer_nomina.get(self.CATALOGO_CONTRATISTAS_OBJ_ID, {}).get('5f344a0476c82e1bebc991d8') )
+            if not correo_contratista:
+                continue
+            
+            division_nomina = answer_nomina.get('68f06452592be219d764d877', '')
+            tecnologia_nomina = answer_nomina.get('68f06452592be219d764d878', '')
+            if not division_nomina or not tecnologia_nomina:
+                continue
+            
+            monto_nomina = answer_nomina.get('68ef3a2b74920b2fde87909b', 0)
+            
+            descuentos_nomina.setdefault(correo_contratista, {})\
+            .setdefault(tecnologia_nomina, {}).setdefault(division_nomina, {'monto': 0, 'folios': []})
+
+            descuentos_nomina[correo_contratista][tecnologia_nomina][division_nomina]['monto'] += monto_nomina
+            descuentos_nomina[correo_contratista][tecnologia_nomina][division_nomina]['folios'].append( rec_nomina['folio'] )
+        return descuentos_nomina
+
     def get_descuentos_en_xls(self):
         """
         Se obtienen los descuentos que cargarn en formato excel para cada contratista
 
         Return: Diccionario con el email del contratista y el descuento que se aplicará
         """
-        if not current_record['answers'].get('f2362800a0100000000000b2'):
+        # Se consultan los descuentos que estan en la forma Nomina
+        descuentos_form_nomina = self.get_descuentos_form_nomina()
+        # print('dddddddddddescuentos =',descuentos_form_nomina)
+
+        if not current_record['answers'].get('f2362800a0100000000000b2') and not descuentos_form_nomina:
             return {}
         
         file_url = current_record['answers']['f2362800a0100000000000b2']['file_url']
         header, records_descuentos = self.upfile.get_file_to_upload(file_url=file_url, form_id=current_record['form_id'])
 
-        if not records_descuentos:
+        if not records_descuentos and not descuentos_form_nomina:
             return {}
         
         #print("--- descuentos:",records_descuentos)
         dict_emails_descuentos = {}
         error_descuentos = []
-        descuentos_aceptados = ["anticipo", "desmontaje de modems", "queja no atendida", "cobro improcedente"]
+        descuentos_aceptados = ["anticipo", "desmontaje de modems", "queja no atendida", "cobro improcedente", "nomina", "bono"]
         
         for rec_des in records_descuentos:
             email_rec = str(rec_des[1]).lower().strip()
@@ -69,10 +101,29 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             if not descripcion_descuento and not subtotal_default:
                 error_descuentos.append( rec_des + ["Se requiere la Descripción del descuento"] )
                 continue
+            
+
+            is_bono = False
             if descripcion_descuento:
+                is_bono = descripcion_descuento.lower() == "bono"
                 descripcion_descuento = descripcion_descuento.lower().strip().replace('($)', '')
+
+                if descripcion_descuento == 'nómina':
+                    descripcion_descuento = "nomina"
+
+                # Si hay un descuento por nomina en el excel pero también esta en la forma se da prioridad a la forma
+                if descripcion_descuento == 'nomina':
+                    if descuentos_form_nomina.get(email_rec, {}).get(tecnologia_rec, {}).get(division_rec, {}).get('monto'):
+                        continue
+
                 if not any( desc_acepted in descripcion_descuento for desc_acepted in descuentos_aceptados ):
                     error_descuentos.append(rec_des + ["Valor no aceptado en la Descripción del descuento"])
+                    continue
+
+                # Bono se aplica como suma
+                # Aqui se requiere la columna de Monto, porque no se aplica % ni subtotal
+                if is_bono and not rec_des[0]:
+                    error_descuentos.append(rec_des + ["Se requiere Monto para aplicar el Bono"])
                     continue
 
             dict_emails_descuentos.setdefault(full_name, [])
@@ -81,11 +132,25 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                 'descuento': rec_des[0], 
                 'porcentaje_descuento': rec_des[4],
                 'descripcion': descripcion_descuento,
-                'default_subtotal_oc': subtotal_default
+                'default_subtotal_oc': subtotal_default,
+                'is_bono': is_bono
             })
         if error_descuentos:
             return {'error': error_descuentos, 'header': header}
 
+        for eml_nom, data_eml in descuentos_form_nomina.items():
+            for tcn_nom, data_tcn in data_eml.items():
+                for dvs_nom, data_dvs in data_tcn.items():
+                    full_name = f"{tcn_nom}_{dvs_nom}"
+                    if not dict_emails_descuentos.get(full_name):
+                        dict_emails_descuentos[full_name] = []
+                    dict_emails_descuentos[full_name].append({
+                        'email': eml_nom, 'descuento': data_dvs['monto'], 'porcentaje_descuento': '', 'descripcion': 'nomina', 'default_subtotal_oc': '',
+                        'folios_nomina': data_dvs['folios']
+                    })
+
+        # print(dict_emails_descuentos)
+        # stop
         return dict_emails_descuentos
 
     def get_retenciones_resico(self):
@@ -196,8 +261,12 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                 emails_des = map_users_email[emails_des]
             descuentos.append([
                 emails_des, dict_descuentos.get('descripcion'), dict_descuentos.get('descuento'), dict_descuentos.get('porcentaje_descuento'), 
-                dict_descuentos.get('default_subtotal_oc'), dict_descuentos.get('comentarios')
+                dict_descuentos.get('default_subtotal_oc'), dict_descuentos.get('comentarios'), dict_descuentos.get('folios_nomina', []), 
+                dict_descuentos.get('is_bono', False)
             ])
+
+        # print('\n +++ descuentos =',descuentos)
+        # stop
 
         return descuentos, emails_not_found
     
@@ -246,11 +315,17 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         Return:
             Diccionario con el descuento total, el porcentaje, el subtotal y descuentos que se aplicaron
         """
+
+        # print('descuentos =',descuentos)
+        # stop
+
         descuento = 0
         porcentaje_descuento = 0
         default_subtotal = 0
         dict_descuentos_apply = {}
         descuento_used = []
+        descuentos_nomina_folios = []
+        monto_bono = 0
 
         for i, record in enumerate(descuentos):
             if record[0] != email_of_connection:
@@ -260,13 +335,19 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                 descuento_used.append(i)
                 continue
             desc_desc, monto, porc = record[1:4]
+            descuento_as_bono = record[7]
             if monto:
-                descuento += monto
+                if descuento_as_bono:
+                    monto_bono += monto
+                else:
+                    descuento += monto
                 dict_descuentos_apply[desc_desc] = {'val': monto, 'type': 'monto'}
             elif porc:
                 porcentaje_descuento += porc
                 dict_descuentos_apply[desc_desc] = {'val': porc, 'type': 'porcentaje'}
             descuento_used.append(i)
+            if record[6]:
+                descuentos_nomina_folios.extend( record[6] )
 
         for i in sorted(descuento_used, reverse=True):
             del descuentos[i]
@@ -278,7 +359,9 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             'descuento': descuento,
             'porcentaje_descuento': porcentaje_descuento,
             'default_subtotal': default_subtotal,
-            'dict_descuentos_apply': dict_descuentos_apply
+            'dict_descuentos_apply': dict_descuentos_apply,
+            'descuentos_nomina_folios': descuentos_nomina_folios,
+            'monto_bono': monto_bono
         }
 
     """
@@ -863,8 +946,15 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         #             return True
         return response
 
+    def close_nominas_descuentos(self, folios_records_nomina, folio_oc_with_nomina):
+        resp_close_nominas = lkf_api.patch_multi_record(
+            {'68ef3a6f7b3f032ba9879047': 'aplicado', '68f087bb782a7cd1f064d8f1': folio_oc_with_nomina}, 
+            self.FORM_ID_NOMINA, folios=folios_records_nomina, threading=True
+        )
+        print('+++ resp_close_nominas =',resp_close_nominas)
+
     def create_oc_and_update_status(self, metadata_oc, connection_id, LIBERACION_PAGOS, FORMA_ORDEN_SERVICIO, tecnologia, division,\
-        conexiones_con_bono={}, list_folios_bonos=[]):
+        conexiones_con_bono={}, list_folios_bonos=[], list_folios_nominas=[]):
         folio_bonificacion = metadata_oc.pop('folio_bonificacion', '') if isinstance(metadata_oc, dict) else ''
 
         # New function to create oc and update status ocs and libs
@@ -924,6 +1014,10 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                     res_update_psr_libs = self.cambia_estatus_de_liberados_a_orden_de_compra(ids_lib, forma_lib, set_status=status_lib)
                     print('+++ res_update_psr_libs =',res_update_psr_libs)
 
+            # Se cierran los registros de Nomina aplicados como Descuento
+            if list_folios_nominas:
+                self.close_nominas_descuentos(list_folios_nominas, folio_oc_creada)
+
             # Reviso si trae un descuento por Bonificación para actualizar el registro de ese descuento
             # if folio_bonificacion:
             #     print('Descuento Bonificación utilizado {}'.format(folio_bonificacion))
@@ -957,6 +1051,19 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         else:
             errors_to_create.append( f'Ocurrió un error al crear la OC: {response_oc}' )
         return errors_to_create
+
+    def ordenar_por_expediente(self, lista_folios):
+        # Ordenar la lista_folios por el campo 'expediente'
+        lista_ordenada = sorted(lista_folios, key=lambda x: x['68f6a337764a6c7697770f8b'])
+        
+        # Contar ocurrencias de cada expediente
+        conteo = {}
+        for item in lista_ordenada:
+            exp = item['68f6a337764a6c7697770f8b']
+            conteo[exp] = conteo.get(exp, 0) + 1
+        
+        # Retornar ambos resultados
+        return lista_ordenada, conteo
     
     def create_oc_contista(self, folios_by_connection, folio_payment, folio_oc, descuentos, LIBERACION_PAGOS, FORMA_ORDEN_SERVICIO, \
         map_email_connections, number_week, division, dict_oc_fecha_nomina):
@@ -981,19 +1088,27 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                     metadata['folio'] = folio_oc + '-' + str( dict_count[form_id_oc_contratista] )
                     dict_count[form_id_oc_contratista] += 1
                     answers['f19620000000000000000fc5'] = 'por_facturar'
-                    answers['f19620000000000000000fc9'] = len(folios.keys())
+                    answers['f19620000000000000000fc9'] = len(folios)
                     answers['f1962000000000000000fc10'] = []
                     answers['601346b08d12cc2721043c66'] = number_week
                     total_oc = 0
                     
                     email_of_connection = map_email_connections.get(connection_id)
                     
+                    folios_sorted, expedientes_count = self.ordenar_por_expediente(folios)
                     
                     totalDescuento20porc = 0
                     list_areas = []
-                    for folio, detail in folios.items():
-                        answers['f1962000000000000000fc10'].append(detail)
+                    for detail in folios_sorted:
+
+                        # Si aplica bono por expediente se agrega al set
+                        exp_fol = detail.get('68f6a337764a6c7697770f8b')
+                        if exp_fol and expedientes_count.get(exp_fol, 0) >= self.bono_produccion_cant_fols_min:
+                            detail['68f6a337764a6c7697770f8d'] = self.bono_produccion_monto
+                            detail['f1962000000000000001fc10'] += self.bono_produccion_monto
+
                         total_oc += detail['f1962000000000000001fc10']
+                        answers['f1962000000000000000fc10'].append(detail)
                         metadata['connection_id'] = connection_id
                         totalDescuento20porc += detail.pop('descuento_20_porc')
                         if not detail['666798abf2ea5ac6c31cc955'] in list_areas:
@@ -1009,10 +1124,13 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                     porcentaje_descuento = descuento_info.get('porcentaje_descuento')
                     default_subtotal = descuento_info.get('default_subtotal')
                     dict_descuentos_apply = descuento_info.get('dict_descuentos_apply')
+                    list_fols_nominas = descuento_info.get('descuentos_nomina_folios')
+                    monto_bono = descuento_info.get('monto_bono')
+                    answers['68f46455ed909fec6bd90bf4'] = p_utils.add_coma(monto_bono)
 
                     if default_subtotal:
                         total_oc = default_subtotal
-                    total_oc = total_oc - descuento
+                    total_oc = total_oc - descuento + monto_bono
 
                     for descripcion_descuento, detail_descuento in dict_descuentos_apply.items():
                         value_descuento = detail_descuento.get('val', 0)
@@ -1026,6 +1144,8 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                             answers['665e0d3ddd21dc84aae05e4a'] = p_utils.add_coma(value_descuento)
                         elif "cobro improcedente" in descripcion_descuento:
                             answers['665e0d3ddd21dc84aae05e4b'] = p_utils.add_coma(value_descuento)
+                        elif "nomina" in descripcion_descuento:
+                            answers['68f02c8b1e159ec1f864d867'] = p_utils.add_coma(value_descuento)
                     
                     if porcentaje_descuento:
                         monto_desccuento = total_oc * (porcentaje_descuento / float(100))
@@ -1056,7 +1176,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                     metadata_extra = {}
                     metadata_agregar_script = {"device_properties":{"system": "SCRIPT","process":"PROCESO CARGA ORDEN COMPRA CONTRATISTA", "accion":'GENERA OC CONTRATISTA', "folio carga":folio_oc, "archive":"orden_de_compra.py"}}
                     metadata["properties"] = metadata_agregar_script
-                    error_to_create = self.create_oc_and_update_status(metadata, connection_id, LIBERACION_PAGOS, FORMA_ORDEN_SERVICIO, 'fibra', division)
+                    error_to_create = self.create_oc_and_update_status(metadata, connection_id, LIBERACION_PAGOS, FORMA_ORDEN_SERVICIO, 'fibra', division, list_folios_nominas=list_fols_nominas)
                     if not error_to_create:
                         ocs_creadas += 1
                     else:
@@ -1108,7 +1228,8 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                     
                     for payment_folio in dict_payment_folios[type_folio]:
                         info_record_os = folios_ids[payment_folio]
-                        folio_is_psr = info_record_os.get('answers', {}).get('633d9f63eb936fb6ec9bf580', '') == 'psr'
+                        record_os_answer = info_record_os.get('answers', {})
+                        folio_is_psr = record_os_answer.get('633d9f63eb936fb6ec9bf580', '') == 'psr'
                         record_lib = info_registros_liberacion.get( payment_folio.replace('_', '') )
                         if not record_lib:
                             record_lib = info_registros_liberacion.get( payment_folio.split('_')[0] )
@@ -1151,6 +1272,8 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                         folio_payment = {
                             'f19620000000000000001fc1' : folio_oc_rec,
                             'f19620000000000000001fc2' : telefono_oc_rec,
+                            '68f6a337764a6c7697770f8b': record_os_answer.get('f1054000a0100000000000d6', 0), # Expediente
+                            '68f6a337764a6c7697770f8c': record_os_answer.get('f1054000a010000000000021'), # Tipo de Tarea
                             '62deccbcf1cac3245da9314d' : fecha_liquidacion,
                             '666798abf2ea5ac6c31cc955' : area_os,
                             'f19620000000000000001fc3' : paco_oc_rec,
@@ -1191,7 +1314,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                             folio_payment['f19620000000000000001fc4'] = 'PSR'
                             # ocs_to_psr.setdefault(payment_connection_id, []).append(folio_payment)
                             # continue
-                        folios_by_connection_and_forms[payment_connection_id][OC_CONTRATISTA].setdefault(for_oc, {}).update( { payment_folio: folio_payment } )
+                        folios_by_connection_and_forms[payment_connection_id][OC_CONTRATISTA].setdefault(for_oc, []).append( folio_payment )
             if folios_by_connection_and_forms:
                 #print'hasta aqui los folios serian estos', folios
                 errors_to_create, ocs_creadas = self.create_oc_contista(folios_by_connection_and_forms, None, folio_oc, descuentos, LIBERACION_PAGOS, \
@@ -1451,6 +1574,8 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                 answers['665e0d3ddd21dc84aae05e4a'] = p_utils.add_coma(value_descuento)
             elif "cobro improcedente" in descripcion_descuento:
                 answers['665e0d3ddd21dc84aae05e4b'] = p_utils.add_coma(value_descuento)
+            elif "nomina" in descripcion_descuento:
+                answers['68f02c8b1e159ec1f864d867'] = p_utils.add_coma(value_descuento)
         
         if porcentaje_descuento:
             monto_desccuento = total_oc * (porcentaje_descuento / float(100))
