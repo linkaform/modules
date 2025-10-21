@@ -85,9 +85,9 @@ class Accesos(Accesos):
             return {'status_code': 400, 'msg': 'error', 'data': str(e)}
         return {'status_code': 200, 'msg': 'success', 'data': dbs}
 
-    def sync_incidence_to_lkf(self, record_type, id, rev):
+    def sync_incidence_to_lkf(self, id, rev):
         #TODO: Dinamizar id del usuario para su db
-        self.cr_db = self.lkf_api.couch.set_db(f'{record_type}_10')
+        self.cr_db = self.lkf_api.couch.set_db('incidencias_10')
 
         status = {}
         record = self.get_couch_record(id, rev)
@@ -150,7 +150,6 @@ if __name__ == "__main__":
     acceso_obj.console_run()
     data = acceso_obj.data.get('data', {})
     option = data.get("option", 'get_user_catalogs')
-    record_type = data.get("record_type", "incidencias")
     _id = data.get("_id", None)
     _rev = data.get("_rev", None)
 
@@ -160,7 +159,7 @@ if __name__ == "__main__":
     elif option == 'sync_incidence_to_lkf':
         #! Hay que revisar que hacer con el record_type si solo sera una funcion para todos los apartados de Accesos
         #! O si seran varias funciones cada una con su tipo
-        response = acceso_obj.sync_incidence_to_lkf(record_type=record_type, id=_id, rev=_rev)
+        response = acceso_obj.sync_incidence_to_lkf(id=_id, rev=_rev)
     elif option == 'test':
         breakpoint()
 
