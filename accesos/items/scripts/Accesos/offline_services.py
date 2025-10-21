@@ -57,7 +57,7 @@ class Accesos(Accesos):
                 item = {}
                 version = "00.00"
                 info_catalog = self.lkf_api.get_catalog_id_fields(catalog_id)
-                catalog_name = info_catalog.get('catalog', {}).get('name', '').lower().replace(' ', '_')
+                catalog_name = self.clean_text(info_catalog.get('catalog', {}).get('name', ''))
                 catalog_fields = info_catalog.get('catalog', {}).get('fields', [])
                 catalog_updated_at = info_catalog.get('catalog', {}).get('updated_at', '')
                 
@@ -163,4 +163,4 @@ if __name__ == "__main__":
     elif option == 'test':
         breakpoint()
 
-    sys.stdout.write(simplejson.dumps(response))
+    sys.stdout.write(simplejson.dumps(response, indent=3))
