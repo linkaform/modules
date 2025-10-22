@@ -341,6 +341,27 @@ class Accesos(Accesos):
             )
             
             answers[self.f['areas_del_rondin']] = all_areas_sorted
+            
+            # Dedupe igual que en create_bitacora:
+            # agrupar por (nombre_area normalizado, tags normalizados).
+            # Si hay entradas con fecha en el grupo -> conservar todas las que tienen fecha.
+            # Si ninguna tiene fecha -> conservar la primera (para mantener al menos una entrada).
+            grouped = {}
+            for a in all_areas_sorted:
+                k = self._area_key(a)
+                grouped.setdefault(k, []).append(a)
+
+            final_list = []
+            for k, items in grouped.items():
+                with_date = [it for it in items if it.get(self.f['fecha_hora_inspeccion_area'])]
+                if with_date:
+                    # conservar todas las entradas que sí tienen fecha (manteniendo orden temporal)
+                    final_list.extend(with_date)
+                else:
+                    # si ninguna tiene fecha, conservar la primera
+                    final_list.append(items[0])
+
+            answers[self.f['areas_del_rondin']] = final_list
         else:
             pass
 
@@ -654,9 +675,9 @@ if __name__ == "__main__":
     script_obj.cr_cache = script_obj.net.get_collections(collection='rondin_caches')
     # print(simplejson.dumps(script_obj.answers, indent=3))
     data_rondin = script_obj.current_record
-    script_obj.user_name = data_rondin.get('created_by_namee', 'Seguridad Grupo AFAL')
-    script_obj.user_id = data_rondin.get('created_by_idd', 17780)
-    script_obj.user_email = data_rondin.get('created_by_emaill', 'fzaragoza@afal.mx')
+    script_obj.user_name = data_rondin.get('created_by_name', '')
+    script_obj.user_id = data_rondin.get('created_by_id', 0)
+    script_obj.user_email = data_rondin.get('created_by_email', '')
     script_obj.timestamp = data_rondin.get('start_timestamp', '')
     script_obj.timezone = data_rondin.get('timezone', 'America/Mexico_City')
     tz = pytz.timezone(script_obj.timezone)
