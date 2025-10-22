@@ -837,11 +837,11 @@ class Accesos( Accesos):
         rondines = self.format_cr(self.cr.aggregate(query))
         return rondines
 
-    def close_rondines(self, list_of_rondines):
+    def close_rondines(self, list_of_rondines, timezone='America/Mexico_City'):
         #- Expirados son lo que esta en status programados y que tienen mas de 24 de programdos
         # - en progreso son lo que estan con status progreso y tienen mas de 1 hr de su ultimo check.
         answers = {}
-        tz = pytz.timezone('America/Mexico_City')
+        tz = pytz.timezone(timezone)
         ahora = datetime.now(tz)
 
         rondines_expirados = []

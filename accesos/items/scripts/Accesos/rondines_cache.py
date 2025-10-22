@@ -622,7 +622,7 @@ class Accesos(Accesos):
             print(f"===== log: Status actualizado. Area no configurada.")
         return response.get('status_code')
 
-    def search_closed_bitacora_by_time(self, location, search_dt, window_seconds=900):
+    def search_closed_bitacora_by_time(self, location, search_dt, window_seconds=1200):
         """
         Buscar una bitácora cerrada para una ubicación dentro de una ventana de tiempo.
         - location: nombre/valor de la ubicación
@@ -635,16 +635,14 @@ class Accesos(Accesos):
         start_dt = None
         end_dt = None
         if not search_dt:
-            print('search_dt is None')
-            # return []
+            return []
         try:
-            print('search_dt:', search_dt)
             # window en strings 'YYYY-MM-DD HH:MM:SS'
             start_dt = (search_dt - timedelta(seconds=window_seconds)).strftime('%Y-%m-%d %H:%M:%S')
             end_dt = (search_dt + timedelta(seconds=window_seconds)).strftime('%Y-%m-%d %H:%M:%S')
         except Exception as e:
             print('Error al calcular las fechas de inicio y fin.', e)
-            # return []
+            return []
 
         fecha_field = f"answers.{self.f['fecha_inicio_rondin']}"
         query = [
@@ -731,7 +729,7 @@ if __name__ == "__main__":
                 
                 #! Verificar si hay rondines que cerrar
                 rondines = script_obj.get_rondines_by_status()
-                response = script_obj.close_rondines(rondines)
+                response = script_obj.close_rondines(rondines, timezone=script_obj.timezone)
                 if response:
                     print("response", response)
                 else:
