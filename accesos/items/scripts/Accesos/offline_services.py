@@ -315,28 +315,43 @@ class Accesos(Accesos):
         return update_file
     
     def assign_user_inbox(self, data):
-        breakpoint()
+        status = {}
+        inbox_record = {
+            "_id": self.record_id,
+            "user_name": self.user_name,
+            "kind": "inbox",
+            "status": "new",
+            "nombre_rondin": data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.mf['nombre_del_recorrido'], ''),
+            "ubicacion_rondin": data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], ''),
+            "fecha_programada": data.get(self.f['fecha_programacion'], '')
+        }
+        try:
+            result = self.cr_db.save(inbox_record)
+            if result:
+                status = {'status_code': 200, 'type': 'success', 'msg': 'Inbox assigned successfully', 'data': {}}
+        except Exception as e:
+            status = {'status_code': 400, 'type': 'error', 'msg': str(e), 'data': {}}
+        return status
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
-    #TODO: Dinamizar id del usuario para su db
-    acceso_obj.cr_db = acceso_obj.lkf_api.couch.set_db('incidencias_10')
+    data_rondin = acceso_obj.current_record
+    acceso_obj.user_name = data_rondin.get('created_by_name', '')
+    acceso_obj.user_id = data_rondin.get('created_by_id', 0)
+    acceso_obj.user_email = data_rondin.get('created_by_email', '')
+    acceso_obj.cr_db = acceso_obj.lkf_api.couch.set_db(f'clave_{acceso_obj.user_id}')
     script_attr = acceso_obj.data
     data = acceso_obj.data.get('data', {})
     option = data.get("option", script_attr.get('option', 'sync_incidence_to_lkf'))
-    _id = data.get("_id", '68f811a6649d20371001c4d8')
-    _rev = data.get("_rev", '29-00db590c904e172027762a4df6e7f0cd')
+    _id = data.get("_id", None)
+    _rev = data.get("_rev", None)
 
     response = {}
     if option == 'get_user_catalogs':
         response = acceso_obj.get_user_catalogs()
     elif option == 'sync_incidence_to_lkf':
-        #! Hay que revisar que hacer con el record_type si solo sera una funcion para todos los apartados de Accesos
-        #! O si seran varias funciones cada una con su tipo
         response = acceso_obj.sync_incidence_to_lkf(id=_id, rev=_rev)
-    elif option == 'test':
-        breakpoint()
     elif option == 'assign_user_inbox':
         response = acceso_obj.assign_user_inbox(data=acceso_obj.answers)
 
