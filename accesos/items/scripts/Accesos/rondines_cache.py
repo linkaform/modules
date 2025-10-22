@@ -553,15 +553,62 @@ class Accesos(Accesos):
             print(f"===== log: Status actualizado. Area no configurada.")
         return response.get('status_code')
 
+    def search_closed_bitacora_by_time(self, location, search_dt, window_seconds=900):
+        """
+        Buscar una bitácora cerrada para una ubicación dentro de una ventana de tiempo.
+        - location: nombre/valor de la ubicación
+        - search_dt: datetime (tz-aware) del check ganador
+        - window_seconds: +/- segundos para buscar (por defecto 900 = 15min)
+        Retorna la primera bitácora encontrada (orden asc por created_at) o [].
+        """
+        # asegurar datetime tz-aware
+        search_dt = datetime.strptime(search_dt, "%Y-%m-%d %H:%M:%S")
+        start_dt = None
+        end_dt = None
+        if not search_dt:
+            print('search_dt is None')
+            # return []
+        try:
+            print('search_dt:', search_dt)
+            # window en strings 'YYYY-MM-DD HH:MM:SS'
+            start_dt = (search_dt - timedelta(seconds=window_seconds)).strftime('%Y-%m-%d %H:%M:%S')
+            end_dt = (search_dt + timedelta(seconds=window_seconds)).strftime('%Y-%m-%d %H:%M:%S')
+        except Exception as e:
+            print('Error al calcular las fechas de inicio y fin.', e)
+            # return []
+
+        fecha_field = f"answers.{self.f['fecha_inicio_rondin']}"
+        query = [
+            {'$match': {
+                "deleted_at": {"$exists": False},
+                "form_id": self.BITACORA_RONDINES,
+                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": location,
+                f"answers.{self.USUARIOS_OBJ_ID}.{self.f['new_user_complete_name']}": self.user_name,
+                f"answers.{self.f['estatus_del_recorrido']}": {"$in": ['cerrado', 'realizado']},
+                # comparar como strings ISO 'YYYY-MM-DD HH:MM:SS' usando rango
+                f"answers.{self.f['fecha_inicio_rondin']}": {"$gte": start_dt, "$lte": end_dt}
+            }},
+            {'$sort': {'created_at': 1}},
+            {'$limit': 1},
+            {'$project': {
+                '_id': 1,
+                'folio': 1,
+                'fecha_inicio_rondin': f"${fecha_field}",
+                'answers': f"$answers"
+            }},
+        ]
+        resp = self.format_cr(self.cr.aggregate(query))
+        return resp
+
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
     script_obj.console_run()
     script_obj.cr_cache = script_obj.net.get_collections(collection='rondin_caches')
     # print(simplejson.dumps(script_obj.answers, indent=3))
     data_rondin = script_obj.current_record
-    script_obj.user_name = data_rondin.get('created_by_name', '')
-    script_obj.user_id = data_rondin.get('created_by_id', '')
-    script_obj.user_email = data_rondin.get('created_by_email', '')
+    script_obj.user_name = data_rondin.get('created_by_name', 'Seguridad Grupo AFAL')
+    script_obj.user_id = data_rondin.get('created_by_id', 17780)
+    script_obj.user_email = data_rondin.get('created_by_email', 'fzaragoza@afal.mx')
     script_obj.timestamp = data_rondin.get('start_timestamp', '')
     script_obj.timezone = data_rondin.get('timezone', 'America/Mexico_City')
     tz = pytz.timezone(script_obj.timezone)
@@ -611,7 +658,7 @@ if __name__ == "__main__":
             if winner_date:
                 winner_dt = tz.localize(datetime.strptime(winner_date, '%Y-%m-%d %H:%M:%S'))
                 diff = now - winner_dt
-                winner_hour = winner_dt.strftime('%Y-%m-%d %H')
+                winner_hour = winner_dt.strftime('%Y-%m-%d %H:%M:%S')
                 
                 #! Verificar si hay rondines que cerrar
                 rondines = script_obj.get_rondines_by_status()
@@ -625,18 +672,22 @@ if __name__ == "__main__":
                 if diff.total_seconds() > 900 and winner.get('type') == 'closed_winner':
                     print('Ha pasado más de 15 minutos desde el winner_date.')
                     #! 7-1 Se busca una bitacora cerrada para la hora en que se hizo este check
-                    bitacora = script_obj.search_closed_bitacora_by_hour(winner.get('location'), winner_hour)
+                    bitacora = script_obj.search_closed_bitacora_by_time(winner.get('location'), winner_hour)
                     time.sleep(5)
                     winner_checks = script_obj.search_cache(winner_id=winner.get('winner_id'), location=winner.get('location'), user_name=script_obj.user_name)
                     print('winner_checks:============', len(winner_checks))
                     #! 7-1-1 Se filtran los checks que pertenezcan a la hora del check ganador
+                    window_seconds = 30 * 60  # 30 minutos
+                    start_dt = winner_dt
+                    end_dt = winner_dt + timedelta(seconds=window_seconds)
                     filter_winner_checks = []
                     for check in winner_checks:
                         check_timestamp = check.get('timestamp')
-                        if check_timestamp:
-                            check_dt = datetime.fromtimestamp(check_timestamp, tz)
-                            if check_dt.strftime('%Y-%m-%d %H') == winner_hour:
-                                filter_winner_checks.append(check)
+                        if not check_timestamp:
+                            continue
+                        check_dt = datetime.fromtimestamp(check_timestamp, tz)
+                        if start_dt <= check_dt <= end_dt:
+                            filter_winner_checks.append(check)
                     winner_checks = filter_winner_checks
                     winner_checks.append(winner.get('winner_record', {}))
                     if bitacora:
