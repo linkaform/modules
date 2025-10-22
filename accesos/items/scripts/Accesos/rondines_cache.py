@@ -1,7 +1,9 @@
 # coding: utf-8
 from os import close
+import re
 import sys, simplejson, json, pytz
 import time
+import unicodedata
 from datetime import datetime, timedelta, date
 from bson import ObjectId
 
@@ -394,6 +396,34 @@ class Accesos(Accesos):
             else: 
                 return res
             
+    def normaliza_texto(self, texto):
+        if not isinstance(texto, str):
+            return ""
+        # quitar acentos
+        s = unicodedata.normalize('NFKD', texto).encode('ascii', 'ignore').decode('ascii')
+        s = s.lower()
+        # reemplazar espacios/guiones por guion bajo
+        s = re.sub(r'[\s\-]+', '_', s)
+        # eliminar caracteres que no sean letras, dígitos o guion bajo (quita ' " @ , . etc.)
+        s = re.sub(r'[^\w]', '', s)
+        # colapsar guiones bajos repetidos y quitar bordes
+        s = re.sub(r'_+', '_', s).strip('_')
+        return s or texto.lower()
+    
+    def _area_key(self, a):
+        try:
+            name_raw = a.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['nombre_area'], '') or ''
+        except Exception:
+            name_raw = ''
+        # normalizar nombre para comparar (quita acentos, espacios, puntuación)
+        name = self.normaliza_texto(name_raw)
+        tags = a.get(self.f['tag_id_area_ubicacion'], []) or []
+        if not isinstance(tags, (list, tuple)):
+            tags = [tags]
+        # normalizar tags también por si vienen como texto
+        norm_tags = tuple(self.normaliza_texto(t) if isinstance(t, str) else str(t) for t in tags)
+        return (name, norm_tags)
+            
     def create_bitacora(self, winner, recorridos, closed=False):
         """
         Create a bitacora entry from cache data.
@@ -474,6 +504,24 @@ class Accesos(Accesos):
                         self.f['nombre_area']: area.get('incidente_area', '')
                     },
                 })
+        # Dedupe: agrupar por (nombre_area, tags). Si hay al menos una entrada con fecha,
+        # eliminar las entradas sin fecha para esa agrupación. Si hay varias con fecha, conservarlas todas.
+        grouped = {}
+        final_list = []
+        for a in answers[self.f['areas_del_rondin']]:
+            k = self._area_key(a)
+            grouped.setdefault(k, []).append(a)
+
+        for k, items in grouped.items():
+            with_date = [it for it in items if it.get(self.f['fecha_hora_inspeccion_area'])]
+            if with_date:
+                # conservar todas las entradas que sí tienen fecha
+                final_list.extend(with_date)
+            else:
+                # si ninguna tiene fecha, conservar la primera (o todas si prefieres)
+                final_list.append(items[0])
+
+        answers[self.f['areas_del_rondin']] = final_list
 
         # answers[self.f['bitacora_rondin_incidencias']] = self.answers.get(self.f['grupo_incidencias_check'], [])
 
@@ -606,9 +654,9 @@ if __name__ == "__main__":
     script_obj.cr_cache = script_obj.net.get_collections(collection='rondin_caches')
     # print(simplejson.dumps(script_obj.answers, indent=3))
     data_rondin = script_obj.current_record
-    script_obj.user_name = data_rondin.get('created_by_name', 'Seguridad Grupo AFAL')
-    script_obj.user_id = data_rondin.get('created_by_id', 17780)
-    script_obj.user_email = data_rondin.get('created_by_email', 'fzaragoza@afal.mx')
+    script_obj.user_name = data_rondin.get('created_by_namee', 'Seguridad Grupo AFAL')
+    script_obj.user_id = data_rondin.get('created_by_idd', 17780)
+    script_obj.user_email = data_rondin.get('created_by_emaill', 'fzaragoza@afal.mx')
     script_obj.timestamp = data_rondin.get('start_timestamp', '')
     script_obj.timezone = data_rondin.get('timezone', 'America/Mexico_City')
     tz = pytz.timezone(script_obj.timezone)
