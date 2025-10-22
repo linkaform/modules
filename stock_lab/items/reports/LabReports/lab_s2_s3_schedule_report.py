@@ -214,16 +214,16 @@ def set_cut_hours(requierd, recipe, recipeS3):
                 cut_prod = float(cut_prod)
             except:
                 cut_prod = 168
-            hours[yearweek_S2] += round(qty / cut_prod,2)
+            hours[yearweek_S2] += round(qty / cut_prod,2) if cut_prod > 0 else 0
         if stage == 'S3':
             cut_prod = recipeS3.get('cut_productivity',120)
             try:
                 cut_prod = float(cut_prod)
             except:
                 cut_prod = 120
-            hours[yearweek_S3] += round(qty / cut_prod,2)
+            hours[yearweek_S3] += round(qty / cut_prod,2) if cut_prod > 0 else 0
 
-        hours[yearweek] += round(qty / cut_prod,2)
+        hours[yearweek] += round(qty / cut_prod,2) if cut_prod > 0 else 0
     set_chart_req(hours , row_type='hours')
     return hours
 
