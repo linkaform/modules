@@ -729,6 +729,10 @@ if __name__ == "__main__":
                 
                 #! Verificar si hay rondines que cerrar
                 rondines = script_obj.get_rondines_by_status()
+                print('Timezone:', script_obj.timezone)
+                print('now:', now)
+                print('winner_dt:', winner_dt)
+                print('diff:', diff)
                 response = script_obj.close_rondines(rondines, timezone=script_obj.timezone)
                 if response:
                     print("response", response)
