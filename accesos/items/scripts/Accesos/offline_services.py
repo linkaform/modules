@@ -323,6 +323,7 @@ class Accesos(Accesos):
             lat = self.geolocation[0]
             long = self.geolocation[1]
         epoc_today = int(time.time())
+        format_check_areas = self.get_area_images(data.get(self.f['grupo_areas_visitadas'], []))
         inbox_record = {
             "_id": self.record_id,
             "type": "rondin",
@@ -340,7 +341,8 @@ class Accesos(Accesos):
                 "user_name": self.user_name,
                 "nombre_rondin": data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.mf['nombre_del_recorrido'], ''),
                 "ubicacion_rondin": data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], ''),
-                "fecha_programada": data.get(self.f['fecha_programacion'], '')
+                "fecha_programada": data.get(self.f['fecha_programacion'], ''),
+                "check_areas": format_check_areas,
             }
         }
         try:
@@ -350,6 +352,29 @@ class Accesos(Accesos):
         except Exception as e:
             status = {'status_code': 400, 'type': 'error', 'msg': str(e), 'data': {}}
         return status
+
+    def get_area_images(self, areas):
+        location = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], '')
+        format_areas = [area.get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['area'], '') for area in areas]
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": 121677,
+                f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": location,
+                f"answers.{self.Location.f['area']}": {"$in": format_areas}
+            }},
+            {"$project": {
+                "_id": 0,
+                "tag_id": f"$answers.{self.f['area_tag_id']}",
+                "ubicacion": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}",
+                "area": f"$answers.{self.Location.f['area']}",
+                "tipo_de_area": f"$answers.{self.Location.TIPO_AREA_OBJ_ID}.{self.f['tipo_de_area']}",
+                "foto_del_area": f"$answers.{self.f['area_foto']}",
+            }}
+        ]
+        res = self.cr.aggregate(query)
+        format_res = list(res)
+        return format_res
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
