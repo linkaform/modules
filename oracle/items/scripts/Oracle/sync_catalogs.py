@@ -123,67 +123,67 @@ class Oracle(Oracle):
         }
 
         self.views = {
-            # 'LINK_PAIS':{
-            #     'catalog_id': self.COUNTRY_ID,
-            #     'schema':{
-            #         'PAISID': '_id',
-            #         'DESCRIPCION': self.f['country'],
-            #         'PAISID': self.f['country_code'],
-            #         }
-            # },
-            # 'LINK_PROVINCIAS':{
-            #     'catalog_id': self.ESTADO_ID,
-            #     'schema':{
-            #         'PROVINCIAID':  self.f['state_code'],
-            #         'DESCRIPCION': self.f['state'],
-            #         'PAIS': self.f['country'],
-            #         }
-            #     },
-            # 'LINK_DEPARTAMENTO':{
-            #     'catalog_id': self.Employee.DEPARTAMENTOS_ID,
-            #     'schema':{
-            #         'DEPARTAMENTOID': self.f['department_code'],
-            #         'DESCRIPCION': self.f['worker_department'],
-            #         }
-            #     },
-            # 'LINK_PUESTO':{
-            #     'catalog_id': self.Employee.PUESTOS_ID,
-            #     'schema':{
-            #         'CARGOID': self.f['worker_position_code'],
-            #         'DESCRIPCION': self.f['worker_position'],
-            #         }
-            # },
-            # 'LINK_EMPLEADOS':{
-            #     'catalog_id': self.Employee.EMPLOYEE_ID,
-            #     'schema':{
-            #         'DEPARTAMENTO': self.f['worker_department'],
-            #         'CONTACTOID': self.f['worker_code'],
-            #         'EMAIL': self.f['email'],
-            #         'ESTADO_EMPLEADO': self.f['estatus_dentro_empresa'],
-            #         'GENERO': self.f['genero'],
-            #         'PUESTO': self.f['worker_position'],
-            #         'RAZON_SOCIAL': self.f['worker_name'],
-            #         'TELEFONO1': self.f['telefono1'],
-            #         'DIRECCION_CAT': self.f['address_name'],
-            #         'PICUTRE': self.f['picture'],
-            #         },
-            # },
-            # 'LINK_FABRICANTE':{
-            #     'catalog_id': self.Vehiculo.MARCA_ID,
-            #     'schema':{
-            #         'MARCAID': self.f['marca_codigo'],
-            #         'DESCRIPCION': self.f['marca'],
-            #         }
-            #     },
-            # 'LINK_MODELO_EQUIPOS':{
-            #     'catalog_id': self.Vehiculo.MODELO_ID,
-            #     'schema':{
-            #         'MODELOID':  self.f['modelo_codigo'],
-            #         'MARCA': self.f['marca'],
-            #         'MODELO': self.f['modelo'],
-            #         'TIPO_MAQ': self.f['categoria_marca'],
-            #         }
-            #     },
+            'LINK_PAIS':{
+                'catalog_id': self.COUNTRY_ID,
+                'schema':{
+                    'PAISID': '_id',
+                    'DESCRIPCION': self.f['country'],
+                    'PAISID': self.f['country_code'],
+                    }
+            },
+            'LINK_PROVINCIAS':{
+                'catalog_id': self.ESTADO_ID,
+                'schema':{
+                    'PROVINCIAID':  self.f['state_code'],
+                    'DESCRIPCION': self.f['state'],
+                    'PAIS': self.f['country'],
+                    }
+                },
+            'LINK_DEPARTAMENTO':{
+                'catalog_id': self.Employee.DEPARTAMENTOS_ID,
+                'schema':{
+                    'DEPARTAMENTOID': self.f['department_code'],
+                    'DESCRIPCION': self.f['worker_department'],
+                    }
+                },
+            'LINK_PUESTO':{
+                'catalog_id': self.Employee.PUESTOS_ID,
+                'schema':{
+                    'CARGOID': self.f['worker_position_code'],
+                    'DESCRIPCION': self.f['worker_position'],
+                    }
+            },
+            'LINK_EMPLEADOS':{
+                'catalog_id': self.Employee.EMPLOYEE_ID,
+                'schema':{
+                    'DEPARTAMENTO': self.f['worker_department'],
+                    'CONTACTOID': self.f['worker_code'],
+                    'EMAIL': self.f['email'],
+                    'ESTADO_EMPLEADO': self.f['estatus_dentro_empresa'],
+                    'GENERO': self.f['genero'],
+                    'PUESTO': self.f['worker_position'],
+                    'RAZON_SOCIAL': self.f['worker_name'],
+                    'TELEFONO1': self.f['telefono1'],
+                    'DIRECCION_CAT': self.f['address_name'],
+                    'PICUTRE': self.f['picture'],
+                    },
+            },
+            'LINK_FABRICANTE':{
+                'catalog_id': self.Vehiculo.MARCA_ID,
+                'schema':{
+                    'MARCAID': self.f['marca_codigo'],
+                    'DESCRIPCION': self.f['marca'],
+                    }
+                },
+            'LINK_MODELO_EQUIPOS':{
+                'catalog_id': self.Vehiculo.MODELO_ID,
+                'schema':{
+                    'MODELOID':  self.f['modelo_codigo'],
+                    'MARCA': self.f['marca'],
+                    'MODELO': self.f['modelo'],
+                    'TIPO_MAQ': self.f['categoria_marca'],
+                    }
+                },
             'LINK_CLIENTES':{
                 'catalog_id': self.CLIENTE_CAT_ID,
                 'schema':{
@@ -198,36 +198,36 @@ class Oracle(Oracle):
                     'EMAIL_CLIENTE_3': self.f['email_cliente_3']
                     }
             },
-            # 'LINK_EQUIPOS':{
-            #   'catalog_id': self.Vehiculo.ACTIVOS_FIJOS_CAT_ID,
-            #   'schema':{
-            #         'VEHICULO_TALID': self.f['oracle_id'],
-            #         'CATEGORIA': self.f['categoria_marca'],
-            #         'EQUIPO': self.f['tipo_equipo'],
-            #         'FABRICANTE': self.f['marca'],
-            #         'MODELO': self.f['modelo'],
-            #         'NOMBRE': self.f['nombre_equipo'],
-            #         'CHASIS': self.f['numero_de_serie_chasis'],
-            #         'CLIENTE': self.f['nombre_comercial'],
-            #         'ULTIMO_HOROMETRO': self.f['ultimo_horometro'],
-            #         'FEC_ULT_HOROMETRO': self.f['fecha_horometro'],
-            #         'ESTATUS': self.f['estatus'],
-            #         'ESTADO': self.f['estado'],
-            #         },
-            #      },
-            # 'LINK_VEHICULOS':{
-            #     'catalog_id': self.VEHICULOS_CAT_ID,
-            #     'schema':{
-            #         'ACTIVO_FIJOID': self.f['oracle_id'],
-            #         'PLACA': self.f['placas'],
-            #         'MARCA': self.f['marca'],
-            #         'MODELO': self.f['modelo'],
-            #         'ULTIMO_KILOMETRAJE': self.f['ultimo_km'],
-            #         'FECHA_ULTIMO_KILOMETRAJE': self.f['fecha_ultimo_km'],
-            #         'EMPELADO_RESPONSABLE': self.f['worker_name'],
-            #         'ESTADO': self.f['estatus_vehiculo'],
-            #         },
-            #     },
+            'LINK_EQUIPOS':{
+              'catalog_id': self.Vehiculo.ACTIVOS_FIJOS_CAT_ID,
+              'schema':{
+                    'VEHICULO_TALID': self.f['oracle_id'],
+                    'CATEGORIA': self.f['categoria_marca'],
+                    'EQUIPO': self.f['tipo_equipo'],
+                    'FABRICANTE': self.f['marca'],
+                    'MODELO': self.f['modelo'],
+                    'NOMBRE': self.f['nombre_equipo'],
+                    'CHASIS': self.f['numero_de_serie_chasis'],
+                    'CLIENTE': self.f['nombre_comercial'],
+                    'ULTIMO_HOROMETRO': self.f['ultimo_horometro'],
+                    'FEC_ULT_HOROMETRO': self.f['fecha_horometro'],
+                    'ESTATUS': self.f['estatus'],
+                    'ESTADO': self.f['estado'],
+                    },
+                 },
+            'LINK_VEHICULOS':{
+                'catalog_id': self.VEHICULOS_CAT_ID,
+                'schema':{
+                    'ACTIVO_FIJOID': self.f['oracle_id'],
+                    'PLACA': self.f['placas'],
+                    'MARCA': self.f['marca'],
+                    'MODELO': self.f['modelo'],
+                    'ULTIMO_KILOMETRAJE': self.f['ultimo_km'],
+                    'FECHA_ULTIMO_KILOMETRAJE': self.f['fecha_ultimo_km'],
+                    'EMPELADO_RESPONSABLE': self.f['worker_name'],
+                    'ESTADO': self.f['estatus_vehiculo'],
+                    },
+                },
             }
 
         self.aux_view = {
@@ -412,7 +412,7 @@ class Oracle(Oracle):
                     if status_code in (200,201,202,204):
                         sync_data['updated_at'] = time.time()
                         sres = self.update(query, sync_data, upsert=True)
-                        # self.create(sync_data)
+                        self.create(sync_data)
                     else:
                         print('Error updating record_id', sync_data)
                 else:
@@ -470,9 +470,8 @@ if __name__ == "__main__":
                 record_ids, last_update,  = module_obj.get_last_db_update_data(v)
                 update = False
                 query = None
-                print('v',v)
                 #TODO quitar el true es para purebas y q siempre haga el reset
-                if db_to_reset == v or True:
+                if db_to_reset == v :
                     print('RESETING DB: ', v)
                     last_update = None
                 if last_update:
@@ -483,7 +482,6 @@ if __name__ == "__main__":
                     last_update_date = date_time.strftime('%Y-%m-%d %H:%M:%S')
                     a = f"TO_TIMESTAMP('{last_update_date}', 'YYYY-MM-DD HH24:MI:SS.FF6')"
                     query = f'SELECT * FROM {v} WHERE FEC_MODIF  > {a}'
-
                 header, response = module_obj.sync_db_catalog(db_name=v, query=query)
                 # schema = getattr(module_obj, v, "Attribute not found")
 
