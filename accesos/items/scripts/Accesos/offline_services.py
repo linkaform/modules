@@ -1,6 +1,7 @@
 # coding: utf-8
 import os
 import sys, simplejson, json
+import time
 import tempfile
 import unicodedata
 from bson.objectid import ObjectId
@@ -316,14 +317,31 @@ class Accesos(Accesos):
     
     def assign_user_inbox(self, data):
         status = {}
+        lat = 0.0
+        long = 0.0
+        if len(self.geolocation) > 1:
+            lat = self.geolocation[0]
+            long = self.geolocation[1]
+        epoc_today = int(time.time())
         inbox_record = {
             "_id": self.record_id,
-            "user_name": self.user_name,
+            "type": "rondin",
             "kind": "inbox",
             "status": "new",
-            "nombre_rondin": data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.mf['nombre_del_recorrido'], ''),
-            "ubicacion_rondin": data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], ''),
-            "fecha_programada": data.get(self.f['fecha_programacion'], '')
+            "created_at": epoc_today,
+            "updated_at": epoc_today,
+            "created_by_id": self.user_id,
+            "created_by_name": self.user_name,
+            "geolocation": {
+                "lat": lat,
+                "long": long
+            },
+            "record": {
+                "user_name": self.user_name,
+                "nombre_rondin": data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.mf['nombre_del_recorrido'], ''),
+                "ubicacion_rondin": data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], ''),
+                "fecha_programada": data.get(self.f['fecha_programacion'], '')
+            }
         }
         try:
             result = self.cr_db.save(inbox_record)
@@ -340,6 +358,7 @@ if __name__ == "__main__":
     acceso_obj.user_name = data_rondin.get('created_by_name', '')
     acceso_obj.user_id = data_rondin.get('created_by_id', 0)
     acceso_obj.user_email = data_rondin.get('created_by_email', '')
+    acceso_obj.geolocation = data_rondin.get('geolocation', [])
     acceso_obj.cr_db = acceso_obj.lkf_api.couch.set_db(f'clave_{acceso_obj.user_id}')
     script_attr = acceso_obj.data
     data = acceso_obj.data.get('data', {})
