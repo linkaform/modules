@@ -138,6 +138,18 @@ class Accesos(Accesos):
             'color':"",
         }
         
+        self.check_area_filter = {
+            "tag_id": "",
+            "ubicacion": "",
+            "area": "",
+            "tipo_de_area": "",
+            "foto_del_area": [],
+            "evidencia_check_area": [],
+            "grupo_incidencias_check": [],
+            "comentario_check_area": "",
+            "status_check_area": "",
+        }
+        
     def clean_text(self, texto):
         """
         Limpia texto: minúsculas, espacios y puntos por guiones bajos, elimina acentos
@@ -226,11 +238,10 @@ class Accesos(Accesos):
         format_response = self.unlist(response)
         return format_response
 
-    def sync_incidence_to_lkf(self, id, rev):
+    def sync_incidence_to_lkf(self, record):
         status = {}
-        record = self.get_couch_record(id, rev)
-        record = dict(record)
         record_id = record.pop('_id', None)
+        record = record.get('record', {})
         folio = self.get_folio_incidencia(record_id)
         payload = {k: record[k] for k in self.incidence_filter.keys() if k in record}
             
@@ -274,8 +285,7 @@ class Accesos(Accesos):
             #     data = attachment.read()
             #     upload_image = self.upload_image_from_couchdb(data, name, self.BITACORA_INCIDENCIAS, self.f['evidencia_incidencia'])
             #     media.append(upload_image)
-            record['status'] = 'recived'
-            record['evidencia_incidencia'] = media
+            record['status'] = 'received'
             self.cr_db.save(record)
             return record
         elif _rev in all_revs:
@@ -316,6 +326,7 @@ class Accesos(Accesos):
         return update_file
     
     def assign_user_inbox(self, data):
+        self.cr_db = self.lkf_api.couch.set_db(f'clave_{self.user_id}')
         status = {}
         lat = 0.0
         long = 0.0
@@ -375,28 +386,111 @@ class Accesos(Accesos):
         res = self.cr.aggregate(query)
         format_res = list(res)
         return format_res
+    
+    def sync_check_area_to_lkf(self, record):
+        
+        status = {}
+        record_id = record.pop('_id', None)
+        record = record.get('record', {})
+        payload = {k: record[k] for k in self.check_area_filter.keys() if k in record}
+            
+        if isinstance(record, dict) and 'status_code' in record:
+            return record
+        else:
+            payload.update({'record_id': record_id})
+            response = self.create_check_area(payload)
+
+        record = self.cr_db.get(record_id)
+        if response.get('status_code') in [200, 201, 202]:
+            record['status'] = 'synced'
+            self.cr_db.save(record)
+            status = {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
+        else:
+            record['status'] = 'error'
+            self.cr_db.save(record)
+            status = {'status_code': 400, 'type': 'error', 'msg': response, 'data': {}}
+        return status
+        
+    def create_check_area(self, data):
+        # metadata = self.lkf_api.get_metadata(form_id=self.CHECK_UBICACIONES)
+        metadata = self.lkf_api.get_metadata(form_id=137161)
+        metadata.update({
+            "properties": {
+                "device_properties":{
+                    "System": "Script",
+                    "Module": "Accesos",
+                    "Process": "Creación de check area",
+                    "Action": "create_check_area",
+                    "File": "accesos/app.py"
+                }
+            },
+        })
+        if data.get('record_id'):
+            metadata.update({
+                "id": data.pop('record_id')
+            })
+        #---Define Answers
+        answers = {}
+        answers[self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID]={}
+        answers[self.f['check_status']] = "continuar_siguiente_punto_de_inspección"
+        for key, value in data.items():
+            if key == 'tag_id':
+                answers[self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID].update({
+                    self.f['area_tag_id']: value,
+                    self.Location.f['location']: [data.get('ubicacion', '')],
+                    self.Location.f['area']: [data.get('area', '')],
+                    self.f['tipo_de_area']: [data.get('tipo_de_area', '')],
+                    self.f['area_foto']: [data.get('foto_del_area', '')],
+                })
+            elif key == 'evidencia_check_area':
+                answers[self.f['foto_evidencia_area']] = value
+            elif key == 'grupo_incidencias_check':
+                pass
+            elif key == 'comentario_check_area':
+                answers[self.f['comentario_check_area']] = value
+            elif key == 'status_check_area':
+                answers[self.f['check_status']] = value
+            else:
+                continue
+        metadata.update({'answers':answers})
+        return self.lkf_api.post_forms_answers(metadata)
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
     data_rondin = acceso_obj.current_record
     acceso_obj.user_name = data_rondin.get('created_by_name', '')
-    acceso_obj.user_id = data_rondin.get('created_by_id', 0)
-    acceso_obj.user_email = data_rondin.get('created_by_email', '')
+    acceso_obj.user_id = data_rondin.get('created_by_id', acceso_obj.user.get('user_id', 0))
+    acceso_obj.user_email = data_rondin.get('created_by_email', acceso_obj.user.get('email', ''))
     acceso_obj.geolocation = data_rondin.get('geolocation', [])
-    acceso_obj.cr_db = acceso_obj.lkf_api.couch.set_db(f'clave_{acceso_obj.user_id}')
     script_attr = acceso_obj.data
     data = acceso_obj.data.get('data', {})
-    option = data.get("option", script_attr.get('option', 'sync_incidence_to_lkf'))
-    _id = data.get("_id", None)
-    _rev = data.get("_rev", None)
+    option = data.get("option", script_attr.get('option', 'get_user_catalogs'))
+    _id = data.get("_id", '68fa4108bfb9399d736f123c')
+    _rev = data.get("_rev", '1-30f6c82fa2c4052b327b14215ed1b3bb')
 
     response = {}
     if option == 'get_user_catalogs':
         response = acceso_obj.get_user_catalogs()
-    elif option == 'sync_incidence_to_lkf':
-        response = acceso_obj.sync_incidence_to_lkf(id=_id, rev=_rev)
+    elif option == 'sync_to_lkf':
+        db_name = f'clave_{acceso_obj.user_id}'
+        acceso_obj.cr_db = acceso_obj.lkf_api.couch.set_db(db_name)
+        record = acceso_obj.get_couch_record(_id=_id, _rev=_rev)
+        record = dict(record)
+        type_sync = record.get('type', '')
+        
+        if type_sync == 'incidencia':
+            response = acceso_obj.sync_incidence_to_lkf(record=record)
+        elif type_sync == 'check_area':
+            response = acceso_obj.sync_check_area_to_lkf(record=record)
+        elif type_sync == 'error':
+            response = record
+        else:
+            response = {'status_code': 400, 'type': 'error', 'msg': 'Unknown error', 'data': {}}
+
     elif option == 'assign_user_inbox':
         response = acceso_obj.assign_user_inbox(data=acceso_obj.answers)
+    else:
+        response = {'status_code': 400, 'type': 'error', 'msg': 'Invalid option', 'data': {}}
 
-    sys.stdout.write(simplejson.dumps(response, indent=3))
+    sys.stdout.write(simplejson.dumps(response))
