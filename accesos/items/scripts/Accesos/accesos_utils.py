@@ -842,6 +842,8 @@ class Accesos( Accesos):
         #- Expirados son lo que esta en status programados y que tienen mas de 24 de programdos
         # - en progreso son lo que estan con status progreso y tienen mas de 1 hr de su ultimo check.
         answers = {}
+        tiz = pytz.timezone(timezone)
+        ahora_cierre = datetime.now(tiz)
 
         rondines_expirados = []
         rondines_en_proceso_vencidos = []
@@ -875,7 +877,7 @@ class Accesos( Accesos):
             rondines_ids.append(rondin.get('_id'))
 
         answers[self.f['estatus_del_recorrido']] = 'cerrado'
-        answers[self.f['fecha_fin_rondin']] = ahora.strftime('%Y-%m-%d %H:%M:%S')
+        answers[self.f['fecha_fin_rondin']] = ahora_cierre.strftime('%Y-%m-%d %H:%M:%S')
 
         # print(stop)
         if answers:
