@@ -829,6 +829,7 @@ class Accesos( Accesos):
             }},
             {'$project': {
                 '_id': 1,
+                'timezone': 1,
                 'fecha_programacion': f"$answers.{self.f['fecha_programacion']}",
                 'answers': f"$answers"
             }},
@@ -841,8 +842,6 @@ class Accesos( Accesos):
         #- Expirados son lo que esta en status programados y que tienen mas de 24 de programdos
         # - en progreso son lo que estan con status progreso y tienen mas de 1 hr de su ultimo check.
         answers = {}
-        tz = pytz.timezone(timezone)
-        ahora = datetime.now(tz)
 
         rondines_expirados = []
         rondines_en_proceso_vencidos = []
@@ -850,6 +849,9 @@ class Accesos( Accesos):
         for rondin in list_of_rondines:
             estatus = rondin.get('estatus_del_recorrido')
             fecha_programacion_str = rondin.get('fecha_programacion')
+            rondin_tz = rondin.get('timezone', timezone)
+            tz = pytz.timezone(rondin_tz)
+            ahora = datetime.now(tz)
 
             if estatus == 'programado' and fecha_programacion_str:
                 fecha_programacion = tz.localize(datetime.strptime(fecha_programacion_str, '%Y-%m-%d %H:%M:%S'))

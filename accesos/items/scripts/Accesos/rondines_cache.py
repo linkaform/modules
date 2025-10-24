@@ -735,7 +735,7 @@ if __name__ == "__main__":
                 print('diff:', diff)
                 response = script_obj.close_rondines(rondines, timezone=script_obj.timezone)
                 if response:
-                    print("response", response)
+                    print("response closed_rondines", response)
                 else:
                     print("No hay rondines que cerrar")
 
@@ -779,6 +779,7 @@ if __name__ == "__main__":
                     #! 7-2-1 Se busca una bitacora activa para la hora en que se hizo este check
                     print('No ha pasado más de 1 hora desde el winner_date.')
                     bitacora = script_obj.search_active_bitacora_by_rondin(recorridos=recorridos)
+                    print('bitacora activa encontrada:', bitacora)
                     time.sleep(5)
                     winner_checks = script_obj.search_cache(winner_id=winner.get('winner_id'), location=winner.get('location'), user_name=script_obj.user_name)
                     winner_checks.append(winner.get('winner_record', {}))
