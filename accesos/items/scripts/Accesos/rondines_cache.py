@@ -496,9 +496,11 @@ class Accesos(Accesos):
         }
         answers[self.f['estatus_del_recorrido']] = 'cerrado' if closed else 'en_proceso'
         check_areas_list = []
+        incidencias_list = []
         for area in winner.get('checks', []):
             area_record_id = str(area.get('_id'))
             tag_value = area['check_data'].get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['tag_id_area_ubicacion'], '')
+            incidencias_list.extend(area['check_data'].get(self.f['grupo_incidencias_check'], []))
             if isinstance(tag_value, list):
                 area_tag_id = tag_value
             else:
@@ -543,8 +545,7 @@ class Accesos(Accesos):
                 final_list.append(items[0])
 
         answers[self.f['areas_del_rondin']] = final_list
-
-        # answers[self.f['bitacora_rondin_incidencias']] = self.answers.get(self.f['grupo_incidencias_check'], [])
+        answers[self.f['bitacora_rondin_incidencias']] = incidencias_list
 
         metadata.update({'answers':answers})
         print(simplejson.dumps(metadata, indent=3))
