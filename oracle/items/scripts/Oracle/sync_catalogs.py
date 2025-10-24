@@ -40,16 +40,14 @@ class Oracle(Oracle):
         record_answers = self.get_answers_by_kind(data)
         # print('record_answers', record_answers)
         for kind, answers in record_answers.items():
-            print('kind=', kind)
             metadata = deepcopy(metadata_form)
             metadata['answers'] = answers
-            # if 'ultimos_' in kind:
-            #     pass
+            if 'ultimos_5' in kind:
+                continue
             # else:
-            if kind == 'ultimo_valor':
-                print('aqui va a hacer el post......')
-                #res = self.lkf_api.post_forms_answers(metadata)
-            print('y hace el upsert....')
+            #if kind == 'ultimo_valor':
+            #    print('aqui va a hacer el post......')
+                # res = self.lkf_api.post_forms_answers(metadata)
             self.upsert_catalog_record(metadata, kind)
         return True
 
@@ -129,33 +127,29 @@ class Oracle(Oracle):
         'ultimos_4': {},
         'ultimos_5': {},
         }
-        # Iterate through each item in the input data
         for variable_data in data:
             if variable_data.get('fecha') and not result['ultimo_valor'].get(self.f['fecha']):
-                result['ultimo_valor'][self.f['fecha']] = variable_data.get('fecha')
-                print('starting fecha', result['ultimo_valor'][self.f['fecha']])
+                result['ultimo_valor'][self.f['fecha'][:16]] = variable_data.get('fecha')
             if variable_data.get('fecha') and result['ultimo_valor'].get(self.f['fecha']) \
                 and variable_data.get('fecha') > result['ultimo_valor'].get(self.f['fecha']):
-                result['ultimo_valor'][self.f['fecha']] = variable_data.get('fecha')
-                print('new fecha', result['ultimo_valor'][self.f['fecha']])
+                result['ultimo_valor'][self.f['fecha'][:16]] = variable_data.get('fecha')
             variable_id = variable_data['_id']
             # Agregar cada estadística al diccionario correspondiente
             result['ultimo_valor'][variable_id] = variable_data.get('ultimo_valor')
-            # result['ultimo_valor'][self.f['fecha']] = variable_data.get('fecha')
+            result['ultimo_valor'][self.f['fecha'][:16]] = variable_data.get('ultimo_valor')
             result['promedio'][variable_id] = variable_data.get('promedio')
-            result['promedio'][self.f['fecha']] = variable_data.get('fecha')
+            result['promedio'][self.f['fecha'][:16]] = variable_data.get('fecha')
             result['maximo'][variable_id] = variable_data.get('maximo')
-            result['maximo'][self.f['fecha']] = variable_data.get('fecha')
+            result['maximo'][self.f['fecha'][:16]] = variable_data.get('fecha')
             result['minimo'][variable_id] = variable_data.get('minimo')
-            result['minimo'][self.f['fecha']] = variable_data.get('fecha')
+            result['minimo'][self.f['fecha'][:16]] = variable_data.get('fecha')
             result['desviacion_estandar'][variable_id] = variable_data.get('desviacion_estandar')
-            result['desviacion_estandar'][self.f['fecha']] = variable_data.get('fecha')
+            result['desviacion_estandar'][self.f['fecha'][:16]] = variable_data.get('fecha')
             for idx, value in enumerate(variable_data.get('ultimos_5',[])):
-                if idx == 0:
+                #if idx == 0:
                     #me salto el ultimo valor ya que es igual que el ultimo
-                    continue
-                result[f'ultimos_{idx-1}'][variable_id] = value
-                result[f'ultimos_{idx-1}'][self.f['fecha']] = variable_data.get('fecha')
+                result[f'ultimos_{idx}'][variable_id] = value
+                result[f'ultimos_{idx}'][self.f['fecha']] = variable_data.get('fecha')[:16]
         return result
 
     # def get_average_values(self, hours=24):
@@ -339,7 +333,6 @@ class Oracle(Oracle):
         answers_last_values[self.f['tipo_registro']] = 'ultimo_valor'
         if answers_last_values.get(self.f['base_de_datos_oracle']):
             answers_last_values.pop(self.f['base_de_datos_oracle'])
-            
         return answers_last_values
 
     def get_record_id_to_sync(self, query):
@@ -353,7 +346,7 @@ class Oracle(Oracle):
 
     def get_variables_model(self, view, **kwargs):
         """
-        Obtiene los metadatos de la forma figada a la vista de Oracle
+        Obtiene los metadatos de la forma ligada a la vista de Oracle
         view: nombre de la base de datos o vista en Oracle
         kwargs: argumentos adicionales
         returns:
@@ -472,7 +465,6 @@ class Oracle(Oracle):
         print('form_id=', form_id)
         if form_id:
             # print('data=', data)
-            print(' SOLO EL PRIMERO DATA[0] record=', data[0])
             res = self.lkf_api.post_forms_answers_list(data)
             self.verify_complete_sync(data, res)
         elif catalog_id:
@@ -527,6 +519,7 @@ class Oracle(Oracle):
         if data.get('answers'):
             catalogo_metadata['answers'] = {}
             for k,v in data.get('answers').items():
+                #recorreo cada tipo de registro
                 record_type = record_type.replace('_', ' ').title()
                 if k not in (self.f['fecha']):
                     r_type = record_type
@@ -534,8 +527,16 @@ class Oracle(Oracle):
                         r_type = v['fecha']
                         v = v['valor']
                     valor_formateado = f"{v:.2f}" if isinstance(v, float) else f"{v}.00"
-                    catalogo_metadata['answers'][k] = f"{r_type.ljust(18)}: {valor_formateado:>8}"
+                    if record_type == 'Ultimos 0':
+                        # Se le da formato a los datos para que queden en el catalogo
+                        # Se pone una estrella ⭐ delante de la fehca al que sea el ultimo valor reportado.
+                        # ese valor debe de ser igual al de ultimo valor
+                        catalogo_metadata['answers'][k] = f"⭐ {r_type[:16].ljust(18)}: {valor_formateado:>8}"
+                    else:
+                        catalogo_metadata['answers'][k] = f"{r_type[:16].ljust(18)}: {valor_formateado:>8}"
                 else:
+                    #si el tipo de registro es el ultimo valor, asiganmos valor a la fecha
+                    # solo un registro debe de tener la fecha
                     if record_type == 'Ultimo Valor':
                         catalogo_metadata['answers'][k] = v
         else:
