@@ -145,7 +145,7 @@ class Accesos(Accesos):
             "tipo_de_area": "",
             "foto_del_area": [],
             "evidencia_check_area": [],
-            "grupo_incidencias_check": [],
+            "incidencias": [],
             "comentario_check_area": "",
             "status_check_area": "",
         }
@@ -444,8 +444,27 @@ class Accesos(Accesos):
                 })
             elif key == 'evidencia_check_area':
                 answers[self.f['foto_evidencia_area']] = value
-            elif key == 'grupo_incidencias_check':
-                pass
+            elif key == 'incidencias':
+                incidencias = data.get('incidencias', [])
+                if incidencias:
+                    incidencias_list = []
+                    for incidencia in incidencias:
+                        item = {}
+                        if incidencia.get('categoria'):
+                            item = {self.LISTA_INCIDENCIAS_CAT_OBJ_ID: {
+                                self.f['categoria']: incidencia.get('categoria', ''),
+                                self.f['sub_categoria']: incidencia.get('sub_categoria', ''),
+                                self.f['incidente']: incidencia.get('incidente', ''),
+                            }}
+                        item.update({
+                            self.f['incidente_open']: incidencia.get('otro_incidente', ''),
+                            self.f['incidente_comentario']: incidencia.get('comentario', ''),
+                            self.f['incidente_accion']: incidencia.get('accion', ''),
+                            self.f['incidente_evidencia']: incidencia.get('evidencia', ''),
+                            self.f['incidente_documento']: incidencia.get('documento', ''),
+                        })
+                        incidencias_list.append(item)
+                    answers[self.f['grupo_incidencias_check']] = incidencias_list
             elif key == 'comentario_check_area':
                 answers[self.f['comentario_check_area']] = value
             elif key == 'status_check_area':
