@@ -13,8 +13,6 @@ class Accesos(Accesos):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
 
 
-
-
     def get_active_guards_in_location(self, location):
         query = [
             {"$match": {

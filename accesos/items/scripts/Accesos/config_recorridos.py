@@ -180,7 +180,7 @@ class Schedule(Schedule):
             task = {
                 "name":task_name,
                 "operator_lib":"lkf_operator",
-                "operator":"CreateAndAssignTask",
+                "operator":"CreateRecord",
                 # "options":{"no_assign": True},
                 "params":{
                     "form_id":item_id,
