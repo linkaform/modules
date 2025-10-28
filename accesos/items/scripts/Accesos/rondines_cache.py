@@ -242,7 +242,9 @@ class Accesos(Accesos):
         incidencias_list = []
         for item in rondin_incidencias_list:
             new_item = {
-                self.f['area_incidente_bitacora']: item.get('area_incidente_bitacora', ''),
+                self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID: {
+                    self.f['nombre_area_salida']: item.get('nombre_area_salida', ''),
+                },
                 self.f['fecha_hora_incidente_bitacora']: item.get('fecha_hora_incidente_bitacora', ''),
                 self.LISTA_INCIDENCIAS_CAT_OBJ_ID: {
                     self.f['categoria']: item.get('categoria', ''),
@@ -250,10 +252,10 @@ class Accesos(Accesos):
                     self.f['incidente']: item.get('tipo_de_incidencia', ''),
                 },
                 self.f['incidente_open']: item.get('incidente_open', ''),
-                self.f['incidente_comentario']: item.get('comentario_incidente_bitacora', ''),
+                self.f['comentario_incidente_bitacora']: item.get('comentario_incidente_bitacora', ''),
                 self.f['incidente_accion']: item.get('incidente_accion', ''),
-                self.f['incidente_evidencia']: item.get('incidente_evidencia', ''),
-                self.f['incidente_documento']: item.get('incidente_documento', ''),
+                self.f['incidente_evidencia']: item.get('incidente_evidencia', []),
+                self.f['incidente_documento']: item.get('incidente_documento', []),
             }
             incidencias_list.append(new_item)
         # print('rondinnnnnnnnnnnnnnnnn', simplejson.dumps(rondin, indent=3))
@@ -331,7 +333,9 @@ class Accesos(Accesos):
                         grupo_incidencias = data_cache.get(self.f['grupo_incidencias_check'], [])
                         for item in grupo_incidencias:
                             item.update({
-                                self.f['area_incidente_bitacora']: area_name,
+                                self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID: {
+                                    self.f['nombre_area_salida']: area_name,
+                                },
                                 self.f['fecha_hora_incidente_bitacora']: cache_item.get('timestamp') and datetime.fromtimestamp(cache_item['timestamp'], tz).strftime('%Y-%m-%d %H:%M:%S')
                             })
                         incidencias_list.extend(data_cache.get(self.f['grupo_incidencias_check'], []))
@@ -506,7 +510,9 @@ class Accesos(Accesos):
             grupo_incidencias = area['check_data'].get(self.f['grupo_incidencias_check'], [])
             for item in grupo_incidencias:
                 item.update({
-                    self.f['area_incidente_bitacora']: self.unlist(area['check_data'].get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['area'], '')),
+                    self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID: {
+                        self.f['nombre_area_salida']: self.unlist(area['check_data'].get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['area'], '')),
+                    },
                     self.f['fecha_hora_incidente_bitacora']: area.get('timestamp') and datetime.fromtimestamp(area.get('timestamp'), tz).strftime('%Y-%m-%d %H:%M:%S'),
                 })
             incidencias_list.extend(area['check_data'].get(self.f['grupo_incidencias_check'], []))
