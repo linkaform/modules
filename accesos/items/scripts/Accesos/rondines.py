@@ -492,6 +492,7 @@ class Accesos(Accesos):
                 "_id": 1,
                 "folio": 1,
                 "ubicacion": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}",
+                "nombre_recorrido": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}",
                 "incidencias_rondin": f"$answers.{self.f['bitacora_rondin_incidencias']}",
             }},
             {"$skip": offset},
@@ -509,15 +510,17 @@ class Accesos(Accesos):
             incidencias = item.get('incidencias_rondin', [])
             for index, incidencia in enumerate(incidencias):
                 if area:
-                    incidencia_area = incidencia.get('area_incidente', '')
+                    incidencia_area = incidencia.get('nombre_area_salida', '')
                     if incidencia_area != area:
                         continue
                     
                 format_item = {
-                    "id": f"{item.get('_id','')}-{index}",
-                    "folio": f"{item.get('folio','')}-{index}",
+                    "id": item.get('_id',''),
+                    "folio": item.get('folio',''),
+                    "ref_number": index,
                     "ubicacion_incidente": item.get('ubicacion', ''),
-                    "area_incidente": incidencia.get('area_incidente_bitacora', ''),
+                    "area_incidente": incidencia.get('nombre_area_salida', ''),
+                    "nombre_del_recorrido": item.get('nombre_recorrido', ''),
                     "fecha_hora_incidente": incidencia.get('fecha_hora_incidente_bitacora', ''),
                     "categoria": incidencia.get('categoria', 'General'),
                     "subcategoria": incidencia.get('sub_categoria', 'General'),
@@ -567,7 +570,8 @@ if __name__ == "__main__":
     offset = data.get("offset", 0)
     folio = data.get("folio", '')
     record_id = data.get("record_id", '')
-    ubicacion = data.get("ubicacion", '')
+    ubicacion = data.get("ubicacion", None)
+    area = data.get("area", None)
 
     if option == 'create_rondin':
         response = class_obj.create_rondin(rondin_data=rondin_data)
@@ -582,7 +586,7 @@ if __name__ == "__main__":
     elif option == 'get_rondin_by_id':
         response = class_obj.get_rondin_by_id(record_id=record_id)
     elif option == 'get_incidencias_rondines':
-        response = class_obj.get_incidencias_rondines(date_from=date_from, date_to=date_to, limit=limit, offset=offset)
+        response = class_obj.get_incidencias_rondines(location=ubicacion, area=area, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
     elif option == 'create_incidencia_by_rondin':
         response = class_obj.create_incidencia_by_rondin(data=rondin_data)
     else:
