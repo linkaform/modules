@@ -238,7 +238,24 @@ class Accesos(Accesos):
         rondin_en_progreso = True
         answers={}
         areas_list = []
-
+        rondin_incidencias_list = rondin.get('bitacora_rondin_incidencias', [])
+        incidencias_list = []
+        for item in rondin_incidencias_list:
+            new_item = {
+                self.f['area_incidente_bitacora']: item.get('area_incidente_bitacora', ''),
+                self.f['fecha_hora_incidente_bitacora']: item.get('fecha_hora_incidente_bitacora', ''),
+                self.LISTA_INCIDENCIAS_CAT_OBJ_ID: {
+                    self.f['categoria']: item.get('categoria', ''),
+                    self.f['sub_categoria']: item.get('sub_categoria', ''),
+                    self.f['incidente']: item.get('tipo_de_incidencia', ''),
+                },
+                self.f['incidente_open']: item.get('incidente_open', ''),
+                self.f['incidente_comentario']: item.get('comentario_incidente_bitacora', ''),
+                self.f['incidente_accion']: item.get('incidente_accion', ''),
+                self.f['incidente_evidencia']: item.get('incidente_evidencia', ''),
+                self.f['incidente_documento']: item.get('incidente_documento', ''),
+            }
+            incidencias_list.append(new_item)
         # print('rondinnnnnnnnnnnnnnnnn', simplejson.dumps(rondin, indent=3))
 
         if not rondin.get('fecha_inicio_rondin'):
@@ -311,6 +328,13 @@ class Accesos(Accesos):
                         area_tag_id = [tag_value] if tag_value else []
                     
                     if area_name:
+                        grupo_incidencias = data_cache.get(self.f['grupo_incidencias_check'], [])
+                        for item in grupo_incidencias:
+                            item.update({
+                                self.f['area_incidente_bitacora']: area_name,
+                                self.f['fecha_hora_incidente_bitacora']: cache_item.get('timestamp') and datetime.fromtimestamp(cache_item['timestamp'], tz).strftime('%Y-%m-%d %H:%M:%S')
+                            })
+                        incidencias_list.extend(data_cache.get(self.f['grupo_incidencias_check'], []))
                         area_record_id = str(cache_item.get('_id'))
                         nueva_area = {
                             self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
@@ -362,38 +386,17 @@ class Accesos(Accesos):
                     final_list.append(items[0])
 
             answers[self.f['areas_del_rondin']] = final_list
+            answers[self.f['bitacora_rondin_incidencias']] = incidencias_list
         else:
             pass
 
         answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = conf_recorrido
         answers[self.f['fecha_fin_rondin']] = today if data_rondin.get(self.f['check_status'], '') == ['finalizado', 'realizado', 'cerrado'] else ''
         
-        format_list_incidencias = []
-        for incidencia in rondin.get('bitacora_rondin_incidencias', []):
-            inc = incidencia.get(self.f['tipo_de_incidencia'])
-            if inc:
-                incidencia.pop(self.f['tipo_de_incidencia'], None)
-                incidencia.update({
-                    self.LISTA_INCIDENCIAS_CAT_OBJ_ID: {
-                        self.f['tipo_de_incidencia']: inc
-                    }
-                })
-                format_list_incidencias.append(incidencia)
-            
-        rondin['bitacora_rondin_incidencias'] = format_list_incidencias
-             
-        for incidencia in data_rondin.get(self.f['grupo_incidencias_check'], []):
-            rondin['bitacora_rondin_incidencias'].append(incidencia)
-        
-        incidencias_list = rondin['bitacora_rondin_incidencias']
-        incidencias_dict = {str(idx): incidencia for idx, incidencia in enumerate(incidencias_list)}
-        answers[self.f['bitacora_rondin_incidencias']] = incidencias_dict
-        
         if data_rondin.get('answers', {}).get(self.f['check_status']) == 'finalizado':
             answers[self.f['estatus_del_recorrido']] = 'realizado'
 
         # print("ans", simplejson.dumps(answers, indent=4))
-
         if answers:
             metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_RONDINES)
             metadata.update(self.get_record_by_folio(rondin.get('folio'), self.BITACORA_RONDINES, select_columns={'_id': 1}, limit=1))
@@ -500,6 +503,12 @@ class Accesos(Accesos):
         for area in winner.get('checks', []):
             area_record_id = str(area.get('_id'))
             tag_value = area['check_data'].get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['tag_id_area_ubicacion'], '')
+            grupo_incidencias = area['check_data'].get(self.f['grupo_incidencias_check'], [])
+            for item in grupo_incidencias:
+                item.update({
+                    self.f['area_incidente_bitacora']: self.unlist(area['check_data'].get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['area'], '')),
+                    self.f['fecha_hora_incidente_bitacora']: area.get('timestamp') and datetime.fromtimestamp(area.get('timestamp'), tz).strftime('%Y-%m-%d %H:%M:%S'),
+                })
             incidencias_list.extend(area['check_data'].get(self.f['grupo_incidencias_check'], []))
             if isinstance(tag_value, list):
                 area_tag_id = tag_value
