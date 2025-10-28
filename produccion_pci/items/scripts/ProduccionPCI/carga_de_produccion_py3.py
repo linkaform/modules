@@ -170,7 +170,7 @@ class Produccion_PCI( Produccion_PCI ):
         }
         if os_cobre['answers'].get('633d9f63eb936fb6ec9bf580'):
             metadata_cambio['answers']['633d9f63eb936fb6ec9bf580'] = os_cobre['answers']['633d9f63eb936fb6ec9bf580'] # Proyecto
-        metadata_agregar_script = {"device_properties":{"system": "SCRIPT","process":"Cambio de Tecnologia", "accion":'Crear registro', "folio carga":current_folio, "archive":"carga_produccion_hibrido.py"}}
+        metadata_agregar_script = {"device_properties":{"system": "SCRIPT","process":"Cambio de Tecnologia", "accion":'Crear registro', "folio carga":current_folio, "archive":"carga_de_produccion_py3.py"}}
         metadata_cambio["properties"] = metadata_agregar_script
         resp_create = lkf_api.post_forms_answers(metadata_cambio, jwt_settings_key='JWT_KEY_ADMIN')
         return resp_create
@@ -904,7 +904,7 @@ class Produccion_PCI( Produccion_PCI ):
         accion_actualizacion = 'ACTUALIZACION' if record_existente == 'si' else 'CARGA INICIAL'
 
         metadata_extra = {}
-        metadata_agregar_script = {"device_properties":{"system": "SCRIPT","process":"PROCESO CARGA DE PRODUCCION HIBRIDO", "accion":accion_actualizacion, "folio carga":current_record['folio'], "archive":"carga_produccion_hibrido.py"}}
+        metadata_agregar_script = {"device_properties":{"system": "SCRIPT","process":"PROCESO CARGA DE PRODUCCION HIBRIDO", "accion":accion_actualizacion, "folio carga":current_record['folio'], "archive":"carga_de_produccion_py3.py"}}
         metadata_extra["properties"] = metadata_agregar_script
         this_record.update(metadata_extra)
 
