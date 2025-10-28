@@ -452,7 +452,132 @@ class Accesos(Accesos):
             return self.catalogo_view(catalog_id, form_id, options)
         else:
             raise Exception("Ubicacion is required.")
-     
+
+    def get_incidencias_rondines(self, location=None, area=None, date_from=None, date_to=None, limit=20, offset=0):
+        """Lista las incidencias de los rondines según los filtros proporcionados.
+        Params:
+            date_from (str): Fecha de inicio del filtro.
+            date_to (str): Fecha de fin del filtro.
+            limit (int): Número máximo de incidencias a devolver.
+            offset (int): Número de incidencias a omitir desde el inicio.
+        Returns:
+            list: Lista de incidencias con sus detalles.
+        """
+        match = {
+            "form_id": self.BITACORA_RONDINES,
+            "deleted_at": {"$exists": False},
+            f"answers.{self.f['bitacora_rondin_incidencias']}": {
+                "$type": "array",
+                "$not": {"$size": 0}
+            }
+        }
+        
+        if location:
+            match.update({
+                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": location
+            })
+        if date_from:
+            match.update({
+                "created_at": {"$gte": date_from}
+            })
+        if date_to:
+            match.update({
+                "created_at": {"$lte": date_to}
+            })
+        
+        query = [
+            {"$match": match},
+            {"$sort": {"created_at": -1}},
+            {"$project": {
+                "_id": 1,
+                "folio": 1,
+                "ubicacion": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}",
+                "incidencias_rondin": f"$answers.{self.f['bitacora_rondin_incidencias']}",
+            }},
+            {"$skip": offset},
+            {"$limit": limit}
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
+        format_response = []
+        if response:
+            format_response = self.format_incidencias_rondines(response, area)
+        return format_response
+
+    def format_incidencias_rondines(self, data, area):
+        format_data = []
+        for item in data:
+            incidencias = item.get('incidencias_rondin', [])
+            for index, incidencia in enumerate(incidencias):
+                if area:
+                    incidencia_area = incidencia.get('area_incidente', '')
+                    if incidencia_area != area:
+                        continue
+                    
+                format_item = {
+                    "id": f"{item.get('_id','')}-{index}",
+                    "folio": f"{item.get('folio','')}-{index}",
+                    "ubicacion_incidente": item.get('ubicacion', ''),
+                    "area_incidente": incidencia.get('area_incidente_bitacora', ''),
+                    "fecha_hora_incidente": incidencia.get('fecha_hora_incidente_bitacora', ''),
+                    "categoria": incidencia.get('categoria', 'General'),
+                    "subcategoria": incidencia.get('sub_categoria', 'General'),
+                    "incidente": incidencia.get('tipo_de_incidencia', incidencia.get('incidente_open', '')),
+                    "accion_tomada": incidencia.get('incidente_accion', ''),
+                    "comentarios": incidencia.get('comentario_incidente_bitacora', ''),
+                    "evidencias": incidencia.get('incidente_evidencia', []),
+                    "documentos": incidencia.get('incidente_documento', []),
+                }
+                format_data.append(format_item)
+        return format_data
+    
+    def create_incidencia_by_rondin(self, data):
+        data = {
+            'reporta_incidencia': "Emiliano Zapata",
+            'fecha_hora_incidencia': "2025-10-24 19:38:50",
+        }
+        self.incidence_filter = {
+            'reporta_incidencia': "",
+            'ubicacion_incidencia':"",
+            'area_incidencia': "",
+            'incidencia':"",
+            'comentario_incidencia': "",
+            'tipo_dano_incidencia': "",
+            'dano_incidencia':"",
+            'evidencia_incidencia': [],
+            'documento_incidencia':[],
+            'prioridad_incidencia':"",
+            'notificacion_incidencia':"",
+            'datos_deposito_incidencia': [],
+            'tags':[],
+            'categoria':"",
+            'sub_categoria':"",
+            'incidente':"",
+            'nombre_completo_persona_extraviada':"",
+            'edad':"",
+            'color_piel':"",
+            'color_cabello':"",
+            'estatura_aproximada':"",
+            'descripcion_fisica_vestimenta':"",
+            'nombre_completo_responsable':"",
+            'parentesco':"",
+            'num_doc_identidad':"",
+            'telefono':"",
+            'info_coincide_con_videos':"",
+            'responsable_que_entrega':"",
+            'responsable_que_recibe':"",
+            'afectacion_patrimonial_incidencia':[],
+            'personas_involucradas_incidencia': [],
+            'acciones_tomadas_incidencia':[],
+            'seguimientos_incidencia':[],
+            'valor_estimado':"",
+            'pertenencias_sustraidas':"",
+            'placas':"",
+            'tipo':"",
+            'marca':"",
+            'modelo':"",
+            'color':"",
+        }
+        breakpoint()
     
 if __name__ == "__main__":
     class_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
@@ -480,6 +605,10 @@ if __name__ == "__main__":
         response = class_obj.get_catalog_areas(ubicacion=ubicacion)
     elif option == 'get_rondin_by_id':
         response = class_obj.get_rondin_by_id(record_id=record_id)
+    elif option == 'get_incidencias_rondines':
+        response = class_obj.get_incidencias_rondines(date_from=date_from, date_to=date_to, limit=limit, offset=offset)
+    elif option == 'create_incidencia_by_rondin':
+        response = class_obj.create_incidencia_by_rondin(data=rondin_data)
     else:
         response = {"msg": "Empty"}
     class_obj.HttpResponse({"data": response})
