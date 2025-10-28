@@ -533,51 +533,27 @@ class Accesos(Accesos):
     def create_incidencia_by_rondin(self, data):
         data = {
             'reporta_incidencia': "Emiliano Zapata",
-            'fecha_hora_incidencia': "2025-10-24 19:38:50",
-        }
-        self.incidence_filter = {
-            'reporta_incidencia': "",
-            'ubicacion_incidencia':"",
-            'area_incidencia': "",
-            'incidencia':"",
-            'comentario_incidencia': "",
-            'tipo_dano_incidencia': "",
-            'dano_incidencia':"",
+            'fecha_hora_incidencia': "2025-10-24 13:07:16",
+            'ubicacion_incidencia':"Planta Monterrey",
+            'area_incidencia': "Recursos eléctricos",
+            'categoria': "Intrusión y seguridad",
+            'sub_categoria':"Alteración del orden",
+            'incidente':"Drogadicto",
+            # "tipo_incidencia": "Otro incidente",
+            'comentario_incidencia': "comentario random",
             'evidencia_incidencia': [],
             'documento_incidencia':[],
-            'prioridad_incidencia':"",
-            'notificacion_incidencia':"",
-            'datos_deposito_incidencia': [],
-            'tags':[],
-            'categoria':"",
-            'sub_categoria':"",
-            'incidente':"",
-            'nombre_completo_persona_extraviada':"",
-            'edad':"",
-            'color_piel':"",
-            'color_cabello':"",
-            'estatura_aproximada':"",
-            'descripcion_fisica_vestimenta':"",
-            'nombre_completo_responsable':"",
-            'parentesco':"",
-            'num_doc_identidad':"",
-            'telefono':"",
-            'info_coincide_con_videos':"",
-            'responsable_que_entrega':"",
-            'responsable_que_recibe':"",
-            'afectacion_patrimonial_incidencia':[],
-            'personas_involucradas_incidencia': [],
             'acciones_tomadas_incidencia':[],
-            'seguimientos_incidencia':[],
-            'valor_estimado':"",
-            'pertenencias_sustraidas':"",
-            'placas':"",
-            'tipo':"",
-            'marca':"",
-            'modelo':"",
-            'color':"",
+            "prioridad_incidencia": "leve",
+            "notificacion_incidencia": "no",
         }
-        breakpoint()
+        status = {}
+        response = self.create_incidence(data)
+        if response.get('status_code') in [200, 201, 202]:
+            status = {'status_code': 200, 'type': 'success', 'msg': 'Record created successfully', 'data': {}}
+        else:
+            status = {'status_code': 400, 'type': 'error', 'msg': response, 'data': {}}
+        return status
     
 if __name__ == "__main__":
     class_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
