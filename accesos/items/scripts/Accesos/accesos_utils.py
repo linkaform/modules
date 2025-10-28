@@ -831,7 +831,7 @@ class Accesos( Accesos):
                 '_id': 1,
                 'timezone': 1,
                 'fecha_programacion': f"$answers.{self.f['fecha_programacion']}",
-                'rondinero_id': f"$answers.{self.USUARIOS_OBJ_ID}.{self.f['id_usuario']}",
+                'rondinero_id': f"$answers.{self.USUARIOS_OBJ_ID}.{self.mf['id_usuario']}",
                 'answers': f"$answers"
             }},
         ]
