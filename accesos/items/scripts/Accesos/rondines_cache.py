@@ -360,7 +360,7 @@ class Accesos(Accesos):
                 else:
                     # si ninguna tiene fecha, conservar la primera
                     final_list.append(items[0])
-
+            final_list.sort(key=lambda x: self.parse_date_for_sorting(x.get(self.f['fecha_hora_inspeccion_area'], '')))
             answers[self.f['areas_del_rondin']] = final_list
         else:
             pass
@@ -729,6 +729,7 @@ if __name__ == "__main__":
                 
                 #! Verificar si hay rondines que cerrar
                 rondines = script_obj.get_rondines_by_status()
+                print('Rondines a cerrar:', rondines)
                 print('Timezone:', script_obj.timezone)
                 print('now:', now)
                 print('winner_dt:', winner_dt)
