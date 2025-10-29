@@ -452,7 +452,111 @@ class Accesos(Accesos):
             return self.catalogo_view(catalog_id, form_id, options)
         else:
             raise Exception("Ubicacion is required.")
-     
+
+    def get_incidencias_rondines(self, location=None, area=None, date_from=None, date_to=None, limit=20, offset=0):
+        """Lista las incidencias de los rondines según los filtros proporcionados.
+        Params:
+            date_from (str): Fecha de inicio del filtro.
+            date_to (str): Fecha de fin del filtro.
+            limit (int): Número máximo de incidencias a devolver.
+            offset (int): Número de incidencias a omitir desde el inicio.
+        Returns:
+            list: Lista de incidencias con sus detalles.
+        """
+        match = {
+            "form_id": self.BITACORA_RONDINES,
+            "deleted_at": {"$exists": False},
+            f"answers.{self.f['bitacora_rondin_incidencias']}": {
+                "$type": "array",
+                "$not": {"$size": 0}
+            }
+        }
+        
+        if location:
+            match.update({
+                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": location
+            })
+        if date_from:
+            match.update({
+                "created_at": {"$gte": date_from}
+            })
+        if date_to:
+            match.update({
+                "created_at": {"$lte": date_to}
+            })
+        
+        query = [
+            {"$match": match},
+            {"$sort": {"created_at": -1}},
+            {"$project": {
+                "_id": 1,
+                "folio": 1,
+                "ubicacion": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}",
+                "nombre_recorrido": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}",
+                "incidencias_rondin": f"$answers.{self.f['bitacora_rondin_incidencias']}",
+            }},
+            {"$skip": offset},
+            {"$limit": limit}
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
+        format_response = []
+        if response:
+            format_response = self.format_incidencias_rondines(response, area)
+        return format_response
+
+    def format_incidencias_rondines(self, data, area):
+        format_data = []
+        for item in data:
+            incidencias = item.get('incidencias_rondin', [])
+            for index, incidencia in enumerate(incidencias):
+                if area:
+                    incidencia_area = incidencia.get('nombre_area_salida', '')
+                    if incidencia_area != area:
+                        continue
+                    
+                format_item = {
+                    "id": item.get('_id',''),
+                    "folio": item.get('folio',''),
+                    "ref_number": index,
+                    "ubicacion_incidente": item.get('ubicacion', ''),
+                    "area_incidente": incidencia.get('nombre_area_salida', ''),
+                    "nombre_del_recorrido": item.get('nombre_recorrido', ''),
+                    "fecha_hora_incidente": incidencia.get('fecha_hora_incidente_bitacora', ''),
+                    "categoria": incidencia.get('categoria', 'General'),
+                    "subcategoria": incidencia.get('sub_categoria', 'General'),
+                    "incidente": incidencia.get('tipo_de_incidencia', incidencia.get('incidente_open', '')),
+                    "accion_tomada": incidencia.get('incidente_accion', ''),
+                    "comentarios": incidencia.get('comentario_incidente_bitacora', ''),
+                    "evidencias": incidencia.get('incidente_evidencia', []),
+                    "documentos": incidencia.get('incidente_documento', []),
+                }
+                format_data.append(format_item)
+        return format_data
+    
+    def create_incidencia_by_rondin(self, data):
+        data = {
+            'reporta_incidencia': "Emiliano Zapata",
+            'fecha_hora_incidencia': "2025-10-24 13:07:16",
+            'ubicacion_incidencia':"Planta Monterrey",
+            'area_incidencia': "Recursos eléctricos",
+            'categoria': "Intrusión y seguridad",
+            'sub_categoria':"Alteración del orden",
+            'incidente':"Drogadicto",
+            # "tipo_incidencia": "Otro incidente",
+            'comentario_incidencia': "comentario random",
+            'evidencia_incidencia': [],
+            'documento_incidencia':[],
+            'acciones_tomadas_incidencia':[],
+            "prioridad_incidencia": "leve",
+            "notificacion_incidencia": "no",
+        }
+        status = {}
+        response = self.create_incidence(data)
+        if response.get('status_code') in [200, 201, 202]:
+            status = {'status_code': 200, 'type': 'success', 'msg': 'Record created successfully', 'data': {}}
+        else:
+            status = {'status_code': 400, 'type': 'error', 'msg': response, 'data': {}}
+        return status
     
 if __name__ == "__main__":
     class_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
@@ -466,7 +570,8 @@ if __name__ == "__main__":
     offset = data.get("offset", 0)
     folio = data.get("folio", '')
     record_id = data.get("record_id", '')
-    ubicacion = data.get("ubicacion", '')
+    ubicacion = data.get("ubicacion", None)
+    area = data.get("area", None)
 
     if option == 'create_rondin':
         response = class_obj.create_rondin(rondin_data=rondin_data)
@@ -480,6 +585,10 @@ if __name__ == "__main__":
         response = class_obj.get_catalog_areas(ubicacion=ubicacion)
     elif option == 'get_rondin_by_id':
         response = class_obj.get_rondin_by_id(record_id=record_id)
+    elif option == 'get_incidencias_rondines':
+        response = class_obj.get_incidencias_rondines(location=ubicacion, area=area, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
+    elif option == 'create_incidencia_by_rondin':
+        response = class_obj.create_incidencia_by_rondin(data=rondin_data)
     else:
         response = {"msg": "Empty"}
     class_obj.HttpResponse({"data": response})
