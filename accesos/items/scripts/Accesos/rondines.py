@@ -492,6 +492,7 @@ class Accesos(Accesos):
                 "_id": 1,
                 "folio": 1,
                 "ubicacion": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}",
+                "nombre_recorrido": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}",
                 "incidencias_rondin": f"$answers.{self.f['bitacora_rondin_incidencias']}",
             }},
             {"$skip": offset},
@@ -509,15 +510,17 @@ class Accesos(Accesos):
             incidencias = item.get('incidencias_rondin', [])
             for index, incidencia in enumerate(incidencias):
                 if area:
-                    incidencia_area = incidencia.get('area_incidente', '')
+                    incidencia_area = incidencia.get('nombre_area_salida', '')
                     if incidencia_area != area:
                         continue
                     
                 format_item = {
-                    "id": f"{item.get('_id','')}-{index}",
-                    "folio": f"{item.get('folio','')}-{index}",
+                    "id": item.get('_id',''),
+                    "folio": item.get('folio',''),
+                    "ref_number": index,
                     "ubicacion_incidente": item.get('ubicacion', ''),
-                    "area_incidente": incidencia.get('area_incidente_bitacora', ''),
+                    "area_incidente": incidencia.get('nombre_area_salida', ''),
+                    "nombre_del_recorrido": item.get('nombre_recorrido', ''),
                     "fecha_hora_incidente": incidencia.get('fecha_hora_incidente_bitacora', ''),
                     "categoria": incidencia.get('categoria', 'General'),
                     "subcategoria": incidencia.get('sub_categoria', 'General'),
@@ -533,51 +536,110 @@ class Accesos(Accesos):
     def create_incidencia_by_rondin(self, data):
         data = {
             'reporta_incidencia': "Emiliano Zapata",
-            'fecha_hora_incidencia': "2025-10-24 19:38:50",
-        }
-        self.incidence_filter = {
-            'reporta_incidencia': "",
-            'ubicacion_incidencia':"",
-            'area_incidencia': "",
-            'incidencia':"",
-            'comentario_incidencia': "",
-            'tipo_dano_incidencia': "",
-            'dano_incidencia':"",
+            'fecha_hora_incidencia': "2025-10-24 13:07:16",
+            'ubicacion_incidencia':"Planta Monterrey",
+            'area_incidencia': "Recursos eléctricos",
+            'categoria': "Intrusión y seguridad",
+            'sub_categoria':"Alteración del orden",
+            'incidente':"Drogadicto",
+            # "tipo_incidencia": "Otro incidente",
+            'comentario_incidencia': "comentario random",
             'evidencia_incidencia': [],
             'documento_incidencia':[],
-            'prioridad_incidencia':"",
-            'notificacion_incidencia':"",
-            'datos_deposito_incidencia': [],
-            'tags':[],
-            'categoria':"",
-            'sub_categoria':"",
-            'incidente':"",
-            'nombre_completo_persona_extraviada':"",
-            'edad':"",
-            'color_piel':"",
-            'color_cabello':"",
-            'estatura_aproximada':"",
-            'descripcion_fisica_vestimenta':"",
-            'nombre_completo_responsable':"",
-            'parentesco':"",
-            'num_doc_identidad':"",
-            'telefono':"",
-            'info_coincide_con_videos':"",
-            'responsable_que_entrega':"",
-            'responsable_que_recibe':"",
-            'afectacion_patrimonial_incidencia':[],
-            'personas_involucradas_incidencia': [],
             'acciones_tomadas_incidencia':[],
-            'seguimientos_incidencia':[],
-            'valor_estimado':"",
-            'pertenencias_sustraidas':"",
-            'placas':"",
-            'tipo':"",
-            'marca':"",
-            'modelo':"",
-            'color':"",
+            "prioridad_incidencia": "leve",
+            "notificacion_incidencia": "no",
         }
-        breakpoint()
+        status = {}
+        response = self.create_incidence(data)
+        if response.get('status_code') in [200, 201, 202]:
+            status = {'status_code': 200, 'type': 'success', 'msg': 'Record created successfully', 'data': {}}
+        else:
+            status = {'status_code': 400, 'type': 'error', 'msg': response, 'data': {}}
+        return status
+    
+    def get_rondines_images(self, location=None, area=None, date_from=None, date_to=None, limit=20, offset=0):
+        """Lista las imágenes de los rondines según los filtros proporcionados.
+        Params:
+            date_from (str): Fecha de inicio del filtro.
+            date_to (str): Fecha de fin del filtro.
+            limit (int): Número máximo de imágenes a devolver.
+            offset (int): Número de imágenes a omitir desde el inicio.
+        Returns:
+            list: Lista de imágenes con sus detalles.
+        """
+        match = {
+            "form_id": self.BITACORA_RONDINES,
+            "deleted_at": {"$exists": False},
+            f"answers.{self.f['grupo_areas_visitadas']}": {
+                "$type": "array",
+                "$not": {"$size": 0}
+            }
+        }
+        
+        unwind_match = {
+            f"answers.{self.f['grupo_areas_visitadas']}.{self.f['foto_evidencia_area_rondin']}": {
+                "$exists": True,
+                "$not": {"$size": 0}
+            }
+        }
+        
+        if location:
+            match.update({
+                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": location
+            })
+        if area:
+            unwind_match.update({
+                f"answers.{self.f['grupo_areas_visitadas']}.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['area']}": area
+            })
+        if date_from:
+            match.update({
+                "created_at": {"$gte": date_from}
+            })
+        if date_to:
+            match.update({
+                "created_at": {"$lte": date_to}
+            })
+        
+        query = [
+            {"$match": match},
+            {"$sort": {"created_at": -1}},
+            {'$unwind': f"$answers.{self.f['grupo_areas_visitadas']}"},
+            {"$match": unwind_match},
+            {"$project": {
+                "_id": 1,
+                "folio": 1,
+                "areas_recorrido": f"$answers.{self.f['grupo_areas_visitadas']}",
+                "ubicacion": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}",
+                "nombre_recorrido": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}",
+            }},
+            {"$skip": offset},
+            {"$limit": limit}
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
+        format_response = []
+        if response:
+            format_response = self.format_rondines_images(response)
+        print("format_response", simplejson.dumps(format_response, indent=4))
+        return format_response
+    
+    def format_rondines_images(self, data):
+        format_data = []
+        for index, item in enumerate(data):
+            format_item = {
+                "id": item.get('_id',''),
+                "folio": item.get('folio',''),
+                "ref_number": index,
+                "ubicacion": item.get('ubicacion', ''),
+                "nombre_recorrido": item.get('nombre_recorrido', ''),
+                "nombre_area": item.get('rondin_area', ''),
+                "fecha_y_hora_check": item.get('fecha_hora_inspeccion_area', ''),
+                "comentario_check": item.get('comentario_area_rondin', ''),
+                "url_check": item.get('url_registro_rondin', ''),
+                "fotos_check": item.get('foto_evidencia_area_rondin', []),
+            }
+            format_data.append(format_item)
+        return format_data
     
 if __name__ == "__main__":
     class_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
@@ -591,7 +653,8 @@ if __name__ == "__main__":
     offset = data.get("offset", 0)
     folio = data.get("folio", '')
     record_id = data.get("record_id", '')
-    ubicacion = data.get("ubicacion", '')
+    ubicacion = data.get("ubicacion", None)
+    area = data.get("area", None)
 
     if option == 'create_rondin':
         response = class_obj.create_rondin(rondin_data=rondin_data)
@@ -606,9 +669,11 @@ if __name__ == "__main__":
     elif option == 'get_rondin_by_id':
         response = class_obj.get_rondin_by_id(record_id=record_id)
     elif option == 'get_incidencias_rondines':
-        response = class_obj.get_incidencias_rondines(date_from=date_from, date_to=date_to, limit=limit, offset=offset)
+        response = class_obj.get_incidencias_rondines(location=ubicacion, area=area, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
     elif option == 'create_incidencia_by_rondin':
         response = class_obj.create_incidencia_by_rondin(data=rondin_data)
+    elif option == 'get_rondines_images':
+        response = class_obj.get_rondines_images(location=ubicacion, area=area, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
     else:
         response = {"msg": "Empty"}
     class_obj.HttpResponse({"data": response})

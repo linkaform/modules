@@ -338,7 +338,7 @@ class Accesos(Accesos):
         inbox_record = {
             "_id": self.record_id,
             "type": "rondin",
-            "kind": "inbox",
+            "inbox": True,
             "status": "new",
             "created_at": epoc_today,
             "updated_at": epoc_today,
