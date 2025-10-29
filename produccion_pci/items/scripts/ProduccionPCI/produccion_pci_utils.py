@@ -144,13 +144,13 @@ class Produccion_PCI(Produccion_PCI):
 
         # Se leen los emails del excel
         file_url = self.answers[ self.f['xls_email_contratistas'] ]['file_url']
-        header_contratistas, records_contratistas = self.lkf_api.read_file( file_url )
+        header_contratistas, records_contratistas = self.read_file( file_url )
 
         # Se obtienen las conexiones de la cuenta padre
         all_connections = self.lkf_api.get_all_connections()
 
         dict_emails_connections = { infCon['email']: infCon['id'] for infCon in all_connections if infCon.get('email') and infCon.get('id') }
-        dict_info_connection = { infCon['id']: infCon for infCon in all_connections if infCon.has_key('id') }
+        dict_info_connection = { infCon['id']: infCon for infCon in all_connections if infCon.get('id') }
 
         emails_not_exists, emails_connections = [], []
         for email_contratista in records_contratistas:
