@@ -558,6 +558,89 @@ class Accesos(Accesos):
             status = {'status_code': 400, 'type': 'error', 'msg': response, 'data': {}}
         return status
     
+    def get_rondines_images(self, location=None, area=None, date_from=None, date_to=None, limit=20, offset=0):
+        """Lista las imágenes de los rondines según los filtros proporcionados.
+        Params:
+            date_from (str): Fecha de inicio del filtro.
+            date_to (str): Fecha de fin del filtro.
+            limit (int): Número máximo de imágenes a devolver.
+            offset (int): Número de imágenes a omitir desde el inicio.
+        Returns:
+            list: Lista de imágenes con sus detalles.
+        """
+        match = {
+            "form_id": self.BITACORA_RONDINES,
+            "deleted_at": {"$exists": False},
+            f"answers.{self.f['grupo_areas_visitadas']}": {
+                "$type": "array",
+                "$not": {"$size": 0}
+            }
+        }
+        
+        unwind_match = {
+            f"answers.{self.f['grupo_areas_visitadas']}.{self.f['foto_evidencia_area_rondin']}": {
+                "$exists": True,
+                "$not": {"$size": 0}
+            }
+        }
+        
+        if location:
+            match.update({
+                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": location
+            })
+        if area:
+            unwind_match.update({
+                f"answers.{self.f['grupo_areas_visitadas']}.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['area']}": area
+            })
+        if date_from:
+            match.update({
+                "created_at": {"$gte": date_from}
+            })
+        if date_to:
+            match.update({
+                "created_at": {"$lte": date_to}
+            })
+        
+        query = [
+            {"$match": match},
+            {"$sort": {"created_at": -1}},
+            {'$unwind': f"$answers.{self.f['grupo_areas_visitadas']}"},
+            {"$match": unwind_match},
+            {"$project": {
+                "_id": 1,
+                "folio": 1,
+                "areas_recorrido": f"$answers.{self.f['grupo_areas_visitadas']}",
+                "ubicacion": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}",
+                "nombre_recorrido": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}",
+            }},
+            {"$skip": offset},
+            {"$limit": limit}
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
+        format_response = []
+        if response:
+            format_response = self.format_rondines_images(response)
+        print("format_response", simplejson.dumps(format_response, indent=4))
+        return format_response
+    
+    def format_rondines_images(self, data):
+        format_data = []
+        for index, item in enumerate(data):
+            format_item = {
+                "id": item.get('_id',''),
+                "folio": item.get('folio',''),
+                "ref_number": index,
+                "ubicacion": item.get('ubicacion', ''),
+                "nombre_recorrido": item.get('nombre_recorrido', ''),
+                "nombre_area": item.get('rondin_area', ''),
+                "fecha_y_hora_check": item.get('fecha_hora_inspeccion_area', ''),
+                "comentario_check": item.get('comentario_area_rondin', ''),
+                "url_check": item.get('url_registro_rondin', ''),
+                "fotos_check": item.get('foto_evidencia_area_rondin', []),
+            }
+            format_data.append(format_item)
+        return format_data
+    
 if __name__ == "__main__":
     class_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
     class_obj.console_run()
@@ -589,6 +672,8 @@ if __name__ == "__main__":
         response = class_obj.get_incidencias_rondines(location=ubicacion, area=area, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
     elif option == 'create_incidencia_by_rondin':
         response = class_obj.create_incidencia_by_rondin(data=rondin_data)
+    elif option == 'get_rondines_images':
+        response = class_obj.get_rondines_images(location=ubicacion, area=area, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
     else:
         response = {"msg": "Empty"}
     class_obj.HttpResponse({"data": response})
