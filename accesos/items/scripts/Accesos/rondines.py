@@ -55,10 +55,11 @@ class Accesos(Accesos):
     def get_average_rondin_duration(self, location: str, rondin_name: str):
         query = [
             {"$match": {
-                "form_id": 121745,  # TODO Modularizar este ID
+                "form_id": self.BITACORA_RONDINES,
                 "deleted_at": {"$exists": False},
-                f"answers.66a83ad2e004a874a4a08d7f.{self.Location.f['location']}": location,
-                f"answers.66a83ad2e004a874a4a08d7f.{self.f['nombre_del_recorrido']}": rondin_name,
+                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": location,
+                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.f['nombre_del_recorrido']}": rondin_name,
+                f"answers.{self.f['duracion_rondin']}": {"$exists": True}
             }},
             {"$group": {
                 "_id": None,
@@ -275,7 +276,7 @@ class Accesos(Accesos):
             list: Lista de rondines con sus detalles.
         """
         match = {
-            "form_id": 121742, # TODO Modularizar este ID
+            "form_id": self.CONFIGURACION_DE_RECORRIDOS_FORM,
             "deleted_at": {"$exists": False},
         }
         
@@ -325,7 +326,7 @@ class Accesos(Accesos):
         query = [
             {"$match": {
                 "_id": ObjectId(record_id),
-                "form_id": 121742,  # TODO Modularizar este ID
+                "form_id": self.CONFIGURACION_DE_RECORRIDOS_FORM,
                 "deleted_at": {"$exists": False}
             }},
             {"$project": {
@@ -335,60 +336,49 @@ class Accesos(Accesos):
                 "asignado_a": {"$ifNull": [f"$answers.{self.GRUPOS_CAT_OBJ_ID}.{self.rondin_keys['grupo_asignado']}", 'No Asignado']},
                 "ubicacion": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}",
                 "ubicacion_geolocation": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.f['address_geolocation']}",
+                "estatus_rondin": f"$answers.{self.f['status_cron']}",
+                "fecha_inicio_rondin": f"$answers.{self.f['fecha_primer_evento']}",
+                "duracion_esperada_rondin": {"$ifNull": [f"$answers.{self.rondin_keys['duracion_estimada']}", "No especificada"]},
+                "fecha_final_rondin": f"$answers.{self.f['fecha_final_recurrencia']}",
                 "cantidad_de_puntos": {"$size": {"$ifNull": [f"$answers.{self.rondin_keys['areas']}", []]}},
                 "areas": f"$answers.{self.rondin_keys['areas']}",
-                "duracion_esperada": {"$ifNull": [f"$answers.{self.rondin_keys['duracion_estimada']}", "No especificada"]},
-            }},
-            {"$lookup": {
-                "from": "form_answer",
-                "let": {
-                    "ubicacion_rondin": "$ubicacion",
-                    "nombre_rondin": "$nombre_del_rondin",
-                },
-                "pipeline": [
-                    {"$match": {
-                        "deleted_at": {"$exists": False},
-                        "form_id": 121745, # TODO Modularizar este ID
-                        "$expr": {
-                            "$and": [ # TODO Modularizar estos ObjId de catalogo
-                                {"$eq": [f"$answers.66a83ad2e004a874a4a08d7f.{self.Location.f['location']}", "$$ubicacion_rondin"]},
-                                {"$eq": [f"$answers.66a83ad2e004a874a4a08d7f.{self.f['nombre_del_recorrido']}", "$$nombre_rondin"]}
-                            ]
-                        }
-                    }},
-                    {"$project": {
-                        "_id": 0,
-                        "fecha_inicio": {"$ifNull": [f"$answers.{self.f['fecha_inicio_rondin']}", ""]},
-                        "estatus_rondin": {"$ifNull": [f"$answers.{self.f['estatus_del_recorrido']}", ""]},
-                        "fecha_finalizacion": {"$ifNull": [f"$answers.{self.f['fecha_fin_rondin']}", ""]},
-                    }},
-                    {"$sort": {"created_at": -1}},
-                    {"$limit": 1}
-                ],
-                "as": "bitacora_rondin"
-            }},
-            {"$project": {
-                "bitacora_rondin": {
-                    "$arrayElemAt": ["$bitacora_rondin", 0]
-                },
-                "nombre_del_rondin": 1,
-                "recurrencia": 1,
-                "asignado_a": 1,
-                "ubicacion": 1,
-                "ubicacion_geolocation": 1,
-                "cantidad_de_puntos": 1,
-                "areas": 1,
-                "duracion_esperada": 1,
             }},
         ]
 
         response = self.format_cr(self.cr.aggregate(query))
         response = self.unlist(response)
-        location = response.get('ubicacion', '')
-        rondin_name = response.get('nombre_del_rondin', '')
-        # duracion_promedio = self.get_average_rondin_duration(location=location, rondin_name=rondin_name)
-        # response['duracion_promedio'] = duracion_promedio
-        return response
+        format_response = {}
+        if response:
+            format_response = self.format_rondin_by_id(response)
+            location = response.get('ubicacion', '')
+            rondin_name = response.get('nombre_del_rondin', '')
+            duracion_promedio = self.get_average_rondin_duration(location=location, rondin_name=rondin_name)
+            format_response['duracion_promedio'] = duracion_promedio
+        return format_response
+    
+    def format_rondin_by_id(self, data):
+        fotos_de_areas = []
+        puntos_de_control = []
+        for item in data.get('areas', []):
+            new_item = {
+                "id": item.get('area_tag_id', [])[0] if len(item.get('area_tag_id', [])) > 0 else "",
+                "nombre_area": item.get('rondin_area', ''),
+                "foto_area": item.get('foto_area', [])[0].get('file_url') if len(item.get('foto_area', [])) > 0 else "",
+            }
+            fotos_de_areas.append(new_item)
+            new_item = {
+                "id": item.get('area_tag_id', [])[0] if len(item.get('area_tag_id', [])) > 0 else "",
+                "nombre_area": item.get('rondin_area', ''),
+                "geolocation_area": item.get('geolocalizacion_area_ubicacion', [])[0] if len(item.get('geolocalizacion_area_ubicacion', [])) > 0 else {},
+            }
+            puntos_de_control.append(new_item)
+        data.update({
+            "recurrencia": data.get('recurrencia').replace('_', ' ').title(),
+            "estatus_rondin": data.get('estatus_rondin').replace('_', ' ').title(),
+            "images_data": fotos_de_areas,
+            "map_data": puntos_de_control,
+        })
+        return data
         
     def get_ubicacion_geolocation(self, location: str):
         """
