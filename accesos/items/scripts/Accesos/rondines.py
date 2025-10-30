@@ -76,9 +76,11 @@ class Accesos(Accesos):
         ]
         
         response = self.format_cr(self.cr.aggregate(query))
-        response = self.unlist(response).get('average_duration', 0)
-        return response
-        
+        format_response = 0
+        if response:
+            format_response = self.unlist(response).get('average_duration', 0)
+        return format_response
+
     def create_rondin(self, rondin_data: dict = {}):
         """Crea un rondin con los datos proporcionados.
         Args:
@@ -365,16 +367,19 @@ class Accesos(Accesos):
                 "nombre_area": item.get('rondin_area', ''),
                 "foto_area": item.get('foto_area', [])[0].get('file_url') if len(item.get('foto_area', [])) > 0 else "",
             }
-            fotos_de_areas.append(new_item)
+            if new_item.get('foto_area'):
+                fotos_de_areas.append(new_item)
             new_item = {
                 "id": item.get('area_tag_id', [])[0] if len(item.get('area_tag_id', [])) > 0 else "",
                 "nombre_area": item.get('rondin_area', ''),
                 "geolocation_area": item.get('geolocalizacion_area_ubicacion', [])[0] if len(item.get('geolocalizacion_area_ubicacion', [])) > 0 else {},
             }
-            puntos_de_control.append(new_item)
+            if new_item.get('geolocation_area'):
+                puntos_de_control.append(new_item)
         data.update({
             "recurrencia": data.get('recurrencia').replace('_', ' ').title(),
             "estatus_rondin": data.get('estatus_rondin').replace('_', ' ').title(),
+            "ubicacion_geolocation": data.get('ubicacion_geolocation', [])[0] if len(data.get('ubicacion_geolocation', [])) > 0 else {},
             "images_data": fotos_de_areas,
             "map_data": puntos_de_control,
         })
