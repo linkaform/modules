@@ -14,6 +14,7 @@ class Accesos(Accesos):
         #--Variables
         # Module Globals#
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
+        self.load(module='Location', **self.kwargs)
         self.f.update({
             'porcentaje_obtenido_bitacora': '689a7ecfbf2b4be31039388e',
             'cantidad_areas_inspeccionadas': '68a7b68a22ac030a67b7f8f8'
@@ -47,48 +48,29 @@ class Accesos(Accesos):
         if self.answers.get(self.f['estatus_del_recorrido']) in ['realizado', 'cerrado'] and fecha_final_str:
             self.answers[self.f['fecha_fin_rondin']] = fecha_final_str
         return True
-
-    def get_active_guards_in_location(self, location):
-        """
-        Obtiene el guardia que esta presente en dicha ubicacion.
-        """
+    
+    def get_and_set_areas_recorrido(self):
+        location = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], '')
+        name_rondin = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.mf['nombre_del_recorrido'], '')
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
-                "form_id": self.REGISTRO_ASISTENCIA,
-                f"answers.{self.f['start_shift']}": {"$exists": True},
-                f"answers.{self.f['end_shift']}": {"$exists": False},
-                f"answers.{self.Employee.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.f['ubicacion']}": location,
+                "form_id": self.CONFIGURACION_RECORRIDOS_ID,
+                f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": location,
+                f"answers.{self.mf['nombre_del_recorrido']}": name_rondin
             }},
             {"$project": {
-                "_id": 1,
-                "created_at": 1,
-                "created_by_id": 1,
-                "created_by_name": 1,
-                "created_by_email": 1,
-            }},
-            {"$sort": {
-                "created_at": -1
-            }},
-            {"$limit": 1}
-
+                "_id": 0,
+                "rondin_areas": f"$answers.{self.f['grupo_de_areas_recorrido']}"
+            }}
         ]
-        response = self.format_cr(self.cr.aggregate(query), get_one=True)
-        return response
-
-    def assigne_bitacora(self):
-        """
-        Asigna un bitacora a el guardia que este presente en dicha ubicacion.
-        """
-        location = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID,{}).get(self.f['ubicacion'], None)
-        if not location:
+        res = self.cr.aggregate(query)
+        format_res = list(res)
+        if format_res:
+            areas_recorrido = self.unlist(format_res)
+            self.answers[self.f['grupo_areas_visitadas']] = areas_recorrido.get('rondin_areas', [])
             return True
-        user = self.get_active_guards_in_location(location=location)
-        if user:
-            self.answers[self.USUARIOS_OBJ_ID] = self.answers.get(self.USUARIOS_OBJ_ID, {})
-            self.answers[self.USUARIOS_OBJ_ID][self.f['new_user_complete_name']] = user.get('created_by_name')
-            self.answers[self.USUARIOS_OBJ_ID][self.f['new_user_email']] = [user.get('created_by_email'),]
-            self.answers[self.USUARIOS_OBJ_ID][self.f['new_user_id']] = [user.get('created_by_id'),]
+        return False
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
@@ -97,13 +79,14 @@ if __name__ == "__main__":
     #! Validacion para answers vacio
     if not acceso_obj.answers:
         acceso_obj.answers = acceso_obj.current_record.get('answers', {})
-
-    status = acceso_obj.answers.get(acceso_obj.f['status_rondin'], '')
-    if status in ['programado']:
-        acceso_obj.assigne_bitacora()
     
     #-FILTROS
     acceso_obj.calcluta_tiempo_traslados()
+
+    if acceso_obj.answers.get(acceso_obj.mf['estatus_del_recorrido']) == 'programado' \
+        and not acceso_obj.answers.get(acceso_obj.f['grupo_areas_visitadas']):
+        acceso_obj.get_and_set_areas_recorrido()
+
     sys.stdout.write(simplejson.dumps({
         'status': 101,
         'replace_ans': acceso_obj.answers
