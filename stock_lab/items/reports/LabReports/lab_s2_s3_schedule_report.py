@@ -182,7 +182,6 @@ def get_week_query(serach_key, week_from, week_to=None, current=True):
 
     return qry
 
-
 def get_plant(all_codes):
     mango_query = {
         "selector": {
@@ -195,7 +194,6 @@ def get_plant(all_codes):
             }
     plant = lkf_api.search_catalog(self.catalog_plant_catalog, mango_query, jwt_settings_key='USER_JWT_KEY')
     return plant
-
 
 def set_cut_hours(requierd, recipe, recipeS3):
     hours = {}
@@ -360,7 +358,6 @@ def update_requierd(requierd, stage_req, stage):
             update_stage_2week(stage, year_week)
         field_name = "req{}{}".format(stage, year_week)
         requierd[plant_code].update({field_name:x.get('requierds')})
-
     return requierd
 
 def set_dataset_order(res):
@@ -476,7 +473,7 @@ class Reports(Reports):
             "form_id":81420,
             }
         if plant_codes:
-            match_query.update({f"answers.{self.PRODUCT_OBJ_ID}.{self.f['product_code']}":plant_code,})
+            match_query.update({f"answers.{self.PRODUCT_OBJ_ID}.{self.f['product_code']}":plant_codes,})
         query = [
             {"$match": match_query },
             {"$unwind":f"$answers.{self.f['prod_plan_development_group']}"},
@@ -501,7 +498,7 @@ class Reports(Reports):
             }},
             {"$sort": {"plant_code": 1, "year_week":1}}
         ]
-        # print('query=', query)
+        # print('query=', simplejson.dumps(query, indent=4))
         result = self.cr.aggregate(query)
         return [r for r in result]
 
@@ -513,7 +510,7 @@ class Reports(Reports):
             "form_id":self.PRODUCTION_PLAN,
             }
         if plant_codes:
-            match_query.update({f"answers.{self.PRODUCT_OBJ_ID}.{self.f['product_code']}":plant_code,})
+            match_query.update({f"answers.{self.PRODUCT_OBJ_ID}.{self.f['product_code']}":plant_codes,})
         match_query.update(get_week_query(f"answers.{self.f['prod_plan_S3_requier_yearweek']}", year_week_from, year_week_to) )
         query = [
             {"$match": match_query },
@@ -542,6 +539,60 @@ class Reports(Reports):
         return [r for r in result]
 
 
+# Función para sincronizar las claves de recipesS3 con plant_actuals
+def sync_recipes_to_actuals(missing_keys, plant_actuals, recipesS3):
+    """
+    Verifica que todas las claves de recipesS3 existan en plant_actuals.
+    Si no existen, las agrega con valores por defecto.
+    
+    Args:
+        recipesS3: Diccionario con las recetas
+        plant_actuals: Diccionario con los datos actuales de plantas
+    
+    Returns:
+        plant_actuals actualizado
+    """
+    # Recorrer todas las claves de recipesS3
+    for key in missing_keys:
+        # Si la clave no existe en plant_actuals, agregarla
+        # Obtener el nombre de la planta desde recipesS3
+        plant_name = recipesS3[key].get('plant_name', key)
+        
+        # Agregar la nueva entrada con valores por defecto
+        plant_actuals[key] = {
+            'plant_name': plant_name,
+            'actuals_previews': 0,
+            'actuals': 0,
+            'container_type': 'None',
+            'container_qty': 'None',
+            'cut_productivity': None
+        }
+
+    return plant_actuals
+
+
+
+# Para verificar qué claves faltan sin modificar el diccionario
+def check_missing_keys(recipesS3, plant_actuals):
+    """
+    Verifica qué claves de recipesS3 faltan en plant_actuals
+    sin modificar ningún diccionario.
+    
+    Returns:
+        Lista de claves faltantes
+    """
+    missing_keys = []
+    for key in recipesS3.keys():
+        if key not in plant_actuals:
+            missing_keys.append(key)
+            print(f"[+] Agregada clave faltante: {key} - {recipesS3[key].get('plant_name', key)}")
+    
+    if not missing_keys:
+        print("\n[OK] Todas las claves de recipesS3 están en plant_actuals")
+    
+    return missing_keys
+
+
 def get_week_report(year_week_from, year_week_to):
     global report_obj, columns_data
     plant_codes = []
@@ -549,8 +600,6 @@ def get_week_report(year_week_from, year_week_to):
     inventory_previos_weeks = report_obj.query_report_previwes(year_week_from, year_week_to ,current=False)
     requierd_s2 = report_obj.get_s2_requierds(plant_codes, year_week_from, year_week_to)
     requierd_s3 = report_obj.get_s3_requierds(plant_codes, year_week_from, year_week_to)
-    # print('requierd_s3', requierd_s3)
-    # print('requierd_s2', requierd_s2)
     plant_actuals = {}
     requierd = {}
     plant_codes = [ x['plant_code'] for x in requierd_s2]
@@ -561,7 +610,6 @@ def get_week_report(year_week_from, year_week_to):
     if not plant_codes:
         return {}
     recipes = report_obj.get_plant_recipe(plant_codes, stage=[2,])
-    # print('recipes', recipes)
     recipesS3 = report_obj.get_plant_recipe(plant_codes, stage=[3,])
     for rec in inventory_flow:
         if not plant_actuals.get(rec.get('plant_code')):
@@ -608,6 +656,8 @@ def get_week_report(year_week_from, year_week_to):
         plant_actuals_sum = plant_actuals[x].get('actuals_previews',0) + total
 
         plant_actuals[x].update(forcast_actualas(plant_actuals_sum, recipes.get(x,{})))
+    missing_keys = check_missing_keys(recipesS3, plant_actuals)
+    plant_actuals = sync_recipes_to_actuals(missing_keys, plant_actuals, recipesS3)
     accutals_weeks.sort()
     for t in accutals_weeks:
         this_col = deepcopy(actuals_col)
@@ -670,7 +720,7 @@ if __name__ == "__main__":
         year_week_to = year_week_from
     print('week_from', year_week_from)
     print('week_to', year_week_to)
-    print('test', test)
+
     if year_week_from or year_week_to:
         response = get_week_report(year_week_from, year_week_to)
         if not test:
