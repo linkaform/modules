@@ -285,8 +285,8 @@ class Accesos(Accesos):
             #     data = attachment.read()
             #     upload_image = self.upload_image_from_couchdb(data, name, self.BITACORA_INCIDENCIAS, self.f['evidencia_incidencia'])
             #     media.append(upload_image)
-            record['status'] = 'received'
-            self.cr_db.save(record)
+            # record['status'] = 'received'
+            # self.cr_db.save(record)
             return record
         elif _rev in all_revs:
             print('⚠️ Revisión vieja')
@@ -402,9 +402,9 @@ class Accesos(Accesos):
 
         record = self.cr_db.get(record_id)
         if response.get('status_code') in [200, 201, 202]:
-            record['status'] = 'synced'
+            record['status'] = 'received'
             self.cr_db.save(record)
-            status = {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
+            status = {'status_code': 200, 'type': 'success', 'msg': 'Record received successfully', 'data': {}}
         else:
             record['status'] = 'error'
             self.cr_db.save(record)
