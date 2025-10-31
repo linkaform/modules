@@ -170,7 +170,7 @@ class Produccion_PCI( Produccion_PCI ):
         }
         if os_cobre['answers'].get('633d9f63eb936fb6ec9bf580'):
             metadata_cambio['answers']['633d9f63eb936fb6ec9bf580'] = os_cobre['answers']['633d9f63eb936fb6ec9bf580'] # Proyecto
-        metadata_agregar_script = {"device_properties":{"system": "SCRIPT","process":"Cambio de Tecnologia", "accion":'Crear registro', "folio carga":current_folio, "archive":"carga_produccion_hibrido.py"}}
+        metadata_agregar_script = {"device_properties":{"system": "SCRIPT","process":"Cambio de Tecnologia", "accion":'Crear registro', "folio carga":current_folio, "archive":"carga_de_produccion_py3.py"}}
         metadata_cambio["properties"] = metadata_agregar_script
         resp_create = lkf_api.post_forms_answers(metadata_cambio, jwt_settings_key='JWT_KEY_ADMIN')
         return resp_create
@@ -904,7 +904,7 @@ class Produccion_PCI( Produccion_PCI ):
         accion_actualizacion = 'ACTUALIZACION' if record_existente == 'si' else 'CARGA INICIAL'
 
         metadata_extra = {}
-        metadata_agregar_script = {"device_properties":{"system": "SCRIPT","process":"PROCESO CARGA DE PRODUCCION HIBRIDO", "accion":accion_actualizacion, "folio carga":current_record['folio'], "archive":"carga_produccion_hibrido.py"}}
+        metadata_agregar_script = {"device_properties":{"system": "SCRIPT","process":"PROCESO CARGA DE PRODUCCION HIBRIDO", "accion":accion_actualizacion, "folio carga":current_record['folio'], "archive":"carga_de_produccion_py3.py"}}
         metadata_extra["properties"] = metadata_agregar_script
         this_record.update(metadata_extra)
 
@@ -1556,13 +1556,13 @@ class Produccion_PCI( Produccion_PCI ):
         # dict_tecnicos = {}
         # print('Tecnicos encontrados en Plantilla Empresarial=',dict_tecnicos.keys())
         ##################################################################################################################
-        permisos_contratista = p_utils.get_permisos_contratista_from_catalog( parent_id )
+        permisos_contratista = p_utils.get_permisos_contratista_from_catalog( parent_id, catalog_id_contratistas=self.CATALOGO_CONTRATISTAS_ID )
         if not permisos_contratista:
             return self.set_status_proceso( current_record, record_id, 'error', msg='No se pudieron obtener los permisos del contratista' )
         print('cuenta: {0} parent_id obtenido: {1} permisos del contratista: {2}'.format( current_record.get('user_id', 0), parent_id, permisos_contratista ))
 
         # Obtengo la informacion de IASA y se la integro a los permisos de su contratista para despues usarlos
-        data_admin_iasa = p_utils.get_permisos_contratista_from_catalog( parent_id, catalog_id_contratistas=self.CATALOGO_CONTRATISTAS_ID )
+        data_admin_iasa = p_utils.get_permisos_contratista_from_catalog( parent_id )
         permisos_contratista['info_iasa'] = data_admin_iasa
         print('permisos cuenta padre =',data_admin_iasa)
 
