@@ -123,6 +123,18 @@ class Produccion_PCI( Produccion_PCI ):
         else:
             return 'error', 'Error al crear el directorio temporal', nueva_ruta, None
 
+    def rmv_psr_created(self, id_connection_assigned, form_id, folio, telefono, area):
+        print(f'+++++++++++ Borrando registro de PSR Admin y cuenta padre form_id {form_id} folio {folio}')
+        colection_connection = CollectionConnection(id_connection_assigned, settings)
+        cr_contratista = colection_connection.get_collections_connection()
+
+        query_to_restore, select_columns = p_utils.query_folio_preorder(form_id, folio, telefono, area)
+        rmv_contratista = cr_contratista.delete_one(query_to_restore)
+        print("++ Eliminado contratista =", rmv_contratista.deleted_count)
+
+        rmv_admin = cr_admin.delete_one(query_to_restore)
+        print("++ Eliminado admin =", rmv_admin.deleted_count)
+
     def desasignar_registro(self, id_connection_assigned, user_id_old, form_id, folio, telefono, area, is_updating_record=False):
         if is_updating_record:
             return
@@ -1303,6 +1315,8 @@ class Produccion_PCI( Produccion_PCI ):
                         print('Parece que todo va en orden con el folio, entonces cargo su documento pdf')
                         folio_to_create = this_record['create']['folio']
                         form_id_to_create = this_record['create']['form_id']
+                        telefono_to_create = this_record['create'].get('answers',{}).get('f1054000a010000000000005','')
+                        area_to_create = this_record['create'].get('answers',{}).get('f1054000a0100000000000a2','')
                         pdf_uploaded = self.upload_pdf_disto( nombre_docto_a_buscar, form_id_to_create, pdfs_found )
                         if pdf_uploaded.get('error', False):
                             record_errors.append(record + [pdf_uploaded.get('error'),])
@@ -1328,16 +1342,16 @@ class Produccion_PCI( Produccion_PCI ):
                             record_errors.append(record + [ p_utils.arregla_msg_error_sistema(response_created_admin) ])
                             continue
 
-                        if folio_psr:
-                            # records_to_psr[ folio_to_create ] = folio_psr
-                            fols_psr_to_update.append( folio_psr )
-
                         # Ahora se crea en IASA
                         resp_copy = self.make_copy_os( this_record['create']['answers'], form_id_turno, current_record['folio'], folio, connection_id )
                         if resp_copy.get('error'):
                             record_errors.append(record + [resp_copy['error'],])
+                            self.rmv_psr_created(settings.config['ACCOUNT_ID'], self.dict_equivalences_forms_id[form_id_to_create], folio_to_create, telefono_to_create, area_to_create)
                             continue
 
+                        if folio_psr:
+                            fols_psr_to_update.append( folio_psr )
+                        
                         # Se actualizan los totales
                         create_json.update(p_utils.update_create_json(create_json, this_record))
 
