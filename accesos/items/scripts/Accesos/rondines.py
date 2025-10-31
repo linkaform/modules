@@ -636,6 +636,55 @@ class Accesos(Accesos):
             format_data.append(format_item)
         return format_data
     
+    def get_bitacora_rondines(self):
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.CONFIGURACION_DE_RECORRIDOS_FORM,
+                f"answers.{self.mf['nombre_del_recorrido']}": "Recorrido Lunes 6"
+            }},
+            {"$project": {
+                "_id": 1,
+                "hora": f"$answers.{self.f['fecha_primer_evento']}",
+                "nombre_del_recorrido": f"$answers.{self.mf['nombre_del_recorrido']}",
+                "areas": f"$answers.{self.f['grupo_de_areas_recorrido']}",
+            }},
+            {"$lookup": {
+                "from": "form_answer",
+                "let": {"nombre_recorrido": "$nombre_del_recorrido"},
+                "pipeline": [
+                    {"$match": {
+                        "$expr": {
+                            "$and": [
+                                {"$eq": ["$form_id", self.BITACORA_RONDINES]},
+                                {"$eq": [f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}", "$$nombre_recorrido"]},
+                                {"$and": [
+                                    {"$eq": [{"$year": "$created_at"}, {"$year": "$$NOW"}]},
+                                    {"$eq": [{"$month": "$created_at"}, {"$month": "$$NOW"}]}
+                                ]}
+                            ]
+                        }
+                    }},
+                    {"$project": {
+                        "_id": 0,
+                        "hora": f"$answers.{self.f['fecha_inicio_rondin']}",
+                        "areas_visitadas": f"$answers.{self.f['grupo_areas_visitadas']}",
+                    }}
+                ],
+                "as": "bitacora_rondines"
+            }},
+            {"$project": {
+                "_id": 1,
+                "hora": 1,
+                "nombre_del_recorrido": 1,
+                "areas": 1,
+                "bitacora_rondines": 1,
+            }}
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
+        print("response", simplejson.dumps(response, indent=4))
+        breakpoint()
+    
 if __name__ == "__main__":
     class_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
     class_obj.console_run()
@@ -669,6 +718,8 @@ if __name__ == "__main__":
         response = class_obj.create_incidencia_by_rondin(data=rondin_data)
     elif option == 'get_rondines_images':
         response = class_obj.get_rondines_images(location=ubicacion, area=area, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
+    elif option == 'get_bitacora_rondines':
+        response = class_obj.get_bitacora_rondines()
     else:
         response = {"msg": "Empty"}
     class_obj.HttpResponse({"data": response})
