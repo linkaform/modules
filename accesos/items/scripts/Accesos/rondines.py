@@ -643,7 +643,7 @@ class Accesos(Accesos):
             {"$match": {
                 "deleted_at": {"$exists": False},
                 "form_id": self.CONFIGURACION_DE_RECORRIDOS_FORM,
-                f"answers.{self.mf['nombre_del_recorrido']}": "Recorrido 8"
+                f"answers.{self.mf['nombre_del_recorrido']}": "Recorrido Lunes 6"
             }},
             {"$addFields": {
                 # Convertir string a fecha
@@ -737,6 +737,20 @@ class Accesos(Accesos):
             for recorrido in recorridos:
                 nombre_recorrido = recorrido.get('nombre_del_recorrido', '')
                 areas_recorrido = recorrido.get('areas', [])
+                hora_valida = recorrido.get('hora_original', '')
+                hora_int = None
+                if hora_valida:
+                    try:
+                        hora_int = datetime.strptime(hora_valida, '%Y-%m-%d %H:%M:%S').hour
+                    except Exception:
+                        try:
+                            hora_int = datetime.strptime(hora_valida, '%Y-%m-%d %H:%M').hour
+                        except Exception:
+                            try:
+                                hora_int = int(hora_valida.split()[1].split(':')[0])
+                            except Exception:
+                                hora_int = None
+                hora_valida = str(hora_int) if hora_int is not None else ''
                 
                 # Crear estructura de áreas para esta categoría
                 areas_formateadas = []
@@ -756,7 +770,8 @@ class Accesos(Accesos):
                             nombre_area, 
                             dia, 
                             current_year, 
-                            current_month
+                            current_month,
+                            hora_valida
                         )
                         estados.append({"dia": dia, "estado": estado})
                     
@@ -778,13 +793,14 @@ class Accesos(Accesos):
         breakpoint()
         return format_data
     
-    def _get_estado_area_dia(self, bitacora_rondines, area_tag_id, nombre_area, dia, year, month):
+    def _get_estado_area_dia(self, bitacora_rondines, area_tag_id, nombre_area, dia, year, month, hora_valida):
         """
         Determina si un área fue visitada en un día específico.
         
         Estados:
-        - "ok": Área visitada (tiene fecha_hora_inspeccion_area y rondin_area coincide)
-        - "none": Área no visitada ese día
+        - "incidencias": Área con incidencias registradas
+        - "ok": Área visitada en la hora correcta
+        - "none": Área no visitada ese día o fuera de hora
         
         Args:
             bitacora_rondines (list): Lista de bitácoras del recorrido
@@ -793,6 +809,7 @@ class Accesos(Accesos):
             dia (int): Día del mes
             year (int): Año
             month (int): Mes
+            hora_valida (str): Hora esperada del recorrido (ej: "8")
         
         Returns:
             str: Estado del área para ese día
@@ -801,7 +818,51 @@ class Accesos(Accesos):
         # Buscar en las bitácoras si existe visita para este día
         for bitacora in bitacora_rondines:
             areas_visitadas = bitacora.get('areas_visitadas', [])
+            incidencias = bitacora.get('incidencias', [])
+            hora_bitacora = bitacora.get('hora', '')
             
+            # Primero verificar si hay incidencias para esta área en este día
+            for incidencia in incidencias:
+                nombre_area_incidencia = incidencia.get('nombre_area_salida', '')
+                
+                # Si el nombre del área coincide
+                if nombre_area_incidencia != nombre_area:
+                    continue
+                
+                # Verificar si la fecha de la incidencia corresponde al día buscado
+                fecha_incidencia_str = incidencia.get('fecha_hora_incidente_bitacora', '')
+                if not fecha_incidencia_str:
+                    continue
+                
+                try:
+                    fecha_incidencia = datetime.strptime(fecha_incidencia_str, '%Y-%m-%d %H:%M:%S')
+                except Exception:
+                    try:
+                        fecha_incidencia = datetime.strptime(fecha_incidencia_str, '%Y-%m-%d %H:%M')
+                    except Exception:
+                        continue
+                
+                # Verificar si es el día correcto
+                if fecha_incidencia.year != year or fecha_incidencia.month != month or fecha_incidencia.day != dia:
+                    continue
+                
+                # Verificar si la hora está dentro del rango válido (igual que para visitas)
+                if hora_valida:
+                    try:
+                        hora_incidencia = fecha_incidencia.hour
+                        hora_esperada = int(hora_valida)
+                        
+                        # Permitir que la incidencia esté en la hora esperada o hasta 1 hora después
+                        if hora_esperada <= hora_incidencia <= hora_esperada + 1:
+                            return "incidencias"
+                    except Exception:
+                        # Si no se puede validar la hora, pero el día coincide, considerar como incidencia
+                        return "incidencias"
+                else:
+                    # Si no hay hora válida especificada, solo verificar el día
+                    return "incidencias"
+            
+            # Si no hay incidencias, verificar si el área fue visitada
             for area_visitada in areas_visitadas:
                 area_nombre = area_visitada.get('rondin_area', '')
                 
@@ -809,19 +870,44 @@ class Accesos(Accesos):
                 if area_nombre != nombre_area:
                     continue
                 
-                # Verificar si la fecha corresponde al día buscado
+                # Verificar si la fecha corresponde al día buscado y está dentro de la hora válida
                 fecha_str = area_visitada.get('fecha_hora_inspeccion_area', '')
+                
+                # Si no hay fecha_hora_inspeccion_area, usar la hora de la bitácora
+                if not fecha_str:
+                    fecha_str = hora_bitacora
+                
                 if not fecha_str:
                     continue
                 
                 try:
                     fecha_visita = datetime.strptime(fecha_str, '%Y-%m-%d %H:%M:%S')
-                    if fecha_visita.year == year and fecha_visita.month == month and fecha_visita.day == dia:
-                        # El área fue visitada en este día
-                        return "ok"
                 except Exception:
+                    try:
+                        fecha_visita = datetime.strptime(fecha_str, '%Y-%m-%d %H:%M')
+                    except Exception:
+                        continue
+                
+                # Verificar si es el día correcto
+                if fecha_visita.year != year or fecha_visita.month != month or fecha_visita.day != dia:
                     continue
-        
+                
+                # Verificar si la hora está dentro del rango válido
+                # La hora válida puede ser la hora exacta o una hora después (tolerancia de 1 hora)
+                if hora_valida:
+                    try:
+                        hora_check = fecha_visita.hour
+                        hora_esperada = int(hora_valida)
+                        
+                        # Permitir que el check se haya hecho en la hora esperada o hasta 1 hora después
+                        if hora_esperada <= hora_check <= hora_esperada + 1:
+                            return "ok"
+                    except Exception:
+                        # Si no se puede validar la hora, pero el día coincide, considerar como ok
+                        return "ok"
+                else:
+                    # Si no hay hora válida especificada, solo verificar el día
+                    return "ok"
         # Si no se encontró visita para este día
         return "none"
     
