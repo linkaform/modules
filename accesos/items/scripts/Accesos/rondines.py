@@ -674,9 +674,9 @@ class Accesos(Accesos):
                 "pipeline": [
                     {"$match": {
                         "deleted_at": {"$exists": False},
+                        "form_id": self.BITACORA_RONDINES,
                         "$expr": {
                             "$and": [
-                                {"$eq": ["$form_id", self.BITACORA_RONDINES]},
                                 {"$in": [
                                     f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}",
                                     "$$nombres_recorridos"
