@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson, re
 from fractions import Fraction
+from datetime import datetime
 from custom_utils import Custom
 from account_settings import *
 
@@ -50,6 +51,18 @@ class Custom(Custom):
 
         return convert_int( val_split[0] ), convert_int( val_split[1] )
 
+    def validate_start_date(self, val):
+        pattern = r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})"
+        m = re.match(pattern, val)
+
+        if not m:
+            return None
+
+        return m.group(1)
+
+    def str_to_date(self, val):
+        return datetime.strptime(val, '%Y-%m-%d %H:%M:%S')
+
     def process_variables(self, dict_variables, data_config, answers_to_get_values, value_as_str, processing_catalog_values=False):
         """
         Procesa el diccionario de variables y las compara con las configuraciones que tiene en el catalogo
@@ -63,6 +76,7 @@ class Custom(Custom):
             lista de sets que se van a integrar al grupo repetitivo de resultados
         """
         list_items_to_group = []
+        most_recent_date = None
         for var_field_id, var_data in dict_variables.items():
             # Ultimos dígitos del id despues de aaaaa ó ccaaa
             last_digits = var_field_id[5:]
@@ -81,9 +95,22 @@ class Custom(Custom):
             # Si se están procesando los valors de los campos de Catalogo hay que revisar que venga la leyenda "Ultimo Valor" para considerarlo
             if processing_catalog_values:
                 # Hago el if value_var por casos donde el valor viene como []
-                if not value_var or "ultimo valor" not in value_var.lower():
+                fecha_resultado = validate_start_date(value_var)
+                # if not value_var or not fecha_resultado: # "ultimo valor" not in value_var.lower():
+                if "⭐" not in value_var:
                     continue
-                value_var = value_var.split(':')[1].strip()
+                
+                # if most_recent_date is not None and str_to_date(fecha_resultado) > most_recent_date:
+                #     most_recent_date = str_to_date(fecha_resultado)
+                # elif most_recent_date is None:
+                #     most_recent_date = str_to_date(fecha_resultado)
+                # else:
+                #     continue
+
+                
+                # value_var = value_var.split(':')[1].strip()
+                value_var = value_var.split(fecha_resultado)[1].replace(':', '').strip()
+                value_var = value_var.replace('⭐', '')
             
             # Si no hay informacion capturada por el usuario, o no hay minimos y maximos definidos se continúa con el siguiente campo
             if not value_var or not any( [min_var, max_var] ):
