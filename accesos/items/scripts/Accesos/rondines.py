@@ -643,27 +643,24 @@ class Accesos(Accesos):
             {"$match": {
                 "deleted_at": {"$exists": False},
                 "form_id": self.CONFIGURACION_DE_RECORRIDOS_FORM,
-                f"answers.{self.mf['nombre_del_recorrido']}": "Recorrido Lunes 6"
+                # f"answers.{self.mf['nombre_del_recorrido']}": "Recorrido Lunes 6"
             }},
-            {"$addFields": {
-                # Convertir string a fecha
-                "hora_date": {
-                    "$dateFromString": {
-                        "dateString": f"$answers.{self.f['fecha_primer_evento']}",
-                        "format": "%Y-%m-%d %H:%M:%S",
-                        "onError": None
+            {"$project": {
+                "answers": 1,
+                "hora_agrupada": {
+                    "$hour": {
+                        "$dateFromString": {
+                            "dateString": f"$answers.{self.f['fecha_primer_evento']}",
+                            "format": "%Y-%m-%d %H:%M:%S",
+                            "onError": None
+                        }
                     }
                 }
-            }},
-            {"$addFields": {
-                # Extraer solo la hora (truncar a la hora exacta)
-                "hora_agrupada": {"$hour": "$hora_date"}
             }},
             {"$group": {
                 "_id": "$hora_agrupada",
                 "recorridos": {
                     "$push": {
-                        # "record_id": "$_id",
                         "hora_original": f"$answers.{self.f['fecha_primer_evento']}",
                         "nombre_del_recorrido": f"$answers.{self.mf['nombre_del_recorrido']}",
                         "areas": f"$answers.{self.f['grupo_de_areas_recorrido']}"
@@ -673,9 +670,7 @@ class Accesos(Accesos):
             {"$sort": {"_id": 1}},
             {"$lookup": {
                 "from": "form_answer",
-                "let": {
-                    "nombres_recorridos": "$recorridos.nombre_del_recorrido"
-                },
+                "let": {"nombres_recorridos": "$recorridos.nombre_del_recorrido"},
                 "pipeline": [
                     {"$match": {
                         "deleted_at": {"$exists": False},
@@ -686,8 +681,8 @@ class Accesos(Accesos):
                                     f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}",
                                     "$$nombres_recorridos"
                                 ]},
-                                {"$eq": [{"$year": "$created_at"}, {"$year": "$$NOW"}]},
-                                {"$eq": [{"$month": "$created_at"}, {"$month": "$$NOW"}]}
+                                {"$eq": [{"$year": "$created_at"}, {"$year": "$$NOW"}]}, #TODO: Cambiar a mes por parametro
+                                {"$eq": [{"$month": "$created_at"}, {"$month": "$$NOW"}]} #TODO: Cambiar a mes por parametro
                             ]
                         }
                     }},
@@ -773,7 +768,31 @@ class Accesos(Accesos):
                             current_month,
                             hora_valida
                         )
-                        estados.append({"dia": dia, "estado": estado})
+                        
+                        g_id = ""
+                        for bitacora in bitacora_rondines:
+                            areas_visitadas = bitacora.get('areas_visitadas', [])
+
+                            for area_visitada in areas_visitadas:
+                                area_nombre = area_visitada.get('rondin_area', '')
+                                if area_nombre != nombre_area:
+                                    continue
+                                
+                                fecha_str = area_visitada.get('fecha_hora_inspeccion_area', '')
+                                if not fecha_str:
+                                    continue
+                                
+                                url = area_visitada.get('url_registro_rondin', '')
+                                if url:
+                                    g_id_part = url.split('detail/')[-1]
+                                    g_id = g_id_part.split('?')[0].split('#')[0].strip('/')
+
+                        estados.append({
+                            "dia": dia,
+                            "estado": estado,
+                            "record_id": g_id if estado not in ["none", "no_inspeccionada"] else "",
+                        })
+                    
                     
                     areas_formateadas.append({
                         "nombre": nombre_area,
@@ -789,8 +808,6 @@ class Accesos(Accesos):
                 "hora": hora_agrupada,
                 "categorias": categorias
             })
-        print("format_data", simplejson.dumps(format_data, indent=4))
-        breakpoint()
         return format_data
     
     def _get_estado_area_dia(self, bitacora_rondines, area_tag_id, nombre_area, dia, year, month, hora_valida):
@@ -799,8 +816,9 @@ class Accesos(Accesos):
         
         Estados:
         - "incidencias": Área con incidencias registradas
-        - "ok": Área visitada en la hora correcta
-        - "none": Área no visitada ese día o fuera de hora
+        - "finalizado": Área visitada en la hora correcta
+        - "no_inspeccionada": Área no visitada en día pasado (ya venció)
+        - "none": Área no visitada en día futuro (aún no aplica)
         
         Args:
             bitacora_rondines (list): Lista de bitácoras del recorrido
@@ -901,15 +919,24 @@ class Accesos(Accesos):
                         
                         # Permitir que el check se haya hecho en la hora esperada o hasta 1 hora después
                         if hora_esperada <= hora_check <= hora_esperada + 1:
-                            return "ok"
+                            return "finalizado"
                     except Exception:
-                        # Si no se puede validar la hora, pero el día coincide, considerar como ok
-                        return "ok"
+                        # Si no se puede validar la hora, pero el día coincide, considerar como finalizado
+                        return "finalizado"
                 else:
                     # Si no hay hora válida especificada, solo verificar el día
-                    return "ok"
-        # Si no se encontró visita para este día
-        return "none"
+                    return "finalizado"
+        
+        # Si no se encontró visita para este día, determinar si es pasado o futuro
+        now = datetime.now()
+        fecha_evaluada = datetime(year, month, dia)
+        
+        # Si la fecha evaluada es anterior a hoy, es "no_inspeccionada"
+        if fecha_evaluada.date() < now.date():
+            return "no_inspeccionada"
+        else:
+            # Si es hoy o futuro, es "none"
+            return "none"
     
 if __name__ == "__main__":
     class_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
