@@ -937,6 +937,66 @@ class Accesos(Accesos):
         else:
             # Si es hoy o futuro, es "none"
             return "none"
+        
+    def get_check_by_id(self, record_id):
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.BITACORA_RONDINES,
+                "$expr": {
+                    "$and": [
+                        { "$eq": [ { "$year": "$created_at" }, { "$year": "$$NOW" } ] },
+                        { "$eq": [ { "$month": "$created_at" }, { "$month": "$$NOW" } ] },
+                        {"$anyElementTrue": {
+                            "$map": {
+                                "input": f"$answers.{self.f['grupo_areas_visitadas']}",
+                                "as": "check",
+                                "in": {
+                                    "$regexMatch": {
+                                        "input": f"$$check.{self.f['url_registro_rondin']}",
+                                        "regex": record_id
+                                    }
+                                }
+                            }
+                        }}
+                    ]
+                }
+            }},
+            {"$unwind": f"$answers.{self.f['grupo_areas_visitadas']}"},
+            {"$match": {
+                "$expr": {
+                    "$regexMatch": {
+                        "input": f"$answers.{self.f['grupo_areas_visitadas']}.{self.f['url_registro_rondin']}",
+                        "regex": record_id
+                    }
+                }
+            }},
+            {"$project": {
+                "_id": 0,
+                "ubicacion": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}",
+                "nombre_recorrido": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}",
+                "area": f"$answers.{self.f['grupo_areas_visitadas']}",
+            }}
+        ]
+
+        response = self.format_cr(self.cr.aggregate(query))
+        response = self.unlist(response)
+        format_response = {}
+        if response:
+            format_response = self.format_check_by_id(response)
+        return format_response
+    
+    def format_check_by_id(self, data):
+        format_data = {
+            'area': data.get('rondin_area', ''),
+            'checks_mes': [], #TODO: Agregar info de checks del mes
+            'fotos': [{'pic_name': item.get('name', ''),'pic_url': item.get('file_url', '')} for item in data.get('foto_evidencia_area_rondin', [])],
+            'hora_de_check': data.get('fecha_hora_inspeccion_area', ''),
+            'ubicacion': data.get('ubicacion', ''),
+            'tiempo_traslado': data.get('duracion_traslado_area', ''),
+            'comentarios': data.get('comentario_area_rondin', ''),
+        }
+        return format_data
     
 if __name__ == "__main__":
     class_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
@@ -973,6 +1033,8 @@ if __name__ == "__main__":
         response = class_obj.get_rondines_images(location=ubicacion, area=area, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
     elif option == 'get_bitacora_rondines':
         response = class_obj.get_bitacora_rondines()
+    elif option == 'get_check_by_id':
+        response = class_obj.get_check_by_id(record_id=record_id)
     else:
         response = {"msg": "Empty"}
     class_obj.HttpResponse({"data": response})
