@@ -938,15 +938,27 @@ class Accesos(Accesos):
             # Si es hoy o futuro, es "none"
             return "none"
         
-    def get_check_by_id(self, record_id):
+    def get_check_by_id(self, record_id: str):
+        """
+        Obtiene los detalles de un check por su ID de registro.
+        Args:
+            record_id (str): El ID del registro del check.
+        Returns:
+            dict: Un diccionario con los detalles del check.
+        Raises:
+            Exception: Si el ID del registro no es proporcionado.
+        """
+        if not record_id:
+            return self.LKFException({'title': 'Advertencia', 'msg': 'El ID del registro no fue proporcionado.'})
+
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
                 "form_id": self.BITACORA_RONDINES,
                 "$expr": {
                     "$and": [
-                        { "$eq": [ { "$year": "$created_at" }, { "$year": "$$NOW" } ] },
-                        { "$eq": [ { "$month": "$created_at" }, { "$month": "$$NOW" } ] },
+                        { "$eq": [ { "$year": "$created_at" }, { "$year": "$$NOW" } ] }, #TODO: Cambiar a mes por parametro
+                        { "$eq": [ { "$month": "$created_at" }, { "$month": "$$NOW" } ] }, #TODO: Cambiar a mes por parametro
                         {"$anyElementTrue": {
                             "$map": {
                                 "input": f"$answers.{self.f['grupo_areas_visitadas']}",
@@ -985,8 +997,15 @@ class Accesos(Accesos):
         if response:
             format_response = self.format_check_by_id(response)
         return format_response
-    
-    def format_check_by_id(self, data):
+
+    def format_check_by_id(self, data: dict):
+        """
+        Formatea los detalles de un check por su ID de registro.
+        Args:
+            data (dict): Datos del check.
+        Returns:
+            dict: Un diccionario con los detalles formateados del check.
+        """
         format_data = {
             'area': data.get('rondin_area', ''),
             'checks_mes': [], #TODO: Agregar info de checks del mes
