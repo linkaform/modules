@@ -98,8 +98,9 @@ class Accesos(Accesos):
         return response
     
     def get_and_set_user(self):
-        user_info = self.get_active_guards_in_location('Planta Monterrey')
-        
+        location = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], '')
+        user_info = self.get_active_guards_in_location(location)
+
         if not user_info:
             return False
         
