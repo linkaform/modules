@@ -55,7 +55,7 @@ class Accesos(Accesos):
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
-                "form_id": self.CONFIGURACION_RECORRIDOS_ID,
+                "form_id": 121742, #self.CONFIGURACION_RECORRIDOS_ID,
                 f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": location,
                 f"answers.{self.mf['nombre_del_recorrido']}": name_rondin
             }},
@@ -71,6 +71,44 @@ class Accesos(Accesos):
             self.answers[self.f['grupo_areas_visitadas']] = areas_recorrido.get('rondin_areas', [])
             return True
         return False
+    
+    def get_active_guards_in_location(self, location):
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.REGISTRO_ASISTENCIA,
+                f"answers.{self.f['start_shift']}": {"$exists": True},
+                f"answers.{self.f['end_shift']}": {"$exists": False},
+                f"answers.{self.Employee.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.f['ubicacion']}": location,
+            }},
+            {"$project": {
+                "_id": 1,
+                "created_at": 1,
+                "created_by_id": 1,
+                "created_by_email": 1,
+                "created_by_name": 1,
+            }},
+            {"$sort": {
+                "created_at": -1
+            }},
+            {"$limit": 1}
+
+        ]
+        response = self.format_cr(self.cr.aggregate(query), get_one=True)
+        return response
+    
+    def get_and_set_user(self):
+        user_info = self.get_active_guards_in_location('Planta Monterrey')
+        
+        if not user_info:
+            return False
+        
+        self.answers[self.USUARIOS_OBJ_ID] = {
+            self.mf['nombre_usuario']: user_info.get('created_by_name', ''),
+            self.mf['id_usuario']: [user_info.get('created_by_id', '')],
+            self.mf['email_visita_a']: [user_info.get('created_by_email', '')],
+        }
+        return True
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
@@ -83,10 +121,12 @@ if __name__ == "__main__":
     #-FILTROS
     acceso_obj.calcluta_tiempo_traslados()
 
-    if acceso_obj.answers.get(acceso_obj.mf['estatus_del_recorrido']) == 'programado' \
-        and not acceso_obj.answers.get(acceso_obj.f['grupo_areas_visitadas']):
-        acceso_obj.get_and_set_areas_recorrido()
-
+    if acceso_obj.answers.get(acceso_obj.mf['estatus_del_recorrido']) == 'programado':
+        if not acceso_obj.answers.get(acceso_obj.f['grupo_areas_visitadas']):
+            acceso_obj.get_and_set_areas_recorrido()
+        if not acceso_obj.answers.get(acceso_obj.USUARIOS_OBJ_ID):
+            acceso_obj.get_and_set_user()
+    
     sys.stdout.write(simplejson.dumps({
         'status': 101,
         'replace_ans': acceso_obj.answers
