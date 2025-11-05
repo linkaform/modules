@@ -529,22 +529,22 @@ class Accesos(Accesos):
         return format_data
     
     def create_incidencia_by_rondin(self, data):
-        data = {
-            'reporta_incidencia': "Emiliano Zapata",
-            'fecha_hora_incidencia': "2025-10-24 13:07:16",
-            'ubicacion_incidencia':"Planta Monterrey",
-            'area_incidencia': "Recursos eléctricos",
-            'categoria': "Intrusión y seguridad",
-            'sub_categoria':"Alteración del orden",
-            'incidente':"Drogadicto",
-            # "tipo_incidencia": "Otro incidente",
-            'comentario_incidencia': "comentario random",
-            'evidencia_incidencia': [],
-            'documento_incidencia':[],
-            'acciones_tomadas_incidencia':[],
-            "prioridad_incidencia": "leve",
-            "notificacion_incidencia": "no",
-        }
+        # data = {
+        #     'reporta_incidencia': "Emiliano Zapata",
+        #     'fecha_hora_incidencia': "2025-10-24 13:07:16",
+        #     'ubicacion_incidencia':"Planta Monterrey",
+        #     'area_incidencia': "Recursos eléctricos",
+        #     'categoria': "Intrusión y seguridad",
+        #     'sub_categoria':"Alteración del orden",
+        #     'incidente':"Drogadicto",
+        #     # "tipo_incidencia": "Otro incidente",
+        #     'comentario_incidencia': "comentario random",
+        #     'evidencia_incidencia': [],
+        #     'documento_incidencia':[],
+        #     'acciones_tomadas_incidencia':[],
+        #     "prioridad_incidencia": "leve",
+        #     "notificacion_incidencia": "no",
+        # }
         status = {}
         response = self.create_incidence(data)
         if response.get('status_code') in [200, 201, 202]:
