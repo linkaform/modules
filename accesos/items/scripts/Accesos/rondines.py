@@ -313,7 +313,12 @@ class Accesos(Accesos):
             {"$limit": limit}
         ]
         response = self.format_cr(self.cr.aggregate(query))
-        return response
+        format_response = []
+        if response:
+            for item in response:
+                item['recurrencia'] = item['recurrencia'].replace('_', ' ').title() if item.get('recurrencia') else 'No Recurrente'
+                format_response.append(item)
+        return format_response
     
     def get_rondin_by_id(self, record_id: str):
         """Obtiene los detalles de un rondin por su ID de registro.
