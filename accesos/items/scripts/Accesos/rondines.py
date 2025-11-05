@@ -165,7 +165,10 @@ class Accesos(Accesos):
                     area_dict = {
                         self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
                             self.Location.f['area']: area.get('area', ''),
-                            self.f['geolocalizacion_area_ubicacion']: area.get('geolocation', []),
+                            self.f['geolocalizacion_area_ubicacion']: [{
+                                'latitude': area.get('latitude', 0),
+                                'longitude': area.get('longitude', 0)
+                            }],
                             self.f['foto_area']: area.get('image', []),
                             self.f['area_tag_id']: [area.get('tag_id', [])]
                         }
@@ -460,7 +463,7 @@ class Accesos(Accesos):
             {"$project": {
                 "_id": 0,
                 "area": f"$answers.{self.Location.f['area']}",
-                "geolocation": f"$answers.{self.CONTACTO_CAT_OBJ_ID}.{self.f['address_geolocation']}",
+                "geolocation": f"$answers.{self.f['geolocalizacion_area_ubicacion']}",
                 "image": f"$answers.{self.f['foto_area']}",
                 "tag_id": f"$answers.{self.f['area_tag_id']}",
             }}
