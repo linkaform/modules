@@ -1050,23 +1050,13 @@ class Accesos(Accesos):
         }
         return format_data
     
-    def pause_rondin(self, record_id):
+    def pause_or_play_rondin(self, record_id, paused=True):
         answers = {
-            self.rondin_keys['accion_recurrencia']: 'pausar',
+            self.rondin_keys['accion_recurrencia']: 'pausar' if paused else 'programar',
         }
         response = self.lkf_api.patch_multi_record(answers=answers, form_id=self.CONFIGURACION_RECORRIDOS_FORM, record_id=[record_id])
         if response.get('status_code') in [200, 201, 202]:
             return {'status_code': 200, 'type': 'success', 'msg': 'Rondin paused successfully', 'data': {}}
-        else:
-            return {'status_code': 400, 'type': 'error', 'msg': response, 'data': {}}
-        
-    def play_rondin(self, record_id):
-        answers = {
-            self.rondin_keys['accion_recurrencia']: 'programar',
-        }
-        response = self.lkf_api.patch_multi_record(answers=answers, form_id=self.CONFIGURACION_RECORRIDOS_FORM, record_id=[record_id])
-        if response.get('status_code') in [200, 201, 202]:
-            return {'status_code': 200, 'type': 'success', 'msg': 'Rondin resumed successfully', 'data': {}}
         else:
             return {'status_code': 400, 'type': 'error', 'msg': response, 'data': {}}
     
@@ -1084,6 +1074,7 @@ if __name__ == "__main__":
     record_id = data.get("record_id", '')
     ubicacion = data.get("ubicacion", None)
     area = data.get("area", None)
+    paused = data.get("paused", True)
 
     if option == 'create_rondin':
         response = class_obj.create_rondin(rondin_data=rondin_data)
@@ -1107,10 +1098,8 @@ if __name__ == "__main__":
         response = class_obj.get_bitacora_rondines()
     elif option == 'get_check_by_id':
         response = class_obj.get_check_by_id(record_id=record_id)
-    elif option == 'pause_rondin':
-        response = class_obj.pause_rondin(record_id=record_id)
-    elif option == 'play_rondin':
-        response = class_obj.play_rondin(record_id=record_id)
+    elif option == 'pause_or_play_rondin':
+        response = class_obj.pause_or_play_rondin(record_id=record_id, paused=paused)
     else:
         response = {"msg": "Empty"}
     class_obj.HttpResponse({"data": response})
