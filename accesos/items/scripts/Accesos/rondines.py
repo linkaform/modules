@@ -164,7 +164,7 @@ class Accesos(Accesos):
                         self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
                             self.Location.f['area']: area.get('area', ''),
                             self.f['geolocalizacion_area_ubicacion']: area.get('geolocation', []),
-                            self.f['foto_area']: [area.get('image', [])],
+                            self.f['foto_area']: area.get('image', []),
                             self.f['area_tag_id']: [area.get('tag_id', [])]
                         }
                     }
@@ -385,10 +385,19 @@ class Accesos(Accesos):
         fotos_de_areas = []
         puntos_de_control = []
         for item in data.get('areas', []):
+            foto_area_data = item.get('foto_area', [])
+            foto_url = ""
+            if foto_area_data:
+                primer_elemento = foto_area_data[0]
+                if isinstance(primer_elemento, list) and len(primer_elemento) > 0:
+                    foto_url = primer_elemento[0].get('file_url', '')
+                elif isinstance(primer_elemento, dict):
+                    foto_url = primer_elemento.get('file_url', '')
+            
             new_item = {
                 "id": item.get('area_tag_id', [])[0] if len(item.get('area_tag_id', [])) > 0 else "",
                 "nombre_area": item.get('rondin_area', ''),
-                "foto_area": item.get('foto_area', [])[0].get('file_url') if len(item.get('foto_area', [])) > 0 else "",
+                "foto_area": foto_url,
             }
             if new_item.get('foto_area'):
                 fotos_de_areas.append(new_item)
