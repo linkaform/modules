@@ -186,6 +186,8 @@ class Stock(Stock):
         series_unique = []
         total_groups = len(groups)
         base_record = deepcopy(self.current_record)
+        if base_record.get('_id'):
+            base_record.pop('_id')
         base_record.update(self.get_complete_metadata())
         base_record['answers'][self.f['move_group']] = []
         base_record["editable"] = False 
@@ -512,9 +514,9 @@ if __name__ == '__main__':
 
     if stock_obj.proceso_onts:
         onts = [x[0] for x in records]
-        if len(onts) > 5000:
+        if len(onts) > 6000:
             stock_obj.LKFException( '', dict_error= {
-                    "msg": f'Limite de salida de ONTs superado. Solo se pueden dar salida a  5000 ONTs por documento y se estan cargando {len(onts)} ONTs'
+                    "msg": f'Limite de salida de ONTs superado. Solo se pueden dar salida a  6000 ONTs por documento y se estan cargando {len(onts)} ONTs'
                 } )
         groups = stock_obj.validate_onts(records)
         
