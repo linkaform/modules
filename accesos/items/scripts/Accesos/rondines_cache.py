@@ -399,6 +399,9 @@ class Accesos(Accesos):
         
         if data_rondin.get('answers', {}).get(self.f['check_status']) == 'finalizado':
             answers[self.f['estatus_del_recorrido']] = 'realizado'
+        elif data_rondin.get('answers', {}).get(self.f['check_status']) == 'continuar_siguiente_punto_de_inspección':
+            answers[self.f['estatus_del_recorrido']] = 'en_proceso'
+            
 
         # print("ans", simplejson.dumps(answers, indent=4))
         if answers:
