@@ -670,7 +670,7 @@ class Accesos(Accesos):
                 "form_id": self.BITACORA_RONDINES,
                 f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": location,
                 f"answers.{self.USUARIOS_OBJ_ID}.{self.f['new_user_complete_name']}": self.user_name,
-                f"answers.{self.f['estatus_del_recorrido']}": {"$in": ['cerrado', 'realizado']},
+                f"answers.{self.f['estatus_del_recorrido']}": {"$in": ['cerrado', 'realizado', 'programado']},
                 # comparar como strings ISO 'YYYY-MM-DD HH:MM:SS' usando rango
                 f"answers.{self.f['fecha_inicio_rondin']}": {"$gte": start_dt, "$lte": end_dt}
             }},
