@@ -52,6 +52,7 @@ class Accesos(Accesos):
             'cada_cuantos_meses_se_repite': 'abcde0001000000000010019',
             'la_recurrencia_cuenta_con_fecha_final': '64374e47a208e5c0ff95e9bd',
             'fecha_final_recurrencia': 'abcde0001000000000010099',
+            'accion_recurrencia': 'abcde00010000000a0000001'
         }
         
     def get_average_rondin_duration(self, location: str, rondin_name: str):
@@ -91,42 +92,57 @@ class Accesos(Accesos):
             response: La respuesta de la API de Linkaform al crear el rondin.
         """
         #! Data hardcoded for testing purposes
-
+        #! Ejemplo rondin de recurrencia diaria
         # rondin_data = {
-        #     'nombre_rondin': 'Ejemplo rondin',
-        #     'duracion_estimada': '30 minutos',
-        #     'ubicacion': 'Planta Monterrey',
-        #     'areas': [
-        #         'Caseta 6 Poniente',
-        #         'Sala de Juntas Planta Baja',
-        #         'Recursos eléctricos',
-        #         'Almacén de inventario',
-        #     ],
-        #     'grupo_asignado': 'Guardias',
-        #     'fecha_hora_programada': '2025-10-01 12:00:00',
-        #     'programar_anticipacion': 'no',
-        #     'cuanto_tiempo_de_anticipacion': '',
-        #     'cuanto_tiempo_de_anticipacion_expresado_en': '',
-        #     'tiempo_para_ejecutar_tarea': 30,
-        #     'tiempo_para_ejecutar_tarea_expresado_en': 'minutos',
-        #     'la_tarea_es_de': '',
-        #     'se_repite_cada': '',
-        #     'sucede_cada': 'igual_que_la_primer_fecha',
-        #     'sucede_recurrencia': [],
-        #     'en_que_minuto_sucede': '',
-        #     'cada_cuantos_minutos_se_repite': '',
-        #     'en_que_hora_sucede': '',
-        #     'cada_cuantas_horas_se_repite': '',
-        #     'que_dias_de_la_semana': [],
-        #     'en_que_semana_sucede': '',
-        #     'que_dia_del_mes': '',
-        #     'cada_cuantos_dias_se_repite': '',
-        #     'en_que_mes': '',
-        #     'cada_cuantos_meses_se_repite': '',
-        #     'la_recurrencia_cuenta_con_fecha_final': 'no',
-        #     'fecha_final_recurrencia': '',
-        # }
-        
+        no_use_data = {
+            #! ======== PRIMERA PAGINA - INFORMACION GENERAL
+            'nombre_rondin': 'Ejemplo rondin Nov 8',
+            'duracion_estimada': '30 minutos',
+            'ubicacion': 'Planta Monterrey',
+            'areas': [
+                'Almacén de inventario',
+                'Sala de Juntas Planta Baja',
+                'Caseta 6 Poniente',
+                'Antenas',
+            ],
+            'grupo_asignado': '',
+            #! ======== SEGUNDA PAGINA - FECHA Y HORA DE INICIO
+            'fecha_hora_programada': '2025-11-05 15:00:00',
+            #! ======== SEGUNDA PAGINA - ANTICIPACION
+            'programar_anticipacion': 'no', # 'si' o 'no'
+            'cuanto_tiempo_de_anticipacion': '', # numero decimal
+            'cuanto_tiempo_de_anticipacion_expresado_en': '', # 'minutos', 'horas', 'dias', 'semanas', 'mes'
+            #! ======== SEGUNDA PAGINA - TIEMPO PARA EJECUTAR LA TAREA
+            'tiempo_para_ejecutar_tarea': 30,
+            'tiempo_para_ejecutar_tarea_expresado_en': 'minutos',
+            #! ======== SEGUNDA PAGINA - RECURRENCIA
+            'la_tarea_es_de': 'cuenta_con_una_recurrencia', # 'es_de_única_ocación'
+            'se_repite_cada': 'diario', # 'hora', 'diario', 'semana', 'mes', 'año', 'configurable'
+            'sucede_cada': 'igual_que_la_primer_fecha',
+            #! ======== SEGUNDA PAGINA - RECURRENCIA CONFIGURABLE
+            'sucede_recurrencia': [], # 'minuto', 'hora', 'dia_de_la_semana', 'dia_del_mes', 'mes'
+            #! ======== SEGUNDA PAGINA - RECURRENCIA CONFIGURABLE - MINUTO
+            'en_que_minuto_sucede': '', # numero decimal
+            'cada_cuantos_minutos_se_repite': '', # numero decimal
+            #! ======== SEGUNDA PAGINA - RECURRENCIA CONFIGURABLE - HORA
+            'en_que_hora_sucede': '', # numero decimal
+            'cada_cuantas_horas_se_repite': '', # numero decimal
+            #! ======== SEGUNDA PAGINA - RECURRENCIA CONFIGURABLE - DIA DE LA SEMANA
+            'que_dias_de_la_semana': [], # ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
+            #! ======== SEGUNDA PAGINA - RECURRENCIA CONFIGURABLE - DIA DEL MES
+            'que_dia_del_mes': '', # numero decimal que no deberia ser decimal
+            'cada_cuantos_dias_se_repite': '', # numero decimal que no deberia ser decimal
+            #! ======== SEGUNDA PAGINA - RECURRENCIA CONFIGURABLE - MES
+            'en_que_mes': '', # 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+            'cada_cuantos_meses_se_repite': '', # numero decimal que no deberia ser decimal
+            #! ======== SEGUNDA PAGINA - EN QUE SEMANA SUCEDE
+            'en_que_semana_sucede': 'todas_las_semanas', # 'primera_semana_del_mes', 'segunda_semana_del_mes', 'tercera_semana_del_mes', 'cuarta_semana_del_mes', 'quinta_semana_del_mes'
+            #! ======== SEGUNDA PAGINA - FECHA FINAL DE RECURRENCIA SOLO SI ES DE UNICA OCASION
+            'la_recurrencia_cuenta_con_fecha_final': 'no', # 'si' o 'no'
+            'fecha_final_recurrencia': '', # 'YYYY-MM-DD HH:MM:SS'
+            #! ======== SEGUNDA PAGINA - ACCION DE RECURRENCIA
+            'accion_recurrencia': 'programar' # 'programar', 'pausar' o 'eliminar'
+        }
         answers = {}
         rondin_data['ubicacion'] = self.get_ubicacion_geolocation(location=rondin_data.get('ubicacion', ''))
         rondin_data['areas'] = self.get_areas_details(areas_list=rondin_data.get('areas', []))
@@ -147,8 +163,9 @@ class Accesos(Accesos):
                     area_dict = {
                         self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
                             self.Location.f['area']: area.get('area', ''),
-                            self.f['address_geolocation']: area.get('geolocation', []),
-                            self.f['foto_area']: area.get('image', [])
+                            self.f['geolocalizacion_area_ubicacion']: area.get('geolocation', []),
+                            self.f['foto_area']: [area.get('image', [])],
+                            self.f['area_tag_id']: [area.get('tag_id', [])]
                         }
                     }
                     areas_list.append(area_dict)
@@ -157,7 +174,6 @@ class Accesos(Accesos):
                 pass
             else:
                 answers[self.rondin_keys[key]] = value
-        print("answers", answers)
         response = self.create_register(
             module='Accesos',
             process='Creacion de un rondin',
@@ -434,7 +450,8 @@ class Accesos(Accesos):
                 "_id": 0,
                 "area": f"$answers.{self.Location.f['area']}",
                 "geolocation": f"$answers.{self.CONTACTO_CAT_OBJ_ID}.{self.f['address_geolocation']}",
-                "image": f"$answers.{self.f['foto_area']}"
+                "image": f"$answers.{self.f['foto_area']}",
+                "tag_id": f"$answers.{self.f['area_tag_id']}",
             }}
         ]
         response = self.format_cr(self.cr.aggregate(query))
