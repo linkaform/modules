@@ -369,7 +369,7 @@ class Accesos(Accesos):
                 "estatus_rondin": f"$answers.{self.f['status_cron']}",
                 "fecha_inicio_rondin": f"$answers.{self.f['fecha_primer_evento']}",
                 "duracion_esperada_rondin": {"$ifNull": [f"$answers.{self.rondin_keys['duracion_estimada']}", "No especificada"]},
-                "fecha_final_rondin": f"$answers.{self.f['fecha_final_recurrencia']}",
+                "fecha_final_rondin": {"$ifNull": [f"$answers.{self.f['fecha_final_recurrencia']}", "Sin fecha final"]},
                 "cantidad_de_puntos": {"$size": {"$ifNull": [f"$answers.{self.rondin_keys['areas']}", []]}},
                 "areas": f"$answers.{self.rondin_keys['areas']}",
             }},
