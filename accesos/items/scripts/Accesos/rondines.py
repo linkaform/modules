@@ -1048,6 +1048,26 @@ class Accesos(Accesos):
         }
         return format_data
     
+    def pause_rondin(self, record_id):
+        answers = {
+            self.rondin_keys['accion_recurrencia']: 'pausar',
+        }
+        response = self.lkf_api.patch_multi_record(answers=answers, form_id=self.CONFIGURACION_RECORRIDOS_FORM, record_id=[record_id])
+        if response.get('status_code') in [200, 201, 202]:
+            return {'status_code': 200, 'type': 'success', 'msg': 'Rondin paused successfully', 'data': {}}
+        else:
+            return {'status_code': 400, 'type': 'error', 'msg': response, 'data': {}}
+        
+    def play_rondin(self, record_id):
+        answers = {
+            self.rondin_keys['accion_recurrencia']: 'programar',
+        }
+        response = self.lkf_api.patch_multi_record(answers=answers, form_id=self.CONFIGURACION_RECORRIDOS_FORM, record_id=[record_id])
+        if response.get('status_code') in [200, 201, 202]:
+            return {'status_code': 200, 'type': 'success', 'msg': 'Rondin resumed successfully', 'data': {}}
+        else:
+            return {'status_code': 400, 'type': 'error', 'msg': response, 'data': {}}
+    
 if __name__ == "__main__":
     class_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
     class_obj.console_run()
@@ -1085,6 +1105,10 @@ if __name__ == "__main__":
         response = class_obj.get_bitacora_rondines()
     elif option == 'get_check_by_id':
         response = class_obj.get_check_by_id(record_id=record_id)
+    elif option == 'pause_rondin':
+        response = class_obj.pause_rondin(record_id=record_id)
+    elif option == 'play_rondin':
+        response = class_obj.play_rondin(record_id=record_id)
     else:
         response = {"msg": "Empty"}
     class_obj.HttpResponse({"data": response})
