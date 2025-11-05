@@ -18,6 +18,8 @@ class Accesos(Accesos):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
         self.load(module='Location', **self.kwargs)
         
+        self.CONFIGURACION_RECORRIDOS_FORM = self.lkm.form_id('configuracion_de_recorridos','id')
+
         self.f.update({
             'rondin_area': '663e5d44f5b8a7ce8211ed0f',
             'foto_area': '6763096aa99cee046ba766ad',
