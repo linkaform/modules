@@ -768,7 +768,11 @@ class Produccion_PCI( Produccion_PCI ):
                                     record[position] = record[position].decode('utf8')
                                     answer.update(lkf_api.make_infosync_json(record[position], element, best_effort=True))
                             else:
-                                answer.update(lkf_api.make_infosync_json(record[position], element, best_effort=True))
+                                try:
+                                    answer.update(lkf_api.make_infosync_json(record[position], element, best_effort=True))
+                                except Exception as e:
+                                    print('[ERROR] al procesar el valor =',e)
+                                    error.append(f"Error al procesar el valor {record[position]} para el campo {element['label']}")
                     else:
                         if record[position] and isinstance(record[position], str):
                             if element.get('label') and element['label'] == 'Tipo de Tarea':
