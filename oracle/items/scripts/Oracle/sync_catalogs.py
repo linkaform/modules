@@ -526,14 +526,14 @@ class Oracle(Oracle):
                     if isinstance(v, dict):
                         r_type = v['fecha']
                         v = v['valor']
-                    valor_formateado = f"{v:.2f}" if isinstance(v, float) else f"{v}.00"
+                    valor_formateado = f"{v:,.2f}" if isinstance(v, float) else f"{v:,}.00"
                     if record_type == 'Ultimos 0':
                         # Se le da formato a los datos para que queden en el catalogo
                         # Se pone una estrella ⭐ delante de la fehca al que sea el ultimo valor reportado.
                         # ese valor debe de ser igual al de ultimo valor
-                        catalogo_metadata['answers'][k] = f"⭐ {r_type[:16].ljust(18)}: {valor_formateado:>8}"
+                        catalogo_metadata['answers'][k] = f"{r_type[:24].ljust(26)} ⭐: {valor_formateado:>12}"
                     else:
-                        catalogo_metadata['answers'][k] = f"{r_type[:16].ljust(18)}: {valor_formateado:>8}"
+                        catalogo_metadata['answers'][k] = f"{r_type[:24].ljust(28)}   : {valor_formateado:>12}"
                 else:
                     #si el tipo de registro es el ultimo valor, asiganmos valor a la fecha
                     # solo un registro debe de tener la fecha
@@ -565,7 +565,7 @@ class Oracle(Oracle):
         created_records = [r for r in res if r.get('status_code') == 201]
         updated_records = [r for r in res if r.get('status_code') == 200]
         if (len(created_records) + len(updated_records) )!= len(data):
-            raise self.LKFException('No se sincronizaron todos los registros')
+            raise self.LKFException('No se sincronizaron todos los registros, creados: actualizados: {} data: {} '.format(len(created_records) + len(updated_records), len(data)))
         return created_records, updated_records
 
 if __name__ == "__main__":
