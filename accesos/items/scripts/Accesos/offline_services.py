@@ -529,7 +529,11 @@ if __name__ == "__main__":
         elif type_sync == 'error':
             response = record
         else:
-            response = {'status_code': 400, 'type': 'error', 'msg': 'Unknown error', 'data': {}}
+            response = {'status_code': 400, 'type': 'error', 'msg': 'Unknown error', 'data': {
+                'type_sync': type_sync,
+                'record': record,
+                'db_name': db_name,
+            }}
 
     elif option == 'assign_user_inbox':
         response = acceso_obj.assign_user_inbox(data=acceso_obj.answers)
