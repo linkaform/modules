@@ -997,7 +997,9 @@ class Accesos(Accesos):
                         { "$eq": [ { "$month": "$created_at" }, { "$month": "$$NOW" } ] }, #TODO: Cambiar a mes por parametro
                         {"$anyElementTrue": {
                             "$map": {
-                                "input": f"$answers.{self.f['grupo_areas_visitadas']}",
+                                "input": {
+                                    "$ifNull": [f"$answers.{self.f['grupo_areas_visitadas']}", []]
+                                },
                                 "as": "check",
                                 "in": {
                                     "$regexMatch": {
@@ -1024,6 +1026,7 @@ class Accesos(Accesos):
                 "ubicacion": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}",
                 "nombre_recorrido": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}",
                 "area": f"$answers.{self.f['grupo_areas_visitadas']}",
+                "incidencias": f"$answers.{self.f['bitacora_rondin_incidencias']}",
             }}
         ]
 
@@ -1042,6 +1045,23 @@ class Accesos(Accesos):
         Returns:
             dict: Un diccionario con los detalles formateados del check.
         """
+        incidencias_area = []
+        for incidencia in data.get('incidencias', []):
+            nombre_area_incidencia = incidencia.get('nombre_area_salida', '')
+            if nombre_area_incidencia != data.get('rondin_area', ''):
+                continue
+            incidencia_formateada = {
+                "fecha_hora_incidente": incidencia.get('fecha_hora_incidente_bitacora', ''),
+                "categoria": incidencia.get('categoria', 'General'),
+                "subcategoria": incidencia.get('sub_categoria', 'General'),
+                "incidente": incidencia.get('tipo_de_incidencia', incidencia.get('incidente_open', '')),
+                "accion_tomada": incidencia.get('incidente_accion', ''),
+                "comentarios": incidencia.get('comentario_incidente_bitacora', ''),
+                "evidencias": incidencia.get('incidente_evidencia', []),
+                "documentos": incidencia.get('incidente_documento', []),
+            }
+            incidencias_area.append(incidencia_formateada)
+        
         format_data = {
             'area': data.get('rondin_area', ''),
             'checks_mes': [], #TODO: Agregar info de checks del mes
@@ -1050,6 +1070,7 @@ class Accesos(Accesos):
             'ubicacion': data.get('ubicacion', ''),
             'tiempo_traslado': data.get('duracion_traslado_area', ''),
             'comentarios': data.get('comentario_area_rondin', ''),
+            'incidencias': incidencias_area,
         }
         return format_data
     
