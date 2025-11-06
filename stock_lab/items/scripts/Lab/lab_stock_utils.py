@@ -1089,7 +1089,10 @@ class Stock(Stock):
                 continue
             requier_cont = gset.get(self.f['production_requier_containers'],0)
             plants_needed =  int(plt_container) * int(requier_cont)
-            set_hrs = round(float(plants_needed) / float(plant_per_hr), 1)
+            if plant_per_hr:
+                set_hrs = round(float(plants_needed) / float(plant_per_hr), 1)
+            else:
+                set_hrs = 0
             total_hrs += set_hrs
             gset[self.f['production_group_estimated_hrs']] = round(set_hrs,2)
 
