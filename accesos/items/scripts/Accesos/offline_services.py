@@ -150,6 +150,10 @@ class Accesos(Accesos):
             "status_check_area": "",
         }
         
+        self.f.update({
+            'bitacora_rondin_url': '690cefdca2dff2f469da17e0'
+        })
+        
     def clean_text(self, texto):
         """
         Limpia texto: minúsculas, espacios y puntos por guiones bajos, elimina acentos
@@ -409,7 +413,6 @@ class Accesos(Accesos):
         record = self.cr_db.get(record_id)
         if response.get('status_code') in [200, 201, 202]:
             record['status'] = 'received'
-            record['lkf_id'] = response.get('json', {}).get('id', '')
             self.cr_db.save(record)
             status = {'status_code': 200, 'type': 'success', 'msg': 'Record received successfully', 'data': {}}
         else:
@@ -432,11 +435,10 @@ class Accesos(Accesos):
                 }
             },
         })
-        #! Revisar envio de id
-        # if data.get('record_id'):
-        #     metadata.update({
-        #         "id": data.pop('record_id')
-        #     })
+        if data.get('record_id'):
+            metadata.update({
+                "id": data.pop('record_id')
+            })
         #---Define Answers
         answers = {}
         answers[self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID]={}
