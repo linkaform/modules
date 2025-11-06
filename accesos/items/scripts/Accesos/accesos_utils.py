@@ -831,6 +831,7 @@ class Accesos( Accesos):
                 '_id': 1,
                 'timezone': 1,
                 'fecha_programacion': f"$answers.{self.f['fecha_programacion']}",
+                'rondinero_id': f"$answers.{self.USUARIOS_OBJ_ID}.{self.mf['id_usuario']}",
                 'answers': f"$answers"
             }},
         ]
@@ -851,8 +852,10 @@ class Accesos( Accesos):
         for rondin in list_of_rondines:
             estatus = rondin.get('estatus_del_recorrido')
             fecha_programacion_str = rondin.get('fecha_programacion')
-            rondin_tz = rondin.get('timezone', timezone)
-            tz = pytz.timezone(rondin_tz)
+            user_id = self.unlist(rondin.get('rondinero_id', 0))
+            user_data = self.lkf_api.get_user_by_id(user_id)
+            user_timezone = user_data.get('timezone', 'America/Mexico_City')
+            tz = pytz.timezone(user_timezone)
             ahora = datetime.now(tz)
 
             if estatus == 'programado' and fecha_programacion_str:

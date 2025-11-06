@@ -399,6 +399,9 @@ class Accesos(Accesos):
         
         if data_rondin.get('answers', {}).get(self.f['check_status']) == 'finalizado':
             answers[self.f['estatus_del_recorrido']] = 'realizado'
+        elif data_rondin.get('answers', {}).get(self.f['check_status']) == 'continuar_siguiente_punto_de_inspección':
+            answers[self.f['estatus_del_recorrido']] = 'en_proceso'
+            
 
         # print("ans", simplejson.dumps(answers, indent=4))
         if answers:
@@ -667,7 +670,7 @@ class Accesos(Accesos):
                 "form_id": self.BITACORA_RONDINES,
                 f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": location,
                 f"answers.{self.USUARIOS_OBJ_ID}.{self.f['new_user_complete_name']}": self.user_name,
-                f"answers.{self.f['estatus_del_recorrido']}": {"$in": ['cerrado', 'realizado']},
+                f"answers.{self.f['estatus_del_recorrido']}": {"$in": ['cerrado', 'realizado', 'programado']},
                 # comparar como strings ISO 'YYYY-MM-DD HH:MM:SS' usando rango
                 f"answers.{self.f['fecha_inicio_rondin']}": {"$gte": start_dt, "$lte": end_dt}
             }},

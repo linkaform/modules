@@ -19,6 +19,7 @@ class Accesos(Accesos):
             {'$project': {
                 '_id': 1,
                 'fecha_programacion': f"$answers.{self.f['fecha_programacion']}",
+                'rondinero_id': f"$answers.{self.USUARIOS_OBJ_ID}.{self.mf['id_usuario']}",
                 'answers': f"$answers",
                 'timezone':1,
                 'folio':1,
@@ -76,7 +77,10 @@ class Accesos(Accesos):
         rondines_en_proceso_vencidos = []
         rondines_por_ubicacion_nombre = {}
         for rondin in list_of_rondines:
-            tz = pytz.timezone(rondin.get('timezone'))
+            user_id = self.unlist(rondin.get('rondinero_id', 0))
+            user_data = self.lkf_api.get_user_by_id(user_id)
+            user_timezone = user_data.get('timezone', 'America/Mexico_City')
+            tz = pytz.timezone(user_timezone)
             ahora = datetime.now(tz)
             estatus = rondin.get('estatus_del_recorrido')
             fecha_programacion_str = rondin.get('fecha_programacion')

@@ -285,8 +285,8 @@ class Accesos(Accesos):
             #     data = attachment.read()
             #     upload_image = self.upload_image_from_couchdb(data, name, self.BITACORA_INCIDENCIAS, self.f['evidencia_incidencia'])
             #     media.append(upload_image)
-            record['status'] = 'received'
-            self.cr_db.save(record)
+            # record['status'] = 'received'
+            # self.cr_db.save(record)
             return record
         elif _rev in all_revs:
             print('⚠️ Revisión vieja')
@@ -326,6 +326,7 @@ class Accesos(Accesos):
         return update_file
     
     def assign_user_inbox(self, data):
+        user_name = data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['nombre_usuario'], '')
         self.cr_db = self.lkf_api.couch.set_db(f'clave_{self.user_id}')
         status = {}
         lat = 0.0
@@ -335,11 +336,16 @@ class Accesos(Accesos):
             long = self.geolocation[1]
         epoc_today = int(time.time())
         format_check_areas = self.get_area_images(data.get(self.f['grupo_areas_visitadas'], []))
+        for i in format_check_areas:
+            i['checked'] = False
+            i['checked_at'] = ''
+            i['check_area_id'] = ''
         inbox_record = {
             "_id": self.record_id,
             "type": "rondin",
             "inbox": True,
-            "status": "new",
+            "status": "synced",
+            "status_rondin": "new",
             "created_at": epoc_today,
             "updated_at": epoc_today,
             "created_by_id": self.user_id,
@@ -349,10 +355,11 @@ class Accesos(Accesos):
                 "long": long
             },
             "record": {
-                "user_name": self.user_name,
+                "user_name": user_name,
                 "nombre_rondin": data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.mf['nombre_del_recorrido'], ''),
                 "ubicacion_rondin": data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], ''),
                 "fecha_programada": data.get(self.f['fecha_programacion'], ''),
+                "fecha_finalizacion": "",
                 "check_areas": format_check_areas,
             }
         }
@@ -388,7 +395,6 @@ class Accesos(Accesos):
         return format_res
     
     def sync_check_area_to_lkf(self, record):
-        
         status = {}
         record_id = record.pop('_id', None)
         record = record.get('record', {})
@@ -402,9 +408,10 @@ class Accesos(Accesos):
 
         record = self.cr_db.get(record_id)
         if response.get('status_code') in [200, 201, 202]:
-            record['status'] = 'synced'
+            record['status'] = 'received'
+            record['lkf_id'] = response.get('json', {}).get('id', '')
             self.cr_db.save(record)
-            status = {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
+            status = {'status_code': 200, 'type': 'success', 'msg': 'Record received successfully', 'data': {}}
         else:
             record['status'] = 'error'
             self.cr_db.save(record)
@@ -413,7 +420,7 @@ class Accesos(Accesos):
         
     def create_check_area(self, data):
         # metadata = self.lkf_api.get_metadata(form_id=self.CHECK_UBICACIONES)
-        metadata = self.lkf_api.get_metadata(form_id=137161)
+        metadata = self.lkf_api.get_metadata(form_id=137161) #TODO: Modularizar id
         metadata.update({
             "properties": {
                 "device_properties":{
@@ -425,10 +432,11 @@ class Accesos(Accesos):
                 }
             },
         })
-        if data.get('record_id'):
-            metadata.update({
-                "id": data.pop('record_id')
-            })
+        #! Revisar envio de id
+        # if data.get('record_id'):
+        #     metadata.update({
+        #         "id": data.pop('record_id')
+        #     })
         #---Define Answers
         answers = {}
         answers[self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID]={}
@@ -473,6 +481,22 @@ class Accesos(Accesos):
                 continue
         metadata.update({'answers':answers})
         return self.lkf_api.post_forms_answers(metadata)
+    
+    def close_rondin_by_id(self, record_id):
+        status = {}
+        answers = {}
+        if not record_id:
+            return {'status_code': 400, 'type': 'error', 'msg': 'Record ID is required', 'data': {}}
+        
+        answers[self.f['estatus_del_recorrido']] = 'realizado'
+        
+        if answers:
+            res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=[record_id,])
+            if res.get('status_code') == 201 or res.get('status_code') == 202:
+                status = {'status_code': 200, 'type': 'success', 'msg': 'Rondin closed successfully', 'data': {}}
+            else: 
+                status = {'status_code': 400, 'type': 'error', 'msg': res, 'data': {}}
+        return status
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
@@ -484,9 +508,9 @@ if __name__ == "__main__":
     acceso_obj.geolocation = data_rondin.get('geolocation', [])
     script_attr = acceso_obj.data
     data = acceso_obj.data.get('data', {})
-    option = data.get("option", script_attr.get('option', 'get_user_catalogs'))
-    _id = data.get("_id", '68fa4108bfb9399d736f123c')
-    _rev = data.get("_rev", '1-30f6c82fa2c4052b327b14215ed1b3bb')
+    option = data.get("option", script_attr.get('option', ''))
+    _id = data.get("_id", None)
+    _rev = data.get("_rev", None)
 
     response = {}
     if option == 'get_user_catalogs':
@@ -505,10 +529,16 @@ if __name__ == "__main__":
         elif type_sync == 'error':
             response = record
         else:
-            response = {'status_code': 400, 'type': 'error', 'msg': 'Unknown error', 'data': {}}
+            response = {'status_code': 400, 'type': 'error', 'msg': 'Unknown error', 'data': {
+                'type_sync': type_sync,
+                'record': record,
+                'db_name': db_name,
+            }}
 
     elif option == 'assign_user_inbox':
         response = acceso_obj.assign_user_inbox(data=acceso_obj.answers)
+    elif option == 'close_rondin_by_id':
+        response = acceso_obj.close_rondin_by_id(record_id=_id)
     else:
         response = {'status_code': 400, 'type': 'error', 'msg': 'Invalid option', 'data': {}}
 
