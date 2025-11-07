@@ -671,7 +671,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                 if payment_connection_id == self.ID_CONTRATISTA_TIPO_MAQTEL:
                     nivel_de_pago = 'maqtel'
                 elif payment_connection_id in conn_carso:
-                    nivel_de_pago = 'migracion'
+                    nivel_de_pago = 'migrado'
 
                 campos_a4[ 0 ] = price_list_cobre[ nivel_de_pago ][ 'a4' ]
                 name = 'A4'

@@ -21,7 +21,7 @@ class Location(Location):
         print('area', area)
         print('location', location)
         field_id_qr = self.f['area_qr_code']
-        url= f'https://srv.linkaform.com/solucion_accesos/ingreso.html?caseta="{area}"&ubicacion="{location}"'
+        url= f'https://srv.linkaform.com/solucion_accesos/ingreso.html?caseta="{area}"&ubicacion="{location}"&acc_id={self.user.get("user_id", 0)}'
         print('url', url)
         qr_generado = lkf_qr.procesa_qr( url, area, self.form_id, img_field_id=field_id_qr )
         self.cr.update_one({

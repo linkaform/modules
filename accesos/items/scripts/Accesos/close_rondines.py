@@ -19,29 +19,84 @@ class Accesos(Accesos):
             {'$project': {
                 '_id': 1,
                 'fecha_programacion': f"$answers.{self.f['fecha_programacion']}",
-                'answers': f"$answers"
+                'rondinero_id': f"$answers.{self.USUARIOS_OBJ_ID}.{self.mf['id_usuario']}",
+                'answers': f"$answers",
+                'timezone':1,
+                'folio':1,
+                'created_by_email':1,
+
+            }},
+            {'$sort': {
+                'fecha_programacion': -1
             }},
         ]
 
         rondines = self.format_cr(self.cr.aggregate(query))
         return rondines
 
+    def notificacion_rondin_no_arrancado(self, rondin, ahora, fecha_programacion, tolerancia=15):
+        """
+        Envia notificacion de que el rondin no se arranco, despues de tiempo marcado como tolerancia
+
+        params:
+        rondin: ronidn a evaluar
+        tolerancia: tiempo en minutos
+        """
+        fecha_programacion_str = rondin.get('fecha_programacion')
+        if ahora > fecha_programacion + timedelta(minutes=tolerancia):
+            asignado_a = rondin.get('new_user_complete_name','No asignado')
+            email_to = [rondin.get('created_by_email'), 'josepato@linkaform.com']
+            titulo = f"Rondin: {rondin.get('nombre_del_recorrido')},  asignado a: {asignado_a}, no arrancado en: {rondin.get('incidente_location')}"
+            msg = titulo
+            msg += f"Fecha programada: {fecha_programacion_str} /"
+            msg += f"Fecha actual: {ahora.strftime('%Y-%m-%d %H:%M')}  /" #formato: 2025-10-10 12:15
+            msg += f"Tolerancia: {tolerancia} minutos / "
+            msg += f"Retardo en minutos: {round((ahora - fecha_programacion).total_seconds() / 60, 0)}  "
+            data = {
+                'email_from': 'no-reply@linkaform.com',
+                'titulo': titulo,
+                'nombre': titulo,
+                'mensaje': msg,
+                'enviado_desde': 'Bitacora de Rondines',
+            }
+            for email in email_to:
+                data['email_to'] = email
+                self.send_email_by_form(data)
+        return True
+
     def close_rondines(self, list_of_rondines):
-        #- Expirados son lo que esta en status programados y que tienen mas de 24 de programdos
-        # - en progreso son lo que estan con status progreso y tienen mas de 1 hr de su ultimo check.
+        """
+        Cierra los rondines que esten en status programados y que tengan mas de 24 de programdos
+        o en progreso y que tengan mas de 1 hr de su ultimo check.
+
+        Si existe mas de un rondin con el mismo nombre en la misma ubicacion, se cierra el mas antiguo.
+        """
         answers = {}
-        tz = pytz.timezone('America/Mexico_City')
-        ahora = datetime.now(tz)
 
         rondines_expirados = []
         rondines_en_proceso_vencidos = []
-
+        rondines_por_ubicacion_nombre = {}
         for rondin in list_of_rondines:
+            user_id = self.unlist(rondin.get('rondinero_id', 0))
+            user_data = self.lkf_api.get_user_by_id(user_id)
+            user_timezone = user_data.get('timezone', 'America/Mexico_City')
+            tz = pytz.timezone(user_timezone)
+            ahora = datetime.now(tz)
             estatus = rondin.get('estatus_del_recorrido')
             fecha_programacion_str = rondin.get('fecha_programacion')
+            ubicacion = rondin.get('incidente_location')
+            nombre = rondin.get('nombre_del_recorrido')
 
+            rondines_por_ubicacion_nombre[ubicacion] = rondines_por_ubicacion_nombre.get(ubicacion, [])
             if estatus == 'programado' and fecha_programacion_str:
                 fecha_programacion = tz.localize(datetime.strptime(fecha_programacion_str, '%Y-%m-%d %H:%M:%S'))
+                
+                if nombre in rondines_por_ubicacion_nombre[ubicacion]:
+                    rondines_expirados.append(rondin)
+                else:
+                    rondines_por_ubicacion_nombre[ubicacion].append(nombre)
+                    self.notificacion_rondin_no_arrancado(rondin, ahora, fecha_programacion)
+                
                 if ahora > fecha_programacion + timedelta(hours=24):
                     rondines_expirados.append(rondin)
             elif estatus == 'en_proceso':
@@ -53,7 +108,7 @@ class Accesos(Accesos):
                         fecha = tz.localize(datetime.strptime(fecha_str, '%Y-%m-%d %H:%M:%S'))
                         if not ultima_fecha or fecha > ultima_fecha:
                             ultima_fecha = fecha
-                if ultima_fecha and ahora > ultima_fecha + timedelta(hours=1):
+                if ultima_fecha and ahora > ultima_fecha + timedelta(minutes=15):
                     rondines_en_proceso_vencidos.append(rondin)
 
         rondines_ids = []
@@ -76,6 +131,8 @@ class Accesos(Accesos):
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
     acceso_obj.console_run()
+    
+
 
     rondines = acceso_obj.get_rondines_by_status()
 

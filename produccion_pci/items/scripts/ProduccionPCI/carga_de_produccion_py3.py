@@ -123,6 +123,18 @@ class Produccion_PCI( Produccion_PCI ):
         else:
             return 'error', 'Error al crear el directorio temporal', nueva_ruta, None
 
+    def rmv_psr_created(self, id_connection_assigned, form_id, folio, telefono, area):
+        print(f'+++++++++++ Borrando registro de PSR Admin y cuenta padre form_id {form_id} folio {folio}')
+        colection_connection = CollectionConnection(id_connection_assigned, settings)
+        cr_contratista = colection_connection.get_collections_connection()
+
+        query_to_restore, select_columns = p_utils.query_folio_preorder(form_id, folio, telefono, area)
+        rmv_contratista = cr_contratista.delete_one(query_to_restore)
+        print("++ Eliminado contratista =", rmv_contratista.deleted_count)
+
+        rmv_admin = cr_admin.delete_one(query_to_restore)
+        print("++ Eliminado admin =", rmv_admin.deleted_count)
+
     def desasignar_registro(self, id_connection_assigned, user_id_old, form_id, folio, telefono, area, is_updating_record=False):
         if is_updating_record:
             return
@@ -151,7 +163,7 @@ class Produccion_PCI( Produccion_PCI ):
         }, {'answers': 1, 'folio': 1, 'form_id': 1})
         return record_cobre
 
-    def create_record_cambio_tec(self,  os_cobre, alfanumerico, puerto, terminal_optica, current_folio, email_conexion ):
+    def create_record_cambio_tec(self,  os_cobre, alfanumerico, alfanumerico_pic, puerto, terminal_optica, current_folio, email_conexion ):
         metadata_cambio = lkf_api.get_metadata(p_utils.FORM_ID_CAMBIO_TECNOLOGIA)
         metadata_cambio['answers'] = {
             '667091a65afe99d4ceba0392': os_cobre['folio'], # Folio
@@ -161,7 +173,8 @@ class Produccion_PCI( Produccion_PCI ):
             'f1054000a010000000000021': os_cobre['answers']['f1054000a0100000000000a4'], # Tipo de tarea
             'f1054000a0100000000000d5': os_cobre['answers']['f1054000a010000000000003'], # Distrito
             'f1054000a010000000000002': os_cobre['answers']['f1054000a010000000000002'].upper().replace('_', ' '), # Cope
-            'f1054000a0200000000000a3': alfanumerico,
+            'f1054000a0200000000000a3': alfanumerico_pic,
+            self.f['field_no_serie_contratista']: alfanumerico,
             'f1054000a020000000000aa2': puerto, # Puerto
             'f1054000a020000000000aa1': terminal_optica,
             '6670a0a6fe5560837d1cc9bc': 'pendiente',
@@ -169,7 +182,7 @@ class Produccion_PCI( Produccion_PCI ):
         }
         if os_cobre['answers'].get('633d9f63eb936fb6ec9bf580'):
             metadata_cambio['answers']['633d9f63eb936fb6ec9bf580'] = os_cobre['answers']['633d9f63eb936fb6ec9bf580'] # Proyecto
-        metadata_agregar_script = {"device_properties":{"system": "SCRIPT","process":"Cambio de Tecnologia", "accion":'Crear registro', "folio carga":current_folio, "archive":"carga_produccion_hibrido.py"}}
+        metadata_agregar_script = {"device_properties":{"system": "SCRIPT","process":"Cambio de Tecnologia", "accion":'Crear registro', "folio carga":current_folio, "archive":"carga_de_produccion_py3.py"}}
         metadata_cambio["properties"] = metadata_agregar_script
         resp_create = lkf_api.post_forms_answers(metadata_cambio, jwt_settings_key='JWT_KEY_ADMIN')
         return resp_create
@@ -209,14 +222,15 @@ class Produccion_PCI( Produccion_PCI ):
             if os_cobre_found:
                 print("Registro encontrado en la forma {} creando registro de Cambio de tecnologia".format(os_cobre_found['form_id']))
 
-                pos_alfanumerico = self.position_field_in_xls( pos_field_id, None, by_field_id=['f1054000a0200000000000a3'] )
+                pos_alfanumerico = self.position_field_in_xls( pos_field_id, None, by_field_id=[self.f['field_no_serie_contratista']] )
                 alfanumerico = record[pos_alfanumerico] if pos_alfanumerico else ''
+                alfanumerico_pic = os_cobre_found['answers'].get('f1054000a020000000000003', '')
                 
                 puerto = record[ header_dict['puerto'] ] if header_dict.get('puerto') else None
                 
                 terminal_optica = record[ header_dict['terminal_optica'] ] if header_dict.get('terminal_optica') else ''
                 
-                resp_create_cambio = self.create_record_cambio_tec( os_cobre_found, alfanumerico, puerto, terminal_optica, current_record['folio'], dict_info_connections.get(connection_id, {}).get('username', '') )
+                resp_create_cambio = self.create_record_cambio_tec( os_cobre_found, alfanumerico, alfanumerico_pic, puerto, terminal_optica, current_record['folio'], dict_info_connections.get(connection_id, {}).get('username', '') )
                 print('resp_create_cambio =',resp_create_cambio)
                 if resp_create_cambio.get('status_code') != 201:
                     result['create']['error'] = 'Ocurrió un error al crear el registro de cambio de tecnologia'
@@ -499,7 +513,7 @@ class Produccion_PCI( Produccion_PCI ):
                     continue
                 elif lbl == 'Distrito' and (answer.get('f1054000a0100000000000d5',False) or answer.get('f1054000a010000000000003',False)):
                     continue
-                elif lbl == 'Alfanumérico' and answer.get('f1054000a0200000000000a3',False) and len(str(answer.get('f1054000a0200000000000a3', ''))) == 12:
+                elif lbl in ['Alfanumérico', 'Modem - Numero de Serie']: # elif lbl == 'Alfanumérico' and answer.get('f1054000a0200000000000a3',False) and len(str(answer.get('f1054000a0200000000000a3', ''))) == 12:
                     continue
             if str(pos).find('-') > 0:
                 position = int(pos.split('-')[0])
@@ -736,7 +750,7 @@ class Produccion_PCI( Produccion_PCI ):
 
             elif element['scritp_type'] == 'num_serie' and type(position) == int:
                 if record[position]:
-                    answer['f1054000a0200000000000a3'] = record[position]
+                    answer[self.f['field_no_serie_contratista']] = record[position]
             if type(position) != int:
                 if position not in ['clase','tipo','tipo de tarea', 'etapa']:
                     answer.update(lkf_api.make_infosync_json(position, element, best_effort=True))
@@ -754,7 +768,11 @@ class Produccion_PCI( Produccion_PCI ):
                                     record[position] = record[position].decode('utf8')
                                     answer.update(lkf_api.make_infosync_json(record[position], element, best_effort=True))
                             else:
-                                answer.update(lkf_api.make_infosync_json(record[position], element, best_effort=True))
+                                try:
+                                    answer.update(lkf_api.make_infosync_json(record[position], element, best_effort=True))
+                                except Exception as e:
+                                    print('[ERROR] al procesar el valor =',e)
+                                    error.append(f"Error al procesar el valor {record[position]} para el campo {element['label']}")
                     else:
                         if record[position] and isinstance(record[position], str):
                             if element.get('label') and element['label'] == 'Tipo de Tarea':
@@ -815,7 +833,7 @@ class Produccion_PCI( Produccion_PCI ):
                     answer['f1054000a020000000000007'] = 0
                     answer['f1054000a020000000000004'] = 'aerea'
                 if tecnologia_orden == 'fibra':
-                    alfanumerico = str(answer.get('f1054000a0200000000000a3',''))
+                    alfanumerico = str(answer.get(self.f['field_no_serie_contratista'],''))
                     if not is_cargado_desde_pic:
                         if len(alfanumerico) != 12:
                             error.append('Longitud de alfanumerico diferente de 12')
@@ -902,7 +920,7 @@ class Produccion_PCI( Produccion_PCI ):
         accion_actualizacion = 'ACTUALIZACION' if record_existente == 'si' else 'CARGA INICIAL'
 
         metadata_extra = {}
-        metadata_agregar_script = {"device_properties":{"system": "SCRIPT","process":"PROCESO CARGA DE PRODUCCION HIBRIDO", "accion":accion_actualizacion, "folio carga":current_record['folio'], "archive":"carga_produccion_hibrido.py"}}
+        metadata_agregar_script = {"device_properties":{"system": "SCRIPT","process":"PROCESO CARGA DE PRODUCCION HIBRIDO", "accion":accion_actualizacion, "folio carga":current_record['folio'], "archive":"carga_de_produccion_py3.py"}}
         metadata_extra["properties"] = metadata_agregar_script
         this_record.update(metadata_extra)
 
@@ -1301,6 +1319,8 @@ class Produccion_PCI( Produccion_PCI ):
                         print('Parece que todo va en orden con el folio, entonces cargo su documento pdf')
                         folio_to_create = this_record['create']['folio']
                         form_id_to_create = this_record['create']['form_id']
+                        telefono_to_create = this_record['create'].get('answers',{}).get('f1054000a010000000000005','')
+                        area_to_create = this_record['create'].get('answers',{}).get('f1054000a0100000000000a2','')
                         pdf_uploaded = self.upload_pdf_disto( nombre_docto_a_buscar, form_id_to_create, pdfs_found )
                         if pdf_uploaded.get('error', False):
                             record_errors.append(record + [pdf_uploaded.get('error'),])
@@ -1326,16 +1346,16 @@ class Produccion_PCI( Produccion_PCI ):
                             record_errors.append(record + [ p_utils.arregla_msg_error_sistema(response_created_admin) ])
                             continue
 
-                        if folio_psr:
-                            # records_to_psr[ folio_to_create ] = folio_psr
-                            fols_psr_to_update.append( folio_psr )
-
                         # Ahora se crea en IASA
                         resp_copy = self.make_copy_os( this_record['create']['answers'], form_id_turno, current_record['folio'], folio, connection_id )
                         if resp_copy.get('error'):
                             record_errors.append(record + [resp_copy['error'],])
+                            self.rmv_psr_created(settings.config['ACCOUNT_ID'], self.dict_equivalences_forms_id[form_id_to_create], folio_to_create, telefono_to_create, area_to_create)
                             continue
 
+                        if folio_psr:
+                            fols_psr_to_update.append( folio_psr )
+                        
                         # Se actualizan los totales
                         create_json.update(p_utils.update_create_json(create_json, this_record))
 

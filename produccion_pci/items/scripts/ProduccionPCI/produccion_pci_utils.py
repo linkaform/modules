@@ -104,7 +104,9 @@ class Produccion_PCI(Produccion_PCI):
 
         self.f.update({
             'xls_email_contratistas': '60105b997b3c64bb35043c3c',
-            'field_id_cargado_desde_script': '5e17674c50f45bac939c932e'
+            'field_id_cargado_desde_script': '5e17674c50f45bac939c932e',
+            'field_no_serie_contratista': '68e4619b219b1bd06a01a272',
+            'field_no_serie_tecnico': '68e5920a535224073205c2f3',
         })
 
     def get_contratista_complemento( self, id_contratista, get_full_records=False ):
@@ -142,13 +144,13 @@ class Produccion_PCI(Produccion_PCI):
 
         # Se leen los emails del excel
         file_url = self.answers[ self.f['xls_email_contratistas'] ]['file_url']
-        header_contratistas, records_contratistas = self.lkf_api.read_file( file_url )
+        header_contratistas, records_contratistas = self.read_file( file_url )
 
         # Se obtienen las conexiones de la cuenta padre
         all_connections = self.lkf_api.get_all_connections()
 
         dict_emails_connections = { infCon['email']: infCon['id'] for infCon in all_connections if infCon.get('email') and infCon.get('id') }
-        dict_info_connection = { infCon['id']: infCon for infCon in all_connections if infCon.has_key('id') }
+        dict_info_connection = { infCon['id']: infCon for infCon in all_connections if infCon.get('id') }
 
         emails_not_exists, emails_connections = [], []
         for email_contratista in records_contratistas:

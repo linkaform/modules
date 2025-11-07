@@ -72,7 +72,6 @@ class Accesos( Accesos):
         # })
 
         self.CONFIGURACION_DE_RECORRIDOS_FORM = self.lkm.form_id('configuracion_de_recorridos','id')
-        self.BITACORA_RONDINES = self.lkm.form_id('bitacora_rondines','id')
 
         self.f.update({
             'areas_del_rondin': '66462aa5d4a4af2eea07e0d1',
@@ -830,7 +829,9 @@ class Accesos( Accesos):
             }},
             {'$project': {
                 '_id': 1,
+                'timezone': 1,
                 'fecha_programacion': f"$answers.{self.f['fecha_programacion']}",
+                'rondinero_id': f"$answers.{self.USUARIOS_OBJ_ID}.{self.mf['id_usuario']}",
                 'answers': f"$answers"
             }},
         ]
@@ -838,12 +839,12 @@ class Accesos( Accesos):
         rondines = self.format_cr(self.cr.aggregate(query))
         return rondines
 
-    def close_rondines(self, list_of_rondines):
+    def close_rondines(self, list_of_rondines, timezone='America/Mexico_City'):
         #- Expirados son lo que esta en status programados y que tienen mas de 24 de programdos
         # - en progreso son lo que estan con status progreso y tienen mas de 1 hr de su ultimo check.
         answers = {}
-        tz = pytz.timezone('America/Mexico_City')
-        ahora = datetime.now(tz)
+        tiz = pytz.timezone(timezone)
+        ahora_cierre = datetime.now(tiz)
 
         rondines_expirados = []
         rondines_en_proceso_vencidos = []
@@ -851,6 +852,11 @@ class Accesos( Accesos):
         for rondin in list_of_rondines:
             estatus = rondin.get('estatus_del_recorrido')
             fecha_programacion_str = rondin.get('fecha_programacion')
+            user_id = self.unlist(rondin.get('rondinero_id', 0))
+            user_data = self.lkf_api.get_user_by_id(user_id)
+            user_timezone = user_data.get('timezone', 'America/Mexico_City')
+            tz = pytz.timezone(user_timezone)
+            ahora = datetime.now(tz)
 
             if estatus == 'programado' and fecha_programacion_str:
                 fecha_programacion = tz.localize(datetime.strptime(fecha_programacion_str, '%Y-%m-%d %H:%M:%S'))
@@ -865,7 +871,7 @@ class Accesos( Accesos):
                         fecha = tz.localize(datetime.strptime(fecha_str, '%Y-%m-%d %H:%M:%S'))
                         if not ultima_fecha or fecha > ultima_fecha:
                             ultima_fecha = fecha
-                if ultima_fecha and ahora > ultima_fecha + timedelta(hours=1):
+                if ultima_fecha and ahora > ultima_fecha + timedelta(minutes=15):
                     rondines_en_proceso_vencidos.append(rondin)
 
         rondines_ids = []
@@ -874,7 +880,7 @@ class Accesos( Accesos):
             rondines_ids.append(rondin.get('_id'))
 
         answers[self.f['estatus_del_recorrido']] = 'cerrado'
-        answers[self.f['fecha_fin_rondin']] = ahora.strftime('%Y-%m-%d %H:%M:%S')
+        answers[self.f['fecha_fin_rondin']] = ahora_cierre.strftime('%Y-%m-%d %H:%M:%S')
 
         # print(stop)
         if answers:
