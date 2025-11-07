@@ -21,7 +21,6 @@ class Accesos(Accesos):
         total_entradas = self.get_count_ingresos(qr_code)
         print('self', dir(self))
         user_timezone = self.user.get('timezone', "America/Mexico_City")
-        breakpoint()
         diasDisponibles = access_pass.get("limitado_a_dias", [])
         dias_semana = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
         tz = pytz.timezone(user_timezone)
