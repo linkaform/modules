@@ -890,7 +890,7 @@ class Produccion_PCI( Produccion_PCI ):
         if not is_cfe: 
             if answer.get('633d9f63eb936fb6ec9bf581'):
                 answer.pop('633d9f63eb936fb6ec9bf581')
-            if proyecto_record and proyecto_record not in ['psr', 'degradado']:
+            if proyecto_record and proyecto_record not in ['psr', 'degradado', 'contingencia', 'queja_especial']:
                 answer.pop('633d9f63eb936fb6ec9bf580')
         
         this_record.update(metadata)
