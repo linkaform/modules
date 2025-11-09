@@ -1,5 +1,6 @@
 # coding: utf-8
 import os
+import pytz
 import sys, simplejson, json
 import time
 import tempfile
@@ -151,7 +152,8 @@ class Accesos(Accesos):
         }
         
         self.f.update({
-            'bitacora_rondin_url': '690cefdca2dff2f469da17e0'
+            'bitacora_rondin_url': '690cefdca2dff2f469da17e0',
+            'cantidad_areas_inspeccionadas': '68a7b68a22ac030a67b7f8f8'
         })
         
     def clean_text(self, texto):
@@ -400,6 +402,7 @@ class Accesos(Accesos):
     
     def sync_check_area_to_lkf(self, record):
         status = {}
+        rondin_id = record.get('rondin_id', '')
         record_id = record.pop('_id', None)
         record = record.get('record', {})
         payload = {k: record[k] for k in self.check_area_filter.keys() if k in record}
@@ -415,11 +418,157 @@ class Accesos(Accesos):
             record['status'] = 'received'
             self.cr_db.save(record)
             status = {'status_code': 200, 'type': 'success', 'msg': 'Record received successfully', 'data': {}}
+            
+            #! 1. Obtener la bitacora del rondin en Linkaform y obtener las areas ya revisadas
+            time.sleep(1)
+            bitacora_in_lkf = self.get_bitacora_by_id(rondin_id)
+            checks_in_lkf = []
+            for item in bitacora_in_lkf.get('areas_del_rondin', []):
+                if item.get('fecha_hora_inspeccion_area'):
+                    checks_in_lkf.append(item.get('incidente_area'))
+                
+            #! 2. Obtener la bitacora del rondin en CouchDB y obtener las areas ya revisadas
+            bitacora_in_couch = self.cr_db.get(rondin_id)
+            ultimo_check_area_id = bitacora_in_couch.get('record', {}).get('ultimo_check_area_id', '')
+            checks_in_couch = bitacora_in_couch.get('record', {}).get('check_areas', [])
+            format_checks_in_couch = []
+            for item in checks_in_couch:
+                if item.get('checked') and not item.get('area') in checks_in_lkf:
+                    format_checks_in_couch.append(item.get('check_area_id'))
+                    
+            #! 3. Si el ultimo check area es igual al check area que se acaba de crear, actualizar la bitacora en Linkaform
+            if ultimo_check_area_id and ultimo_check_area_id == record_id and format_checks_in_couch:
+                new_checks = self.cr_db.find({
+                    "selector": {
+                        "_id": {"$in": format_checks_in_couch}
+                    }
+                })
+                new_areas = {}
+                for check in new_checks:
+                    new_areas[check.get('record', {}).get('area')] = check.get('record', {})
+                    new_areas[check.get('record', {}).get('area')].update({
+                        'fecha_check': check.get('created_at', ''),
+                        'record_id': record_id
+                    })
+                bitacora_response = self.update_bitacora(bitacora_in_lkf, new_areas)
+                print("bitacora_response", bitacora_response)
         else:
             record['status'] = 'error'
             self.cr_db.save(record)
             status = {'status_code': 400, 'type': 'error', 'msg': response, 'data': {}}
         return status
+    
+    def get_bitacora_by_id(self, record_id):
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.BITACORA_RONDINES,
+                "_id": ObjectId(record_id)
+            }},
+            {"$project": {
+                "_id": 1,
+                "folio": 1,
+                "answers": 1
+            }}
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
+        format_response = self.unlist(response)
+        return format_response
+
+    def parse_date_for_sorting(self, date_str):
+        if not date_str or not date_str.strip():
+            return datetime.max
+        try:
+            return datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+        except:
+            return datetime.max
+
+    def update_bitacora(self, bitacora_in_lkf, new_areas):
+        answers={}
+        areas_list = []
+        conf_recorrido = {}
+        
+        for item in bitacora_in_lkf.get('areas_del_rondin', []):
+            nombre_area = item.get('incidente_area')
+            check = new_areas.get(nombre_area)
+            if check:
+                ts = check.get('fecha_check')
+                fecha_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S") if ts else ""
+                item.update({
+                    'fecha_hora_inspeccion_area': fecha_str,
+                    'foto_evidencia_area_rondin': check.get('fotos', []),
+                    'comentario_area_rondin': check.get('comentarios', ''),
+                    'url_registro_rondin': f"https://app.linkaform.com/#/records/detail/{check.get('record_id', '')}",
+                })
+
+        for key, value in bitacora_in_lkf.items():
+            if key == 'new_user_complete_name':
+                answers[self.USUARIOS_OBJ_ID] = {
+                    self.f['new_user_complete_name']: value,
+                    self.f['new_user_id']: [self.user_id],
+                    self.f['new_user_email']: [self.user_email]
+                }
+            elif key == 'fecha_programacion':
+                answers[self.f['fecha_programacion']] = value
+            elif key == 'fecha_inicio_rondin':
+                answers[self.f['fecha_inicio_rondin']] = value
+            elif key == 'fecha_fin_rondin':
+                answers[self.f['fecha_fin_rondin']] = value
+            elif key == 'estatus_del_recorrido' and value:
+                answers[self.f['estatus_del_recorrido']] = value
+            elif key == 'incidente_location':
+                conf_recorrido.update({
+                    self.f['ubicacion_recorrido']: value
+                })
+            elif key == 'nombre_del_recorrido':
+                conf_recorrido.update({
+                    self.f['nombre_del_recorrido']: value
+                })
+            elif key == 'estatus_del_recorrido':
+                answers[self.f['estatus_del_recorrido']] = value
+            elif key == 'areas_del_rondin':
+                for item in value:
+                    print("item", simplejson.dumps(item, indent=4))
+                    areas_list.append({
+                        self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
+                            self.f['nombre_area']: item.get('incidente_area', ''),
+                            # self.f['tag_id_area_ubicacion']: area_tag_id
+                        },
+                        self.f['fecha_hora_inspeccion_area']: item.get('fecha_hora_inspeccion_area', ''),
+                        self.f['foto_evidencia_area_rondin']: item.get('foto_evidencia_area_rondin', []),
+                        self.f['comentario_area_rondin']: item.get('comentario_area_rondin', ''),
+                        self.f['url_registro_rondin']: item.get('url_registro_rondin', '')
+                    })
+                    
+        all_areas_sorted = sorted(
+            areas_list,
+            key=lambda x: self.parse_date_for_sorting(x.get(self.f['fecha_hora_inspeccion_area'], ''))
+        )
+        answers[self.f['areas_del_rondin']] = all_areas_sorted
+        answers[self.f['estatus_del_recorrido']] = 'en_proceso'
+        answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = conf_recorrido
+        if not answers.get(self.f['fecha_inicio_rondin']):
+            answers[self.f['fecha_inicio_rondin']] = all_areas_sorted[0].get(self.f['fecha_hora_inspeccion_area'], '') if len(all_areas_sorted) > 0 else ''
+
+        if answers:
+            metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_RONDINES)
+            metadata.update(self.get_record_by_folio(bitacora_in_lkf.get('folio'), self.BITACORA_RONDINES, select_columns={'_id': 1}, limit=1))
+
+            metadata.update({
+                'properties': {
+                    "device_properties": {
+                        "system": "Addons",
+                        "process":"Actualizacion de Bitacora", 
+                        "accion":'rondines_cache', 
+                        "folio": bitacora_in_lkf.get('folio'), 
+                        "archive": "rondines_cache.py"
+                    }
+                },
+                'answers': answers,
+                '_id': bitacora_in_lkf.get('_id')
+            })
+            res = self.net.patch_forms_answers(metadata)
+            return res
         
     def create_check_area(self, data):
         # metadata = self.lkf_api.get_metadata(form_id=self.CHECK_UBICACIONES)
@@ -481,6 +630,9 @@ class Accesos(Accesos):
                 answers[self.f['check_status']] = value
             else:
                 continue
+            
+        answers[self.f['bitacora_rondin_url']] = 'test'
+        
         metadata.update({'answers':answers})
         return self.lkf_api.post_forms_answers(metadata)
     
