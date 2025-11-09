@@ -687,34 +687,49 @@ class Accesos(Accesos):
                 f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": location
             })
         
+        # Primero obtener todos los recorridos únicos (sin agrupar por hora)
         query = [
             {"$match": match},
-            {"$project": {
-                "answers": 1,
-                "hora_agrupada": {
-                    "$hour": {
-                        "$dateFromString": {
-                            "dateString": f"$answers.{self.f['fecha_primer_evento']}",
-                            "format": "%Y-%m-%d %H:%M:%S",
-                            "onError": None
-                        }
-                    }
-                }
-            }},
             {"$group": {
-                "_id": "$hora_agrupada",
-                "recorridos": {
-                    "$push": {
-                        "hora_original": f"$answers.{self.f['fecha_primer_evento']}",
+                "_id": None,
+                "recorridos_unicos": {
+                    "$addToSet": {
                         "nombre_del_recorrido": f"$answers.{self.mf['nombre_del_recorrido']}",
                         "areas": f"$answers.{self.f['grupo_de_areas_recorrido']}"
                     }
                 }
             }},
-            {"$sort": {"_id": 1}},
+            # Generar 24 horas del día con los recorridos
+            {"$project": {
+                "_id": 0,
+                "horas_del_dia": {
+                    "$map": {
+                        "input": {"$range": [0, 24]},  # Genera [0,1,2,...,23]
+                        "as": "hora",
+                        "in": {
+                            "hora_agrupada": {
+                                "$concat": [
+                                    {"$cond": [{"$lt": ["$$hora", 10]}, "0", ""]},
+                                    {"$toString": "$$hora"},
+                                    ":00"
+                                ]
+                            },
+                            "hora_numero": "$$hora",
+                            "recorridos": "$recorridos_unicos"
+                        }
+                    }
+                }
+            }},
+            # Descomponer el array de horas en documentos individuales
+            {"$unwind": "$horas_del_dia"},
+            {"$replaceRoot": {"newRoot": "$horas_del_dia"}},
+            # Lookup de bitácoras para cada hora
             {"$lookup": {
                 "from": "form_answer",
-                "let": {"nombres_recorridos": "$recorridos.nombre_del_recorrido"},
+                "let": {
+                    "nombres_recorridos": "$recorridos.nombre_del_recorrido",
+                    "hora_esperada": "$hora_numero"
+                },
                 "pipeline": [
                     {"$match": {
                         "deleted_at": {"$exists": False},
@@ -725,29 +740,49 @@ class Accesos(Accesos):
                                     f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}",
                                     "$$nombres_recorridos"
                                 ]},
-                                {"$eq": [{"$year": "$created_at"}, {"$year": "$$NOW"}]}, #TODO: Cambiar a mes por parametro
-                                {"$eq": [{"$month": "$created_at"}, {"$month": "$$NOW"}]} #TODO: Cambiar a mes por parametro
+                                {"$eq": [{"$year": "$created_at"}, {"$year": "$$NOW"}]},
+                                {"$eq": [{"$month": "$created_at"}, {"$month": "$$NOW"}]},
+                                # Validar que la hora de inicio de la bitácora esté en el rango correcto
+                                {
+                                    "$let": {
+                                        "vars": {
+                                            "hora_bitacora": {
+                                                "$hour": {
+                                                    "$dateFromString": {
+                                                        "dateString": f"$answers.{self.f['fecha_inicio_rondin']}",
+                                                        "format": "%Y-%m-%d %H:%M:%S",
+                                                        "onError": None
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "in": {
+                                            "$and": [
+                                                {"$gte": ["$$hora_bitacora", "$$hora_esperada"]},
+                                                {"$lte": ["$$hora_bitacora", {"$add": ["$$hora_esperada", 1]}]}
+                                            ]
+                                        }
+                                    }
+                                }
                             ]
                         }
                     }},
                     {"$project": {
-                        "_id": 0,
+                        "_id": 1,
                         "hora": f"$answers.{self.f['fecha_inicio_rondin']}",
                         "areas_visitadas": f"$answers.{self.f['grupo_areas_visitadas']}",
                         "incidencias": f"$answers.{self.f['bitacora_rondin_incidencias']}",
+                        "estatus_bitacora": f"$answers.{self.mf['estatus_del_recorrido']}",
                     }}
                 ],
                 "as": "bitacora_rondines"
             }},
+            {"$sort": {"hora_numero": 1}},
             {"$project": {
                 "_id": 0,
-                "hora_agrupada": {"$concat": [
-                    {"$cond": [{"$lt": ["$_id", 10]}, "0", ""]},
-                    {"$toString": "$_id"},
-                    ":00"
-                ]},
+                "hora_agrupada": 1,
                 "recorridos": 1,
-                "bitacora_rondines": 1,
+                "bitacora_rondines": 1
             }}
         ]
         response = self.format_cr(self.cr.aggregate(query))
@@ -843,9 +878,27 @@ class Accesos(Accesos):
                         "estados": estados
                     })
                 
+                # Crear resumen de bitácoras completas (no checks individuales)
+                resumen_estados = []
+                for dia in range(1, days_in_month + 1):
+                    estado_bitacora, bitacora_id = self._get_estado_bitacora_dia(
+                        bitacora_rondines,
+                        dia,
+                        current_year,
+                        current_month,
+                        hora_valida
+                    )
+                    
+                    resumen_estados.append({
+                        "dia": dia,
+                        "estado": estado_bitacora,
+                        "record_id": bitacora_id if estado_bitacora not in ["none", "no_inspeccionada"] else "",
+                    })
+                
                 categorias.append({
                     "titulo": nombre_recorrido,
-                    "areas": areas_formateadas
+                    "areas": areas_formateadas,
+                    "resumen": resumen_estados
                 })
             
             format_data.append({
@@ -853,6 +906,80 @@ class Accesos(Accesos):
                 "categorias": categorias
             })
         return format_data
+    
+    def _get_estado_bitacora_dia(self, bitacora_rondines, dia, year, month, hora_valida):
+        """
+        Determina el estado de una bitácora completa en un día específico.
+        
+        Estados:
+        - "finalizado": Bitácora con estatus "realizado" o "cerrado"
+        - "no_inspeccionada": Bitácora con estatus "cancelado"
+        - "none": Sin bitácora ese día o día futuro
+        
+        Args:
+            bitacora_rondines (list): Lista de bitácoras del recorrido
+            dia (int): Día del mes
+            year (int): Año
+            month (int): Mes
+            hora_valida (str): Hora esperada del recorrido (ej: "8")
+        
+        Returns:
+            tuple: (estado, record_id)
+        """
+        
+        # Buscar bitácora para este día
+        for bitacora in bitacora_rondines:
+            hora_bitacora = bitacora.get('hora', '')
+            estatus_bitacora = bitacora.get('estatus_bitacora', '')
+            bitacora_id = str(bitacora.get('_id', ''))
+            
+            if not hora_bitacora:
+                continue
+            
+            # Parsear fecha de inicio de bitácora
+            try:
+                fecha_bitacora = datetime.strptime(hora_bitacora, '%Y-%m-%d %H:%M:%S')
+            except Exception:
+                try:
+                    fecha_bitacora = datetime.strptime(hora_bitacora, '%Y-%m-%d %H:%M')
+                except Exception:
+                    continue
+            
+            # Verificar si es el día correcto
+            if fecha_bitacora.year != year or fecha_bitacora.month != month or fecha_bitacora.day != dia:
+                continue
+            
+            # Verificar si la hora de inicio está en el rango válido
+            if hora_valida:
+                try:
+                    hora_inicio = fecha_bitacora.hour
+                    hora_esperada = int(hora_valida)
+                    
+                    # La bitácora debe haber iniciado en la hora esperada o máximo 1 hora después
+                    if not (hora_esperada <= hora_inicio <= hora_esperada + 1):
+                        continue
+                except Exception:
+                    pass
+            
+            # Determinar estado según estatus de la bitácora
+            if estatus_bitacora in ['realizado', 'cerrado']:
+                return ("finalizado", bitacora_id)
+            elif estatus_bitacora == 'cancelado':
+                return ("no_inspeccionada", bitacora_id)
+            else:
+                # Cualquier otro estatus se considera finalizado si existe
+                return ("finalizado", bitacora_id)
+        
+        # Si no se encontró bitácora para este día
+        now = datetime.now()
+        fecha_evaluada = datetime(year, month, dia)
+        
+        # Si la fecha evaluada es anterior a hoy, es "no_inspeccionada"
+        if fecha_evaluada.date() < now.date():
+            return ("no_inspeccionada", "")
+        else:
+            # Si es hoy o futuro, es "none"
+            return ("none", "")
     
     def _get_estado_area_dia(self, bitacora_rondines, area_tag_id, nombre_area, dia, year, month, hora_valida):
         """
