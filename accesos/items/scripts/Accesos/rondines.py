@@ -673,14 +673,22 @@ class Accesos(Accesos):
             }
             format_data.append(format_item)
         return format_data
-    
-    def get_bitacora_rondines(self):
+
+    def get_bitacora_rondines(self, location=None):
+        
+        match = {
+            "deleted_at": {"$exists": False},
+            "form_id": self.CONFIGURACION_DE_RECORRIDOS_FORM,
+            # f"answers.{self.mf['nombre_del_recorrido']}": "Recorrido Lunes 6"
+        }
+        
+        if location:
+            match.update({
+                f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": location
+            })
+        
         query = [
-            {"$match": {
-                "deleted_at": {"$exists": False},
-                "form_id": self.CONFIGURACION_DE_RECORRIDOS_FORM,
-                # f"answers.{self.mf['nombre_del_recorrido']}": "Recorrido Lunes 6"
-            }},
+            {"$match": match},
             {"$project": {
                 "answers": 1,
                 "hora_agrupada": {
@@ -1119,7 +1127,7 @@ if __name__ == "__main__":
     elif option == 'get_rondines_images':
         response = class_obj.get_rondines_images(location=ubicacion, area=area, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
     elif option == 'get_bitacora_rondines':
-        response = class_obj.get_bitacora_rondines()
+        response = class_obj.get_bitacora_rondines(location=ubicacion)
     elif option == 'get_check_by_id':
         response = class_obj.get_check_by_id(record_id=record_id)
     elif option == 'pause_or_play_rondin':
