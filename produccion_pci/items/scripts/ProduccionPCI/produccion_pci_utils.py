@@ -55,7 +55,7 @@ class Produccion_PCI(Produccion_PCI):
         self.FORM_ID_PRECIOS_FTTH = self.lkm.form_id('precios_fibra_socio', 'id')
         self.FORM_ID_PRECIOS_COBRE = self.lkm.form_id('precios_cobre_socio', 'id')
         
-        self.FORM_ID_NOMINA = 141928 # self.lkm.form_id('nomina', 'id') Por ahora fijo hasta que se incluya en el modulo
+        self.FORM_ID_NOMINA = self.lkm.form_id('nmina', 'id')
 
         self.FORMA_GENERAR_LIBERACIONES_Y_OCS = self.lkm.form_id('generar_liberaciones_fibra_y_cobre_socio', 'id')
 
@@ -107,8 +107,8 @@ class Produccion_PCI(Produccion_PCI):
             {'tecnologia':'fibra','division':'norte'}, {'tecnologia':'fibra','division':'occidente'},
             
             # Cobre no se ocupa en SR
-            # {'tecnologia':'cobre','division':'metro'}, {'tecnologia':'cobre','division':'sur'}, 
-            # {'tecnologia':'cobre','division':'norte'}, {'tecnologia':'cobre','division':'occidente'}
+            {'tecnologia':'cobre','division':'metro'}, {'tecnologia':'cobre','division':'sur'}, 
+            {'tecnologia':'cobre','division':'norte'}, {'tecnologia':'cobre','division':'occidente'}
         ]
 
         self.f.update({

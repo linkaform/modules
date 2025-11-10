@@ -1473,6 +1473,8 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             response['f19620000000000000001fc4'] = os_answers.get('f1054000a0100000000000a1','')
             response['descuento_20_porciento'] = descuento_20_porciento
             response['february_and_more'] = date_fecha_liquidacion >= date_february
+            response['68f6a337764a6c7697770f8b'] = os_answers.get('f1054000a010000000000007', '') # Expediente
+            response['68f6a337764a6c7697770f8c'] = os_answers.get('f1054000a0100000000000a4', '') # Tipo de Tarea
 
         return response
 
@@ -1507,7 +1509,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         return ORDENES_A_GENERAR
 
     def get_oc_contista_metadata(self, connection_id, folio_payment, folio_oc, descuentos, FORMA_ORDEN_SERVICIO, map_email_connections, oc_count, number_week, metadata, \
-        dict_oc_fecha_nomina, total_20_row=False):
+        dict_oc_fecha_nomina, expedientes_count, total_20_row=False):
         oc_count += 1 #get_folios_num(OC_CONTRATISTA, folio_oc)
 
         metadata['properties'] = self.get_metadata_properties('orden_de_compra.py', 'GENERA OC CONTRATISTA', process='PROCESO CARGA ORDEN COMPRA CONTRATISTA', folio_carga=folio_oc)
@@ -1534,6 +1536,13 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
 
         for folio in folio_payment:
             detail = folio if type(folio) == dict else folio_payment.get(folio)
+            
+            # Si aplica bono por expediente se agrega al set
+            exp_fol = detail.get('68f6a337764a6c7697770f8b')
+            if exp_fol and expedientes_count.get(exp_fol, 0) >= self.bono_produccion_cant_fols_min:
+                detail['68f6a337764a6c7697770f8d'] = self.bono_produccion_monto
+                detail['f1962000000000000001fc10'] += self.bono_produccion_monto
+
             #TODO for incesario la info ya se tiene
             answers['f1962000000000000000fc10'].append(detail)
             total_oc += detail['f1962000000000000001fc10']
@@ -1557,10 +1566,13 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         porcentaje_descuento = descuento_info.get('porcentaje_descuento')
         default_subtotal = descuento_info.get('default_subtotal')
         dict_descuentos_apply = descuento_info.get('dict_descuentos_apply')
+        list_fols_nominas = descuento_info.get('descuentos_nomina_folios')
+        monto_bono = descuento_info.get('monto_bono')
+        answers['68f46455ed909fec6bd90bf4'] = p_utils.add_coma(monto_bono)
 
         if default_subtotal:
             total_oc = default_subtotal
-        total_oc = total_oc - descuento
+        total_oc = total_oc - descuento + monto_bono
 
         for descripcion_descuento, detail_descuento in dict_descuentos_apply.items():
             value_descuento = detail_descuento.get('val', 0)
@@ -1612,6 +1624,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             answers['f19620000000000000000fc6'] = 'Folios Complemento Alta 0: {}'.format(self.list_to_str(list_folios_con_bono))
         metadata['answers'] = answers
         metadata['folios_con_bono'] = list_folios_con_bono
+        metadata['list_fols_nominas'] = list_fols_nominas
         return metadata
 
     def generate_ocs_cobre(self, current_record, LIBERACION_PAGOS, FORMA_ORDEN_SERVICIO, OC_CONTRATISTA, map_email_connections, descuentos, only_connections, number_week, \
@@ -1732,17 +1745,21 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
 
             os_tipo = fila_dict.pop('tipo_os')
             pos_tipo_os = os_tipo if os_tipo in ['TN', 'QI'] else 'all'
+
+            group_ocs_cobre.setdefault( os_anio_liq, { 'TN': {}, 'QI': {}, 'all': {} } )
             
-            if not group_ocs_cobre.get( os_anio_liq ):
-                group_ocs_cobre[ os_anio_liq ] = {
-                    'TN': {},
-                    'QI': {},
-                    'all': {},
-                }
-            if not group_ocs_cobre[ os_anio_liq ][ pos_tipo_os ].get(connection_id):
-                group_ocs_cobre[ os_anio_liq ][ pos_tipo_os ][connection_id] = {}
-            group_ocs_cobre[ os_anio_liq ][ pos_tipo_os ][connection_id][ folio_telefono ] = fila_dict
+            group_ocs_cobre[ os_anio_liq ][ pos_tipo_os ].setdefault( connection_id, { 'folios': {}, 'expedientes_count': {} } )
+            
+            connection_data = group_ocs_cobre[ os_anio_liq ][ pos_tipo_os ][connection_id]
+            connection_data['folios'][ folio_telefono ] = fila_dict
+            
+            expediente_os = fila_dict.get('68f6a337764a6c7697770f8b')
+            if expediente_os:
+                connection_data['expedientes_count'][ expediente_os ] = connection_data['expedientes_count'].get( expediente_os, 0 ) + 1
         
+        # print('-- ++ -- ++ -- ++ group_ocs_cobre =',group_ocs_cobre)
+        # stop
+
         if len(folios) > 0:
             all_errors_to_create = []
             group_ocs_to_create = {}
@@ -1755,46 +1772,47 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                         if only_connections and id_connection not in only_connections:
                             continue
                         
-                        ORDENES_A_GENERAR = self.agrupa_ocs_by_monto_maximo(payments, self.MONTO_MAXIMO_POR_OC)
+                        ORDENES_A_GENERAR = self.agrupa_ocs_by_monto_maximo(payments['folios'], self.MONTO_MAXIMO_POR_OC)
                         
                         # Agrupo las OCs a crear por el contratista al que pertenecen
+                        # where_set_ocs = 'others'
                         if not group_ocs_to_create.get( id_connection ):
-                            #group_ocs_to_create[ id_connection ] = []
                             group_ocs_to_create[ id_connection ] = {'others': []}
-                        where_set_ocs = 'others'
-                        group_ocs_to_create[ id_connection ][ where_set_ocs ].extend( ORDENES_A_GENERAR )
+                        group_ocs_to_create[ id_connection ]['others'].extend( ORDENES_A_GENERAR )
+                        group_ocs_to_create[ id_connection ]['expedientes_count'] = payments['expedientes_count']
             print(f"_____ Obtengo los metadatos de la forma de OC {OC_CONTRATISTA} _____")
             metadata_form = lkf_api.get_metadata(form_id = OC_CONTRATISTA)
 
             for id_conexion, dict_ocs_to_create in group_ocs_to_create.items():
-                for type_oc_create, ocs_to_create in dict_ocs_to_create.items():
-                    print('------- Creando OCs para contratista', id_conexion)
-                    print('------- OCs a crear', len(ocs_to_create))
-                    ocs_sorted = sorted( ocs_to_create, key=lambda i:i['importeTotal'], reverse=True )
-                    for i, oc_to_create in enumerate(ocs_sorted):
-                        folios_2_update = []
-                        foliosByPaco = oc_to_create['foliosToOC']
-                        foliosPaymentInMontoMaximo = {}
-                        for infoFolio in foliosByPaco:
-                            foliosPaymentInMontoMaximo[ infoFolio['_id_record_os'] ] = infoFolio
-                            folios_2_update.append(infoFolio['f19620000000000000001fc1'])
-                        metadata_copy = metadata_form.copy()
+                # for type_oc_create, ocs_to_create in dict_ocs_to_create.items():
+                ocs_to_create = dict_ocs_to_create.get('others', [])
+                print('------- Creando OCs para contratista', id_conexion)
+                print('------- OCs a crear', len(ocs_to_create))
+                ocs_sorted = sorted( ocs_to_create, key=lambda i:i['importeTotal'], reverse=True )
+                for i, oc_to_create in enumerate(ocs_sorted):
+                    folios_2_update = []
+                    foliosByPaco = oc_to_create['foliosToOC']
+                    foliosPaymentInMontoMaximo = {}
+                    for infoFolio in foliosByPaco:
+                        foliosPaymentInMontoMaximo[ infoFolio['_id_record_os'] ] = infoFolio
+                        folios_2_update.append(infoFolio['f19620000000000000001fc1'])
+                    metadata_copy = metadata_form.copy()
 
-                        metadata_oc = self.get_oc_contista_metadata(id_conexion, foliosPaymentInMontoMaximo, folio_oc, descuentos, FORMA_ORDEN_SERVICIO, map_email_connections, oc_count, number_week, metadata_copy, \
-                            dict_oc_fecha_nomina, total_20_row=desc_20_porc_as_row)
-                        # else:
-                        print('len folios de la OC',len(folios_2_update))
-                        list_folios_con_bono = []
-                        if type(metadata_oc) == dict:
-                            list_folios_con_bono = metadata_oc.pop('folios_con_bono')
-                        if type(metadata_oc) == str:
-                            error_create_oc = [metadata_oc,]
-                        else:
-                            error_create_oc = self.create_oc_and_update_status(metadata_oc, id_conexion, LIBERACION_PAGOS, FORMA_ORDEN_SERVICIO, 'cobre', division, list_folios_bonos=list_folios_con_bono)
-                        if error_create_oc:
-                            all_errors_to_create.extend(error_create_oc)
-                        else:
-                            ocs_creadas += 1
+                    metadata_oc = self.get_oc_contista_metadata(id_conexion, foliosPaymentInMontoMaximo, folio_oc, descuentos, FORMA_ORDEN_SERVICIO, map_email_connections, oc_count, number_week, metadata_copy, \
+                        dict_oc_fecha_nomina, dict_ocs_to_create['expedientes_count'], total_20_row=desc_20_porc_as_row)
+                    # else:
+                    print('len folios de la OC',len(folios_2_update))
+                    list_folios_con_bono = []
+                    if type(metadata_oc) == dict:
+                        list_folios_con_bono = metadata_oc.pop('folios_con_bono')
+                    if type(metadata_oc) == str:
+                        error_create_oc = [metadata_oc,]
+                    else:
+                        error_create_oc = self.create_oc_and_update_status(metadata_oc, id_conexion, LIBERACION_PAGOS, FORMA_ORDEN_SERVICIO, 'cobre', division, list_folios_bonos=list_folios_con_bono, list_folios_nominas=metadata_oc.pop('list_fols_nominas', []))
+                    if error_create_oc:
+                        all_errors_to_create.extend(error_create_oc)
+                    else:
+                        ocs_creadas += 1
 
             if all_errors_to_create:
                 msg_response = self.list_to_str(all_errors_to_create)
