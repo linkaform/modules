@@ -135,7 +135,7 @@ class Produccion_PCI( Produccion_PCI ):
         rmv_admin = cr_admin.delete_one(query_to_restore)
         print("++ Eliminado admin =", rmv_admin.deleted_count)
 
-    def desasignar_registro(self, id_connection_assigned, user_id_old, form_id, folio, telefono, area, is_updating_record=False):
+    def desasignar_registro(self, id_connection_assigned, user_id_old, form_id, folio, telefono, area, answers_before_assign, is_updating_record=False):
         if is_updating_record:
             return
         print('+++++++++++ desasignando el registro original')
@@ -149,7 +149,12 @@ class Produccion_PCI( Produccion_PCI ):
         print('+++ rmv_contratista',rmv_contratista)
         unset_conn = cr_admin.update_one(query_to_restore,{"$unset":{'connection_id':''}})
         print('+++ unset_conn:',unset_conn)
-        reset_pci = cr_admin.update_one(query_to_restore,{"$set":{'user_id':user_id_old}})
+
+        data_set = { 'user_id': user_id_old }
+        if answers_before_assign:
+            data_set['answers'] = answers_before_assign
+
+        reset_pci = cr_admin.update_one(query_to_restore,{"$set": data_set})
         print('+++ reset_pci',reset_pci)
 
     def check_os_cobre(self, folio, telefono):
@@ -375,6 +380,7 @@ class Produccion_PCI( Produccion_PCI ):
 
             
             if continue_to_update:
+                answers_before_assign = deepcopy( actual_record['answers'] )
                 this_record = self.create_order_format(record, metadata, pos_field_id, folio, is_update=True, found_record=actual_record, tecnologia_orden=tecnologia_orden, hibrida=hibrida, form_id_turno=form_id_turno, current_record=current_record,\
                     info_cope=info_cope, pos_tipo=pos_tipo, can_create_records=can_create_records, connection_id_base=connection_id, pos_telefono=pos_telefono, autorizaciones_carga_folio=autorizaciones_carga_folio,\
                     tipo_tarea_is_queja=tipo_tarea_is_queja, descuentoXdesfase=descuento15dias, datos_tecnico=datos_tecnico, permisos_contratista=permisos_contratista)
@@ -393,6 +399,7 @@ class Produccion_PCI( Produccion_PCI ):
                 this_record['answers']['_id'] = str(actual_record['_id'])
                 this_record['_id'] = str(actual_record['_id'])
                 this_record['folio_record_admin'] = actual_record['folio']
+                this_record['answers_before_assign'] = answers_before_assign
                 this_record.update( continue_to_update )
                 result['update'] = this_record
                 if msg_error_folio_vencido:
@@ -1100,6 +1107,7 @@ class Produccion_PCI( Produccion_PCI ):
         record_orden.pop('aerea', None)
         record_orden.pop('user_id_old', None)
         record_orden.pop('assigned_to', None)
+        record_orden.pop('answers_before_assign', None)
         return record_orden
 
     def create_record_fibra_cobre_hibrida(self, pos_field_id, records, header, current_record, parent_id, header_dict, pdfs_found, distometros_found, carga_sin_pdf, carga_sin_disto, dif_type='', 
@@ -1374,11 +1382,12 @@ class Produccion_PCI( Produccion_PCI ):
                         telefono_to_update = this_record['update'].get('answers',{}).get('f1054000a010000000000005','')
                         area_to_update = this_record['update'].get('answers',{}).get('f1054000a0100000000000a2','')
                         id_user_old = this_record['update'].get('user_id_old')
+                        answers_prev = this_record['update'].get('answers_before_assign')
 
                         if this_record['update'].get('error'):
                             if this_record['update'].get('assigned_to'):
                                 id_connection_assigned = this_record['update']['assigned_to']
-                                self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update )
+                                self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, answers_prev )
                             if type(this_record['update']['error']) == str:
                                 msg_error_record = this_record['update']['error']
                                 if this_record['update'].get('can_upload_pdf', False):
@@ -1408,14 +1417,14 @@ class Produccion_PCI( Produccion_PCI ):
                         pdf_uploaded = self.upload_pdf_disto( nombre_docto_a_buscar, form_id_to_update, pdfs_found )
                         if pdf_uploaded.get('error', False):
                             record_errors.append(record + [pdf_uploaded.get('error'),])
-                            self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, is_updating_record_exists )
+                            self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, answers_prev, is_updating_record_exists )
                             continue
                         this_record['update']['answers'].update(pdf_uploaded)
                         # Cargando el Distómetro
                         disto_uploaded = self.upload_pdf_disto( nombre_docto_a_buscar, form_id_to_update, distometros_found, def_field_id='5fff390f68b587d973f1958f' )
                         if disto_uploaded.get('error', False):
                             record_errors.append(record + [disto_uploaded.get('error'),])
-                            self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, is_updating_record_exists )
+                            self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, answers_prev, is_updating_record_exists )
                             continue
                         this_record['update']['answers'].update(disto_uploaded)
 
@@ -1435,7 +1444,7 @@ class Produccion_PCI( Produccion_PCI ):
                                 resp_copy = self.make_copy_os( this_record['update']['answers'], form_id_turno, current_record['folio'], folio_to_update, connection_id, data_os_copy=record_os_copy )
                                 if resp_copy.get('error'):
                                     record_errors.append(record + [resp_copy['error'],])
-                                    self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, is_updating_record_exists )
+                                    self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, answers_prev, is_updating_record_exists )
                                     continue
                                 records_ok.append(record+[msg_exitoso,])
                                 create_json.update(p_utils.update_create_json(create_json, this_record))
@@ -1446,7 +1455,7 @@ class Produccion_PCI( Produccion_PCI ):
                                 if this_record['update'].get('assigned_to'):
                                     id_connection_assigned = this_record['update']['assigned_to']
                                     id_user_old = this_record['update']['user_id_old']
-                                    self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, is_updating_record_exists )
+                                    self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, answers_prev, is_updating_record_exists )
                                 msg_error_completo = p_utils.arregla_msg_error_sistema(response)
                                 record_errors.append(record + [msg_error_completo,])
                     elif this_record.get('cambio_tecnologia'):
