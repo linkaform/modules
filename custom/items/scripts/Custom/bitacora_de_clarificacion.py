@@ -52,7 +52,7 @@ class Custom(Custom):
         return convert_int( val_split[0] ), convert_int( val_split[1] )
 
     def validate_start_date(self, val):
-        pattern = r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})"
+        pattern = r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2})"
         m = re.match(pattern, val)
 
         if not m:
