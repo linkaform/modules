@@ -220,6 +220,27 @@ class Accesos(Accesos):
         response = self.lkf_api.patch_multi_record( answers = answers, form_id=121742, folios=[folio])
         return response
 
+    def edit_areas_rondin(self, areas, id_rondin):
+        answers = {}
+        answers[self.rondin_keys['areas']]={}
+        for index, item in enumerate(areas):
+            fotos_area = item.get('foto_area',item.get('foto_area',[]))
+            rondin_area = item.get('rondin_area',item.get('rondin_area',''))
+            geolocalizacion_area_ubicacion = item.get('geolocalizacion_area_ubicacion',item.get('geolocalizacion_area_ubicacion',[]))
+            area_tag_id = item.get('area_tag_id',item.get('area_tag_id',[]))
+            obj={
+                self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID:{
+                    self.f['rondin_area']:rondin_area,
+                    self.f['foto_area']:fotos_area,
+                    self.f['geolocalizacion_area_ubicacion']:geolocalizacion_area_ubicacion
+                    self.f['rondin_area']:rondin_area,
+                    self.f['area_tag_id']:area_tag_id
+                },
+            }
+            answers[self.rondin_keys['areas']][(index+1)*-0]=obj
+        response = self.lkf_api.patch_multi_record( answers = answers, form_id=121742, folios=[id_rondin])
+        return response
+
     def create_register(self, module: str, process: str, action: str, file: str, form_id: int, answers: dict):
         """Crea un registro en Linkaform con los metadatos y respuestas proporcionadas.
 
@@ -485,6 +506,37 @@ class Accesos(Accesos):
             catalog_id = self.AREAS_DE_LAS_UBICACIONES_CAT_ID
             form_id = 121742
             return self.catalogo_view(catalog_id, form_id, options)
+        else:
+            raise Exception("Ubicacion is required.")
+
+    def get_catalog_areas_formatted(self, ubicacion=""):
+        #Obtener areas disponibles para rondin
+        if ubicacion:
+            options = {
+                'startkey': [ubicacion],
+                'endkey': [f"{ubicacion}\n",{}],
+                'group_level':2
+            }
+
+            catalog_id = self.AREAS_DE_LAS_UBICACIONES_CAT_ID
+            form_id = 121742
+            areas = self.catalogo_view(catalog_id, form_id, options)
+            response = self.get_areas_details(areas)
+            areas_formateadas = []
+            for r in response:
+                areas_formateadas.append({
+                    "rondin_area": r.get("area", ""), 
+                    "geolocalizacion_area_ubicacion": [
+                        {
+                            "latitude": r.get("latitude", 0.0),
+                            "longitude": r.get("longitude", 0.0) 
+                        }
+                    ],
+                    "area_tag_id": [r.get("tag_id", "")],  
+                    "foto_area": r.get("image", [])  
+                })
+            print("RESPONSE",simplejson.dumps(areas_formateadas, indent=3))
+            return areas_formateadas
         else:
             raise Exception("Ubicacion is required.")
 
@@ -1388,6 +1440,8 @@ if __name__ == "__main__":
     ubicacion = data.get("ubicacion", None)
     area = data.get("area", None)
     paused = data.get("paused", True)
+    areas = data.get("areas", [])
+    id_rondin = data.get("id_rondin", "")
 
     if option == 'create_rondin':
         response = class_obj.create_rondin(rondin_data=rondin_data)
@@ -1415,6 +1469,10 @@ if __name__ == "__main__":
         response = class_obj.get_bitacora_by_id(record_id=record_id)
     elif option == 'pause_or_play_rondin':
         response = class_obj.pause_or_play_rondin(record_id=record_id, paused=paused)
+    elif option == 'edit_areas_rondin':
+        response = class_obj.edit_areas_rondin(areas=areas, id_rondin=id_rondin)
+    elif option == 'get_catalog_areas_formatted':
+        response = class_obj.get_catalog_areas_formatted(ubicacion=ubicacion)
     else:
         response = {"msg": "Empty"}
     class_obj.HttpResponse({"data": response})
