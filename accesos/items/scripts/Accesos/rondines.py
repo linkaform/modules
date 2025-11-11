@@ -687,49 +687,34 @@ class Accesos(Accesos):
                 f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": location
             })
         
-        # Primero obtener todos los recorridos únicos (sin agrupar por hora)
         query = [
             {"$match": match},
+            {"$project": {
+                "answers": 1,
+                "hora_agrupada": {
+                    "$hour": {
+                        "$dateFromString": {
+                            "dateString": f"$answers.{self.f['fecha_primer_evento']}",
+                            "format": "%Y-%m-%d %H:%M:%S",
+                            "onError": None
+                        }
+                    }
+                }
+            }},
             {"$group": {
-                "_id": None,
-                "recorridos_unicos": {
-                    "$addToSet": {
+                "_id": "$hora_agrupada",
+                "recorridos": {
+                    "$push": {
+                        "hora_original": f"$answers.{self.f['fecha_primer_evento']}",
                         "nombre_del_recorrido": f"$answers.{self.mf['nombre_del_recorrido']}",
                         "areas": f"$answers.{self.f['grupo_de_areas_recorrido']}"
                     }
                 }
             }},
-            # Generar 24 horas del día con los recorridos
-            {"$project": {
-                "_id": 0,
-                "horas_del_dia": {
-                    "$map": {
-                        "input": {"$range": [0, 24]},  # Genera [0,1,2,...,23]
-                        "as": "hora",
-                        "in": {
-                            "hora_agrupada": {
-                                "$concat": [
-                                    {"$cond": [{"$lt": ["$$hora", 10]}, "0", ""]},
-                                    {"$toString": "$$hora"},
-                                    ":00"
-                                ]
-                            },
-                            "hora_numero": "$$hora",
-                            "recorridos": "$recorridos_unicos"
-                        }
-                    }
-                }
-            }},
-            # Descomponer el array de horas en documentos individuales
-            {"$unwind": "$horas_del_dia"},
-            {"$replaceRoot": {"newRoot": "$horas_del_dia"}},
-            # Lookup de bitácoras para cada hora
+            {"$sort": {"_id": 1}},
             {"$lookup": {
                 "from": "form_answer",
-                "let": {
-                    "nombres_recorridos": "$recorridos.nombre_del_recorrido",
-                    "hora_esperada": "$hora_numero"
-                },
+                "let": {"nombres_recorridos": "$recorridos.nombre_del_recorrido"},
                 "pipeline": [
                     {"$match": {
                         "deleted_at": {"$exists": False},
@@ -740,49 +725,29 @@ class Accesos(Accesos):
                                     f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}",
                                     "$$nombres_recorridos"
                                 ]},
-                                {"$eq": [{"$year": "$created_at"}, {"$year": "$$NOW"}]},
-                                {"$eq": [{"$month": "$created_at"}, {"$month": "$$NOW"}]},
-                                # Validar que la hora de inicio de la bitácora esté en el rango correcto
-                                {
-                                    "$let": {
-                                        "vars": {
-                                            "hora_bitacora": {
-                                                "$hour": {
-                                                    "$dateFromString": {
-                                                        "dateString": f"$answers.{self.f['fecha_inicio_rondin']}",
-                                                        "format": "%Y-%m-%d %H:%M:%S",
-                                                        "onError": None
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        "in": {
-                                            "$and": [
-                                                {"$gte": ["$$hora_bitacora", "$$hora_esperada"]},
-                                                {"$lte": ["$$hora_bitacora", {"$add": ["$$hora_esperada", 1]}]}
-                                            ]
-                                        }
-                                    }
-                                }
+                                {"$eq": [{"$year": "$created_at"}, {"$year": "$$NOW"}]}, #TODO: Cambiar a mes por parametro
+                                {"$eq": [{"$month": "$created_at"}, {"$month": "$$NOW"}]} #TODO: Cambiar a mes por parametro
                             ]
                         }
                     }},
                     {"$project": {
-                        "_id": 1,
+                        "_id": 0,
                         "hora": f"$answers.{self.f['fecha_inicio_rondin']}",
                         "areas_visitadas": f"$answers.{self.f['grupo_areas_visitadas']}",
                         "incidencias": f"$answers.{self.f['bitacora_rondin_incidencias']}",
-                        "estatus_bitacora": f"$answers.{self.mf['estatus_del_recorrido']}",
                     }}
                 ],
                 "as": "bitacora_rondines"
             }},
-            {"$sort": {"hora_numero": 1}},
             {"$project": {
                 "_id": 0,
-                "hora_agrupada": 1,
+                "hora_agrupada": {"$concat": [
+                    {"$cond": [{"$lt": ["$_id", 10]}, "0", ""]},
+                    {"$toString": "$_id"},
+                    ":00"
+                ]},
                 "recorridos": 1,
-                "bitacora_rondines": 1
+                "bitacora_rondines": 1,
             }}
         ]
         response = self.format_cr(self.cr.aggregate(query))
