@@ -677,81 +677,66 @@ class Accesos(Accesos):
         return format_data
 
     def get_bitacora_rondines(self, location=None):
-        
         match = {
             "deleted_at": {"$exists": False},
-            "form_id": self.CONFIGURACION_DE_RECORRIDOS_FORM,
-            # f"answers.{self.mf['nombre_del_recorrido']}": "Recorrido Lunes 6"
+            "form_id": self.BITACORA_RONDINES,
+            f"answers.{self.f['fecha_inicio_rondin']}": {"$type": "string", "$ne": ""}, 
+            "$expr": {
+                "$and": [
+                    { "$eq": [ { "$year": "$created_at" }, { "$year": "$$NOW" } ] }, #TODO: Cambiar a mes por parametro
+                    { "$eq": [ { "$month": "$created_at" }, { "$month": "$$NOW" } ] }, #TODO: Cambiar a mes por parametro
+                ]
+            }
         }
         
+
         if location:
             match.update({
-                f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": location
+                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": location,
             })
         
         query = [
             {"$match": match},
             {"$project": {
+                "_id": 1,
                 "answers": 1,
                 "hora_agrupada": {
                     "$hour": {
                         "$dateFromString": {
-                            "dateString": f"$answers.{self.f['fecha_primer_evento']}",
+                            "dateString": f"$answers.{self.f['fecha_inicio_rondin']}",
                             "format": "%Y-%m-%d %H:%M:%S",
                             "onError": None
                         }
                     }
-                }
+                },
+                "recorridos": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}",
+                "bitacora_rondines": "$answers"
             }},
             {"$group": {
                 "_id": "$hora_agrupada",
-                "recorridos": {
+                "recorridos": {"$first": "$recorridos"},
+                "bitacora_rondines": {
                     "$push": {
-                        "hora_original": f"$answers.{self.f['fecha_primer_evento']}",
-                        "nombre_del_recorrido": f"$answers.{self.mf['nombre_del_recorrido']}",
-                        "areas": f"$answers.{self.f['grupo_de_areas_recorrido']}"
+                        "_id": "$_id",
+                        "answers": "$answers"
                     }
                 }
             }},
-            {"$sort": {"_id": 1}},
-            {"$lookup": {
-                "from": "form_answer",
-                "let": {"nombres_recorridos": "$recorridos.nombre_del_recorrido"},
-                "pipeline": [
-                    {"$match": {
-                        "deleted_at": {"$exists": False},
-                        "form_id": self.BITACORA_RONDINES,
-                        "$expr": {
-                            "$and": [
-                                {"$in": [
-                                    f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}",
-                                    "$$nombres_recorridos"
-                                ]},
-                                {"$eq": [{"$year": "$created_at"}, {"$year": "$$NOW"}]}, #TODO: Cambiar a mes por parametro
-                                {"$eq": [{"$month": "$created_at"}, {"$month": "$$NOW"}]} #TODO: Cambiar a mes por parametro
-                            ]
-                        }
-                    }},
-                    {"$project": {
-                        "_id": 1,
-                        "hora": f"$answers.{self.f['fecha_inicio_rondin']}",
-                        "areas_visitadas": f"$answers.{self.f['grupo_areas_visitadas']}",
-                        "incidencias": f"$answers.{self.f['bitacora_rondin_incidencias']}",
-                    }}
-                ],
-                "as": "bitacora_rondines"
-            }},
             {"$project": {
                 "_id": 0,
-                "hora_agrupada": {"$concat": [
-                    {"$cond": [{"$lt": ["$_id", 10]}, "0", ""]},
-                    {"$toString": "$_id"},
-                    ":00"
-                ]},
+                "hora_agrupada": {
+                    "$concat": [
+                        {"$cond": [{"$lt": ["$_id", 10]}, "0", ""]},
+                        {"$toString": "$_id"},
+                        ":00"
+                    ]
+                },
                 "recorridos": 1,
-                "bitacora_rondines": 1,
-            }}
+                "bitacora_rondines": 1
+            }},
+            {"$sort": {"hora_agrupada": 1}}
         ]
+
         response = self.format_cr(self.cr.aggregate(query))
         format_resp = []
         if response:
@@ -759,7 +744,6 @@ class Accesos(Accesos):
         return format_resp
 
     def format_bitacora_rondines(self, data):
-        # Obtener el mes y año actuales
         now = datetime.now()
         current_year = now.year
         current_month = now.month
@@ -769,313 +753,237 @@ class Accesos(Accesos):
         
         for item in data:
             hora_agrupada = item.get('hora_agrupada', '')
-            recorridos = item.get('recorridos', [])
+            nombre_recorrido = item.get('nombre_del_recorrido', '')
             bitacora_rondines = item.get('bitacora_rondines', [])
             
-            # Crear estructura de categorías (una por cada recorrido)
-            categorias = []
+            areas_recorrido = []
+            if bitacora_rondines:
+                primera_bitacora = bitacora_rondines[0]
+                areas_del_rondin = primera_bitacora.get('areas_del_rondin', [])
+                # Extraer solo los nombres de área únicos
+                areas_recorrido = [
+                    {'rondin_area': area.get('rondin_area', ''), 'area_tag_id': area.get('area_tag_id', [])}
+                    for area in areas_del_rondin
+                ]
             
-            for recorrido in recorridos:
-                nombre_recorrido = recorrido.get('nombre_del_recorrido', '')
-                areas_recorrido = recorrido.get('areas', [])
-                hora_valida = recorrido.get('hora_original', '')
-                hora_int = None
-                if hora_valida:
+            hora_valida = ''
+            if bitacora_rondines:
+                fecha_programacion = bitacora_rondines[0].get('fecha_programacion', '')
+                if fecha_programacion:
                     try:
-                        hora_int = datetime.strptime(hora_valida, '%Y-%m-%d %H:%M:%S').hour
+                        hora_valida = str(datetime.strptime(fecha_programacion, '%Y-%m-%d %H:%M:%S').hour)
                     except Exception:
                         try:
-                            hora_int = datetime.strptime(hora_valida, '%Y-%m-%d %H:%M').hour
+                            hora_valida = str(datetime.strptime(fecha_programacion, '%Y-%m-%d %H:%M').hour)
                         except Exception:
-                            try:
-                                hora_int = int(hora_valida.split()[1].split(':')[0])
-                            except Exception:
-                                hora_int = None
-                hora_valida = str(hora_int) if hora_int is not None else ''
+                            pass
+            
+            areas_formateadas = []
+            
+            for area in areas_recorrido:
+                nombre_area = area.get('rondin_area', '')
+                area_tag_id = area.get('area_tag_id', [])
+                area_tag = area_tag_id[0] if area_tag_id else ''
                 
-                # Crear estructura de áreas para esta categoría
-                areas_formateadas = []
-                
-                for area in areas_recorrido:
-                    nombre_area = area.get('rondin_area', '')
-                    area_tag_id = area.get('area_tag_id', [])
-                    area_tag = area_tag_id[0] if area_tag_id else ''
-                    
-                    # Inicializar estados para todos los días del mes
-                    estados = []
-                    for dia in range(1, days_in_month + 1):
-                        # Buscar si existe bitácora para este día y área
-                        estado = self._get_estado_area_dia(
-                            bitacora_rondines, 
-                            area_tag, 
-                            nombre_area, 
-                            dia, 
-                            current_year, 
-                            current_month,
-                            hora_valida
-                        )
-                        
-                        g_id = ""
-                        for bitacora in bitacora_rondines:
-                            areas_visitadas = bitacora.get('areas_visitadas', [])
-
-                            for area_visitada in areas_visitadas:
-                                area_nombre = area_visitada.get('rondin_area', '')
-                                if area_nombre != nombre_area:
-                                    continue
-                                
-                                fecha_str = area_visitada.get('fecha_hora_inspeccion_area', '')
-                                if not fecha_str:
-                                    continue
-                                
-                                url = area_visitada.get('url_registro_rondin', '')
-                                if url:
-                                    g_id_part = url.split('detail/')[-1]
-                                    g_id = g_id_part.split('?')[0].split('#')[0].strip('/')
-
-                        estados.append({
-                            "dia": dia,
-                            "estado": estado,
-                            "record_id": g_id if estado not in ["none", "no_inspeccionada"] else "",
-                        })
-                    
-                    
-                    areas_formateadas.append({
-                        "nombre": nombre_area,
-                        "estados": estados
-                    })
-                
-                # Crear resumen de bitácoras completas (no checks individuales)
-                resumen_estados = []
+                estados = []
                 for dia in range(1, days_in_month + 1):
-                    estado_bitacora, bitacora_id = self._get_estado_bitacora_dia(
-                        bitacora_rondines,
-                        dia,
-                        current_year,
+                    estado = self._get_estado_area_dia(
+                        bitacora_rondines, 
+                        area_tag, 
+                        nombre_area, 
+                        dia, 
+                        current_year, 
                         current_month,
                         hora_valida
                     )
                     
-                    resumen_estados.append({
+                    g_id = ""
+                    for bitacora in bitacora_rondines:
+                        areas_del_rondin = bitacora.get('areas_del_rondin', [])
+                        fecha_inicio = bitacora.get('fecha_inicio_rondin', '')
+                        
+                        if not fecha_inicio:
+                            continue
+                        
+                        try:
+                            fecha_bitacora = datetime.strptime(fecha_inicio, '%Y-%m-%d %H:%M:%S')
+                        except Exception:
+                            try:
+                                fecha_bitacora = datetime.strptime(fecha_inicio, '%Y-%m-%d %H:%M')
+                            except Exception:
+                                continue
+                        
+                        if fecha_bitacora.year != current_year or fecha_bitacora.month != current_month or fecha_bitacora.day != dia:
+                            continue
+                        
+                        for area_check in areas_del_rondin:
+                            area_nombre = area_check.get('rondin_area', '')
+                            if area_nombre != nombre_area:
+                                continue
+                            
+                            fecha_check = area_check.get('fecha_hora_inspeccion_area', '')
+                            if not fecha_check:
+                                continue
+                            
+                            url = area_check.get('url_registro_rondin', '')
+                            if url:
+                                g_id_part = url.split('detail/')[-1]
+                                g_id = g_id_part.split('?')[0].split('#')[0].strip('/')
+                                break
+                        
+                        if g_id:
+                            break
+                    
+                    estados.append({
                         "dia": dia,
-                        "estado": estado_bitacora,
-                        "record_id": bitacora_id if estado_bitacora not in ["none", "no_inspeccionada"] else "",
+                        "estado": estado,
+                        "record_id": g_id if estado not in ["none", "no_inspeccionada"] else "",
                     })
                 
-                categorias.append({
-                    "titulo": nombre_recorrido,
-                    "areas": areas_formateadas,
-                    "resumen": resumen_estados
+                areas_formateadas.append({
+                    "nombre": nombre_area,
+                    "estados": estados
                 })
+            
+            resumen_estados = []
+            for dia in range(1, days_in_month + 1):
+                estado_bitacora, bitacora_id = self._get_estado_bitacora_dia(
+                    bitacora_rondines,
+                    dia,
+                    current_year,
+                    current_month,
+                    hora_valida
+                )
+                
+                resumen_estados.append({
+                    "dia": dia,
+                    "estado": estado_bitacora,
+                    "record_id": bitacora_id if estado_bitacora not in ["none", "no_inspeccionada"] else "",
+                })
+            
+            categorias = [{
+                "titulo": nombre_recorrido,
+                "areas": areas_formateadas,
+                "resumen": resumen_estados
+            }]
             
             format_data.append({
                 "hora": hora_agrupada,
                 "categorias": categorias
             })
+        
         return format_data
     
     def _get_estado_bitacora_dia(self, bitacora_rondines, dia, year, month, hora_valida):
-        """
-        Determina el estado de una bitácora completa en un día específico.
-        
-        Estados:
-        - "finalizado": Bitácora con estatus "realizado" o "cerrado"
-        - "no_inspeccionada": Bitácora con estatus "cancelado"
-        - "none": Sin bitácora ese día o día futuro
-        
-        Args:
-            bitacora_rondines (list): Lista de bitácoras del recorrido
-            dia (int): Día del mes
-            year (int): Año
-            month (int): Mes
-            hora_valida (str): Hora esperada del recorrido (ej: "8")
-        
-        Returns:
-            tuple: (estado, record_id)
-        """
-        
-        # Buscar bitácora para este día
         for bitacora in bitacora_rondines:
-            hora_bitacora = bitacora.get('hora', '')
-            estatus_bitacora = bitacora.get('estatus_bitacora', '')
+            fecha_inicio = bitacora.get('fecha_inicio_rondin', '')
+            estatus_bitacora = bitacora.get('estatus_del_recorrido', '')
+            incidencias = bitacora.get('bitacora_rondin_incidencias', [])
+
             bitacora_id = str(bitacora.get('_id', ''))
+            areas_del_rondin = bitacora.get('areas_del_rondin', [])
+            for area in areas_del_rondin:
+                url = area.get('url_registro_rondin', '')
+                if url:
+                    break
             
-            if not hora_bitacora:
+            if not fecha_inicio:
                 continue
             
-            # Parsear fecha de inicio de bitácora
             try:
-                fecha_bitacora = datetime.strptime(hora_bitacora, '%Y-%m-%d %H:%M:%S')
+                fecha_bitacora = datetime.strptime(fecha_inicio, '%Y-%m-%d %H:%M:%S')
             except Exception:
                 try:
-                    fecha_bitacora = datetime.strptime(hora_bitacora, '%Y-%m-%d %H:%M')
+                    fecha_bitacora = datetime.strptime(fecha_inicio, '%Y-%m-%d %H:%M')
                 except Exception:
                     continue
             
-            # Verificar si es el día correcto
             if fecha_bitacora.year != year or fecha_bitacora.month != month or fecha_bitacora.day != dia:
                 continue
             
-            # Verificar si la hora de inicio está en el rango válido
             if hora_valida:
                 try:
                     hora_inicio = fecha_bitacora.hour
                     hora_esperada = int(hora_valida)
                     
-                    # La bitácora debe haber iniciado en la hora esperada o máximo 1 hora después
                     if not (hora_esperada <= hora_inicio <= hora_esperada + 1):
                         continue
                 except Exception:
                     pass
             
-            # Determinar estado según estatus de la bitácora
+            if incidencias and len(incidencias) > 0:
+                return ('incidencias', bitacora_id)
+            
             if estatus_bitacora in ['realizado', 'cerrado']:
                 return ("finalizado", bitacora_id)
             elif estatus_bitacora == 'cancelado':
                 return ("no_inspeccionada", bitacora_id)
             else:
-                # Cualquier otro estatus se considera finalizado si existe
                 return ("finalizado", bitacora_id)
         
-        # Si no se encontró bitácora para este día
         now = datetime.now()
         fecha_evaluada = datetime(year, month, dia)
         
-        # Si la fecha evaluada es anterior a hoy, es "no_inspeccionada"
         if fecha_evaluada.date() < now.date():
             return ("no_inspeccionada", "")
         else:
-            # Si es hoy o futuro, es "none"
             return ("none", "")
     
     def _get_estado_area_dia(self, bitacora_rondines, area_tag_id, nombre_area, dia, year, month, hora_valida):
-        """
-        Determina si un área fue visitada en un día específico.
-        
-        Estados:
-        - "incidencias": Área con incidencias registradas
-        - "finalizado": Área visitada en la hora correcta
-        - "no_inspeccionada": Área no visitada en día pasado (ya venció)
-        - "none": Área no visitada en día futuro (aún no aplica)
-        
-        Args:
-            bitacora_rondines (list): Lista de bitácoras del recorrido
-            area_tag_id (str): ID del tag del área
-            nombre_area (str): Nombre del área
-            dia (int): Día del mes
-            year (int): Año
-            month (int): Mes
-            hora_valida (str): Hora esperada del recorrido (ej: "8")
-        
-        Returns:
-            str: Estado del área para ese día
-        """
-        
-        # Buscar en las bitácoras si existe visita para este día
         for bitacora in bitacora_rondines:
-            areas_visitadas = bitacora.get('areas_visitadas', [])
-            incidencias = bitacora.get('incidencias', [])
-            hora_bitacora = bitacora.get('hora', '')
+            areas_del_rondin = bitacora.get('areas_del_rondin', [])
+            incidencias = bitacora.get('bitacora_rondin_incidencias', [])
+            fecha_inicio = bitacora.get('fecha_inicio_rondin', '')
             
-            # Primero verificar si hay incidencias para esta área en este día
+            if not fecha_inicio:
+                continue
+            
+            try:
+                fecha_bitacora = datetime.strptime(fecha_inicio, '%Y-%m-%d %H:%M:%S')
+            except Exception:
+                try:
+                    fecha_bitacora = datetime.strptime(fecha_inicio, '%Y-%m-%d %H:%M')
+                except Exception:
+                    continue
+            
+            if fecha_bitacora.year != year or fecha_bitacora.month != month or fecha_bitacora.day != dia:
+                continue
+            
+            if hora_valida:
+                try:
+                    hora_inicio = fecha_bitacora.hour
+                    hora_esperada = int(hora_valida)
+                    
+                    if not (hora_esperada <= hora_inicio <= hora_esperada + 1):
+                        continue
+                except Exception:
+                    pass
+            
             for incidencia in incidencias:
                 nombre_area_incidencia = incidencia.get('nombre_area_salida', '')
                 
-                # Si el nombre del área coincide
-                if nombre_area_incidencia != nombre_area:
-                    continue
-                
-                # Verificar si la fecha de la incidencia corresponde al día buscado
-                fecha_incidencia_str = incidencia.get('fecha_hora_incidente_bitacora', '')
-                if not fecha_incidencia_str:
-                    continue
-                
-                try:
-                    fecha_incidencia = datetime.strptime(fecha_incidencia_str, '%Y-%m-%d %H:%M:%S')
-                except Exception:
-                    try:
-                        fecha_incidencia = datetime.strptime(fecha_incidencia_str, '%Y-%m-%d %H:%M')
-                    except Exception:
-                        continue
-                
-                # Verificar si es el día correcto
-                if fecha_incidencia.year != year or fecha_incidencia.month != month or fecha_incidencia.day != dia:
-                    continue
-                
-                # Verificar si la hora está dentro del rango válido (igual que para visitas)
-                if hora_valida:
-                    try:
-                        hora_incidencia = fecha_incidencia.hour
-                        hora_esperada = int(hora_valida)
-                        
-                        # Permitir que la incidencia esté en la hora esperada o hasta 1 hora después
-                        if hora_esperada <= hora_incidencia <= hora_esperada + 1:
-                            return "incidencias"
-                    except Exception:
-                        # Si no se puede validar la hora, pero el día coincide, considerar como incidencia
-                        return "incidencias"
-                else:
-                    # Si no hay hora válida especificada, solo verificar el día
+                if nombre_area_incidencia == nombre_area:
                     return "incidencias"
             
-            # Si no hay incidencias, verificar si el área fue visitada
-            for area_visitada in areas_visitadas:
-                area_nombre = area_visitada.get('rondin_area', '')
+            for area_check in areas_del_rondin:
+                area_nombre = area_check.get('rondin_area', '')
                 
-                # Verificar si el nombre del área coincide
                 if area_nombre != nombre_area:
                     continue
                 
-                # Verificar si la fecha corresponde al día buscado y está dentro de la hora válida
-                fecha_str = area_visitada.get('fecha_hora_inspeccion_area', '')
+                fecha_check = area_check.get('fecha_hora_inspeccion_area', '')
                 
-                # Si no hay fecha_hora_inspeccion_area, usar la hora de la bitácora
-                if not fecha_str:
-                    fecha_str = hora_bitacora
-                
-                if not fecha_str:
-                    continue
-                
-                try:
-                    fecha_visita = datetime.strptime(fecha_str, '%Y-%m-%d %H:%M:%S')
-                except Exception:
-                    try:
-                        fecha_visita = datetime.strptime(fecha_str, '%Y-%m-%d %H:%M')
-                    except Exception:
-                        continue
-                
-                # Verificar si es el día correcto
-                if fecha_visita.year != year or fecha_visita.month != month or fecha_visita.day != dia:
-                    continue
-                
-                # Verificar si la hora está dentro del rango válido
-                # La hora válida puede ser la hora exacta o una hora después (tolerancia de 1 hora)
-                if hora_valida:
-                    try:
-                        hora_check = fecha_visita.hour
-                        hora_esperada = int(hora_valida)
-                        
-                        # Permitir que el check se haya hecho en la hora esperada o hasta 1 hora después
-                        if hora_esperada <= hora_check <= hora_esperada + 1:
-                            return "finalizado"
-                    except Exception:
-                        # Si no se puede validar la hora, pero el día coincide, considerar como finalizado
-                        return "finalizado"
-                else:
-                    # Si no hay hora válida especificada, solo verificar el día
+                if fecha_check:
                     return "finalizado"
         
-        # Si no se encontró visita para este día, determinar si es pasado o futuro
         now = datetime.now()
         fecha_evaluada = datetime(year, month, dia)
         
-        # Si la fecha evaluada es anterior a hoy, es "no_inspeccionada"
         if fecha_evaluada.date() < now.date():
             return "no_inspeccionada"
         else:
-            # Si es hoy o futuro, es "none"
             return "none"
-        
+    
     def get_check_by_id(self, record_id: str):
         """
         Obtiene los detalles de un check por su ID de registro.
