@@ -232,7 +232,7 @@ class Accesos(Accesos):
                 self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID:{
                     self.f['rondin_area']:rondin_area,
                     self.f['foto_area']:fotos_area,
-                    self.f['geolocalizacion_area_ubicacion']:geolocalizacion_area_ubicacion
+                    self.f['geolocalizacion_area_ubicacion']:geolocalizacion_area_ubicacion,
                     self.f['rondin_area']:rondin_area,
                     self.f['area_tag_id']:area_tag_id
                 },
