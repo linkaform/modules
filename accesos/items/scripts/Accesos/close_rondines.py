@@ -115,6 +115,20 @@ class Accesos(Accesos):
         rondines_expirados = rondines_expirados + rondines_en_proceso_vencidos
         for rondin in rondines_expirados:
             rondines_ids.append(rondin.get('_id'))
+        print('Rondines a cerrar')
+        print("======log: ", rondines_ids)
+
+        db_name = f'clave_{self.user.get("user_id")}'
+        self.cr_db = self.lkf_api.couch.set_db(db_name)
+
+        records = list(self.cr_db.find({
+            "selector": {"_id": {"$in": rondines_ids}}
+        }))
+
+        for record in records:
+            record['inbox'] = False
+            record['status_rondin'] = 'deleted'
+        self.cr_db.update(records)
 
         answers[self.f['estatus_del_recorrido']] = 'cerrado'
         answers[self.f['fecha_fin_rondin']] = ahora.strftime('%Y-%m-%d %H:%M:%S')
