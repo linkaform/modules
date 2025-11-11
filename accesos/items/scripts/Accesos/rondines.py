@@ -23,6 +23,8 @@ class Accesos(Accesos):
         self.f.update({
             'rondin_area': '663e5d44f5b8a7ce8211ed0f',
             'foto_area': '6763096aa99cee046ba766ad',
+            'porcentaje_de_areas_inspeccionadas': '689a7ecfbf2b4be31039388e',
+            'cantidad_areas_inspeccionadas': '68a7b68a22ac030a67b7f8f8',
         })
         
         self.rondin_keys = {
@@ -731,7 +733,7 @@ class Accesos(Accesos):
                         }
                     }},
                     {"$project": {
-                        "_id": 0,
+                        "_id": 1,
                         "hora": f"$answers.{self.f['fecha_inicio_rondin']}",
                         "areas_visitadas": f"$answers.{self.f['grupo_areas_visitadas']}",
                         "incidencias": f"$answers.{self.f['bitacora_rondin_incidencias']}",
@@ -1136,6 +1138,150 @@ class Accesos(Accesos):
         if response:
             format_response = self.format_check_by_id(response)
         return format_response
+    
+    def get_bitacora_by_id(self, record_id):
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.BITACORA_RONDINES,
+                "_id": ObjectId(record_id),
+            }},
+            {"$project": {
+                "_id": 0,
+                "answers": 1
+            }}
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
+        format_response = {}
+        if response:
+            response = self.unlist(response)
+            bitacoras_mes = self.get_bitacoras_mes(response.get('incidente_location', ''), response.get('nombre_del_recorrido', ''))
+            format_response.update({
+                "bitacoras_mes": bitacoras_mes,
+                "fecha_hora_programada": response.get('fecha_programacion', ''),
+                "fecha_inicio": response.get('fecha_inicio_rondin', ''),
+                "fecha_fin": response.get('fecha_fin_rondin', ''),
+                "duracion": response.get('duracion_rondin', ''),
+                "estatus": response.get('estatus_del_recorrido', ''),
+                "recurrencia": response.get('fecha_programacion', ''),
+                "areas_a_inspeccionar": response.get('areas_del_rondin', []),
+                "incidencias": response.get('bitacora_rondin_incidencias', []),
+            })
+        return format_response
+    
+    def get_bitacoras_mes(self, location, nombre_recorrido):
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.BITACORA_RONDINES,
+                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": location,
+                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}": nombre_recorrido,
+                "$expr": {
+                    "$and": [
+                        {"$eq": [{"$year": "$created_at"}, {"$year": "$$NOW"}]},
+                        {"$eq": [{"$month": "$created_at"}, {"$month": "$$NOW"}]}
+                    ]
+                }
+            }},
+            {"$project": {
+                "_id": 1,
+                "answers": 1,
+                "created_at": 1,
+            }}
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
+        format_response = []
+        if response:
+            format_response = self.format_bitacoras_mes(response, nombre_recorrido)
+        return format_response
+
+    def format_bitacoras_mes(self, bitacoras_data, nombre_recorrido):
+        now = datetime.now()
+        current_year = now.year
+        current_month = now.month
+        days_in_month = calendar.monthrange(current_year, current_month)[1]
+        
+        bitacoras_por_dia = {}
+        for bitacora in bitacoras_data:
+            created_at = bitacora.get('created_at')
+            if isinstance(created_at, str):
+                try:
+                    fecha_bitacora = datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S')
+                except Exception:
+                    try:
+                        fecha_bitacora = datetime.strptime(created_at.split()[0], '%Y-%m-%d')
+                    except Exception:
+                        continue
+            elif isinstance(created_at, datetime):
+                fecha_bitacora = created_at
+            else:
+                continue
+            
+            dia = fecha_bitacora.day
+            estatus = bitacora.get('estatus_del_recorrido', '')
+            incidencias = bitacora.get('bitacora_rondin_incidencias', [])
+
+            
+            estado = self._mapear_estado_bitacora(estatus, incidencias)
+            
+            if dia not in bitacoras_por_dia or bitacoras_por_dia[dia]['created_at'] < created_at:
+                bitacoras_por_dia[dia] = {
+                    'estado': estado,
+                    'created_at': created_at,
+                    'record_id': str(bitacora.get('_id', ''))
+                }
+        
+        estados = []
+        for dia in range(1, days_in_month + 1):
+            if dia in bitacoras_por_dia:
+                estado = bitacoras_por_dia[dia]['estado']
+                record_id = bitacoras_por_dia[dia]['record_id']
+            else:
+                fecha_dia = datetime(current_year, current_month, dia)
+                if fecha_dia.date() < now.date():
+                    estado = "no_inspeccionada"
+                else:
+                    estado = "none"
+                record_id = ""
+            
+            estados.append({
+                "dia": dia,
+                "estado": estado,
+                "record_id": record_id
+            })
+        
+        hoy = now.day
+        estado_dia_actual = estados[hoy - 1] if hoy <= days_in_month else estados[-1]
+        
+        format_data = {
+            "recorrido": {
+                "nombre": nombre_recorrido,
+                "estados": estados
+            },
+            "estadoDia": estado_dia_actual
+        }
+        
+        return format_data
+
+    def _mapear_estado_bitacora(self, estatus_bitacora, incidencias):
+        if incidencias and len(incidencias) > 0:
+            return 'incidencias'
+
+        estados_map = {
+            'realizado': 'finalizado',
+            'cerrado': 'finalizado',
+            'completado': 'finalizado',
+            'finalizado': 'finalizado',
+            'cancelado': 'no_inspeccionada',
+            'pendiente': 'none',
+            'en_proceso': 'none',
+        }
+        
+        status_normalizado = estatus_bitacora.lower().strip() if estatus_bitacora else ''
+        for key, value in estados_map.items():
+            if key in status_normalizado:
+                return value
+        return 'finalizado' if estatus_bitacora else 'none'
 
     def format_check_by_id(self, data: dict):
         """
@@ -1357,6 +1503,8 @@ if __name__ == "__main__":
         response = class_obj.get_bitacora_rondines(location=ubicacion)
     elif option == 'get_check_by_id':
         response = class_obj.get_check_by_id(record_id=record_id)
+    elif option == 'get_bitacora_by_id':
+        response = class_obj.get_bitacora_by_id(record_id=record_id)
     elif option == 'pause_or_play_rondin':
         response = class_obj.pause_or_play_rondin(record_id=record_id, paused=paused)
     else:
