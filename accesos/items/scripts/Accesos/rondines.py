@@ -1196,10 +1196,12 @@ class Accesos(Accesos):
                 "documentos": incidencia.get('incidente_documento', []),
             }
             incidencias_area.append(incidencia_formateada)
+            
+        checks_mes = self.get_rondin_checks(data.get('rondin_area', ''), data.get('ubicacion', ''))
         
         format_data = {
             'area': data.get('rondin_area', ''),
-            'checks_mes': [], #TODO: Agregar info de checks del mes
+            'checks_mes': checks_mes,
             'fotos': [{'pic_name': item.get('name', ''),'pic_url': item.get('file_url', '')} for item in data.get('foto_evidencia_area_rondin', [])],
             'hora_de_check': data.get('fecha_hora_inspeccion_area', ''),
             'ubicacion': data.get('ubicacion', ''),
@@ -1208,6 +1210,139 @@ class Accesos(Accesos):
             'incidencias': incidencias_area,
         }
         return format_data
+    
+    def get_rondin_checks(self, area, location):
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.CHECK_UBICACIONES,
+                f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": location,
+                f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['area']}": area,
+                "$expr": {
+                    "$and": [
+                        {"$eq": [{"$year": "$created_at"}, {"$year": "$$NOW"}]},
+                        {"$eq": [{"$month": "$created_at"}, {"$month": "$$NOW"}]}
+                    ]
+                }
+            }},
+            {"$project": {
+                "_id": 1,
+                "answers": 1,
+                "created_at": 1,
+            }}
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
+        format_response = []
+        if response:
+            format_response = self.format_rondin_checks(response)
+        return format_response
+    
+    def format_rondin_checks(self, checks_data):
+        """
+        Formatea los checks del mes en el formato requerido por el frontend.
+        
+        Args:
+            checks_data (list): Lista de checks del mes con sus incidencias
+            area_nombre (str): Nombre del área
+        
+        Returns:
+            dict: Datos formateados con estructura de estados por día
+        """
+        # Obtener el mes y año actuales
+        now = datetime.now()
+        current_year = now.year
+        current_month = now.month
+        days_in_month = calendar.monthrange(current_year, current_month)[1]
+        
+        # Crear diccionario para mapear días a checks
+        checks_por_dia = {}
+        for check in checks_data:
+            created_at = check.get('created_at')
+            if isinstance(created_at, str):
+                try:
+                    fecha_check = datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S')
+                except Exception:
+                    try:
+                        fecha_check = datetime.strptime(created_at.split()[0], '%Y-%m-%d')
+                    except Exception:
+                        continue
+            elif isinstance(created_at, datetime):
+                fecha_check = created_at
+            else:
+                continue
+            
+            dia = fecha_check.day
+            check_area = check.get('check_area', {})
+            incidencias = check.get('incidencias', [])
+            
+            # Determinar estado del check
+            estado = self._get_estado_check(incidencias, self.unlist(check_area.get('rondin_area', '')))
+            
+            # Guardar el check (si hay múltiples checks en un día, mantener el último)
+            if dia not in checks_por_dia or checks_por_dia[dia]['created_at'] < created_at:
+                checks_por_dia[dia] = {
+                    'estado': estado,
+                    'created_at': created_at,
+                    'record_id': str(check.get('_id', ''))
+                }
+        
+        # Crear lista de estados para todos los días del mes
+        estados = []
+        for dia in range(1, days_in_month + 1):
+            if dia in checks_por_dia:
+                estado = checks_por_dia[dia]['estado']
+            else:
+                # Determinar si es día pasado, presente o futuro
+                fecha_dia = datetime(current_year, current_month, dia)
+                if fecha_dia.date() < now.date():
+                    estado = "no_inspeccionada"
+                else:
+                    estado = "none"
+            
+            estados.append({
+                "dia": dia,
+                "estado": estado
+            })
+        
+        # Obtener el estado del día actual
+        hoy = now.day
+        estado_dia_actual = estados[hoy - 1] if hoy <= days_in_month else estados[-1]
+        
+        format_data = {
+            "area": {
+                "nombre": self.unlist(checks_data[0].get('rondin_area', '')),
+                "estados": estados
+            },
+            "estadoDia": estado_dia_actual
+        }
+        
+        return format_data
+    
+    def _get_estado_check(self, incidencias, area_nombre):
+        """
+        Determina el estado de un check según su información.
+        
+        Args:
+            check_area (dict): Información del área visitada en el check
+            incidencias (list): Lista de incidencias de la bitácora
+            area_nombre (str): Nombre del área a evaluar
+        
+        Returns:
+            str: Estado del check ("finalizado", "incidencias", etc.)
+        """
+        # Verificar si hay incidencias para esta área
+        tiene_incidencias = False
+        for incidencia in incidencias:
+            nombre_area_incidencia = incidencia.get('nombre_area_salida', '')
+            if nombre_area_incidencia == area_nombre:
+                tiene_incidencias = True
+                break
+        
+        if tiene_incidencias:
+            return "incidencias"
+        
+        # Si no hay incidencias, el check está finalizado
+        return "finalizado"
     
     def pause_or_play_rondin(self, record_id, paused=True):
         answers = {
