@@ -531,14 +531,15 @@ class Oracle(Oracle):
                         # Se le da formato a los datos para que queden en el catalogo
                         # Se pone una estrella ⭐ delante de la fehca al que sea el ultimo valor reportado.
                         # ese valor debe de ser igual al de ultimo valor
-                        catalogo_metadata['answers'][k] = f"{r_type[:24].ljust(26)} ⭐: {valor_formateado:>12}"
+                        catalogo_metadata['answers'][k] = f"{r_type[:16].ljust(26)} ⭐: {valor_formateado:>12}"
                     else:
-                        catalogo_metadata['answers'][k] = f"{r_type[:24].ljust(28)}   : {valor_formateado:>12}"
+                        catalogo_metadata['answers'][k] = f"{r_type[:16].ljust(28)}   : {valor_formateado:>12}"
                 else:
                     #si el tipo de registro es el ultimo valor, asiganmos valor a la fecha
                     # solo un registro debe de tener la fecha
                     if record_type == 'Ultimo Valor':
                         catalogo_metadata['answers'][k] = v
+                        return {}
         else:
             catalogo_metadata['answers'] = data
         catalogo_metadata['answers'][self.f['tipo_registro']] = record_type
