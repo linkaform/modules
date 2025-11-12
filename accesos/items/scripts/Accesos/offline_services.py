@@ -457,7 +457,8 @@ class Accesos(Accesos):
                         'fecha_check': check.get('created_at', ''),
                         'record_id': record_id
                     })
-                bitacora_response = self.update_bitacora(bitacora_in_lkf, new_areas)
+                new_incidencias = bitacora_in_couch.get('record', {}).get('incidencias', [])
+                bitacora_response = self.update_bitacora(bitacora_in_lkf, new_incidencias, new_areas)
                 print("bitacora_response", bitacora_response)
         else:
             record['status'] = 'error'
@@ -490,20 +491,34 @@ class Accesos(Accesos):
         except:
             return datetime.max
 
-    def update_bitacora(self, bitacora_in_lkf, new_areas):
-        answers={}
-        areas_list = []
+    def format_incidencias_to_bitacora(self, bitacora_in_lkf, new_incidencias, new_areas):
         incidencias_list = []
-        conf_recorrido = {}
+        incidencias_existentes = bitacora_in_lkf.get('bitacora_rondin_incidencias', [])
         
-        for item in new_areas.values():
-            ts = item.get('fecha_check')
-            fecha_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S") if ts else ""
-            area = item.get('area', '')
-            for incidencia in item.get('incidencias', []):
+        for incidencia in new_incidencias:
+            fecha_incidencia = incidencia.get('fecha_incidencia')
+            fecha_str = ""
+            if fecha_incidencia:
+                try:
+                    s = fecha_incidencia.replace("Z", "+00:00")
+                    dt = datetime.fromisoformat(s)
+                    fecha_str = dt.strftime("%Y-%m-%d %H:%M:%S")
+                except Exception:
+                    fecha_str = ""
+            
+            ya_existe = False
+            for inc_existente in incidencias_existentes:
+                if (inc_existente.get('tipo_de_incidencia') == incidencia.get('incidente') and
+                    inc_existente.get('categoria') == incidencia.get('categoria') and
+                    inc_existente.get('nombre_area_salida') == incidencia.get('area') and
+                    inc_existente.get('fecha_hora_incidente_bitacora') == fecha_str):
+                    ya_existe = True
+                    break
+            
+            if not ya_existe:
                 new_item = {
                     self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID: {
-                        self.f['nombre_area_salida']: area,
+                        self.f['nombre_area_salida']: incidencia.get('area'),
                     },
                     self.f['fecha_hora_incidente_bitacora']: fecha_str,
                     self.LISTA_INCIDENCIAS_CAT_OBJ_ID: {
@@ -518,6 +533,67 @@ class Accesos(Accesos):
                     self.f['incidente_documento']: incidencia.get('documento', []),
                 }
                 incidencias_list.append(new_item)
+        
+        for item in new_areas.values():
+            ts = item.get('fecha_check')
+            fecha_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S") if ts else ""
+            area = item.get('area', '')
+            
+            for incidencia in item.get('incidencias', []):
+                ya_existe = False
+                for inc_existente in incidencias_existentes:
+                    if (inc_existente.get('tipo_de_incidencia') == incidencia.get('incidente') and
+                        inc_existente.get('categoria') == incidencia.get('categoria') and
+                        inc_existente.get('nombre_area_salida') == area and
+                        inc_existente.get('fecha_hora_incidente_bitacora') == fecha_str):
+                        ya_existe = True
+                        break
+                
+                if not ya_existe:
+                    new_item = {
+                        self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID: {
+                            self.f['nombre_area_salida']: area,
+                        },
+                        self.f['fecha_hora_incidente_bitacora']: fecha_str,
+                        self.LISTA_INCIDENCIAS_CAT_OBJ_ID: {
+                            self.f['categoria']: incidencia.get('categoria', ''),
+                            self.f['sub_categoria']: incidencia.get('sub_categoria', ''),
+                            self.f['incidente']: incidencia.get('incidente', ''),
+                        },
+                        self.f['incidente_open']: incidencia.get('otro_incidente', ''),
+                        self.f['comentario_incidente_bitacora']: incidencia.get('comentario', ''),
+                        self.f['incidente_accion']: incidencia.get('accion', ''),
+                        self.f['incidente_evidencia']: incidencia.get('evidencia', []),
+                        self.f['incidente_documento']: incidencia.get('documento', []),
+                    }
+                    incidencias_list.append(new_item)
+        
+        for incidencia in incidencias_existentes:
+            new_item = {
+                self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID: {
+                    self.f['nombre_area_salida']: incidencia.get('nombre_area_salida', ''),
+                },
+                self.f['fecha_hora_incidente_bitacora']: incidencia.get('fecha_hora_incidente_bitacora', ''),
+                self.LISTA_INCIDENCIAS_CAT_OBJ_ID: {
+                    self.f['categoria']: incidencia.get('categoria', ''),
+                    self.f['sub_categoria']: incidencia.get('sub_categoria', ''),
+                    self.f['incidente']: incidencia.get('tipo_de_incidencia', ''),
+                },
+                self.f['incidente_open']: incidencia.get('incidente_open', ''),
+                self.f['comentario_incidente_bitacora']: incidencia.get('comentario_incidente_bitacora', ''),
+                self.f['incidente_accion']: incidencia.get('incidente_accion', ''),
+                self.f['incidente_evidencia']: incidencia.get('incidente_evidencia', []),
+                self.f['incidente_documento']: incidencia.get('incidente_documento', []),
+            }
+            incidencias_list.append(new_item)
+        return incidencias_list
+
+    def update_bitacora(self, bitacora_in_lkf, new_incidencias, new_areas):
+        answers={}
+        areas_list = []
+        conf_recorrido = {}
+        
+        incidencias_list = self.format_incidencias_to_bitacora(bitacora_in_lkf, new_incidencias, new_areas)
         answers[self.f['bitacora_rondin_incidencias']] = incidencias_list
         
         for item in bitacora_in_lkf.get('areas_del_rondin', []):
