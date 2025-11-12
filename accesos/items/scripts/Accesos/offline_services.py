@@ -676,12 +676,38 @@ class Accesos(Accesos):
         self.cr_db = self.lkf_api.couch.set_db(db_name)
         record = self.get_couch_record(_id=_id, _rev=_rev)
         status_rondin = record.get('status_rondin', '')
-        if status_rondin == 'deleted':
-            answers[self.f['estatus_del_recorrido']] = 'cancelado'
+        #! TEMP: Hay que regresar el status a deleted
+        if status_rondin == 'completed':
+            answers[self.f['estatus_del_recorrido']] = 'realizado' #!Aqui iria cancelado
             if answers:
                 res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=[_id,])
                 if res.get('status_code') == 201 or res.get('status_code') == 202:
                     status = {'status_code': 200, 'type': 'success', 'msg': 'Rondin closed successfully', 'data': {}}
+                    record['inbox'] = False
+                    record['status'] = 'received'
+                    self.cr_db.save(record)
+                else: 
+                    status = {'status_code': 400, 'type': 'error', 'msg': res, 'data': {}}
+                    record['status'] = 'error'
+                    self.cr_db.save(record)
+        return status
+    
+    def complete_rondin_by_id(self, _id, _rev):
+        status = {}
+        answers = {}
+        if not _id or not _rev:
+            return {'status_code': 400, 'type': 'error', 'msg': 'Record ID and Revision ID are required', 'data': {}}
+        
+        db_name = f'clave_{self.user_id}'
+        self.cr_db = self.lkf_api.couch.set_db(db_name)
+        record = self.get_couch_record(_id=_id, _rev=_rev)
+        status_rondin = record.get('status_rondin', '')
+        if status_rondin == 'completed':
+            answers[self.f['estatus_del_recorrido']] = 'realizado'
+            if answers:
+                res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=[_id,])
+                if res.get('status_code') == 201 or res.get('status_code') == 202:
+                    status = {'status_code': 200, 'type': 'success', 'msg': 'Rondin completed successfully', 'data': {}}
                     record['inbox'] = False
                     record['status'] = 'received'
                     self.cr_db.save(record)
@@ -732,6 +758,8 @@ if __name__ == "__main__":
         response = acceso_obj.assign_user_inbox(data=acceso_obj.answers)
     elif option == 'close_rondin_by_id':
         response = acceso_obj.close_rondin_by_id(_id=_id, _rev=_rev)
+    elif option == 'complete_rondin_by_id':
+        response = acceso_obj.complete_rondin_by_id(_id=_id, _rev=_rev)
     else:
         response = {'status_code': 400, 'type': 'error', 'msg': 'Invalid option', 'data': {}}
 
