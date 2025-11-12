@@ -1299,7 +1299,13 @@ class Accesos(Accesos):
             {"$project": {
                 "_id": 1,
                 "answers": 1,
-                "created_at": 1,
+                "created_at": {
+                    "$dateToString": {
+                        "format": "%Y-%m-%d",
+                        "date": "$created_at",
+                        "timezone": "America/Mexico_City"
+                    }
+                }
             }}
         ]
         response = self.format_cr(self.cr.aggregate(query))
@@ -1331,12 +1337,9 @@ class Accesos(Accesos):
             created_at = check.get('created_at')
             if isinstance(created_at, str):
                 try:
-                    fecha_check = datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S')
+                    fecha_check = datetime.strptime(created_at, '%Y-%m-%d')
                 except Exception:
-                    try:
-                        fecha_check = datetime.strptime(created_at.split()[0], '%Y-%m-%d')
-                    except Exception:
-                        continue
+                    continue
             elif isinstance(created_at, datetime):
                 fecha_check = created_at
             else:
@@ -1362,6 +1365,7 @@ class Accesos(Accesos):
         for dia in range(1, days_in_month + 1):
             if dia in checks_por_dia:
                 estado = checks_por_dia[dia]['estado']
+                record_id = checks_por_dia[dia]['record_id']
             else:
                 # Determinar si es día pasado, presente o futuro
                 fecha_dia = datetime(current_year, current_month, dia)
@@ -1369,10 +1373,12 @@ class Accesos(Accesos):
                     estado = "no_inspeccionada"
                 else:
                     estado = "none"
+                record_id = ""
             
             estados.append({
                 "dia": dia,
-                "estado": estado
+                "estado": estado,
+                "record_id": record_id
             })
         
         # Obtener el estado del día actual
