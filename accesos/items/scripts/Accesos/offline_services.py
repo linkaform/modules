@@ -808,6 +808,77 @@ class Accesos(Accesos):
                     record['status'] = 'error'
                     self.cr_db.save(record)
         return status
+    
+    def get_user_data(self, user_id):
+        query = [{"$match": {
+            "deleted_at": {"$exists": False},
+            "form_id": 129958, #TODO: Modularizar id
+            f"answers.{self.mf['id_usuario']}": user_id
+        }},
+        {"$limit": 1},
+        {"$sort": {"created_at": -1}},
+        {"$project": {
+            "_id": 0,
+            "id": f"$answers.{self.mf['id_usuario']}",
+            "name": f"$answers.{self.mf['nombre_usuario']}",
+            "email": f"$answers.{self.mf['email_visita_a']}",
+        }}]
+        print("query", query)
+        reponse = self.format_cr(self.cr.aggregate(query))
+        format_response = self.unlist(reponse)
+        return format_response
+    
+    def reasignar_rondines(self, records, user_to_assign):
+        status = {}
+        answers = {}
+        bad_items = []
+        good_items = []
+        
+        id = user_to_assign.get('id', 0)
+        name = user_to_assign.get('name', '')
+        user_data = self.get_user_data(user_id=id)
+        email = user_data.get('email', '')
+        
+        if not records:
+            return {'status_code': 400, 'type': 'error', 'msg': 'No records provided', 'data': {}}
+        
+        db_name = f'clave_{self.user_id}'
+        self.cr_db = self.lkf_api.couch.set_db(db_name)
+        for item in records:
+            _id = item.get('_id', None)
+            _rev = item.get('_rev', None)
+            
+            if not _id or not _rev:
+                bad_items.append(item)
+                continue
+            
+            record = self.get_couch_record(_id=_id, _rev=_rev)
+            
+            if record.get('status_code') in [400, 404, 461, 462]:
+                bad_items.append(item)
+                continue
+            
+            if record:
+                good_items.append(_id)
+                record['inbox'] = False
+                record['status_rondin'] = 'deleted'
+                record['status'] = 'received'
+                self.cr_db.save(record)
+        
+        answers[self.USUARIOS_OBJ_ID] = {
+            self.mf['nombre_usuario']: name,
+            self.mf['id_usuario']: [id],
+            self.mf['email_visita_a']: [email],
+        }
+        if good_items:
+            res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=good_items)
+            if res.get('status_code') == 201 or res.get('status_code') == 202:
+                status = {'status_code': 200, 'type': 'success', 'msg': 'Rondines assigned successfully', 'data': {}}
+            else: 
+                status = {'status_code': 400, 'type': 'error', 'msg': res, 'data': {}}
+        if bad_items:
+            status.update({'data': {'bad_items': bad_items, 'good_items': good_items}})
+        return status
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
@@ -823,6 +894,7 @@ if __name__ == "__main__":
     _id = data.get("_id", None)
     _rev = data.get("_rev", None)
     records = data.get("records", [])
+    user_to_assign = data.get("user_to_assign", {})
 
     response = {}
     if option == 'get_user_catalogs':
@@ -853,6 +925,8 @@ if __name__ == "__main__":
         response = acceso_obj.complete_rondin_by_id(_id=_id, _rev=_rev)
     elif option == 'delete_rondines':
         response = acceso_obj.delete_rondines(records=records)
+    elif option == 'reasignar_rondines':
+        response = acceso_obj.reasignar_rondines(records=records, user_to_assign=user_to_assign)
     else:
         response = {'status_code': 400, 'type': 'error', 'msg': 'Invalid option', 'data': {}}
 
