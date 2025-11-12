@@ -111,7 +111,6 @@ class Oracle(Oracle):
                 last_db_update_data = doc.get('date')
         return last_db_update_data
 
-
     def get_answers_by_kind(self, data):
         #todo buscar fecha maxima
         result = {
@@ -466,6 +465,7 @@ class Oracle(Oracle):
         if form_id:
             # print('data=', data)
             res = self.lkf_api.post_forms_answers_list(data)
+            print('res=', res)
             self.verify_complete_sync(data, res)
         elif catalog_id:
             for rec in data:
@@ -758,8 +758,6 @@ if __name__ == "__main__":
                                 ORDER BY c.FECHA ASC"""
                 print('query=',query)
                 header, response = module_obj.sync_db_catalog(db_name=v, query=query)
-                print('header=',header)
-                print('response=',response[:3])
                 view = module_obj.views[v]
                 schema = view['schema']
                 catalog_id = view.get('catalog_id')
