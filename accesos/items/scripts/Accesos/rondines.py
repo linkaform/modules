@@ -56,7 +56,13 @@ class Accesos(Accesos):
             'cada_cuantos_meses_se_repite': 'abcde0001000000000010019',
             'la_recurrencia_cuenta_con_fecha_final': '64374e47a208e5c0ff95e9bd',
             'fecha_final_recurrencia': 'abcde0001000000000010099',
-            'accion_recurrencia': 'abcde00010000000a0000001'
+            'accion_recurrencia': 'abcde00010000000a0000001',
+            'grupo_asignado_rondin':'671055aaa487da57ba57b294',
+            'id_grupo':'639b65dfaf316bacfc551ba2',
+            'cron_id':'abcde0001000000000000000',
+            'status':'abcde00010000000a0000000',
+            'fecha1':'abcde000100000000000f000',
+            'fecha2':'abcde000100000000000f001'
         }
         
     def get_average_rondin_duration(self, location: str, rondin_name: str):
@@ -220,26 +226,64 @@ class Accesos(Accesos):
         response = self.lkf_api.patch_multi_record( answers = answers, form_id=121742, folios=[folio])
         return response
 
-    def edit_areas_rondin(self, areas, id_rondin):
+    def edit_areas_rondin(self, areas, folio, record_id):
+        metadata = self.lkf_api.get_metadata(form_id=self.CONFIGURACION_RECORRIDOS_FORM)
+        metadata.update(self.get_record_by_folio(record_id, self.CONFIGURACION_RECORRIDOS_FORM, select_columns={'_id':1}, limit=1))
+
+        full_rondin =self. get_rondin_by_id(record_id)
+        print(simplejson.dumps(full_rondin, indent=4))
+
         answers = {}
-        answers[self.rondin_keys['areas']]={}
-        for index, item in enumerate(areas):
-            fotos_area = item.get('foto_area',item.get('foto_area',[]))
-            rondin_area = item.get('rondin_area',item.get('rondin_area',''))
-            geolocalizacion_area_ubicacion = item.get('geolocalizacion_area_ubicacion',item.get('geolocalizacion_area_ubicacion',[]))
-            area_tag_id = item.get('area_tag_id',item.get('area_tag_id',[]))
-            obj={
-                self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID:{
-                    self.f['rondin_area']:rondin_area,
-                    self.f['foto_area']:fotos_area,
-                    self.f['geolocalizacion_area_ubicacion']:geolocalizacion_area_ubicacion,
-                    self.f['rondin_area']:rondin_area,
-                    self.f['area_tag_id']:area_tag_id
-                },
-            }
-            answers[self.rondin_keys['areas']][(index+1)*-0]=obj
-        response = self.lkf_api.patch_multi_record( answers = answers, form_id=121742, folios=[id_rondin])
-        return response
+        answers[self.rondin_keys['grupo_asignado_rondin']] = {}
+
+        for key, value in full_rondin.items():
+            if key == 'nombre_del_rondin':
+                print("21323", key)
+                answers.update({f"{self.rondin_keys['nombre_rondin']}":value})
+            elif key == 'ubicacion':
+                answers[self.Location.UBICACIONES_CAT_OBJ_ID]={
+                    self.rondin_keys['ubicacion']: full_rondin.get('ubicacion', ''),
+                    self.f['address_geolocation']: [full_rondin.get('ubicacion_geolocation',{})]
+                }
+            elif key == 'grupo_asignado_rondin':
+                answers[key].append({
+                    self.rondin_keys['grupo_asignado']: full_rondin.get('grupo_asignado', ""),
+                    self.rondin_keys['id_grupo']: full_rondin.get('id_grupo', ""),
+                })
+       
+            else:
+                if key in self.rondin_keys: 
+                    answers.update({
+                        f"{self.rondin_keys[key]}": value
+                    })
+
+        if areas:
+                areas_list = []
+                for a in areas:
+                    obj = {f"{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}":{
+                            self.f['rondin_area'] : a.get('rondin_area', ''),
+                            self.f['foto_area']:a.get('foto_area', ''),
+                            self.f['geolocalizacion_area_ubicacion'] :a.get('geolocalizacion_area_ubicacion', ''),
+                            self.f['area_tag_id'] :a.get('area_tag_id', ''),
+                        }}
+                    areas_list.append(obj)
+        answers.update({self.rondin_keys['areas']:areas_list})
+
+        metadata.update({
+            'properties': {
+                "device_properties":{
+                    "system": "Addons",
+                    "process":"Actualizacion de Areas Rondin", 
+                    "accion":'edit_areas_rondin', 
+                    "folio": folio, 
+                    "archive": "rondines.py"
+                }
+            },
+            'answers': answers,
+            '_id': record_id
+        })
+        res= self.net.patch_forms_answers(metadata)
+        return res
 
     def create_register(self, module: str, process: str, action: str, file: str, form_id: int, answers: dict):
         """Crea un registro en Linkaform con los metadatos y respuestas proporcionadas.
@@ -395,6 +439,23 @@ class Accesos(Accesos):
                 "fecha_final_rondin": {"$ifNull": [f"$answers.{self.f['fecha_final_recurrencia']}", "Sin fecha final"]},
                 "cantidad_de_puntos": {"$size": {"$ifNull": [f"$answers.{self.rondin_keys['areas']}", []]}},
                 "areas": f"$answers.{self.rondin_keys['areas']}",
+                "la_recurrencia_cuenta_con_fecha_final":f"$answers.{self.rondin_keys['la_recurrencia_cuenta_con_fecha_final']}",
+                "grupo_asignado_rondin":f"$answers.{self.rondin_keys['grupo_asignado_rondin']}",
+                "id_grupo":f"$answers.{self.rondin_keys['id_grupo']}",
+                "cron_id":f"$answers.{self.rondin_keys['cron_id']}",
+                "programar_anticipacion":f"$answers.{self.rondin_keys['programar_anticipacion']}",
+                "accion_recurrencia":f"$answers.{self.rondin_keys['accion_recurrencia']}",
+                "en_que_mes":f"$answers.{self.rondin_keys['en_que_mes']}",
+                "en_que_semana_sucede":f"$answers.{self.rondin_keys['en_que_semana_sucede']}",
+                "que_dias_de_la_semana":f"$answers.{self.rondin_keys['que_dias_de_la_semana']}",
+                "sucede_recurrencia":f"$answers.{self.rondin_keys['sucede_recurrencia']}",
+                "sucede_cada":f"$answers.{self.rondin_keys['sucede_cada']}",
+                "se_repite_cada":f"$answers.{self.rondin_keys['se_repite_cada']}",
+                "tiempo_para_ejecutar_tarea_expresado_en":f"$answers.{self.rondin_keys['tiempo_para_ejecutar_tarea_expresado_en']}",
+                "tiempo_para_ejecutar_tarea":f"$answers.{self.rondin_keys['tiempo_para_ejecutar_tarea']}",
+                "fecha_hora_programada":f"$answers.{self.rondin_keys['fecha_hora_programada']}",
+                "fecha1":f"$answers.abcde000100000000000f000",
+                "fecha2":f"$answers.abcde000100000000000f001",
             }},
         ]
 
@@ -1447,7 +1508,6 @@ if __name__ == "__main__":
     area = data.get("area", None)
     paused = data.get("paused", True)
     areas = data.get("areas", [])
-    id_rondin = data.get("id_rondin", "")
 
     if option == 'create_rondin':
         response = class_obj.create_rondin(rondin_data=rondin_data)
@@ -1476,7 +1536,7 @@ if __name__ == "__main__":
     elif option == 'pause_or_play_rondin':
         response = class_obj.pause_or_play_rondin(record_id=record_id, paused=paused)
     elif option == 'edit_areas_rondin':
-        response = class_obj.edit_areas_rondin(areas=areas, id_rondin=id_rondin)
+        response = class_obj.edit_areas_rondin(areas=areas, folio=folio, record_id=record_id)
     elif option == 'get_catalog_areas_formatted':
         response = class_obj.get_catalog_areas_formatted(ubicacion=ubicacion)
     else:
