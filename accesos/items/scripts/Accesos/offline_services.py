@@ -657,6 +657,7 @@ class Accesos(Accesos):
                 if res.get('status_code') == 201 or res.get('status_code') == 202:
                     status = {'status_code': 200, 'type': 'success', 'msg': 'Rondin closed successfully', 'data': {}}
                     record['inbox'] = False
+                    record['status'] = 'received'
                     self.cr_db.save(record)
                 else: 
                     status = {'status_code': 400, 'type': 'error', 'msg': res, 'data': {}}
