@@ -834,9 +834,9 @@ class Accesos(Accesos):
         bad_items = []
         good_items = []
         
-        id = user_to_assign.get('id', 0)
+        user_id = user_to_assign.get('id', 0)
         name = user_to_assign.get('name', '')
-        user_data = self.get_user_data(user_id=id)
+        user_data = self.get_user_data(user_id=user_id)
         email = user_data.get('email', '')
         
         if not records:
@@ -867,7 +867,7 @@ class Accesos(Accesos):
         
         answers[self.USUARIOS_OBJ_ID] = {
             self.mf['nombre_usuario']: name,
-            self.mf['id_usuario']: [id],
+            self.mf['id_usuario']: [user_id],
             self.mf['email_visita_a']: [email],
         }
         if good_items:
