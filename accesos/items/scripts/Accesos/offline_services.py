@@ -1,4 +1,5 @@
 # coding: utf-8
+from hmac import new
 import os
 import pytz
 import sys, simplejson, json
@@ -424,7 +425,7 @@ class Accesos(Accesos):
             status = {'status_code': 200, 'type': 'success', 'msg': 'Record received successfully', 'data': {}}
             
             #! 1. Obtener la bitacora del rondin en Linkaform y obtener las areas ya revisadas
-            time.sleep(1)
+            time.sleep(5)
             bitacora_in_lkf = self.get_bitacora_by_id(rondin_id)
             checks_in_lkf = []
             for item in bitacora_in_lkf.get('areas_del_rondin', []):
@@ -437,10 +438,12 @@ class Accesos(Accesos):
             checks_in_couch = bitacora_in_couch.get('record', {}).get('check_areas', [])
             format_checks_in_couch = []
             for item in checks_in_couch:
+                #! 2.1 Se compara si el check area ya existe en la bitacora de Linkaform
                 if item.get('checked') and not item.get('area') in checks_in_lkf:
                     format_checks_in_couch.append(item.get('check_area_id'))
-                    
-            #! 3. Si el ultimo check area es igual al check area que se acaba de crear, actualizar la bitacora en Linkaform
+
+            #! 3. Si el ultimo check area es igual al check area que se acaba de crear y hay nuevos checks
+            #! se actualiza la bitacora en Linkaform
             if ultimo_check_area_id and ultimo_check_area_id == record_id and format_checks_in_couch:
                 new_checks = self.cr_db.find({
                     "selector": {
@@ -490,7 +493,32 @@ class Accesos(Accesos):
     def update_bitacora(self, bitacora_in_lkf, new_areas):
         answers={}
         areas_list = []
+        incidencias_list = []
         conf_recorrido = {}
+        
+        for item in new_areas.values():
+            ts = item.get('fecha_check')
+            fecha_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S") if ts else ""
+            area = item.get('area', '')
+            for incidencia in item.get('incidencias', []):
+                new_item = {
+                    self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID: {
+                        self.f['nombre_area_salida']: area,
+                    },
+                    self.f['fecha_hora_incidente_bitacora']: fecha_str,
+                    self.LISTA_INCIDENCIAS_CAT_OBJ_ID: {
+                        self.f['categoria']: incidencia.get('categoria', ''),
+                        self.f['sub_categoria']: incidencia.get('sub_categoria', ''),
+                        self.f['incidente']: incidencia.get('incidente', ''),
+                    },
+                    self.f['incidente_open']: incidencia.get('otro_incidente', ''),
+                    self.f['comentario_incidente_bitacora']: incidencia.get('comentario', ''),
+                    self.f['incidente_accion']: incidencia.get('accion', ''),
+                    self.f['incidente_evidencia']: incidencia.get('evidencia', []),
+                    self.f['incidente_documento']: incidencia.get('documento', []),
+                }
+                incidencias_list.append(new_item)
+        answers[self.f['bitacora_rondin_incidencias']] = incidencias_list
         
         for item in bitacora_in_lkf.get('areas_del_rondin', []):
             nombre_area = item.get('incidente_area')
@@ -532,11 +560,9 @@ class Accesos(Accesos):
                 answers[self.f['estatus_del_recorrido']] = value
             elif key == 'areas_del_rondin':
                 for item in value:
-                    print("item", simplejson.dumps(item, indent=4))
                     areas_list.append({
                         self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
                             self.f['nombre_area']: item.get('incidente_area', ''),
-                            # self.f['tag_id_area_ubicacion']: area_tag_id
                         },
                         self.f['fecha_hora_inspeccion_area']: item.get('fecha_hora_inspeccion_area', ''),
                         self.f['foto_evidencia_area_rondin']: item.get('foto_evidencia_area_rondin', []),
