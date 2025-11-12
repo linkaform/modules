@@ -742,30 +742,46 @@ class Accesos(Accesos):
         metadata.update({'answers':answers})
         return self.lkf_api.post_forms_answers(metadata)
     
-    def close_rondin_by_id(self, _id, _rev):
+    def delete_rondines(self, records):
         status = {}
         answers = {}
-        if not _id or not _rev:
-            return {'status_code': 400, 'type': 'error', 'msg': 'Record ID and Revision ID are required', 'data': {}}
+        bad_items = []
+        good_items = []
+        
+        if not records:
+            return {'status_code': 400, 'type': 'error', 'msg': 'No records provided', 'data': {}}
         
         db_name = f'clave_{self.user_id}'
         self.cr_db = self.lkf_api.couch.set_db(db_name)
-        record = self.get_couch_record(_id=_id, _rev=_rev)
-        status_rondin = record.get('status_rondin', '')
-        #! TEMP: Hay que regresar el status a deleted
-        if status_rondin == 'completed':
-            answers[self.f['estatus_del_recorrido']] = 'realizado' #!Aqui iria cancelado
-            if answers:
-                res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=[_id,])
-                if res.get('status_code') == 201 or res.get('status_code') == 202:
-                    status = {'status_code': 200, 'type': 'success', 'msg': 'Rondin closed successfully', 'data': {}}
-                    record['inbox'] = False
-                    record['status'] = 'received'
-                    self.cr_db.save(record)
-                else: 
-                    status = {'status_code': 400, 'type': 'error', 'msg': res, 'data': {}}
-                    record['status'] = 'error'
-                    self.cr_db.save(record)
+        for item in records:
+            _id = item.get('_id', None)
+            _rev = item.get('_rev', None)
+            
+            if not _id or not _rev:
+                bad_items.append(item)
+                continue
+            
+            record = self.get_couch_record(_id=_id, _rev=_rev)
+            
+            if record.get('status_code') in [400, 404, 461, 462]:
+                bad_items.append(item)
+                continue
+            
+            if record.get('status_rondin') == 'deleted':
+                good_items.append(_id)
+                record['inbox'] = False
+                record['status'] = 'received'
+                self.cr_db.save(record)
+        
+        answers[self.f['estatus_del_recorrido']] = 'cancelado'
+        if good_items:
+            res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=good_items)
+            if res.get('status_code') == 201 or res.get('status_code') == 202:
+                status = {'status_code': 200, 'type': 'success', 'msg': 'Rondines deleted successfully', 'data': {}}
+            else: 
+                status = {'status_code': 400, 'type': 'error', 'msg': res, 'data': {}}
+        if bad_items:
+            status.update({'data': {'bad_items': bad_items, 'good_items': good_items}})
         return status
     
     def complete_rondin_by_id(self, _id, _rev):
@@ -806,6 +822,7 @@ if __name__ == "__main__":
     option = data.get("option", script_attr.get('option', ''))
     _id = data.get("_id", None)
     _rev = data.get("_rev", None)
+    records = data.get("records", [])
 
     response = {}
     if option == 'get_user_catalogs':
@@ -832,10 +849,10 @@ if __name__ == "__main__":
 
     elif option == 'assign_user_inbox':
         response = acceso_obj.assign_user_inbox(data=acceso_obj.answers)
-    elif option == 'close_rondin_by_id':
-        response = acceso_obj.close_rondin_by_id(_id=_id, _rev=_rev)
     elif option == 'complete_rondin_by_id':
         response = acceso_obj.complete_rondin_by_id(_id=_id, _rev=_rev)
+    elif option == 'delete_rondines':
+        response = acceso_obj.delete_rondines(records=records)
     else:
         response = {'status_code': 400, 'type': 'error', 'msg': 'Invalid option', 'data': {}}
 
