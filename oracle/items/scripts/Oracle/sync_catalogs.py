@@ -537,9 +537,8 @@ class Oracle(Oracle):
                 else:
                     #si el tipo de registro es el ultimo valor, asiganmos valor a la fecha
                     # solo un registro debe de tener la fecha
-                    if record_type == 'Ultimo Valor':
+                    if record_type == 'Ultimos 0':
                         catalogo_metadata['answers'][k] = v
-                        return {}
         else:
             catalogo_metadata['answers'] = data
         catalogo_metadata['answers'][self.f['tipo_registro']] = record_type
@@ -593,6 +592,7 @@ if __name__ == "__main__":
                 last_update = module_obj.get_last_db_update_data(v)
                 # last_update_date
                 # last_update = None
+                # last_update = '2025-11-10 23:00:00'
                 print('last_update', last_update)
                 module_obj.set_oracle_server(v)
                 update = False
@@ -758,6 +758,8 @@ if __name__ == "__main__":
                                 ORDER BY c.FECHA ASC"""
                 print('query=',query)
                 header, response = module_obj.sync_db_catalog(db_name=v, query=query)
+                print('header=',header)
+                print('response=',response)
                 view = module_obj.views[v]
                 schema = view['schema']
                 catalog_id = view.get('catalog_id')

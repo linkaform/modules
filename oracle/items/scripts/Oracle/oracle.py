@@ -135,7 +135,7 @@ class Oracle(Oracle):
         # header= ['FECHA_HORA', 'ANSWERS']
         # import datetime
 
-        data= [
+        #data= [
             # {
             # 'FECHA_HORA': datetime.datetime(2025, 11, 4, 2, 0), 
             # 'ANSWERS': '{"CONDAGPURGCALD6":610,"PHAGPURGACAL7":8.1,"PHAGPURGACAL6":9.1,"CONDAGPURGCALD7":756}'}, 
