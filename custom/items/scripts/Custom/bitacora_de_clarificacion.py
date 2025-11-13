@@ -95,7 +95,7 @@ class Custom(Custom):
             # Si se están procesando los valors de los campos de Catalogo hay que revisar que venga la leyenda "Ultimo Valor" para considerarlo
             if processing_catalog_values:
                 # Hago el if value_var por casos donde el valor viene como []
-                fecha_resultado = validate_start_date(value_var)
+                fecha_resultado = self.validate_start_date(value_var)
                 # if not value_var or not fecha_resultado: # "ultimo valor" not in value_var.lower():
                 if "⭐" not in value_var:
                     continue
