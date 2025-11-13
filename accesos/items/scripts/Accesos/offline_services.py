@@ -896,6 +896,34 @@ class Accesos(Accesos):
             status.update({'data': {'bad_items': bad_items, 'good_items': good_items}})
         return status
 
+    def get_active_guards(self):
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.REGISTRO_ASISTENCIA,
+                f"answers.{self.f['fecha_inicio_turno']}": {"$exists": True},
+                f"answers.{self.f['fecha_cierre_turno']}": {"$exists": False},
+            }},
+            {"$project": {
+                "_id": 0,
+                "created_by_id": 1,
+                "created_by_name": 1,
+                "created_by_email": 1
+            }}
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
+        format_response = []
+        if response:
+            for item in response:
+                new_item = {
+                    'guard_id': item.get('created_by_id', 0),
+                    'guard_name': item.get('created_by_name', ''),
+                    'guard_email': item.get('created_by_email', ''),
+                }
+                format_response.append(new_item)
+        response = {'status_code': 200, 'type': 'success', 'msg': 'Active guards retrieved successfully', 'data': format_response}
+        return response
+        
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
@@ -943,6 +971,8 @@ if __name__ == "__main__":
         response = acceso_obj.delete_rondines(records=records)
     elif option == 'reasignar_rondines':
         response = acceso_obj.reasignar_rondines(records=records, user_to_assign=user_to_assign)
+    elif option == 'get_active_guards':
+        response = acceso_obj.get_active_guards()
     else:
         response = {'status_code': 400, 'type': 'error', 'msg': 'Invalid option', 'data': {}}
 
