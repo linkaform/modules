@@ -421,6 +421,7 @@ class Accesos(Accesos):
         record = self.cr_db.get(record_id)
         if response.get('status_code') in [200, 201, 202]:
             record['status'] = 'received'
+            record['folio'] = response.get('json', {}).get('folio', '')
             self.cr_db.save(record)
             status = {'status_code': 200, 'type': 'success', 'msg': 'Record received successfully', 'data': {}}
             
