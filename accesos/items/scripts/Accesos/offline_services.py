@@ -784,7 +784,7 @@ class Accesos(Accesos):
             status.update({'data': {'bad_items': bad_items, 'good_items': good_items}})
         return status
     
-    def complete_rondin_by_id(self, records):
+    def complete_rondines(self, records):
         status = {}
         answers = {}
         bad_items = []
