@@ -511,10 +511,21 @@ class Oracle(Oracle):
         last_value_res = self.create_last_variable_value_record()
         return last_value_res
 
+    def ultima_fecha(self, ultima_fecha, record_type):
+        mango_query = { "selector": {f"answers.{self.f['tipo_registro']}": record_type} }
+        record = self.lkf_api.search_catalog(self.VARIABLES_CRITICAS_PRODUCCION, mango_query)
+        if record:
+            rec = record[0]
+            if rec.get(self.f['fecha']) > ultima_fecha:
+                return rec.get(self.f['fecha'])
+        return ultima_fecha
+
     def upsert_catalog_record(self, data, record_type):
         """
         Searches for a catalog record, if not found creat it, if found update it!!!
         """
+        if record_type == 'ultimo_valor':
+            return {}
         catalogo_metadata = self.lkf_api.get_catalog_metadata(catalog_id=self.VARIABLES_CRITICAS_PRODUCCION)
         if data.get('answers'):
             catalogo_metadata['answers'] = {}
@@ -531,16 +542,18 @@ class Oracle(Oracle):
                         # Se le da formato a los datos para que queden en el catalogo
                         # Se pone una estrella ⭐ delante de la fehca al que sea el ultimo valor reportado.
                         # ese valor debe de ser igual al de ultimo valor
-                        catalogo_metadata['answers'][k] = f"{r_type[:16].ljust(26)} ⭐: {valor_formateado:>12}"
+                        catalogo_metadata['answers'][k] = f"{str(r_type[:16] + '   ⭐').ljust(20)} : {valor_formateado:>12}"
                     else:
-                        catalogo_metadata['answers'][k] = f"{r_type[:16].ljust(28)}   : {valor_formateado:>12}"
+                        catalogo_metadata['answers'][k] = f"{str(r_type[:16] ).ljust(20)} : {valor_formateado:>12}"
                 else:
                     #si el tipo de registro es el ultimo valor, asiganmos valor a la fecha
                     # solo un registro debe de tener la fecha
                     if record_type == 'Ultimos 0':
-                        catalogo_metadata['answers'][k] = v
+                        ultima_fecha = self.ultima_fecha(v, record_type)
+                        catalogo_metadata['answers'][k] = ultima_fecha
         else:
             catalogo_metadata['answers'] = data
+        
         catalogo_metadata['answers'][self.f['tipo_registro']] = record_type
         catalogo_metadata['answers'][self.f['variable_criticas']] = 'Variables críticas'
         mango_query = { "selector": {f"answers.{self.f['tipo_registro']}": record_type} }
