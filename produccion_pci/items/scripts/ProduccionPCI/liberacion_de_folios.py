@@ -539,6 +539,8 @@ class Produccion_PCI( Produccion_PCI ):
             registro_detalle['681c0e22e3d9bc611e3a5187'] = 1
         elif tipo_trabajo.lower() == 'a4':
             registro_detalle['681c0e22e3d9bc611e3a5188'] = 1
+        elif tipo_trabajo.lower() == 'a2':
+            registro_detalle['6916c12d5ab0bd965da971b3'] = 1
         else:
             registro_detalle['681c0e22e3d9bc611e3a5189'] = 1
 
