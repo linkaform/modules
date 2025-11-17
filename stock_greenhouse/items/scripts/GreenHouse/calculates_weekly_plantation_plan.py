@@ -46,7 +46,7 @@ def calculations(current_record):
                 error_msg = {
                         "61ef32bcdf0ec2ba73dec33d": {"msg": [ "No recipe with Start Size S4 found for : {}".format(plant_code)], "label": "Plant code", "error": []}
                     }
-                raise Exception(simplejson.dumps(error_msg))
+                stock_obj.LKFException(simplejson.dumps(error_msg))
             recipe = stock_obj.select_S4_recipe(recipes[plant_code], week)
             # print('=== recipe',simplejson.dumps(recipe, indent=4))
 
@@ -56,7 +56,12 @@ def calculations(current_record):
             else:
                 per_container = recipe.get('per_container')
 
-            qty_per_container = float( per_container )
+            if not per_container:
+                error_msg = {
+                        "6205f73281bb36a6f157335b": {"msg": [ "No per container found on Recipe for : {}".format(plant_code)], "label": "Plant code", "error": []}
+                    }
+                stock_obj.LKFException(error_msg)
+            qty_per_container = float( per_container)
             subtotal_flats = math.ceil(required_eaches / qty_per_container)
             total_flats += subtotal_flats
             s['63f6db6474ef4ca424ff48e3'] = subtotal_flats
