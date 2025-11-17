@@ -1,4 +1,5 @@
 # coding: utf-8
+from hmac import new
 import os
 import pytz
 import sys, simplejson, json
@@ -420,11 +421,12 @@ class Accesos(Accesos):
         record = self.cr_db.get(record_id)
         if response.get('status_code') in [200, 201, 202]:
             record['status'] = 'received'
+            record['folio'] = response.get('json', {}).get('folio', '')
             self.cr_db.save(record)
             status = {'status_code': 200, 'type': 'success', 'msg': 'Record received successfully', 'data': {}}
             
             #! 1. Obtener la bitacora del rondin en Linkaform y obtener las areas ya revisadas
-            time.sleep(1)
+            time.sleep(5)
             bitacora_in_lkf = self.get_bitacora_by_id(rondin_id)
             checks_in_lkf = []
             for item in bitacora_in_lkf.get('areas_del_rondin', []):
@@ -437,10 +439,12 @@ class Accesos(Accesos):
             checks_in_couch = bitacora_in_couch.get('record', {}).get('check_areas', [])
             format_checks_in_couch = []
             for item in checks_in_couch:
+                #! 2.1 Se compara si el check area ya existe en la bitacora de Linkaform
                 if item.get('checked') and not item.get('area') in checks_in_lkf:
                     format_checks_in_couch.append(item.get('check_area_id'))
-                    
-            #! 3. Si el ultimo check area es igual al check area que se acaba de crear, actualizar la bitacora en Linkaform
+
+            #! 3. Si el ultimo check area es igual al check area que se acaba de crear y hay nuevos checks
+            #! se actualiza la bitacora en Linkaform
             if ultimo_check_area_id and ultimo_check_area_id == record_id and format_checks_in_couch:
                 new_checks = self.cr_db.find({
                     "selector": {
@@ -452,9 +456,10 @@ class Accesos(Accesos):
                     new_areas[check.get('record', {}).get('area')] = check.get('record', {})
                     new_areas[check.get('record', {}).get('area')].update({
                         'fecha_check': check.get('created_at', ''),
-                        'record_id': record_id
+                        'record_id': check.get('_id', '')
                     })
-                bitacora_response = self.update_bitacora(bitacora_in_lkf, new_areas)
+                new_incidencias = bitacora_in_couch.get('record', {}).get('incidencias', [])
+                bitacora_response = self.update_bitacora(bitacora_in_lkf, new_incidencias, new_areas)
                 print("bitacora_response", bitacora_response)
         else:
             record['status'] = 'error'
@@ -487,10 +492,110 @@ class Accesos(Accesos):
         except:
             return datetime.max
 
-    def update_bitacora(self, bitacora_in_lkf, new_areas):
+    def format_incidencias_to_bitacora(self, bitacora_in_lkf, new_incidencias, new_areas):
+        incidencias_list = []
+        incidencias_existentes = bitacora_in_lkf.get('bitacora_rondin_incidencias', [])
+        
+        for incidencia in new_incidencias:
+            fecha_incidencia = incidencia.get('fecha_incidencia')
+            fecha_str = ""
+            if fecha_incidencia:
+                try:
+                    s = fecha_incidencia.replace("Z", "+00:00")
+                    dt = datetime.fromisoformat(s)
+                    fecha_str = dt.strftime("%Y-%m-%d %H:%M:%S")
+                except Exception:
+                    fecha_str = ""
+            
+            ya_existe = False
+            for inc_existente in incidencias_existentes:
+                if (inc_existente.get('tipo_de_incidencia') == incidencia.get('incidente') and
+                    inc_existente.get('categoria') == incidencia.get('categoria') and
+                    inc_existente.get('nombre_area_salida') == incidencia.get('area') and
+                    inc_existente.get('fecha_hora_incidente_bitacora') == fecha_str):
+                    ya_existe = True
+                    break
+            
+            if not ya_existe:
+                new_item = {
+                    self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID: {
+                        self.f['nombre_area_salida']: incidencia.get('area'),
+                    },
+                    self.f['fecha_hora_incidente_bitacora']: fecha_str,
+                    self.LISTA_INCIDENCIAS_CAT_OBJ_ID: {
+                        self.f['categoria']: incidencia.get('categoria', ''),
+                        self.f['sub_categoria']: incidencia.get('sub_categoria', ''),
+                        self.f['incidente']: incidencia.get('incidente', ''),
+                    },
+                    self.f['incidente_open']: incidencia.get('otro_incidente', ''),
+                    self.f['comentario_incidente_bitacora']: incidencia.get('comentario', ''),
+                    self.f['incidente_accion']: incidencia.get('accion', ''),
+                    self.f['incidente_evidencia']: incidencia.get('evidencia', []),
+                    self.f['incidente_documento']: incidencia.get('documento', []),
+                }
+                incidencias_list.append(new_item)
+        
+        for item in new_areas.values():
+            ts = item.get('fecha_check')
+            fecha_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S") if ts else ""
+            area = item.get('area', '')
+            
+            for incidencia in item.get('incidencias', []):
+                ya_existe = False
+                for inc_existente in incidencias_existentes:
+                    if (inc_existente.get('tipo_de_incidencia') == incidencia.get('incidente') and
+                        inc_existente.get('categoria') == incidencia.get('categoria') and
+                        inc_existente.get('nombre_area_salida') == area and
+                        inc_existente.get('fecha_hora_incidente_bitacora') == fecha_str):
+                        ya_existe = True
+                        break
+                
+                if not ya_existe:
+                    new_item = {
+                        self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID: {
+                            self.f['nombre_area_salida']: area,
+                        },
+                        self.f['fecha_hora_incidente_bitacora']: fecha_str,
+                        self.LISTA_INCIDENCIAS_CAT_OBJ_ID: {
+                            self.f['categoria']: incidencia.get('categoria', ''),
+                            self.f['sub_categoria']: incidencia.get('sub_categoria', ''),
+                            self.f['incidente']: incidencia.get('incidente', ''),
+                        },
+                        self.f['incidente_open']: incidencia.get('otro_incidente', ''),
+                        self.f['comentario_incidente_bitacora']: incidencia.get('comentario', ''),
+                        self.f['incidente_accion']: incidencia.get('accion', ''),
+                        self.f['incidente_evidencia']: incidencia.get('evidencia', []),
+                        self.f['incidente_documento']: incidencia.get('documento', []),
+                    }
+                    incidencias_list.append(new_item)
+        
+        for incidencia in incidencias_existentes:
+            new_item = {
+                self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID: {
+                    self.f['nombre_area_salida']: incidencia.get('nombre_area_salida', ''),
+                },
+                self.f['fecha_hora_incidente_bitacora']: incidencia.get('fecha_hora_incidente_bitacora', ''),
+                self.LISTA_INCIDENCIAS_CAT_OBJ_ID: {
+                    self.f['categoria']: incidencia.get('categoria', ''),
+                    self.f['sub_categoria']: incidencia.get('sub_categoria', ''),
+                    self.f['incidente']: incidencia.get('tipo_de_incidencia', ''),
+                },
+                self.f['incidente_open']: incidencia.get('incidente_open', ''),
+                self.f['comentario_incidente_bitacora']: incidencia.get('comentario_incidente_bitacora', ''),
+                self.f['incidente_accion']: incidencia.get('incidente_accion', ''),
+                self.f['incidente_evidencia']: incidencia.get('incidente_evidencia', []),
+                self.f['incidente_documento']: incidencia.get('incidente_documento', []),
+            }
+            incidencias_list.append(new_item)
+        return incidencias_list
+
+    def update_bitacora(self, bitacora_in_lkf, new_incidencias, new_areas):
         answers={}
         areas_list = []
         conf_recorrido = {}
+        
+        incidencias_list = self.format_incidencias_to_bitacora(bitacora_in_lkf, new_incidencias, new_areas)
+        answers[self.f['bitacora_rondin_incidencias']] = incidencias_list
         
         for item in bitacora_in_lkf.get('areas_del_rondin', []):
             nombre_area = item.get('incidente_area')
@@ -532,11 +637,9 @@ class Accesos(Accesos):
                 answers[self.f['estatus_del_recorrido']] = value
             elif key == 'areas_del_rondin':
                 for item in value:
-                    print("item", simplejson.dumps(item, indent=4))
                     areas_list.append({
                         self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
                             self.f['nombre_area']: item.get('incidente_area', ''),
-                            # self.f['tag_id_area_ubicacion']: area_tag_id
                         },
                         self.f['fecha_hora_inspeccion_area']: item.get('fecha_hora_inspeccion_area', ''),
                         self.f['foto_evidencia_area_rondin']: item.get('foto_evidencia_area_rondin', []),
@@ -640,30 +743,188 @@ class Accesos(Accesos):
         metadata.update({'answers':answers})
         return self.lkf_api.post_forms_answers(metadata)
     
-    def close_rondin_by_id(self, _id, _rev):
+    def delete_rondines(self, records):
         status = {}
         answers = {}
-        if not _id or not _rev:
-            return {'status_code': 400, 'type': 'error', 'msg': 'Record ID and Revision ID are required', 'data': {}}
+        bad_items = []
+        good_items = []
+        
+        if not records:
+            return {'status_code': 400, 'type': 'error', 'msg': 'No records provided', 'data': {}}
         
         db_name = f'clave_{self.user_id}'
         self.cr_db = self.lkf_api.couch.set_db(db_name)
-        record = self.get_couch_record(_id=_id, _rev=_rev)
-        status_rondin = record.get('status_rondin', '')
-        if status_rondin == 'deleted':
-            answers[self.f['estatus_del_recorrido']] = 'cancelado'
-            if answers:
-                res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=[_id,])
-                if res.get('status_code') == 201 or res.get('status_code') == 202:
-                    status = {'status_code': 200, 'type': 'success', 'msg': 'Rondin closed successfully', 'data': {}}
-                    record['inbox'] = False
-                    self.cr_db.save(record)
-                else: 
-                    status = {'status_code': 400, 'type': 'error', 'msg': res, 'data': {}}
-                    record['status'] = 'error'
-                    self.cr_db.save(record)
+        for item in records:
+            _id = item.get('_id', None)
+            _rev = item.get('_rev', None)
+            
+            if not _id or not _rev:
+                bad_items.append(item)
+                continue
+            
+            record = self.get_couch_record(_id=_id, _rev=_rev)
+            
+            if record.get('status_code') in [400, 404, 461, 462]:
+                bad_items.append(item)
+                continue
+            
+            if record.get('status_rondin') == 'deleted':
+                good_items.append(_id)
+                record['inbox'] = False
+                record['status'] = 'received'
+                self.cr_db.save(record)
+        
+        answers[self.f['estatus_del_recorrido']] = 'cancelado'
+        if good_items:
+            res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=good_items)
+            if res.get('status_code') == 201 or res.get('status_code') == 202:
+                status = {'status_code': 200, 'type': 'success', 'msg': 'Rondines deleted successfully', 'data': {}}
+            else: 
+                status = {'status_code': 400, 'type': 'error', 'msg': res, 'data': {}}
+        if bad_items:
+            status.update({'data': {'bad_items': bad_items, 'good_items': good_items}})
+        return status
+    
+    def complete_rondines(self, records):
+        status = {}
+        answers = {}
+        bad_items = []
+        good_items = []
+        
+        if not records:
+            return {'status_code': 400, 'type': 'error', 'msg': 'No records provided', 'data': {}}
+        
+        db_name = f'clave_{self.user_id}'
+        self.cr_db = self.lkf_api.couch.set_db(db_name)
+        for item in records:
+            _id = item.get('_id', None)
+            _rev = item.get('_rev', None)
+            
+            if not _id or not _rev:
+                bad_items.append(item)
+                continue
+            
+            record = self.get_couch_record(_id=_id, _rev=_rev)
+            
+            if record.get('status_code') in [400, 404, 461, 462]:
+                bad_items.append(item)
+                continue
+            
+            if record.get('status_rondin') == 'completed':
+                good_items.append(_id)
+                record['inbox'] = False
+                record['status'] = 'received'
+                self.cr_db.save(record)
+        
+        answers[self.f['estatus_del_recorrido']] = 'realizado'
+        if good_items:
+            res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=good_items)
+            if res.get('status_code') == 201 or res.get('status_code') == 202:
+                status = {'status_code': 200, 'type': 'success', 'msg': 'Rondines completed successfully', 'data': {}}
+            else: 
+                status = {'status_code': 400, 'type': 'error', 'msg': res, 'data': {}}
+        if bad_items:
+            status.update({'data': {'bad_items': bad_items, 'good_items': good_items}})
+        return status
+    
+    def get_user_data(self, user_id):
+        query = [{"$match": {
+            "deleted_at": {"$exists": False},
+            "form_id": 129958, #TODO: Modularizar id
+            f"answers.{self.mf['id_usuario']}": user_id
+        }},
+        {"$limit": 1},
+        {"$sort": {"created_at": -1}},
+        {"$project": {
+            "_id": 0,
+            "id": f"$answers.{self.mf['id_usuario']}",
+            "name": f"$answers.{self.mf['nombre_usuario']}",
+            "email": f"$answers.{self.mf['email_visita_a']}",
+        }}]
+        reponse = self.format_cr(self.cr.aggregate(query))
+        format_response = self.unlist(reponse)
+        return format_response
+    
+    def reasignar_rondines(self, records, user_to_assign):
+        status = {}
+        answers = {}
+        bad_items = []
+        good_items = []
+        
+        user_id = user_to_assign.get('id', 0)
+        name = user_to_assign.get('name', '')
+        user_data = self.get_user_data(user_id=user_id)
+        email = user_data.get('email', '')
+        
+        if not records:
+            return {'status_code': 400, 'type': 'error', 'msg': 'No records provided', 'data': {}}
+        
+        db_name = f'clave_{self.user_id}'
+        self.cr_db = self.lkf_api.couch.set_db(db_name)
+        for item in records:
+            _id = item.get('_id', None)
+            _rev = item.get('_rev', None)
+            
+            if not _id or not _rev:
+                bad_items.append(item)
+                continue
+            
+            record = self.get_couch_record(_id=_id, _rev=_rev)
+            
+            if record.get('status_code') in [400, 404, 461, 462]:
+                bad_items.append(item)
+                continue
+            
+            if record:
+                good_items.append(_id)
+                record['inbox'] = False
+                record['status_rondin'] = 'deleted'
+                record['status'] = 'received'
+                self.cr_db.save(record)
+        
+        answers[self.USUARIOS_OBJ_ID] = {
+            self.mf['nombre_usuario']: name,
+            self.mf['id_usuario']: [user_id],
+            self.mf['email_visita_a']: [email],
+        }
+        if good_items:
+            res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=good_items)
+            if res.get('status_code') == 201 or res.get('status_code') == 202:
+                status = {'status_code': 200, 'type': 'success', 'msg': 'Rondines assigned successfully', 'data': {}}
+            else: 
+                status = {'status_code': 400, 'type': 'error', 'msg': res, 'data': {}}
+        if bad_items:
+            status.update({'data': {'bad_items': bad_items, 'good_items': good_items}})
         return status
 
+    def get_active_guards(self):
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.REGISTRO_ASISTENCIA,
+                f"answers.{self.f['fecha_inicio_turno']}": {"$exists": True},
+                f"answers.{self.f['fecha_cierre_turno']}": {"$exists": False},
+            }},
+            {"$project": {
+                "_id": 0,
+                "created_by_id": 1,
+                "created_by_name": 1,
+                "created_by_email": 1
+            }}
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
+        format_response = []
+        if response:
+            for item in response:
+                new_item = {
+                    'guard_id': item.get('created_by_id', 0),
+                    'guard_name': item.get('created_by_name', ''),
+                    'guard_email': item.get('created_by_email', ''),
+                }
+                format_response.append(new_item)
+        response = {'status_code': 200, 'type': 'success', 'msg': 'Active guards retrieved successfully', 'data': format_response}
+        return response
+        
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
@@ -677,6 +938,8 @@ if __name__ == "__main__":
     option = data.get("option", script_attr.get('option', ''))
     _id = data.get("_id", None)
     _rev = data.get("_rev", None)
+    records = data.get("records", [])
+    user_to_assign = data.get("user_to_assign", {})
 
     response = {}
     if option == 'get_user_catalogs':
@@ -703,8 +966,14 @@ if __name__ == "__main__":
 
     elif option == 'assign_user_inbox':
         response = acceso_obj.assign_user_inbox(data=acceso_obj.answers)
-    elif option == 'close_rondin_by_id':
-        response = acceso_obj.close_rondin_by_id(_id=_id, _rev=_rev)
+    elif option == 'complete_rondines':
+        response = acceso_obj.complete_rondines(records=records)
+    elif option == 'delete_rondines':
+        response = acceso_obj.delete_rondines(records=records)
+    elif option == 'reasignar_rondines':
+        response = acceso_obj.reasignar_rondines(records=records, user_to_assign=user_to_assign)
+    elif option == 'get_active_guards':
+        response = acceso_obj.get_active_guards()
     else:
         response = {'status_code': 400, 'type': 'error', 'msg': 'Invalid option', 'data': {}}
 
