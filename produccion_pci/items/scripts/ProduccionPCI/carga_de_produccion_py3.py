@@ -69,22 +69,36 @@ class Produccion_PCI( Produccion_PCI ):
     """
     # Descomprimir archivos zip para obtener los pdfs y Distómetros
     """
-    def get_files_names(self, nueva_ruta, namefile):
+    def get_files_names(self, nueva_ruta, namefile, read_distometros=False):
         files_dir = os.listdir(nueva_ruta)
         error_por_extension = []
         folios_in_zip = {}
-        arr_extenciones = [".pdf",".jpg",".jpeg",".png",".PDF", ".JPG", '.JPEG']
+        
+        extensiones_img = [".jpg",".jpeg",".png", ".JPG", '.JPEG']
+        arr_extenciones = extensiones_img + [".pdf", ".PDF"]
+
         for file_barrido in files_dir:
             ruta_pdf, archivo_pdf = os.path.split(file_barrido)
             namefile_pdf = os.path.splitext(archivo_pdf)[0]
             extension_pdf = os.path.splitext(archivo_pdf)[1]
+            
             if namefile_pdf == namefile:
                 # Esto para que no tome en cuenta el archivo zip que contiene todos los documentos
                 continue
+            
             if extension_pdf not in arr_extenciones:
                 error_por_extension.append( namefile_pdf )
                 continue
+            
+            if read_distometros and extension_pdf not in extensiones_img:
+                error_por_extension.append( archivo_pdf )
+                continue
+
             folios_in_zip.update( { namefile_pdf: nueva_ruta+archivo_pdf } )
+        
+        if error_por_extension:
+            return 'error', error_por_extension
+
         return folios_in_zip, error_por_extension
 
     def descomprimeZips(self,  zip_field, current_folio, rutaSave ):
@@ -113,7 +127,8 @@ class Produccion_PCI( Produccion_PCI ):
                 f.filename = p_utils.rename_file_extract(f.filename).replace(' ', '_')
                 archivo_zip.extract(f, nueva_ruta)
             
-            folios_in_zip, error_por_extension = self.get_files_names( nueva_ruta, namefile )
+            read_distos = rutaSave == "cargaPorduccionDistometros"
+            folios_in_zip, error_por_extension = self.get_files_names( nueva_ruta, namefile, read_distometros=read_distos )
             return folios_in_zip, error_por_extension, nueva_ruta, None
             archivo_zip.close()
             try:
@@ -1055,7 +1070,7 @@ class Produccion_PCI( Produccion_PCI ):
         else:
             doctos_found, doctos_error, ruta_doctos, data_img_distos = self.descomprimeZips( val_field_zip, current_record['folio'], f'cargaPorduccion{docto_process}' )
             if isinstance(doctos_found, str):
-                return 'error', f"Ocurrió un error con el zip de {docto_process}: {doctos_error}", None, None
+                return 'error', f"Ocurrió un error con el zip de {docto_process}: {self.list_to_str(doctos_error) if isinstance(doctos_error, list) else doctos_error}", None, None
         
         print(f'Documentos encontrados en zip de {docto_process}: {list(doctos_found.keys())} No tienen una extensión válida: {doctos_error}')
         return doctos_found, doctos_error, ruta_doctos, data_img_distos

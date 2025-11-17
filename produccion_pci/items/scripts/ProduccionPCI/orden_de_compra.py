@@ -1376,7 +1376,8 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             
             tipo_trabajo = group_field.pop('f2361400a0100000000000b6', '')
 
-            if tipo_trabajo != 'a4':
+            # if tipo_trabajo != 'a4':
+            if tipo_trabajo not in ['a4', 'a2']:
                 tipo_trabajo = 'psr' if order_psr else 'a0'
 
             for idx, map_field in enumerate(map_campos):
@@ -1641,6 +1642,10 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             'field_id': '681c0e22e3d9bc611e3a5189',
             'name': 'A0',
             'oc_field_id': '682bc981733bc1ca31734d9e'
+        },{
+            'field_id': '6916c12d5ab0bd965da971b3',
+            'name': 'A2',
+            'oc_field_id': '6916c0d1e6bbebbebfa971b6'
         }]
         desc_20_porc_as_row = True
 
