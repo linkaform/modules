@@ -146,7 +146,7 @@ class Accesos(Accesos):
             "area": "",
             "tipo_de_area": "",
             "foto_del_area": [],
-            "evidencia_check_area": [],
+            "evidencia_incidencia": [],
             "incidencias": [],
             "comentario_check_area": "",
             "status_check_area": "",
@@ -726,7 +726,7 @@ class Accesos(Accesos):
                     self.f['tipo_de_area']: [data.get('tipo_de_area', '')],
                     self.f['area_foto']: [data.get('foto_del_area', '')],
                 })
-            elif key == 'evidencia_check_area':
+            elif key == 'evidencia_incidencia':
                 answers[self.f['foto_evidencia_area']] = value
             elif key == 'incidencias':
                 incidencias = data.get('incidencias', [])
