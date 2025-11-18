@@ -1630,20 +1630,20 @@ if __name__ == "__main__":
 
     if option == 'create_rondin':
         response = class_obj.create_rondin(rondin_data=rondin_data)
-    elif option == 'get_rondines':
-        response = class_obj.get_rondines(date_from=date_from, date_to=date_to, limit=limit, offset=offset)
-    elif option == 'update_rondin':
-        response = class_obj.update_rondin(folio=folio,rondin_data=rondin_data)
+    elif option == 'create_incidencia_by_rondin':
+        response = class_obj.create_incidencia_by_rondin(data=rondin_data)
     elif option == 'delete_rondin':
         response = class_obj.delete_rondin(folio=folio)
+    elif option == 'edit_areas_rondin':
+        response = class_obj.edit_areas_rondin(areas=areas, folio=folio, record_id=record_id)
+    elif option == 'get_rondines':
+        response = class_obj.get_rondines(date_from=date_from, date_to=date_to, limit=limit, offset=offset)
     elif option == 'get_catalog_areas':
         response = class_obj.get_catalog_areas(ubicacion=ubicacion)
     elif option == 'get_rondin_by_id':
         response = class_obj.get_rondin_by_id(record_id=record_id)
     elif option == 'get_incidencias_rondines':
         response = class_obj.get_incidencias_rondines(location=ubicacion, area=area, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
-    elif option == 'create_incidencia_by_rondin':
-        response = class_obj.create_incidencia_by_rondin(data=rondin_data)
     elif option == 'get_rondines_images':
         response = class_obj.get_rondines_images(location=ubicacion, area=area, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
     elif option == 'get_bitacora_rondines':
@@ -1652,12 +1652,12 @@ if __name__ == "__main__":
         response = class_obj.get_check_by_id(record_id=record_id)
     elif option == 'get_bitacora_by_id':
         response = class_obj.get_bitacora_by_id(record_id=record_id)
-    elif option == 'pause_or_play_rondin':
-        response = class_obj.pause_or_play_rondin(record_id=record_id, paused=paused)
-    elif option == 'edit_areas_rondin':
-        response = class_obj.edit_areas_rondin(areas=areas, folio=folio, record_id=record_id)
     elif option == 'get_catalog_areas_formatted':
         response = class_obj.get_catalog_areas_formatted(ubicacion=ubicacion)
+    elif option == 'pause_or_play_rondin':
+        response = class_obj.pause_or_play_rondin(record_id=record_id, paused=paused)
+    elif option == 'update_rondin':
+        response = class_obj.update_rondin(folio=folio,rondin_data=rondin_data)
     else:
         response = {"msg": "Empty"}
     class_obj.HttpResponse({"data": response})
