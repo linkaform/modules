@@ -335,6 +335,11 @@ class Accesos(Accesos):
     def assign_user_inbox(self, data):
         user_name = data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['nombre_usuario'], '')
         self.cr_db = self.lkf_api.couch.set_db(f'clave_{self.user_id}')
+        
+        #! Revisar timezone en bitacora si sera necesario
+        # user_data = self.lkf_api.get_user_by_id(self.user_id)
+        # user_timezone = user_data.get('timezone', 'America/Mexico_City')
+
         status = {}
         lat = 0.0
         long = 0.0
@@ -377,7 +382,14 @@ class Accesos(Accesos):
         try:
             result = self.cr_db.save(inbox_record)
             if result:
-                status = {'status_code': 200, 'type': 'success', 'msg': 'Inbox assigned successfully', 'data': {}}
+                status = {'status_code': 200, 'type': 'success', 'msg': 'Inbox assigned successfully', 'data': {
+                    'assigned_user_id': self.user_id,
+                    'assigned_user': user_name,
+                    'bitacora_record_id': self.record_id,
+                    'bitacora_ubicacion': data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], ''),
+                    'bitacora_nombre_rondin': data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.mf['nombre_del_recorrido'], ''),
+                    'bitacora_fecha_programada': data.get(self.f['fecha_programacion'], ''),
+                }}
         except Exception as e:
             status = {'status_code': 400, 'type': 'error', 'msg': str(e), 'data': {}}
         return status
