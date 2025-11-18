@@ -618,7 +618,7 @@ class Accesos(Accesos):
                 item.update({
                     'fecha_hora_inspeccion_area': fecha_str,
                     'foto_evidencia_area_rondin': check.get('fotos', []),
-                    'comentario_area_rondin': check.get('comentarios', ''),
+                    'comentario_area_rondin': check.get('comentario_check_area', ''),
                     'url_registro_rondin': f"https://app.linkaform.com/#/records/detail/{check.get('record_id', '')}",
                 })
 
