@@ -315,7 +315,6 @@ class Accesos(Accesos):
         
         metadata.update({'answers':answers})
         response = self.lkf_api.post_forms_answers(metadata)
-        response = self.detail_response(response.get('status_code', 0))
         return response
 
     def delete_rondin(self, folio: str):
