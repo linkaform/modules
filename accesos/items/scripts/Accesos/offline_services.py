@@ -427,7 +427,10 @@ class Accesos(Accesos):
         if isinstance(record, dict) and 'status_code' in record:
             return record
         else:
-            payload.update({'record_id': record_id})
+            payload.update({
+                'record_id': record_id,
+                'rondin_id': rondin_id
+            })
             response = self.create_check_area(payload)
 
         record = self.cr_db.get(record_id)
@@ -691,6 +694,7 @@ class Accesos(Accesos):
         
     def create_check_area(self, data):
         # metadata = self.lkf_api.get_metadata(form_id=self.CHECK_UBICACIONES)
+        answers = {}
         metadata = self.lkf_api.get_metadata(form_id=137161) #TODO: Modularizar id
         metadata.update({
             "properties": {
@@ -707,8 +711,10 @@ class Accesos(Accesos):
             metadata.update({
                 "id": data.pop('record_id')
             })
+        if data.get('rondin_id'):
+            rondin_id = data.pop('rondin_id')
+            answers[self.f['bitacora_rondin_url']] = f"https://app.linkaform.com/#/records/detail/{rondin_id}"
         #---Define Answers
-        answers = {}
         answers[self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID]={}
         answers[self.f['check_status']] = "continuar_siguiente_punto_de_inspección"
         for key, value in data.items():
@@ -750,7 +756,6 @@ class Accesos(Accesos):
             else:
                 continue
             
-        answers[self.f['bitacora_rondin_url']] = 'test'
         
         metadata.update({'answers':answers})
         return self.lkf_api.post_forms_answers(metadata)
