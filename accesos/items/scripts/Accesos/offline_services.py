@@ -335,6 +335,10 @@ class Accesos(Accesos):
     def assign_user_inbox(self, data):
         user_name = data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['nombre_usuario'], '')
         self.cr_db = self.lkf_api.couch.set_db(f'clave_{self.user_id}')
+        nombre_recorrido = data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.mf['nombre_del_recorrido'], '')
+        ubicacion_recorrido = data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], '')
+        
+        recorrido_info = self.get_info_recorrido(nombre_recorrido, ubicacion_recorrido)
         
         #! Revisar timezone en bitacora si sera necesario
         # user_data = self.lkf_api.get_user_by_id(self.user_id)
@@ -368,8 +372,9 @@ class Accesos(Accesos):
             },
             "record": {
                 "user_name": user_name,
-                "nombre_rondin": data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.mf['nombre_del_recorrido'], ''),
-                "ubicacion_rondin": data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], ''),
+                "nombre_rondin": nombre_recorrido,
+                "ubicacion_rondin": ubicacion_recorrido,
+                "duracion_estimada": recorrido_info.get('duracion_estimada', ''),
                 "fecha_programada": data.get(self.f['fecha_programacion'], ''),
                 "fecha_inicio": "",
                 "fecha_finalizacion": "",
@@ -415,6 +420,27 @@ class Accesos(Accesos):
         ]
         res = self.cr.aggregate(query)
         format_res = list(res)
+        return format_res
+    
+    def get_info_recorrido(self, nombre_recorrido, ubicacion_recorrido):
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": 121742, #TODO: Modularizar id
+                f"answers.{self.f['nombre_del_recorrido']}": nombre_recorrido,
+                f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": ubicacion_recorrido
+            }},
+            {"$limit": 1},
+            {"$project": {
+                "_id": 0,
+                "duracion_estimada": f"$answers.{self.f['duracion_estimada']}",
+            }}
+        ]
+        res = self.cr.aggregate(query)
+        format_res = {}
+        if res:
+            res = list(res)
+            format_res = self.unlist(res)
         return format_res
     
     def sync_check_area_to_lkf(self, record):

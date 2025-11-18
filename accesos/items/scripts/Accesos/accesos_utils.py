@@ -53,7 +53,8 @@ class Accesos( Accesos):
             'tolerancia_retardo': '68b6427cc8f94827ebfed698',
             'retardo_maximo': '68b642e2bc17e2713cabe019',
             'grupo_ubicaciones_horario': '68b6427cc8f94827ebfed699',
-            'dias_libres_empleado': '68bb20095035e61c5745de05'
+            'dias_libres_empleado': '68bb20095035e61c5745de05',
+            'duracion_estimada': '6854459836ea891d9d2be7d9',
         })
 
         #BORRAR
