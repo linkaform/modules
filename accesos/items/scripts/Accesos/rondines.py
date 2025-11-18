@@ -154,6 +154,10 @@ class Accesos(Accesos):
                     }
                     areas_list.append(area_dict)
                 answers[self.rondin_keys[key]] = areas_list
+            elif key == 'sucede_recurrencia' and 'dia_del_mes' in value:
+                actual_day = datetime.now().day
+                answers[self.rondin_keys['que_dia_del_mes']] = int(actual_day)
+                answers[self.rondin_keys[key]] = value
             elif value == '':
                 pass
             else:
