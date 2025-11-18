@@ -836,6 +836,7 @@ class Accesos(Accesos):
             }},
             {"$project": {
                 "_id": 0,
+                "folio": 1,
                 "nombre_del_rondin": f"$answers.{self.rondin_keys['nombre_rondin']}",
                 "recurrencia": {"$ifNull": [f"$answers.{self.rondin_keys['la_tarea_es_de']}", 'No Recurrente']},
                 "asignado_a": {"$ifNull": [f"$answers.{self.GRUPOS_CAT_OBJ_ID}.{self.rondin_keys['grupo_asignado']}", 'No Asignado']},
