@@ -617,7 +617,7 @@ class Accesos(Accesos):
                 fecha_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S") if ts else ""
                 item.update({
                     'fecha_hora_inspeccion_area': fecha_str,
-                    'foto_evidencia_area_rondin': check.get('fotos', []),
+                    'foto_evidencia_area_rondin': check.get('evidencia_incidencia', []),
                     'comentario_area_rondin': check.get('comentario_check_area', ''),
                     'url_registro_rondin': f"https://app.linkaform.com/#/records/detail/{check.get('record_id', '')}",
                 })
