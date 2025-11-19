@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# from operator import ne
 import sys, simplejson
 from copy import deepcopy
 from datetime import datetime
@@ -121,6 +122,8 @@ class Stock(Stock):
         series_unique = []
         total_groups = len(groups)
         base_record = deepcopy(self.current_record)
+        if base_record.get('_id'):
+            base_record.pop('_id', None)
         base_record.update(self.get_complete_metadata(fields = {'voucher_id':ObjectId('6743d90d5f1c35d02395a7cf')}))
         base_record['answers'][self.f['move_group']] = []
         base_record["editable"] = False 
@@ -165,9 +168,9 @@ class Stock(Stock):
             # print('*************groiu************',self.answers[self.f['move_group']])
             # print('folio_serie_record', folio_serie_record)
             if create_new_rec:
-                self.ejecutar_transaccion(new_record, folio_serie_record )
+                self.ejecutar_transaccion(new_record, folio_serie_record)
             else:
-                self.ejecutar_transaccion({}, folio_serie_record )
+                self.ejecutar_transaccion({}, folio_serie_record)
             if series_repetidas:
                 self.LKFException( '', dict_error= {
                     f"{self.f['lot_number']}": {
@@ -178,6 +181,11 @@ class Stock(Stock):
 
     def ejecutar_transaccion(self, new_record, folio_serie_record):
         # Inicia una sesión
+        if new_record.get('_id'):
+            if new_record['_id'].get('$oid'):
+                new_record['_id'] = new_record['_id']['$oid']
+
+        print('ejecutando transaccion de =', len(folio_serie_record))
         if self.get_enviroment() == 'prod':
             with self.client.start_session() as session:
                 # Define el bloque de transacción
@@ -191,9 +199,11 @@ class Stock(Stock):
                         print('e.keys')
                         self.LKFException( f'Error en la creacion de las onts. Existen Series previamente Cargadas')
                     if new_record.get('answers'):
+                        print('insert one prod')
                         response = stock_obj.make_direct_stock_move(move_type='in')
                         res = self.records_cr.insert_one(new_record)
                     else:
+                        print('insert many prod')
                         response = self.direct_move_in(self.current_record)
             
                 try:
@@ -220,10 +230,13 @@ class Stock(Stock):
             if True:
                 if new_record.get('answers'):
                     # new_record['answers'][self.f['inv_adjust_status']] =  'done'
+                    print('insert one dev')
                     response = stock_obj.make_direct_stock_move(move_type='in')
+                    print('new_record')
                     res = self.records_cr.insert_one(new_record)
                     #self.direct_move_in(new_record)
                 else:
+                    print('insert many dev')
                     response = self.direct_move_in(self.current_record)
             # except Exception as e:
             #     print('error: ', e)
@@ -369,10 +382,11 @@ if __name__ == '__main__':
     stock_obj.answers[stock_obj.f['folio_recepcion']] = folio
     stock_obj.current_record['answers'] = stock_obj.answers
     if stock_obj.proceso_onts:
+        stock_obj.sync_catalogs = False
         stock_obj.create_records(groups)
     else:
         stock_obj.current_record['answers'] = stock_obj.answers
-        response = stock_obj.make_direct_stock_move(move_type='in', )
+        response = stock_obj.make_direct_stock_move(move_type='in')
     # stock_obj.read_series_ONTs()
     # se tiene que mover el direct move in despues de la injeccion de datos
 

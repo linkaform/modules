@@ -48,7 +48,7 @@ class Stock(Stock):
             self.answers[self.f['move_group']].append(row_set)
         return self.answers[self.f['move_group']] 
 
-    def ejecutar_transaccion(self, new_record, folio_serie_record={}):
+    def ejecutar_transaccion(self, new_record):
         # Inicia una sesión
         if self.get_enviroment() == 'prod':
             with self.client.start_session() as session:
@@ -296,9 +296,10 @@ class Stock(Stock):
         if res.acknowledged:
             updated_ids = self.cr.find(update_query, {'_id':1})
             updated_ids = [x['_id'] for x in updated_ids]
-        sync_ids = [str(x) for x in updated_ids]
-        print(f"... sincronizando catalogo Stock Inventory con {len(sync_ids)} registros")
-        self.lkf_api.sync_catalogs_records({
+        if self.sync_catalogs:
+            sync_ids = [str(x) for x in updated_ids]
+            print(f"... sincronizando catalogo Stock Inventory con {len(sync_ids)} registros")
+            self.lkf_api.sync_catalogs_records({
             'catalogs_ids':[self.CATALOG_INVENTORY_ID],
             'form_answers_ids':sync_ids,
             'status':'deleted',
@@ -513,8 +514,9 @@ if __name__ == '__main__':
     groups = []
 
     if stock_obj.proceso_onts:
+        stock_obj.sync_catalogs = False
         onts = [x[0] for x in records]
-        if len(onts) > 6000:
+        if len(onts) > 15000:
             stock_obj.LKFException( '', dict_error= {
                     "msg": f'Limite de salida de ONTs superado. Solo se pueden dar salida a  6000 ONTs por documento y se estan cargando {len(onts)} ONTs'
                 } )
@@ -535,7 +537,7 @@ if __name__ == '__main__':
     if groups:
         stock_obj.folio = f"{folio}-1/{len(groups)}"
 
-    stock_obj.make_direct_stock_move()
+    stock_obj.make_direct_stock_move(move_type='out')
 
     sys.stdout.write(simplejson.dumps({
         'status': 101,

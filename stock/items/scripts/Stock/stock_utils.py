@@ -49,6 +49,7 @@ class Stock(Stock):
         self.proceso_onts = False
         self.warehouse_from = None
         self.location_from = None
+        self.sync_catalogs = True
 
         # La relacion entre la forma de inventario y el catalogo utilizado para el inventario
         # por default simpre dejar los mismos nombres
@@ -255,8 +256,12 @@ class Stock(Stock):
                     'folio':new_records[idx]['folio'],
                     }
                 sync_ids.append(str(rec_idx))
-            print('syncing catalogs.... =', len(sync_ids))
-            self.lkf_api.sync_catalogs_records({"catalogs_ids":  [self.CATALOG_INVENTORY_ID],"form_answers_ids":  sync_ids, "status": "created"})
+            if self.sync_catalogs:
+                print(stop)
+                print('syncing catalogs.... =', len(sync_ids))
+                self.lkf_api.sync_catalogs_records({"catalogs_ids":  [self.CATALOG_INVENTORY_ID],"form_answers_ids":  sync_ids, "status": "created"})
+            else:
+                print('not syncing catalogs.... =', len(sync_ids))
         for idx, this_record in update_stock_records.items():
             if this_record:
                 update_records.append(this_record)
@@ -272,12 +277,15 @@ class Stock(Stock):
                     'modified_count': this_res.modified_count, 
                     'folio':record['folio']}
                 sync_ids.append(str(record['_id']))
-            print('updating syncing catalogs.... =', len(sync_ids))
-            self.lkf_api.sync_catalogs_records({
-                'catalogs_ids':[self.CATALOG_INVENTORY_ID],
-                'form_answers_ids':sync_ids,
-                'status':'edited',
-                })
+            if self.sync_catalogs:   
+                print('updating syncing catalogs.... =', len(sync_ids))
+                self.lkf_api.sync_catalogs_records({
+                    'catalogs_ids':[self.CATALOG_INVENTORY_ID],
+                    'form_answers_ids':sync_ids,
+                    'status':'edited',
+                    })
+            else:
+                print('will not update catalogs.... =', len(sync_ids))
 
             # res_update_stock = self.cr.update_many(update_stock_records)
         # if self.proceso_onts:
@@ -430,7 +438,7 @@ class Stock(Stock):
                 "actuals": "$actuals",
             }},
         ]
-        print('query=', query)
+        #print('query=', query)
         print('self.cr', self.cr)
         stock =  self.format_cr(self.cr.aggregate(query), get_one=True)
         return stock.get('actuals',0)
@@ -767,13 +775,13 @@ class Stock(Stock):
                 edited_sync_ids.append(str(rec_id))
         print('deleted catalogs.... =', len(deleted_sync_ids))
         print('edited catalogs.... =', len(edited_sync_ids))
-        if deleted_sync_ids:
+        if deleted_sync_ids and self.sync_catalogs:
             sync_res = self.lkf_api.sync_catalogs_records({
                     'catalogs_ids':[self.CATALOG_INVENTORY_ID],
                     'form_answers_ids':deleted_sync_ids,
                     'status':'deleted',
                     })
-        if edited_sync_ids:
+        if edited_sync_ids and self.sync_catalogs:
             sync_res = self.lkf_api.sync_catalogs_records({
                     'catalogs_ids':[self.CATALOG_INVENTORY_ID],
                     'form_answers_ids':edited_sync_ids,
