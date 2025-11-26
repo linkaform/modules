@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import re, sys, datetime, simplejson
+import re, sys, datetime, simplejson, time
 import random, os, shutil, wget, zipfile, collections
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from copy import deepcopy
@@ -1036,7 +1036,19 @@ class Produccion_PCI( Produccion_PCI ):
             field_id_docto = def_field_id
         else:
             field_id_docto = self.dict_ids_os_pdf[ form_id_docto ]
-        upload_url = lkf_api.post_upload_file(data={'form_id': form_id_docto, 'field_id': field_id_docto}, up_file=pdf_file_dir, jwt_settings_key='JWT_KEY')
+        
+
+        try:
+            upload_url = lkf_api.post_upload_file(data={'form_id': form_id_docto, 'field_id': field_id_docto}, up_file=pdf_file_dir, jwt_settings_key='JWT_KEY')
+        except Exception as e:
+            print('     ... ... ... ... Error al subir el documento, descansa 10 segundos y reintenta')
+            time.sleep(10)
+            try:
+                upload_url = lkf_api.post_upload_file(data={'form_id': form_id_docto, 'field_id': field_id_docto}, up_file=pdf_file_dir, jwt_settings_key='JWT_KEY')
+            except:
+                return {'error': 'Ocurrió un error al subir el documento. Favor de intentar nuevamente.'}
+        
+
         print('-upload_url=',upload_url)
         try:
             file_url = upload_url['data']['file']
