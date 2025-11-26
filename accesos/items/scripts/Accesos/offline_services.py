@@ -500,7 +500,7 @@ class Accesos(Accesos):
                         'record_id': check.get('_id', '')
                     })
                 new_incidencias = bitacora_in_couch.get('record', {}).get('incidencias', [])
-                bitacora_response = self.update_bitacora(bitacora_in_lkf, new_incidencias, new_areas)
+                bitacora_response = self.update_bitacora(bitacora_in_lkf, {}, new_incidencias, new_areas)
                 print("bitacora_response", bitacora_response)
         else:
             record['status'] = 'error'
@@ -630,10 +630,11 @@ class Accesos(Accesos):
             incidencias_list.append(new_item)
         return incidencias_list
 
-    def update_bitacora(self, bitacora_in_lkf, new_incidencias, new_areas):
+    def update_bitacora(self, bitacora_in_lkf, data, new_incidencias, new_areas):
         answers={}
         areas_list = []
         conf_recorrido = {}
+        estatus_bitacora_in_couch = data.get('status_rondin', '')
         
         incidencias_list = self.format_incidencias_to_bitacora(bitacora_in_lkf, new_incidencias, new_areas)
         answers[self.f['bitacora_rondin_incidencias']] = incidencias_list
@@ -693,7 +694,7 @@ class Accesos(Accesos):
             key=lambda x: self.parse_date_for_sorting(x.get(self.f['fecha_hora_inspeccion_area'], ''))
         )
         answers[self.f['areas_del_rondin']] = all_areas_sorted
-        answers[self.f['estatus_del_recorrido']] = 'en_proceso'
+        answers[self.f['estatus_del_recorrido']] = 'en_proceso' if estatus_bitacora_in_couch != 'completed' else 'realizado'
         answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = conf_recorrido
         if not answers.get(self.f['fecha_inicio_rondin']):
             answers[self.f['fecha_inicio_rondin']] = all_areas_sorted[0].get(self.f['fecha_hora_inspeccion_area'], '') if len(all_areas_sorted) > 0 else ''
@@ -967,6 +968,123 @@ class Accesos(Accesos):
                 format_response.append(new_item)
         response = {'status_code': 200, 'type': 'success', 'msg': 'Active guards retrieved successfully', 'data': format_response}
         return response
+    
+    def search_checks_in_lkf(self, id_list):
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": 137161, #TODO: Modularizar id
+                "_id": {"$in": id_list}
+            }},
+            {"$project": {
+                "_id": 1,
+            }}
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
+        format_response = []
+        if response:
+            format_response = [item.get('_id') for item in response]
+        return format_response
+    
+    def create_checks_in_lkf(self, records):
+        for record in records:
+            record_id = record.get('record_id', None)
+            response = self.create_check_area(record)
+            record = self.cr_db.get(record_id)
+            if response.get('status_code') in [200, 201, 202]:
+                record['status'] = 'received'
+                record['folio'] = response.get('json', {}).get('folio', '')
+                self.cr_db.save(record)
+            else:
+                record['status'] = 'error'
+                self.cr_db.save(record)
+    
+    def sync_rondin_to_lkf(self, data):
+        status = {}
+        rondin_id = data.get('_id', '')
+        # record_id = record.pop('_id', None)
+        record = data.get('record', {})
+        
+        if isinstance(record, dict) and 'status_code' in record:
+            return record
+        
+        # for name in attachments:
+        #     attachment = self.cr_db.get_attachment(_id, name)
+        #     data = attachment.read()
+        #     upload_image = self.upload_image_from_couchdb(data, name, self.BITACORA_INCIDENCIAS, self.f['evidencia_incidencia'])
+        #     media.append(upload_image)
+        
+        #! Se obtienen los IDs con checked true en el registro de la bitacora en CouchDB
+        check_ids = [ObjectId(i.get('check_area_id')) if i.get('checked') else None for i in record.get('check_areas', [])]
+        #! Se buscan los checks que ya existen en Linkaform
+        checks_in_lkf = self.search_checks_in_lkf(check_ids)
+        #! Se filtran los checks que no existen en Linkaform
+        checks_not_in_lkf = []
+        for i in record.get('check_areas', []):
+            if i.get('checked') and i.get('check_area_id') not in checks_in_lkf:
+                checks_not_in_lkf.append(i.get('check_area_id'))
+        #! Se obtienen los detalles de los checks que no existen en Linkaform
+        checks_details = self.cr_db.find({
+            "selector": {
+                "_id": {"$in": checks_not_in_lkf}
+            }
+        })
+
+        #! Se crean los payloads para crear los checks en Linkaform
+        payloads = []
+        for i in checks_details:
+            record = i.get('record', {})
+            payload = {k: record[k] for k in self.check_area_filter.keys() if k in record}
+            payload.update({
+                'record_id': i.get('_id'),
+                'rondin_id': rondin_id
+            })
+            payloads.append(payload)
+
+        #! Si hay payloads, se crean los checks en Linkaform
+        if payloads:
+            self.create_checks_in_lkf(payloads)
+        
+        #! 1. Obtener la bitacora del rondin en Linkaform y obtener las areas ya revisadas
+        bitacora_in_lkf = self.get_bitacora_by_id(rondin_id)
+        checks_in_lkf = []
+        for item in bitacora_in_lkf.get('areas_del_rondin', []):
+            if item.get('fecha_hora_inspeccion_area'):
+                checks_in_lkf.append(item.get('incidente_area'))
+            
+        #! 2. Obtener la bitacora del rondin en CouchDB y obtener las areas ya revisadas
+        bitacora_in_couch = record
+        checks_in_couch = bitacora_in_couch.get('check_areas', [])
+        format_checks_in_couch = []
+        for item in checks_in_couch:
+            #! 2.1 Se compara si el check area ya existe en la bitacora de Linkaform
+            if item.get('checked') and not item.get('area') in checks_in_lkf:
+                format_checks_in_couch.append(item.get('check_area_id'))
+
+        new_checks = self.cr_db.find({
+            "selector": {
+                "_id": {"$in": format_checks_in_couch}
+            }
+        })
+        new_areas = {}
+        for check in new_checks:
+            new_areas[check.get('record', {}).get('area')] = check.get('record', {})
+            new_areas[check.get('record', {}).get('area')].update({
+                'fecha_check': check.get('created_at', ''),
+                'record_id': check.get('_id', '')
+            })
+        new_incidencias = bitacora_in_couch.get('incidencias', [])
+        bitacora_response = self.update_bitacora(bitacora_in_lkf, data, new_incidencias, new_areas)
+        aux = self.cr_db.get(rondin_id)
+        if bitacora_response and bitacora_response.get('status_code') in [200, 201, 202]:
+            record['status'] = 'received'
+            self.cr_db.save(aux)
+            status = {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
+        else:
+            record['status'] = 'error'
+            self.cr_db.save(aux)
+            status = {'status_code': 400, 'type': 'error', 'msg': bitacora_response, 'data': {}}
+        return status
         
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
@@ -998,6 +1116,8 @@ if __name__ == "__main__":
             response = acceso_obj.sync_incidence_to_lkf(record=record)
         elif type_sync == 'check_area':
             response = acceso_obj.sync_check_area_to_lkf(record=record)
+        elif type_sync == 'rondin':
+            response = acceso_obj.sync_rondin_to_lkf(data=record)
         elif type_sync == 'error':
             response = record
         else:
