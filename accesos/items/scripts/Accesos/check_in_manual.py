@@ -45,7 +45,7 @@ class Accesos(Accesos):
             "T3": {"start": "22:00:00", "end": "06:00:00", "tolerance": 15, "max_delay": 120},
         }
         
-    def do_checkin(self, location, area, employee_list=[], check_in_manual={}):
+    def do_checkin(self, location, area, employee_list=[], check_in_manual={},nombre_suplente=""):
         if not self.is_boot_available(location, area):
             msg = f"No se puede hacer check in en la caseta en la ubicación {location} y área {area}."
             msg += f"Porque '{self.last_check_in.get('employee')}' ya está registrado en la caseta."
