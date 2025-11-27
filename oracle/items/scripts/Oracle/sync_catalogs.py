@@ -1,6 +1,7 @@
 # coding: utf-8
 from copy import deepcopy
 import sys, simplejson, time, datetime
+import pytz
 from linkaform_api import settings
 from account_settings import *
 
@@ -392,10 +393,14 @@ class Oracle(Oracle):
                 ans['BASE_DE_DATOS_ORACLE'] = v.lower().replace(' ', '_')
                 ans['TIPO_REGISTRO'] = 'registro_oracle'
                 ans['FECHA'] = row.get('FECHA_HORA', row.get('FECHA'))
-                if last_update == str(ans['FECHA'])[:16]:
-                    continue
+                # if last_update == str(ans['FECHA'])[:16]:
+                #     print('last_update', last_update)
+                #     print('continue....')
+                #     continue
             usr['answers'] = self.api_etl(ans, schema, catalog_id, form_id)
-            usr['_id'] = usr['answers'].get('_id')
+            fecha_str = str(ans['FECHA']).replace('-','').replace(':','').replace(' ','')
+            fecha_24 = fecha_str.zfill(24)
+            # usr['_id'] = fecha_24
             usr['sync_data'] = usr['answers'].pop('sync_data') if usr['answers'].get('sync_data') else {}
             usr['sync_data']['oracle_id'] = self.get_oracle_id(row)
             usr['sync_data']['db_id'] = row.get('fecha','none')
@@ -448,6 +453,34 @@ class Oracle(Oracle):
             self.ORACLE_PASSWORD = self.settings.config.get('ORACLE_PASSWORD_1')
         return True
 
+    def update_records(self, data):
+        """
+        Obtienen la fecha de los registros y busca dicha fecha en la base de datos de linkaform.
+        Si existe el resistro lo actualiza, lo quita de la lista y regresa los registros que no se actualizaron para su creacion 
+        data: lista de datos
+        """
+        print('asi entra... data=', len(data))
+        fechas  = [rec['answers'][self.f['fecha']] for rec in data] 
+        query =  { 'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM, 'deleted_at': {'$exists': False} }
+        query.update({f'answers.{self.f["fecha"]}': {'$in': fechas}})
+        records = self.cr.find(query,{'_id':1,'answers.'+self.f['fecha']:1})
+        records = {rec.get('answers',{}).get(self.f['fecha']):rec['_id'] for rec in records}
+        print('records=', records)
+        # existing_date = [rec.get('answers',{}).get(self.f['fecha']) for rec in records]
+        # for rec in data:
+        update_records = []
+        create_records = []
+        for rec in data:
+            if rec['answers'][self.f['fecha']] in list(records.keys()):
+                rec['_id'] = records[rec['answers'][self.f['fecha']]]
+                update_records.append(rec)
+            else:
+                create_records.append(rec)
+        # update_records = [rec for rec in data if rec['answers'][self.f['fecha']] in existing_date]
+        # create_records = [rec for rec in data if rec['answers'][self.f['fecha']] not in existing_date]
+        res = self.lkf_api.patch_record_list(update_records)
+        return create_records
+
     def update_and_sync_db(self, db_name, catalog_id, form_id, data, update=False):
         """
         Decide si es un catalogo o un formulario y realiza el post o update
@@ -463,9 +496,8 @@ class Oracle(Oracle):
         print('catalog_id=', catalog_id)
         print('form_id=', form_id)
         if form_id:
-            # print('data=', data)
+            data = self.update_records(data)
             res = self.lkf_api.post_forms_answers_list(data)
-            print('res=', res)
             self.verify_complete_sync(data, res)
         elif catalog_id:
             for rec in data:
@@ -594,190 +626,112 @@ if __name__ == "__main__":
     data = module_obj.data.get('data',{})
     option = data.get("option",'read')
 
-
+    timezone = module_obj.user.get('timezone','America/Bogota')
+    tz = pytz.timezone(timezone)
+    now = datetime.datetime.now(tz)
+    if now.hour < 6:
+        last_update = (now - timedelta(days=1)).date()
+    else:
+        last_update = now.date()
+    last_update = last_update.strftime('%Y-%m-%d 00:00:00')
     #-FUNCTIONS
     if option == 'read':
         # print('module_obj.views.keys()', module_obj.views)
         views = list(module_obj.views.keys())
         for v in views:
             print('-----------------------------------------------------------',v)
-            if True:
-                last_update = module_obj.get_last_db_update_data(v)
-                # last_update_date
-                # last_update = None
-                # last_update = '2025-11-10 23:00:00'
-                print('last_update', last_update)
-                module_obj.set_oracle_server(v)
-                update = False
-                query = None
-                # last_update = None
-                if last_update:
-                    if len(last_update) == 19:
-                        last_update = last_update[:-3]
-                    if v == 'PRODUCCION.VW_LinkAForm_Hora':
-                        query = f"""
-                            WITH base AS (
-                            SELECT
-                                TRUNC(DATA) + (TO_DATE(HORA, 'HH24:MI') - TRUNC(TO_DATE(HORA, 'HH24:MI'))) AS fecha_hora,
-                                VARIA,
-                                VALOR_N
-                            FROM {v}
-                            WHERE TRUNC(DATA) + (TO_DATE(HORA, 'HH24:MI') - TRUNC(TO_DATE(HORA, 'HH24:MI')))
-                            > TO_DATE('{last_update}', 'YYYY-MM-DD HH24:MI')
-                            ),
-                            ranked AS (
-                            SELECT
-                                fecha_hora, VARIA, VALOR_N,
-                                ROW_NUMBER() OVER (
-                                PARTITION BY fecha_hora, VARIA
-                                ORDER BY fecha_hora DESC
-                                ) AS rn
-                            FROM base
-                            )
-                            SELECT
-                            fecha_hora,
-                            JSON_OBJECTAGG(VARIA VALUE VALOR_N) AS answers
-                            FROM ranked
-                            WHERE rn = 1
-                            GROUP BY fecha_hora
-                            ORDER BY fecha_hora
+            # last_update = module_obj.get_last_db_update_data(v)
+            # last_update = '2025-11-10 23:00:00'
+            print('last_update', last_update)
+            module_obj.set_oracle_server(v)
+            update = False
+            query = None
+            # last_update = None
+            if last_update:
+                if len(last_update) == 19:
+                    last_update = last_update[:-3]
+                if v == 'PRODUCCION.VW_LinkAForm_Hora':
+                    query = f"""
+                        WITH base AS (
+                        SELECT
+                            TRUNC(DATA) + (TO_DATE(HORA, 'HH24:MI') - TRUNC(TO_DATE(HORA, 'HH24:MI'))) AS fecha_hora,
+                            VARIA,
+                            VALOR_N
+                        FROM {v}
+                        WHERE TRUNC(DATA) + (TO_DATE(HORA, 'HH24:MI') - TRUNC(TO_DATE(HORA, 'HH24:MI')))
+                        > TO_DATE('{last_update}', 'YYYY-MM-DD HH24:MI')
+                        ),
+                        ranked AS (
+                        SELECT
+                            fecha_hora, VARIA, VALOR_N,
+                            ROW_NUMBER() OVER (
+                            PARTITION BY fecha_hora, VARIA
+                            ORDER BY fecha_hora DESC
+                            ) AS rn
+                        FROM base
+                        )
+                        SELECT
+                        fecha_hora,
+                        JSON_OBJECTAGG(VARIA VALUE VALOR_N) AS answers
+                        FROM ranked
+                        WHERE rn = 1
+                        GROUP BY fecha_hora
+                        ORDER BY fecha_hora
+                """
+                elif v == 'PRODUCCION.VW_LinkAForm_Dia':
+                    #last_update = '2025-09-09 23:59'
+                    query = f"""SELECT DATA AS fecha_hora, JSON_OBJECTAGG(VARIA VALUE VALOR_DIA) AS answers
+                        FROM {v}
+                        WHERE DATA > TO_DATE('{last_update[:10]}', 'YYYY-MM-DD')
+                        GROUP BY DATA
+                        ORDER BY DATA ASC"""
+                elif v == 'REPORTES.vw_linkaform_fab':
+                    query = f"""
+                        SELECT 
+                        FECHA,
+                        JSON_OBJECTAGG(VARIABLENOMBRE VALUE VALOR RETURNING VARCHAR2(32767)) AS ANSWERS
+                        FROM {v}
+                        WHERE FECHA >= {last_update}
+                        GROUP BY FECHA
+                        ORDER BY FECHA ASC
                     """
-                    elif v == 'PRODUCCION.VW_LinkAForm_Dia':
-                        #last_update = '2025-09-09 23:59'
-                        query = f"""SELECT DATA AS fecha_hora, JSON_OBJECTAGG(VARIA VALUE VALOR_DIA) AS answers
-                            FROM {v}
-                            WHERE DATA > TO_DATE('{last_update[:10]}', 'YYYY-MM-DD')
-                            GROUP BY DATA
-                            ORDER BY DATA ASC"""
-                    elif v == 'REPORTES.vw_linkaform_fab':
-                        query = f"""
-                            SELECT 
-                            FECHA,
-                            JSON_OBJECTAGG(VARIABLENOMBRE VALUE VALOR RETURNING VARCHAR2(32767)) AS ANSWERS
-                            FROM {v}
-                            WHERE FECHA >= {last_update}
-                            GROUP BY FECHA
-                            ORDER BY FECHA ASC
-                        """
-                        query =f"""
-                                WITH cand AS (
-                                SELECT
-                                    FECHA,
-                                    VARIABLENOMBRE,
-                                    VALOR,
-                                    TO_CHAR(FECHA, 'MI') AS min_mark
-                                FROM {v}
-                                WHERE FECHA > TO_DATE('{last_update}', 'YYYY-MM-DD HH24:MI')
-                                AND TO_CHAR(FECHA, 'MI') IN ('30','59')
-                                ),
-                                ultimos AS (
-                                SELECT
-                                    min_mark,
-                                    MAX(FECHA) AS max_fecha
-                                FROM cand
-                                GROUP BY min_mark
-                                )
-                                SELECT
-                                c.FECHA,
-                                JSON_OBJECTAGG(c.VARIABLENOMBRE VALUE c.VALOR RETURNING VARCHAR2(32767)) AS ANSWERS
-                                FROM cand c
-                                JOIN ultimos u
-                                ON c.min_mark = u.min_mark
-                                AND c.FECHA     = u.max_fecha
-                                GROUP BY c.FECHA
-                                ORDER BY c.FECHA ASC"""
-                else:
-                    if v == 'PRODUCCION.VW_LinkAForm_Hora':
-                        query = f"""
-                            WITH base AS (
+                    query =f"""
+                            WITH cand AS (
                             SELECT
-                                TRUNC(DATA) + (TO_DATE(HORA, 'HH24:MI') - TRUNC(TO_DATE(HORA, 'HH24:MI'))) AS fecha_hora,
-                                VARIA,
-                                VALOR_N
+                                FECHA,
+                                VARIABLENOMBRE,
+                                VALOR,
+                                TO_CHAR(FECHA, 'MI') AS min_mark
                             FROM {v}
+                            WHERE FECHA > TO_DATE('{last_update}', 'YYYY-MM-DD HH24:MI')
+                            AND TO_CHAR(FECHA, 'MI') IN ('30','59')
                             ),
-                            ranked AS (
+                            ultimos AS (
                             SELECT
-                                fecha_hora, VARIA, VALOR_N,
-                                ROW_NUMBER() OVER (
-                                PARTITION BY fecha_hora, VARIA
-                                ORDER BY fecha_hora DESC
-                                ) AS rn
-                            FROM base
+                                min_mark,
+                                MAX(FECHA) AS max_fecha
+                            FROM cand
+                            GROUP BY min_mark
                             )
                             SELECT
-                            fecha_hora,
-                            JSON_OBJECTAGG(VARIA VALUE VALOR_N) AS answers
-                            FROM ranked
-                            WHERE rn = 1
-                            GROUP BY fecha_hora
-                            ORDER BY fecha_hora
-                        """
-                    elif v == 'PRODUCCION.VW_LinkAForm_Dia':
-                        query  =f"""SELECT DATA AS fecha_hora, VARIA, VALOR_DIA from {v} ORDER BY fecha_hora ASC"""
-                        query = """WITH base AS (
-                                SELECT DATA AS fecha_hora, VARIA, VALOR_DIA
-                                FROM PRODUCCION.VW_LinkAForm_Dia
-                                ),
-                                dedup AS (
-                                SELECT
-                                    fecha_hora,
-                                    VARIA,
-                                    MAX(VALOR_DIA) AS valor_dia_txt   -- elige un valor no nulo si existe
-                                FROM base
-                                GROUP BY fecha_hora, VARIA
-                                )
-                                SELECT
-                                    fecha_hora,
-                                    JSON_OBJECTAGG(VARIA VALUE TO_CHAR(valor_dia_txt) RETURNING VARCHAR2(32767)) AS answers
-                                FROM dedup
-                                GROUP BY fecha_hora
-                                ORDER BY fecha_hora"""
-                    elif v == 'REPORTES.vw_linkaform_fab':
-                        query = f"""SELECT 
-                                    FECHA,
-                                    JSON_OBJECTAGG(VARIABLENOMBRE VALUE VALOR RETURNING VARCHAR2(32767)) AS ANSWERS
-                                    FROM {v}
-                                    GROUP BY FECHA
-                                    ORDER BY FECHA ASC
-                                    FETCH FIRST 50 ROWS ONLY"""
+                            c.FECHA,
+                            JSON_OBJECTAGG(c.VARIABLENOMBRE VALUE c.VALOR RETURNING VARCHAR2(32767)) AS ANSWERS
+                            FROM cand c
+                            JOIN ultimos u
+                            ON c.min_mark = u.min_mark
+                            AND c.FECHA     = u.max_fecha
+                            GROUP BY c.FECHA
+                            ORDER BY c.FECHA ASC"""
 
-                        query = f"""
-                                WITH cand AS (
-                                SELECT
-                                    FECHA,
-                                    VARIABLENOMBRE,
-                                    VALOR,
-                                    TO_CHAR(FECHA, 'MI') AS min_mark
-                                FROM {v}
-                                -- WHERE FECHA >= :last_update
-                                WHERE TO_CHAR(FECHA, 'MI') IN ('30','59')
-                                ),
-                                ultimos AS (
-                                SELECT
-                                    min_mark,
-                                    MAX(FECHA) AS max_fecha
-                                FROM cand
-                                GROUP BY min_mark
-                                )
-                                SELECT
-                                c.FECHA,
-                                JSON_OBJECTAGG(c.VARIABLENOMBRE VALUE c.VALOR RETURNING VARCHAR2(32767)) AS ANSWERS
-                                FROM cand c
-                                JOIN ultimos u
-                                ON c.min_mark = u.min_mark
-                                AND c.FECHA     = u.max_fecha
-                                GROUP BY c.FECHA
-                                ORDER BY c.FECHA ASC"""
-                print('query=',query)
-                header, response = module_obj.sync_db_catalog(db_name=v, query=query)
-                print('header=',header)
-                print('response=',response)
-                view = module_obj.views[v]
-                schema = view['schema']
-                catalog_id = view.get('catalog_id')
-                form_id = view.get('form_id')
-                data = module_obj.load_data(v, view, response, schema, catalog_id, form_id)
+            print('query=',query)
+            header, response = module_obj.sync_db_catalog(db_name=v, query=query)
+            print('header=',header)
+            print('response=',response)
+            view = module_obj.views[v]
+            schema = view['schema']
+            catalog_id = view.get('catalog_id')
+            form_id = view.get('form_id')
+            data = module_obj.load_data(v, view, response, schema, catalog_id, form_id)
         
         if data:
             print('if data update values')
