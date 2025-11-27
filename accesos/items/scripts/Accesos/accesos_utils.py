@@ -59,6 +59,7 @@ class Accesos( Accesos):
             'grupo_comentarios_generales': '6927a0cdc03f0f8e5355437a',
             'grupo_comentarios_generales_fecha': '6927a0ea1c378cbd7f60a135',
             'grupo_comentarios_generales_texto': '6927a0ea1c378cbd7f60a136',
+            'nombre_suplente': '6927a1176c60848998a157a2'
         })
 
         #BORRAR
@@ -106,7 +107,122 @@ class Accesos( Accesos):
             'bitacora_rondin_incidencias': '686468a637d014b9e0ab5090',
             'tipo_de_incidencia': '663973809fa65cafa759eb97'
         })
+        
+        self.checkin_fields.update({
+            'nombre_suplente':'6927a1176c60848998a157a2'
+        })
 
+    def do_checkin(self, location, area, employee_list=[], fotografia=[], check_in_manual={},nombre_suplente=""):
+        # Realiza el check-in en una ubicación y área específica.
+
+        if not self.is_boot_available(location, area):
+            msg = f"Can not login in to boot on location {location} at the area {area}."
+            msg += f"Because '{self.last_check_in.get('employee')}' is logged in."
+            self.LKFException(msg)
+        if employee_list:
+            user_id = [self.user.get('user_id'),] + [x['user_id'] for x in employee_list]
+        else:
+            user_id = self.user.get('user_id')
+        boot_config = self.get_users_by_location_area(
+            location_name=location, 
+            area_name=area, 
+            user_id=user_id)
+        if not boot_config:
+            msg = f"User can not login to this area : {area} at location: {location} ."
+            msg += f"Please check your configuration."
+            self.LKFException(msg)
+        else:
+            allowed_users = [x['user_id'] for x in boot_config]
+            if type(user_id) == int:
+                user_id=[user_id]
+            common_values = list(set(user_id) & set(allowed_users))
+            not_allowed = [value for value in user_id if value not in common_values]
+        if not_allowed:
+            msg = f"Usuarios con ids {not_allowed}. "
+            msg += f"No estan permitidos de hacer checking en esta area : {area} de la ubicacion {location} ."
+            self.LKFException({'msg':msg,"title":'Error de Configuracion'})
+
+        validate_status = self.get_employee_checkin_status(user_id)
+        not_allowed = [uid for uid, u_data in validate_status.items() if u_data['status'] =='in']
+        if not_allowed:
+            msg = f"El usuario(s) con ids {not_allowed}. Se encuentran actualmente logeado en otra caseta."
+            msg += f"Es necesario primero salirse de cualquier caseta antes de querer entrar a una casta"
+            self.LKFException({'msg':msg,"title":'Accion Requerida!!!'})
+
+        employee = self.get_employee_data(email=self.user.get('email'), get_one=True)
+        if not employee:
+            msg = f"Ningun empleado encontrado con email: {self.user.get('email')}"
+            self.LKFException(msg)
+        user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
+        employee['timezone'] = user_data.get('timezone','America/Monterrey')
+        employee['name'] = employee['worker_name']
+        employee['position'] = self.chife_guard
+        timezone = employee.get('cat_timezone', employee.get('timezone', 'America/Monterrey'))
+        data = self.lkf_api.get_metadata(self.CHECKIN_CASETAS)
+        now_datetime =self.today_str(timezone, date_format='datetime')
+        checkin = self.checkin_data(employee, location, area, 'in', now_datetime)
+        employee_list.insert(0,employee)
+        checkin = self.check_in_out_employees('in', now_datetime, checkin=checkin, employee_list=employee_list)
+        if nombre_suplente:
+            checkin.update({
+                self.checkin_fields['nombre_suplente']: nombre_suplente
+            })
+
+        # print("DATA", simplejson.dumps(checkin, indent=4))
+        # print(stop)
+        data.update({
+                'properties': {
+                    "device_properties":{
+                        "system": "Modulo Accesos",
+                        "process": 'Checkin-Checkout',
+                        "action": 'do_checkin',
+                        "archive": "accesos_utils.py"
+                    }
+                },
+                'answers': checkin
+            })
+        if check_in_manual:
+            checkin.update({
+                self.checkin_fields['checkin_image']: check_in_manual.get('image', []),
+                self.checkin_fields['commentario_checkin_caseta']: check_in_manual.get('comment', '')
+            })
+        if fotografia:
+            checkin.update({
+                self.checkin_fields['fotografia_inicio_turno']: fotografia
+            })
+
+        resp_create = self.lkf_api.post_forms_answers(data)
+        #TODO agregar nombre del Guardia Quien hizo el checkin
+        if resp_create.get('status_code') == 201:
+            resp_create['json'].update({'boot_status':{'guard_on_duty':user_data['name']}})
+            asistencia_answers = {
+                self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID: {
+                    self.Location.f['location']: location,
+                    self.Location.f['area']: area
+                },
+                self.f['tipo_guardia']: 'guardia_regular',
+                self.checkin_fields['checkin_type']: 'iniciar_turno',
+                self.f['image_checkin']: fotografia
+            }
+            metadata = self.lkf_api.get_metadata(form_id=self.REGISTRO_ASISTENCIA)
+            metadata.update({
+                "properties": {
+                    "device_properties":{
+                        "System": "Script",
+                        "Module": 'Accesos',
+                        "Process": 'Inicio de turno',
+                        "Action": 'asistencia',
+                        "File": 'accesos/app.py',
+                    }
+                },
+            })
+            metadata.update({'answers':asistencia_answers})
+            response = self.lkf_api.post_forms_answers(metadata)
+            if response.get('status_code') in [200, 201, 202]:
+                resp_create.update({'registro_de_asistencia': 'Correcto'})
+            else:
+                resp_create.update({'registro_de_asistencia': 'Error'})
+        return resp_create
 
     def get_cantidades_de_pases(self, x_empresa=False):
         print('entra a get_cantidades_de_pases')
