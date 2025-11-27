@@ -62,7 +62,8 @@ class Accesos(Accesos):
             'cron_id':'abcde0001000000000000000',
             'status':'abcde00010000000a0000000',
             'fecha1':'abcde000100000000000f000',
-            'fecha2':'abcde000100000000000f001'
+            'fecha2':'abcde000100000000000f001',
+            "link":'6927eb61d92ecf923b60a0de'
         }
         
     def create_rondin(self, rondin_data: dict = {}):
@@ -1039,7 +1040,7 @@ class Accesos(Accesos):
                 "ubicacion": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}",
                 "nombre_recorrido": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}",
                 "incidencias_rondin": f"$answers.{self.f['bitacora_rondin_incidencias']}",
-                "link": f"$answers.{self.f['link']}",
+                "link": f"$answers.{self.rondin_keys['link']}",
             }},
             {"$skip": offset},
             {"$limit": limit}
