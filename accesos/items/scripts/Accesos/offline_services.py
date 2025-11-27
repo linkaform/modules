@@ -1103,7 +1103,7 @@ class Accesos(Accesos):
                 'fecha_check': check.get('created_at', ''),
                 'record_id': check.get('_id', '')
             })
-        new_incidencias = bitacora_in_couch.get('incidencias', [])
+        new_incidencias = bitacora_in_couch.get('incidencia_rondin', [])
         bitacora_response = self.update_bitacora(bitacora_in_lkf, data, new_incidencias, new_areas)
         aux = self.cr_db.get(rondin_id)
         if bitacora_response and bitacora_response.get('status_code') in [200, 201, 202]:
