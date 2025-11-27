@@ -18,7 +18,8 @@ class Oracle(Oracle):
         self.m = {
             'fecha':'691f4838444e45f9f6e2e648',
             'variable':'691f4838444e45f9f6e2e649',
-            'resultado':'691f4838444e45f9f6e2e64a'
+            'resultado':'691f4838444e45f9f6e2e64a',
+            'query':'69278e5a49292b0e75a2f285'
         }
 
     def get_form_model(self):
@@ -50,8 +51,10 @@ class Oracle(Oracle):
                 >= TO_DATE('2025-11-20 00:00', 'YYYY-MM-DD HH24:MI')
         """
         form_model = self.get_form_model()
+        print('query: ', query)
         answers = {}
-        for x in range(144):
+        answers[self.m['query']] = query
+        for x in range(2):
             header, data = self.query_view(db_name, query=query, date_format=True)
             res = ''
             for d in data:
@@ -62,7 +65,7 @@ class Oracle(Oracle):
             answers[self.m['resultado']] = res
             form_model['answers'] = answers
             res = self.lkf_api.post_forms_answers_list(form_model)
-            time.sleep(1800)
+            time.sleep(1)
 
 
 
