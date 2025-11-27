@@ -389,6 +389,7 @@ class Accesos(Accesos):
                     "comentarios": incidencia.get('comentario_incidente_bitacora', ''),
                     "evidencias": incidencia.get('incidente_evidencia', []),
                     "documentos": incidencia.get('incidente_documento', []),
+                    "link": incidencia.get('link', ""),
                 }
                 format_data.append(format_item)
         return format_data
