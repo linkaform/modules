@@ -1115,6 +1115,8 @@ class Accesos(Accesos):
         aux = self.cr_db.get(rondin_id)
         if bitacora_response and bitacora_response.get('status_code') in [200, 201, 202]:
             aux['status'] = 'received'
+            if aux.get('status_rondin') == 'completed':
+                aux['inbox'] = False
             self.cr_db.save(aux)
             status = {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
         else:
