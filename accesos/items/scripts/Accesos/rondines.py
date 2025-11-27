@@ -643,7 +643,7 @@ class Accesos(Accesos):
             }
             incidencias_area.append(incidencia_formateada)
             
-        checks_mes = self.get_rondin_checks(data.get('rondin_area', ''), data.get('ubicacion', ''))
+        checks_mes = self.get_rondin_checks(data.get('rondin_area', ''), data.get('ubicacion', ''), data.get('nombre_recorrido', ''))
         
         format_data = {
             'area': data.get('rondin_area', ''),
@@ -1319,13 +1319,14 @@ class Accesos(Accesos):
             format_response = self.format_bitacoras_mes(response, nombre_recorrido)
         return format_response
 
-    def get_rondin_checks(self, area, location):
+    def get_rondin_checks(self, area, location, nombre_recorrido):
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
                 "form_id": self.CHECK_UBICACIONES,
                 f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": location,
                 f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['area']}": area,
+                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}": nombre_recorrido,
                 "$expr": {
                     "$and": [
                         {"$eq": [{"$year": "$created_at"}, {"$year": "$$NOW"}]},
