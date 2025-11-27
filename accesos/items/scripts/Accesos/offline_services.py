@@ -771,6 +771,11 @@ class Accesos(Accesos):
         if data.get('rondin_id'):
             rondin_id = data.pop('rondin_id')
             answers[self.f['bitacora_rondin_url']] = f"https://app.linkaform.com/#/records/detail/{rondin_id}"
+        if data.get('rondin_name'):
+            rondin_name = data.pop('rondin_name')
+            answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = {
+                self.mf['nombre_del_recorrido']: rondin_name
+            }
         #---Define Answers
         answers[self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID]={}
         answers[self.f['check_status']] = "continuar_siguiente_punto_de_inspección"
@@ -1032,6 +1037,7 @@ class Accesos(Accesos):
     def sync_rondin_to_lkf(self, data):
         status = {}
         rondin_id = data.get('_id', '')
+        rondin_name = data.get('record', {}).get('nombre_rondin', '')
         # record_id = record.pop('_id', None)
         record = data.get('record', {})
         
@@ -1067,7 +1073,8 @@ class Accesos(Accesos):
             payload = {k: record[k] for k in self.check_area_filter.keys() if k in record}
             payload.update({
                 'record_id': i.get('_id'),
-                'rondin_id': rondin_id
+                'rondin_id': rondin_id,
+                'rondin_name': rondin_name
             })
             payloads.append(payload)
 
