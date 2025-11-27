@@ -55,6 +55,10 @@ class Accesos( Accesos):
             'grupo_ubicaciones_horario': '68b6427cc8f94827ebfed699',
             'dias_libres_empleado': '68bb20095035e61c5745de05',
             'duracion_estimada': '6854459836ea891d9d2be7d9',
+            
+            'grupo_comentarios_generales': '6927a0cdc03f0f8e5355437a',
+            'grupo_comentarios_generales_fecha': '6927a0ea1c378cbd7f60a135',
+            'grupo_comentarios_generales_texto': '6927a0ea1c378cbd7f60a136',
         })
 
         #BORRAR

@@ -699,6 +699,36 @@ class Accesos(Accesos):
         if not answers.get(self.f['fecha_inicio_rondin']):
             answers[self.f['fecha_inicio_rondin']] = all_areas_sorted[0].get(self.f['fecha_hora_inspeccion_area'], '') if len(all_areas_sorted) > 0 else ''
 
+        comentarios_in_couch = data.get('record', {}).get('comentarios_rondin', [])
+        comentarios_in_lkf = bitacora_in_lkf.get('grupo_comentarios_generales', [])
+        comentarios_existentes = set()
+        comentarios_finales = []
+        
+        for comentario in comentarios_in_lkf:
+            fecha = comentario.get('grupo_comentarios_generales_fecha', '')
+            texto = comentario.get('grupo_comentarios_generales_texto', '')
+            comentarios_existentes.add((fecha, texto))
+        
+        for comentario in comentarios_in_lkf:
+            nuevo_comentario = {
+            self.f['grupo_comentarios_generales_fecha']: comentario.get('grupo_comentarios_generales_fecha', ''),
+            self.f['grupo_comentarios_generales_texto']: comentario.get('grupo_comentarios_generales_texto', '')
+            }
+            comentarios_finales.append(nuevo_comentario)
+        
+        for comentario in comentarios_in_couch:
+            fecha = comentario.get('fecha', '')
+            texto = comentario.get('texto', '')
+            
+            if (fecha, texto) not in comentarios_existentes:
+                nuevo_comentario = {
+                    self.f['grupo_comentarios_generales_fecha']: fecha,
+                    self.f['grupo_comentarios_generales_texto']: texto
+                }
+                comentarios_finales.append(nuevo_comentario)
+        
+        answers[self.f['grupo_comentarios_generales']] = comentarios_finales
+
         if answers:
             metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_RONDINES)
             metadata.update(self.get_record_by_folio(bitacora_in_lkf.get('folio'), self.BITACORA_RONDINES, select_columns={'_id': 1}, limit=1))
@@ -1077,11 +1107,11 @@ class Accesos(Accesos):
         bitacora_response = self.update_bitacora(bitacora_in_lkf, data, new_incidencias, new_areas)
         aux = self.cr_db.get(rondin_id)
         if bitacora_response and bitacora_response.get('status_code') in [200, 201, 202]:
-            record['status'] = 'received'
+            aux['status'] = 'received'
             self.cr_db.save(aux)
             status = {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
         else:
-            record['status'] = 'error'
+            aux['status'] = 'error'
             self.cr_db.save(aux)
             status = {'status_code': 400, 'type': 'error', 'msg': bitacora_response, 'data': {}}
         return status
