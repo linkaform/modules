@@ -1441,8 +1441,10 @@ class Accesos(Accesos):
         fecha_evaluada = datetime(year, month, dia)
         
         # Si es día futuro o presente
-        if fecha_evaluada.date() >= now.date():
+        if fecha_evaluada.date() > now.date():
             return ("none", "")
+        elif fecha_evaluada.date() == now.date():
+            return ("programado", "")
         
         # Si es día pasado, verificar si estaba programada una bitácora
         # Verificar si había una bitácora programada (pero no ejecutada) para ese día
@@ -1522,8 +1524,10 @@ class Accesos(Accesos):
         fecha_evaluada = datetime(year, month, dia)
         
         # Si es día futuro o presente
-        if fecha_evaluada.date() >= now.date():
+        if fecha_evaluada.date() > now.date():
             return "none"
+        elif fecha_evaluada.date() == now.date():
+            return "programado"
         
         # Si es día pasado, verificar si estaba programada una bitácora
         estaba_programada, bitacora_programada = self._verificar_bitacora_programada(dia, year, month, hora_valida, bitacora_rondines)
