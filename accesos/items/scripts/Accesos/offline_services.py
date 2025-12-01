@@ -147,6 +147,7 @@ class Accesos(Accesos):
             "tipo_de_area": "",
             "foto_del_area": [],
             "evidencia_incidencia": [],
+            "documento_incidencia": [],
             "incidencias": [],
             "comentario_check_area": "",
             "status_check_area": "",
@@ -790,6 +791,8 @@ class Accesos(Accesos):
                 })
             elif key == 'evidencia_incidencia':
                 answers[self.f['foto_evidencia_area']] = value
+            elif key == 'documento_incidencia':
+                answers[self.f['documento_check']] = value
             elif key == 'incidencias':
                 incidencias = data.get('incidencias', [])
                 if incidencias:
@@ -1044,12 +1047,6 @@ class Accesos(Accesos):
         if isinstance(record, dict) and 'status_code' in record:
             return record
         
-        # for name in attachments:
-        #     attachment = self.cr_db.get_attachment(_id, name)
-        #     data = attachment.read()
-        #     upload_image = self.upload_image_from_couchdb(data, name, self.BITACORA_INCIDENCIAS, self.f['evidencia_incidencia'])
-        #     media.append(upload_image)
-        
         #! Se obtienen los IDs con checked true en el registro de la bitacora en CouchDB
         check_ids = [ObjectId(i.get('check_area_id')) if i.get('checked') else None for i in record.get('check_areas', [])]
         #! Se buscan los checks que ya existen en Linkaform
@@ -1069,6 +1066,54 @@ class Accesos(Accesos):
         #! Se crean los payloads para crear los checks en Linkaform
         payloads = []
         for i in checks_details:
+            check_evidencias = i.get('record', {}).get('evidencia_incidencia', [])
+            check_documentos = i.get('record', {}).get('documento_incidencia', [])
+            check_incidencias = i.get('record', {}).get('incidencia', [])
+
+            # Build a map of file_name -> file_url to check existing URLs
+            existing_urls = {}
+            for item in check_evidencias + check_documentos:
+                existing_urls[item.get('file_name')] = item.get('file_url', '')
+            for inc in check_incidencias:
+                for item in inc.get('evidencia', []) + inc.get('documento', []):
+                    existing_urls[item.get('file_name')] = item.get('file_url', '')
+
+            attachments = i.get('_attachments', {})
+            if attachments:
+                media = []
+                for name in attachments:
+                    # Check if already uploaded
+                    current_url = existing_urls.get(name, '')
+                    if current_url and current_url.startswith('http'):
+                        continue
+
+                    attachment = self.cr_db.get_attachment(i.get('_id'), name)
+                    data = attachment.read()
+                    upload_image = self.upload_image_from_couchdb(data, name, self.CHECK_UBICACIONES, self.f['documento_check'])
+                    media.append(upload_image)
+
+                for m in media:
+                    m_name = m.get('file_name')
+                    m_url = m.get('file_url')
+                    
+                    for item in check_evidencias:
+                        if item.get('file_name') == m_name:
+                            item['file_url'] = m_url
+                            
+                    for item in check_documentos:
+                        if item.get('file_name') == m_name:
+                            item['file_url'] = m_url
+                            
+                    for incidencia in check_incidencias:
+                        for item in incidencia.get('evidencia', []):
+                            if item.get('file_name') == m_name:
+                                item['file_url'] = m_url
+                        for item in incidencia.get('documento', []):
+                            if item.get('file_name') == m_name:
+                                item['file_url'] = m_url
+
+                self.cr_db.save(i)
+
             record = i.get('record', {})
             payload = {k: record[k] for k in self.check_area_filter.keys() if k in record}
             payload.update({
