@@ -1134,6 +1134,8 @@ class Accesos(Accesos):
         
         #! 1. Obtener la bitacora del rondin en Linkaform y obtener las areas ya revisadas
         bitacora_in_lkf = self.get_bitacora_by_id(rondin_id)
+        if not bitacora_in_lkf:
+            self.LKFException({'title':'Error', 'msg': 'No se encontro la bitacora del rondin en Linkaform.'})
         checks_in_lkf = []
         for item in bitacora_in_lkf.get('areas_del_rondin', []):
             if item.get('fecha_hora_inspeccion_area'):
