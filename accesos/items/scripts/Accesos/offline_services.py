@@ -1027,15 +1027,21 @@ class Accesos(Accesos):
     def create_checks_in_lkf(self, records):
         for record in records:
             record_id = record.get('record_id', None)
-            response = self.create_check_area(record)
+
+            try:
+                response = self.create_check_area(record)
+            except Exception as e:
+                self.LKFException({'title': 'Error inesperado', 'msg': str(e)})
+            
             record = self.cr_db.get(record_id)
-            if response.get('status_code') in [200, 201, 202]:
-                record['status'] = 'received'
-                record['folio'] = response.get('json', {}).get('folio', '')
-                self.cr_db.save(record)
-            else:
-                record['status'] = 'error'
-                self.cr_db.save(record)
+            if record:
+                if response.get('status_code') in [200, 201, 202]:
+                    record['status'] = 'received'
+                    record['folio'] = response.get('json', {}).get('folio', '')
+                    self.cr_db.save(record)
+                else:
+                    record['status'] = 'error'
+                    self.cr_db.save(record)
     
     def sync_rondin_to_lkf(self, data):
         status = {}
