@@ -291,7 +291,7 @@ class Accesos(Accesos):
             # for name in attachments:
             #     attachment = self.cr_db.get_attachment(_id, name)
             #     data = attachment.read()
-            #     upload_image = self.upload_image_from_couchdb(data, name, self.BITACORA_INCIDENCIAS, self.f['evidencia_incidencia'])
+            #     upload_image = self.upload_file_from_couchdb(data, name, self.BITACORA_INCIDENCIAS, self.f['evidencia_incidencia'])
             #     media.append(upload_image)
             # record['status'] = 'received'
             # self.cr_db.save(record)
@@ -303,7 +303,7 @@ class Accesos(Accesos):
             print('🕓 Revisión aún no propagada')
             return {'status_code': 462, 'type': 'error', 'msg': 'Revision not yet propagated', 'data': {}}
 
-    def upload_image_from_couchdb(self, image_data, attachment_name, id_forma_seleccionada, id_field):
+    def upload_file_from_couchdb(self, image_data, attachment_name, id_forma_seleccionada, id_field):
         temp_dir = tempfile.gettempdir()
         temp_file_path = os.path.join(temp_dir, attachment_name)
 
@@ -1089,7 +1089,12 @@ class Accesos(Accesos):
 
                     attachment = self.cr_db.get_attachment(i.get('_id'), name)
                     data = attachment.read()
-                    upload_image = self.upload_image_from_couchdb(data, name, self.CHECK_UBICACIONES, self.f['documento_check'])
+                    ref_field = None
+                    if name.endswith('.png') or name.endswith('.jpg') or name.endswith('.jpeg'):
+                        ref_field = self.f['foto_evidencia_area']
+                    else:
+                        ref_field = self.f['documento_check']
+                    upload_image = self.upload_file_from_couchdb(data, name, self.CHECK_UBICACIONES, ref_field)
                     media.append(upload_image)
 
                 for m in media:
