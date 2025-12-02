@@ -1,6 +1,6 @@
 # coding: utf-8
 from datetime import date
-import sys, simplejson
+import sys, simplejson, pytz
 from tkinter import N
 from bson import ObjectId
 from linkaform_api import settings
@@ -413,7 +413,14 @@ class Accesos(Accesos):
         return format_data
 
     def format_bitacora_rondines(self, data):
-        now = datetime.now()
+        if hasattr(self, 'timezone') and self.timezone:
+            try:
+                tz = pytz.timezone(self.timezone)
+                now = datetime.now(tz)
+            except Exception:
+                now = datetime.now()
+        else:
+            now = datetime.now()
         current_year = now.year
         current_month = now.month
         days_in_month = calendar.monthrange(current_year, current_month)[1]
@@ -551,7 +558,14 @@ class Accesos(Accesos):
         return format_data
     
     def format_bitacoras_mes(self, bitacoras_data, nombre_recorrido):
-        now = datetime.now()
+        if hasattr(self, 'timezone') and self.timezone:
+            try:
+                tz = pytz.timezone(self.timezone)
+                now = datetime.now(tz)
+            except Exception:
+                now = datetime.now()
+        else:
+            now = datetime.now()
         current_year = now.year
         current_month = now.month
         days_in_month = calendar.monthrange(current_year, current_month)[1]
@@ -669,7 +683,14 @@ class Accesos(Accesos):
             dict: Datos formateados con estructura de estados por día
         """
         # Obtener el mes y año actuales
-        now = datetime.now()
+        if hasattr(self, 'timezone') and self.timezone:
+            try:
+                tz = pytz.timezone(self.timezone)
+                now = datetime.now(tz)
+            except Exception:
+                now = datetime.now()
+        else:
+            now = datetime.now()
         current_year = now.year
         current_month = now.month
         days_in_month = calendar.monthrange(current_year, current_month)[1]
@@ -1437,7 +1458,14 @@ class Accesos(Accesos):
                 return ("finalizado", bitacora_id)
         
         # No se encontró bitácora para este día
-        now = datetime.now()
+        if hasattr(self, 'timezone') and self.timezone:
+            try:
+                tz = pytz.timezone(self.timezone)
+                now = datetime.now(tz)
+            except Exception:
+                now = datetime.now()
+        else:
+            now = datetime.now()
         fecha_evaluada = datetime(year, month, dia)
         
         # Si es día futuro o presente
@@ -1520,7 +1548,14 @@ class Accesos(Accesos):
                     return "finalizado"
         
         # No se encontró visita para este día
-        now = datetime.now()
+        if hasattr(self, 'timezone') and self.timezone:
+            try:
+                tz = pytz.timezone(self.timezone)
+                now = datetime.now(tz)
+            except Exception:
+                now = datetime.now()
+        else:
+            now = datetime.now()
         fecha_evaluada = datetime(year, month, dia)
         
         # Si es día futuro o presente
@@ -1664,6 +1699,9 @@ if __name__ == "__main__":
     area = data.get("area", None)
     paused = data.get("paused", True)
     areas = data.get("areas", [])
+    data_script = class_obj.current_record
+    class_obj.timezone = data_script.get('timezone', 'America/Mexico_City')
+    tz = pytz.timezone(class_obj.timezone)
 
     if option == 'create_rondin':
         response = class_obj.create_rondin(rondin_data=rondin_data)
