@@ -225,6 +225,9 @@ class Accesos(Accesos):
         status = {}
         response = self.create_incidence(data)
         if response.get('status_code') in [200, 201, 202]:
+            id_incidencia= response.get("json",{}).get("id")
+            link= "https://app.linkaform.com/#/records/detail/"+id_incidencia
+            print("link",link)
             status = {'status_code': 200, 'type': 'success', 'msg': 'Record created successfully', 'data': {}}
         else:
             status = {'status_code': 400, 'type': 'error', 'msg': response, 'data': {}}
@@ -269,6 +272,7 @@ class Accesos(Accesos):
         else:
             return {"status": "error", "message": "Unexpected error occurred."}
         
+    
     def edit_areas_rondin(self, areas, folio, record_id):
         metadata = self.lkf_api.get_metadata(form_id=self.CONFIGURACION_RECORRIDOS_FORM)
         metadata.update(self.get_record_by_folio(record_id, self.CONFIGURACION_RECORRIDOS_FORM, select_columns={'_id':1}, limit=1))
@@ -1733,6 +1737,7 @@ if __name__ == "__main__":
         response = class_obj.pause_or_play_rondin(record_id=record_id, paused=paused)
     elif option == 'update_rondin':
         response = class_obj.update_rondin(folio=folio,rondin_data=rondin_data)
+    
     else:
         response = {"msg": "Empty"}
     class_obj.HttpResponse({"data": response})

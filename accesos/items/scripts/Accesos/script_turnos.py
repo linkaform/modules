@@ -70,7 +70,7 @@ if __name__ == "__main__":
         response = acceso_obj.get_catalog_locations(location)
     elif option == 'checkin':
         # used
-        response = acceso_obj.do_checkin(location, area, employee_list, fotografia=fotografia, nombre_suplente=nombre_suplente)
+        response = acceso_obj.do_checkin(location, area, employee_list, fotografia=fotografia ,nombre_suplente=nombre_suplente)
     elif option == 'checkout':
         # used
         response = acceso_obj.do_checkout(checkin_id=checkin_id, \

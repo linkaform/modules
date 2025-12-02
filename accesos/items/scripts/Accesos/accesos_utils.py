@@ -163,14 +163,9 @@ class Accesos( Accesos):
         now_datetime =self.today_str(timezone, date_format='datetime')
         checkin = self.checkin_data(employee, location, area, 'in', now_datetime)
         employee_list.insert(0,employee)
-        checkin = self.check_in_out_employees('in', now_datetime, checkin=checkin, employee_list=employee_list)
-        if nombre_suplente:
-            checkin.update({
-                self.checkin_fields['nombre_suplente']: nombre_suplente
-            })
 
-        # print("DATA", simplejson.dumps(checkin, indent=4))
-        # print(stop)
+        checkin = self.check_in_out_employees('in', now_datetime, checkin=checkin, employee_list=employee_list)
+
         data.update({
                 'properties': {
                     "device_properties":{
