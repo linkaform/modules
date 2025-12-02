@@ -334,8 +334,9 @@ class Accesos(Accesos):
         return update_file
     
     def assign_user_inbox(self, data):
-        user_name = data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['nombre_usuario'], '')
-        self.cr_db = self.lkf_api.couch.set_db(f'clave_{self.user_id}')
+        user_name_to_assign = data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['nombre_usuario'], '')
+        user_id_to_assign = self.unlist(data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['id_usuario'], ''))
+        self.cr_db = self.lkf_api.couch.set_db(f'clave_{user_id_to_assign}')
         nombre_recorrido = data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.mf['nombre_del_recorrido'], '')
         ubicacion_recorrido = data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], '')
         
@@ -365,14 +366,14 @@ class Accesos(Accesos):
             "status_rondin": "new",
             "created_at": epoc_today,
             "updated_at": epoc_today,
-            "created_by_id": self.user_id,
-            "created_by_name": self.user_name,
+            "created_by_id": user_id_to_assign,
+            "created_by_name": user_name_to_assign,
             "geolocation": {
                 "lat": lat,
                 "long": long
             },
             "record": {
-                "user_name": user_name,
+                "user_name": user_name_to_assign,
                 "nombre_rondin": nombre_recorrido,
                 "ubicacion_rondin": ubicacion_recorrido,
                 "duracion_estimada": recorrido_info.get('duracion_estimada', ''),
@@ -389,11 +390,11 @@ class Accesos(Accesos):
             result = self.cr_db.save(inbox_record)
             if result:
                 status = {'status_code': 200, 'type': 'success', 'msg': 'Inbox assigned successfully', 'data': {
-                    'assigned_user_id': self.user_id,
-                    'assigned_user': user_name,
+                    'assigned_user_id': user_id_to_assign,
+                    'assigned_user': user_name_to_assign,
                     'bitacora_record_id': self.record_id,
-                    'bitacora_ubicacion': data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], ''),
-                    'bitacora_nombre_rondin': data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.mf['nombre_del_recorrido'], ''),
+                    'bitacora_ubicacion': ubicacion_recorrido,
+                    'bitacora_nombre_rondin': nombre_recorrido,
                     'bitacora_fecha_programada': data.get(self.f['fecha_programacion'], ''),
                 }}
         except Exception as e:
