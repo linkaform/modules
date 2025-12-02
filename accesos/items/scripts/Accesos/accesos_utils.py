@@ -113,6 +113,21 @@ class Accesos( Accesos):
             'nombre_suplente':'6927a1176c60848998a157a2'
         })
 
+    def set_boot_status(self, checkin_type):
+        if checkin_type == 'in':
+            set_boot_status = 'disponible'
+        elif checkin_type == 'out':
+            set_boot_status = 'cierre'
+        return set_boot_status
+
+    def is_boot_available(self, location, area):
+        self.last_check_in = self.get_last_checkin(location, area)
+        last_status = self.last_check_in.get('checkin_type')
+        if last_status in ['entrada','apertura', 'disponible']:
+            return False
+        else:
+            return True
+
     def do_checkin(self, location, area, employee_list=[], fotografia=[], check_in_manual={},nombre_suplente=""):
         # Realiza el check-in en una ubicación y área específica.
 
