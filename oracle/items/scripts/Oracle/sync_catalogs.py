@@ -1,5 +1,6 @@
 # coding: utf-8
 from copy import deepcopy
+from datetime import timedelta
 import sys, simplejson, time, datetime
 import pytz
 from linkaform_api import settings
