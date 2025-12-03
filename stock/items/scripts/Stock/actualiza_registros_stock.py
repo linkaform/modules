@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson, copy
+import time
 
 from stock_utils import Stock
 
@@ -12,13 +13,29 @@ python actualiza_registros_stock.py '{}' '{"jwt": "jwt eyJhbGciOiJSUzI1NiIsInR5c
 
 class Stock(Stock):
 
+    def get_folios(self):
+        file_path = '/tmp/folios.txt'
+        with open(file_path, 'r') as file:
+            folios = file.read().splitlines()
+        batch_size = 36
+        for i in range(0, len(folios), batch_size):
+            batch = folios[i:i + batch_size]
+            self.update_stock_by_folios(batch)
+        return folios
+
+    def update_stock_by_folios(self,folios):
+        print('Cantidad de folios=', len(folios))
+        answer = {self.f['product_grading_pending']:'pendiente'}
+        timein = time.time()
+        res = self.lkf_api.patch_multi_record(answer, self.FORM_INVENTORY_ID,  folios=folios, threading=True)
+        print(f'{len(folios)} folios en time=', time.time() - timein)
 
     def update_stock_record(self):
         """
         Se busca en la collecion de Stock el cache para hacer update
         """
         list_lotes = [
-            "ALCLB4734908", "ALCLB4734AC9", "ALCLB4734578", "ALCLB4734E41", "ALCLB4735512", "ALCLB47350DA", "ALCLB4734C1A", "ALCLB4734AA6", "ALCLB4734F84", "ALCLB4734FFD", "ALCLB4734598", "ALCLB473486B", "ALCLB47349C8", "ALCLB4734EBF", "ALCLB473491B", "ALCLB47353DB", "ALCLB473525D", "ALCLB4735229", "ALCLB4734F7C", "ALCLB473525C", "ALCLB4734856", "ALCLB4734A56", "ALCLB4734865", "ALCLB47353B6", "ALCLB4734CC1", "ALCLB47358BD", "ALCLB4734912", "ALCLB473486C", "ALCLB473490B", "ALCLB47353BA", "ALCLB4734EFF", "ALCLB47350F4", "ALCLB47350E6", "ALCLB4734A89", "ALCLB473533C", "ALCLB4734C03", "ALCLB4737156", "ALCLB473453F", "ALCLB4734923", "ALCLB4734522", "ALCLB4734A68", "ALCLB4735251", "ALCLB4735729", "ALCLB4734A6F", "ALCLB47352D6", "ALCLB4734E84", "ALCLB4734A0A", "ALCLB473519E", "ALCLB4734F49", "ALCLB473502B", "ALCLB47347BA", "ALCLB47348F6", "ALCLB4735DCC", "ALCLB4735837", "ALCLB4735101", "ALCLB4734904", "ALCLB4734A9E", "ALCLB4734860", "ALCLB473490C", "ALCLB473581B", "ALCLB4734FE1", "ALCLB47356CC", "ALCLB4734627", "ALCLB4734CC6", "ALCLB4735276"
+            
         ]
         query = {
             'form_id':self.FORM_INVENTORY_ID, 
@@ -75,4 +92,5 @@ class Stock(Stock):
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
     stock_obj.console_run()
-    stock_obj.update_stock_record()
+    #stock_obj.update_stock_record()
+    stock_obj.get_folios()
