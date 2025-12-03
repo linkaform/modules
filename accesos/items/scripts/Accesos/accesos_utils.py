@@ -248,6 +248,13 @@ class Accesos( Accesos):
                 self.checkin_fields['checkin_type']: 'iniciar_turno',
                 self.f['image_checkin']: fotografia
             }
+
+            if nombre_suplente:
+                asistencia_answers.update({
+                    self.f['tipo_guardia']: 'guardia_suplente',
+                    self.f['nombre_guardia_suplente']: nombre_suplente
+                })
+
             metadata = self.lkf_api.get_metadata(form_id=self.REGISTRO_ASISTENCIA)
             metadata.update({
                 "properties": {
