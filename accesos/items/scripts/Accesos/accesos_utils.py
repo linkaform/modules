@@ -166,15 +166,6 @@ class Accesos( Accesos):
 
     def do_checkin(self, location, area, employee_list=[], fotografia=[], check_in_manual={},nombre_suplente=""):
         # Realiza el check-in en una ubicación y área específica.
-        resp = self.is_boot_available(location, area)
-        if not resp:
-            user = self.lkf_api.get_user_by_id(self.user.get('user_id'))
-            res = self.update_guards_checkin([{'user_id': self.user.get('user_id'), 'name': user.get('name', '')}], '692f337419ace4eb093a616b', location, area)
-            format_res = self.unlist(res)
-            if format_res.get('status_code') in [200, 201, 202]:
-                return format_res
-            else:
-                self.LKFException({'title': 'Error al hacer check-in', 'msg': format_res.get('json')})
         if employee_list:
             user_id = [self.user.get('user_id'),] + [x['user_id'] for x in employee_list]
         else:
