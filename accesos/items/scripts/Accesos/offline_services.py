@@ -2,7 +2,7 @@
 from hmac import new
 import os
 import pytz
-import sys, simplejson, json
+import sys, simplejson, json, pytz
 import time
 import tempfile
 import unicodedata
@@ -646,7 +646,16 @@ class Accesos(Accesos):
             check = new_areas.get(nombre_area)
             if check:
                 ts = check.get('fecha_check')
-                fecha_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S") if ts else ""
+                timezone_str = check.get('timezone', '')
+                fecha_str = ""
+                if ts:
+                    try:
+                        target_tz = pytz.timezone(timezone_str)
+                        dt_aware = datetime.fromtimestamp(ts, tz=target_tz)
+                        fecha_str = dt_aware.strftime("%Y-%m-%d %H:%M:%S")
+                    except (pytz.exceptions.UnknownTimeZoneError, Exception):
+                        fecha_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+
                 item.update({
                     'fecha_hora_inspeccion_area': fecha_str,
                     'foto_evidencia_area_rondin': check.get('evidencia_incidencia', []),
@@ -851,11 +860,8 @@ class Accesos(Accesos):
                 bad_items.append(item)
                 continue
             
-            if record.get('status_rondin') == 'deleted':
-                good_items.append(_id)
-                record['inbox'] = False
-                record['status'] = 'received'
-                self.cr_db.save(record)
+            good_items.append(_id)
+            self.cr_db.delete(record)
         
         answers[self.f['estatus_del_recorrido']] = 'cancelado'
         if good_items:
@@ -1055,7 +1061,7 @@ class Accesos(Accesos):
             return record
         
         #! Se obtienen los IDs con checked true en el registro de la bitacora en CouchDB
-        check_ids = [ObjectId(i.get('check_area_id')) if i.get('checked') else None for i in record.get('check_areas', [])]
+        check_ids = [ObjectId(i.get('check_area_id')) if i.get('checked') and i.get('status_check') == 'completed' else None for i in record.get('check_areas', [])]
         #! Se buscan los checks que ya existen en Linkaform
         checks_in_lkf = self.search_checks_in_lkf(check_ids)
         #! Se filtran los checks que no existen en Linkaform
@@ -1166,6 +1172,7 @@ class Accesos(Accesos):
         for check in new_checks:
             new_areas[check.get('record', {}).get('area')] = check.get('record', {})
             new_areas[check.get('record', {}).get('area')].update({
+                'timezone': data.get('timezone', ''),
                 'fecha_check': check.get('created_at', ''),
                 'record_id': check.get('_id', '')
             })
@@ -1173,8 +1180,8 @@ class Accesos(Accesos):
         bitacora_response = self.update_bitacora(bitacora_in_lkf, data, new_incidencias, new_areas)
         aux = self.cr_db.get(rondin_id)
         if bitacora_response and bitacora_response.get('status_code') in [200, 201, 202]:
-            aux['status'] = 'received'
             if aux.get('status_rondin') == 'completed':
+                aux['status'] = 'received'
                 aux['inbox'] = False
             self.cr_db.save(aux)
             status = {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
