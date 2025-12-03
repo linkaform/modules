@@ -860,11 +860,8 @@ class Accesos(Accesos):
                 bad_items.append(item)
                 continue
             
-            if record.get('status_rondin') == 'deleted':
-                good_items.append(_id)
-                record['inbox'] = False
-                record['status'] = 'received'
-                self.cr_db.save(record)
+            good_items.append(_id)
+            self.cr_db.delete(record)
         
         answers[self.f['estatus_del_recorrido']] = 'cancelado'
         if good_items:
