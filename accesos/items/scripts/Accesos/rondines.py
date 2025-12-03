@@ -666,7 +666,7 @@ class Accesos(Accesos):
         format_data = {
             'area': data.get('rondin_area', ''),
             'checks_mes': checks_mes,
-            'fotos': [{'pic_name': item.get('name', ''),'pic_url': item.get('file_url', '')} for item in data.get('foto_evidencia_area_rondin', [])],
+            'fotos': [{'file_name': item.get('file_name', ''),'file_url': item.get('file_url', '')} for item in data.get('foto_evidencia_area_rondin', [])],
             'hora_de_check': data.get('fecha_hora_inspeccion_area', ''),
             'ubicacion': data.get('ubicacion', ''),
             'tiempo_traslado': data.get('duracion_traslado_area', ''),
