@@ -113,13 +113,59 @@ class Accesos( Accesos):
             'nombre_suplente':'6927a1176c60848998a157a2'
         })
 
+    def set_boot_status(self, checkin_type):
+        if checkin_type == 'in':
+            set_boot_status = 'disponible'
+        elif checkin_type == 'out':
+            set_boot_status = 'cierre'
+        return set_boot_status
+
+    def is_boot_available(self, location, area):
+        self.last_check_in = self.get_last_checkin(location, area)
+        last_status = self.last_check_in.get('checkin_type')
+        if last_status in ['entrada','apertura', 'disponible']:
+            return False
+        else:
+            return True
+
+    def get_guard_last_checkin(self, user_ids):
+        '''
+            Se realiza busqued del ulisto registro de checkin de un usuario
+        '''
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id": self.CHECKIN_CASETAS,
+            }
+        unwind_query = {
+            f"answers.{self.f['guard_group']}.{self.checkin_fields['checkin_status']}": "entrada"
+        }
+        if user_ids and type(user_ids) == list:
+            if len(user_ids) == 1:
+                #hace la busqueda por directa, para optimizar recuros
+                user_ids = user_ids[0]
+            else:
+                #hace busqueda en lista de opciones
+                match_query.update({
+                    f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.f['user_id_jefes']}":{'$in':user_ids}
+                    })
+        if user_ids and type(user_ids) == int:
+            unwind_query.update({
+                f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.f['user_id_jefes']}":user_ids
+                })
+        if not unwind_query:
+            return self.LKFException({"msg":f"Algo salio mal al intentar buscar el checkin del los ids: {user_id}"})
+        query = [
+            {'$match': match_query },
+            {'$unwind': f"$answers.{self.f['guard_group']}"},
+            {'$match':unwind_query},
+            {'$project': self.project_format(self.checkin_fields)},
+            {'$sort':{'created_at':-1}},
+            {'$limit':1}
+            ]
+        return self.format_cr_result(self.cr.aggregate(query), get_one=True)
+
     def do_checkin(self, location, area, employee_list=[], fotografia=[], check_in_manual={},nombre_suplente=""):
         # Realiza el check-in en una ubicación y área específica.
-
-        if not self.is_boot_available(location, area):
-            msg = f"Can not login in to boot on location {location} at the area {area}."
-            msg += f"Because '{self.last_check_in.get('employee')}' is logged in."
-            self.LKFException(msg)
         if employee_list:
             user_id = [self.user.get('user_id'),] + [x['user_id'] for x in employee_list]
         else:
