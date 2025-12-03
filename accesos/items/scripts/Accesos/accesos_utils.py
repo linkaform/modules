@@ -204,6 +204,10 @@ class Accesos( Accesos):
         employee['timezone'] = user_data.get('timezone','America/Monterrey')
         employee['name'] = employee['worker_name']
         employee['position'] = self.chife_guard
+        employee['nombre_suplente'] = nombre_suplente
+
+        print("employeeeee", employee)
+
         timezone = employee.get('cat_timezone', employee.get('timezone', 'America/Monterrey'))
         data = self.lkf_api.get_metadata(self.CHECKIN_CASETAS)
         now_datetime =self.today_str(timezone, date_format='datetime')
