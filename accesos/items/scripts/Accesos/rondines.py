@@ -543,7 +543,7 @@ class Accesos(Accesos):
                     resumen_estados.append({
                         "dia": dia,
                         "estado": estado_bitacora,
-                        "record_id": bitacora_id if estado_bitacora not in ["none", "no_inspeccionada", "no_aplica"] else "",
+                        "record_id": bitacora_id if estado_bitacora not in ["none", "no_aplica"] else "",
                     })
                 
                 # Agregar esta categoría al array
@@ -1472,22 +1472,21 @@ class Accesos(Accesos):
             now = datetime.now()
         fecha_evaluada = datetime(year, month, dia)
         
-        # Si es día futuro o presente
+        estaba_programada, bitacora_programada = self._verificar_bitacora_programada(dia, year, month, hora_valida, bitacora_rondines)
+        if estaba_programada:
+            estatus_bitacora_programada = bitacora_programada.get('estatus_del_recorrido', '')
+            record_id = str(bitacora_programada.get('_id', ''))
+            if estatus_bitacora_programada == 'cancelado':
+                return ("cancelado", record_id)
+            elif estatus_bitacora_programada == 'programado':
+                return ("programado", record_id)
+            else:
+                return ("no_inspeccionada", record_id)
+
         if fecha_evaluada.date() > now.date():
             return ("none", "")
         elif fecha_evaluada.date() == now.date():
             return ("programado", "")
-        
-        # Si es día pasado, verificar si estaba programada una bitácora
-        # Verificar si había una bitácora programada (pero no ejecutada) para ese día
-        estaba_programada, bitacora_programada = self._verificar_bitacora_programada(dia, year, month, hora_valida, bitacora_rondines)
-        
-        if estaba_programada:
-            estatus_bitacora_programada = bitacora_programada.get('estatus_del_recorrido', '')
-            if estatus_bitacora_programada == 'cancelado':
-                return ("cancelado", "")
-            else:
-                return ("no_inspeccionada", "")
         else:
             return ("no_aplica", "")
     
@@ -1562,12 +1561,6 @@ class Accesos(Accesos):
             now = datetime.now()
         fecha_evaluada = datetime(year, month, dia)
         
-        # Si es día futuro o presente
-        if fecha_evaluada.date() > now.date():
-            return "none"
-        elif fecha_evaluada.date() == now.date():
-            return "programado"
-        
         # Si es día pasado, verificar si estaba programada una bitácora
         estaba_programada, bitacora_programada = self._verificar_bitacora_programada(dia, year, month, hora_valida, bitacora_rondines)
         
@@ -1577,6 +1570,12 @@ class Accesos(Accesos):
                 return "cancelado"
             else:
                 return "no_inspeccionada"
+        
+        # Si es día futuro o presente
+        if fecha_evaluada.date() > now.date():
+            return "none"
+        elif fecha_evaluada.date() == now.date():
+            return "programado"
         else:
             return "no_aplica"
     
@@ -1592,6 +1591,7 @@ class Accesos(Accesos):
             'cancelado': 'no_inspeccionada',
             'pendiente': 'none',
             'en_proceso': 'none',
+            'programado': 'programado',
         }
         
         status_normalizado = estatus_bitacora.lower().strip() if estatus_bitacora else ''
