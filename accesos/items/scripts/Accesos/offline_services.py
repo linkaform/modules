@@ -573,8 +573,8 @@ class Accesos(Accesos):
                     self.f['incidente_open']: incidencia.get('otro_incidente', ''),
                     self.f['comentario_incidente_bitacora']: incidencia.get('comentario', ''),
                     self.f['incidente_accion']: incidencia.get('accion', ''),
-                    self.f['incidente_evidencia']: incidencia.get('evidencia', []),
-                    self.f['incidente_documento']: incidencia.get('documento', []),
+                    self.f['incidente_evidencia']: [i for i in incidencia.get('evidencia', []) if i.get('file_url', '')],
+                    self.f['incidente_documento']: [i for i in incidencia.get('documento', []) if i.get('file_url', '')],
                 }
                 incidencias_list.append(new_item)
         
@@ -607,8 +607,8 @@ class Accesos(Accesos):
                         self.f['incidente_open']: incidencia.get('otro_incidente', ''),
                         self.f['comentario_incidente_bitacora']: incidencia.get('comentario', ''),
                         self.f['incidente_accion']: incidencia.get('accion', ''),
-                        self.f['incidente_evidencia']: incidencia.get('evidencia', []),
-                        self.f['incidente_documento']: incidencia.get('documento', []),
+                        self.f['incidente_evidencia']: [i for i in incidencia.get('evidencia', []) if i.get('file_url', '')],
+                        self.f['incidente_documento']: [i for i in incidencia.get('documento', []) if i.get('file_url', '')],
                     }
                     incidencias_list.append(new_item)
         
@@ -626,8 +626,8 @@ class Accesos(Accesos):
                 self.f['incidente_open']: incidencia.get('incidente_open', ''),
                 self.f['comentario_incidente_bitacora']: incidencia.get('comentario_incidente_bitacora', ''),
                 self.f['incidente_accion']: incidencia.get('incidente_accion', ''),
-                self.f['incidente_evidencia']: incidencia.get('incidente_evidencia', []),
-                self.f['incidente_documento']: incidencia.get('incidente_documento', []),
+                self.f['incidente_evidencia']: [i for i in incidencia.get('incidente_evidencia', []) if i.get('file_url', '')],
+                self.f['incidente_documento']: [i for i in incidencia.get('incidente_documento', []) if i.get('file_url', '')],
             }
             incidencias_list.append(new_item)
         return incidencias_list
@@ -636,6 +636,10 @@ class Accesos(Accesos):
         answers={}
         areas_list = []
         conf_recorrido = {}
+
+        if not isinstance(data, dict):
+            return self.LKFException({'title': 'Error', 'msg': 'Invalid data format, check update_bitacora function'})
+
         estatus_bitacora_in_couch = data.get('status_rondin', '')
         
         incidencias_list = self.format_incidencias_to_bitacora(bitacora_in_lkf, new_incidencias, new_areas)
@@ -1034,6 +1038,25 @@ class Accesos(Accesos):
     def create_checks_in_lkf(self, records):
         for record in records:
             record_id = record.get('record_id', None)
+
+            # Filter file lists to ensure file_url exists
+            file_keys = ['foto_del_area', 'evidencia_incidencia', 'documento_incidencia']
+            for key in file_keys:
+                if key in record and isinstance(record[key], list):
+                    record[key] = [
+                        item for item in record[key] 
+                        if item.get('file_url')
+                    ]
+
+            if 'incidencias' in record and isinstance(record['incidencias'], list):
+                for incidencia in record['incidencias']:
+                    incidencia_file_keys = ['evidencia', 'documento']
+                    for key in incidencia_file_keys:
+                        if key in incidencia and isinstance(incidencia[key], list):
+                            incidencia[key] = [
+                                item for item in incidencia[key] 
+                                if item.get('file_url')
+                            ]
 
             try:
                 response = self.create_check_area(record)
