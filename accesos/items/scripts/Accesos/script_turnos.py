@@ -17,7 +17,7 @@ if __name__ == "__main__":
 
     area = data.get("area")
     comments = data.get('comments',"")
-    checkin_id = data.get("checkin_id","")
+    checkin_id = data.get("checkin_id", "")
     employee_list = data.get("employee_list",[])
     equipo = data.get('equipo',"")
     forzar = data.get('forzar')
@@ -70,7 +70,7 @@ if __name__ == "__main__":
         response = acceso_obj.get_catalog_locations(location)
     elif option == 'checkin':
         # used
-        response = acceso_obj.do_checkin(location, area, employee_list, fotografia=fotografia ,nombre_suplente=nombre_suplente)
+        response = acceso_obj.do_checkin(location, area, employee_list, fotografia=fotografia ,nombre_suplente=nombre_suplente, checkin_id=checkin_id)
     elif option == 'checkout':
         # used
         response = acceso_obj.do_checkout(checkin_id=checkin_id, \
