@@ -418,6 +418,18 @@ class Accesos( Accesos):
         area = checkin_answers.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID,{}).get(self.f['area'])
         location = checkin_answers.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID,{}).get(self.f['location'])
         rec_guards = checkin_answers.get(self.checkin_fields['guard_group'])
+        
+        guards_in = [idx for idx, guard in enumerate(rec_guards) if not guard.get(self.checkin_fields['checkout_date'])]
+        guards_ids = []
+        for guard in rec_guards:
+            fecha_cierre_turno = guard.get(self.checkin_fields['checkout_date'])
+            guard_id = self.unlist(guard.get(self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID, {}).get(self.employee_fields['user_id_jefes']))
+            actual_guard_id = self.unlist(employee.get('usuario_id'))
+            guards_ids.append(guard_id)
+            if not fecha_cierre_turno and len(guards_in) > 1 and guard_id == actual_guard_id:
+                resp = self.do_checkout_aux_guard(guards=[actual_guard_id], location=location, area=area)
+                return resp
+
         if not guards:
             checkin_answers[self.checkin_fields['commentario_checkin_caseta']] = \
                 checkin_answers.get(self.checkin_fields['commentario_checkin_caseta'],'')
@@ -449,14 +461,6 @@ class Accesos( Accesos):
             checkin_answers.update({
                 self.checkin_fields['fotografia_cierre_turno']: fotografia
             })
-
-        #Verificar si el guardia es un guardia de apoyo para hacer su checkout correctamente
-        check_aux_guard = self.check_in_aux_guard()
-        if check_aux_guard:
-            for user_id_aux, each_user in check_aux_guard.items():
-                if user_id_aux == self.unlist(employee.get('usuario_id')) and each_user.get('checkin_position') == 'guardia_de_apoyo':
-                    resp = self.do_checkout_aux_guard(guards=[self.unlist(employee.get('usuario_id'))], location=location, area=area)
-                    return resp
 
         response = self.lkf_api.patch_record( data=data, record_id=checkin_id)
         if response.get('status_code') in [200, 201, 202]:
