@@ -12,6 +12,7 @@ from account_settings import *
 
 from accesos_utils import Accesos
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 
 class Accesos(Accesos):
 
@@ -1035,34 +1036,35 @@ class Accesos(Accesos):
             format_response = [item.get('_id') for item in response]
         return format_response
     
-    def create_checks_in_lkf(self, records):
-        for record in records:
-            record_id = record.get('record_id', None)
+    def _process_single_check_record(self, record):
+        record_id = record.get('record_id', None)
 
-            # Filter file lists to ensure file_url exists
-            file_keys = ['foto_del_area', 'evidencia_incidencia', 'documento_incidencia']
-            for key in file_keys:
-                if key in record and isinstance(record[key], list):
-                    record[key] = [
-                        item for item in record[key] 
-                        if item.get('file_url')
-                    ]
+        # Filter file lists to ensure file_url exists
+        file_keys = ['foto_del_area', 'evidencia_incidencia', 'documento_incidencia']
+        for key in file_keys:
+            if key in record and isinstance(record[key], list):
+                record[key] = [
+                    item for item in record[key] 
+                    if item.get('file_url')
+                ]
 
-            if 'incidencias' in record and isinstance(record['incidencias'], list):
-                for incidencia in record['incidencias']:
-                    incidencia_file_keys = ['evidencia', 'documento']
-                    for key in incidencia_file_keys:
-                        if key in incidencia and isinstance(incidencia[key], list):
-                            incidencia[key] = [
-                                item for item in incidencia[key] 
-                                if item.get('file_url')
-                            ]
+        if 'incidencias' in record and isinstance(record['incidencias'], list):
+            for incidencia in record['incidencias']:
+                incidencia_file_keys = ['evidencia', 'documento']
+                for key in incidencia_file_keys:
+                    if key in incidencia and isinstance(incidencia[key], list):
+                        incidencia[key] = [
+                            item for item in incidencia[key] 
+                            if item.get('file_url')
+                        ]
 
-            try:
-                response = self.create_check_area(record)
-            except Exception as e:
-                self.LKFException({'title': 'Error inesperado', 'msg': str(e)})
-            
+        response = {}
+        try:
+            response = self.create_check_area(record)
+        except Exception as e:
+            self.LKFException({'title': 'Error inesperado', 'msg': str(e)})
+        
+        if record_id:
             record = self.cr_db.get(record_id)
             if record:
                 if response.get('status_code') in [200, 201, 202]:
@@ -1072,6 +1074,10 @@ class Accesos(Accesos):
                 else:
                     record['status'] = 'error'
                     self.cr_db.save(record)
+
+    def create_checks_in_lkf(self, records):
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            executor.map(self._process_single_check_record, records)
     
     def sync_rondin_to_lkf(self, data):
         status = {}
