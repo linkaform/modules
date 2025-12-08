@@ -1142,7 +1142,16 @@ class Accesos(Accesos):
         print("format_response", simplejson.dumps(format_response, indent=4))
         return format_response
 
-    def get_bitacora_rondines(self, location=None):
+    def get_bitacora_rondines(self, location=None, year=None, month=None):
+        year_condition = { "$eq": [ { "$year": "$created_at" }, { "$year": "$$NOW" } ] }
+        month_condition = { "$eq": [ { "$month": "$created_at" }, { "$month": "$$NOW" } ] }
+
+        if year:
+            year_condition = { "$eq": [ { "$year": "$created_at" }, int(year) ] }
+        
+        if month:
+            month_condition = { "$eq": [ { "$month": "$created_at" }, int(month) ] }
+
         match = {
             "deleted_at": {"$exists": False},
             "form_id": self.BITACORA_RONDINES,
@@ -1152,8 +1161,8 @@ class Accesos(Accesos):
             f"answers.{self.f['fecha_programacion']}": {"$type": "string", "$ne": ""}, 
             "$expr": {
                 "$and": [
-                    { "$eq": [ { "$year": "$created_at" }, { "$year": "$$NOW" } ] }, #TODO: Cambiar a mes por parametro
-                    { "$eq": [ { "$month": "$created_at" }, { "$month": "$$NOW" } ] }, #TODO: Cambiar a mes por parametro
+                    year_condition,
+                    month_condition
                 ]
             }
         }
@@ -1703,6 +1712,8 @@ if __name__ == "__main__":
     area = data.get("area", None)
     paused = data.get("paused", True)
     areas = data.get("areas", [])
+    year = data.get("year", None)
+    month = data.get("month", None)
     data_script = class_obj.current_record
     class_obj.timezone = data_script.get('timezone', 'America/Mexico_City')
     tz = pytz.timezone(class_obj.timezone)
@@ -1726,7 +1737,7 @@ if __name__ == "__main__":
     elif option == 'get_rondines_images':
         response = class_obj.get_rondines_images(location=ubicacion, area=area, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
     elif option == 'get_bitacora_rondines':
-        response = class_obj.get_bitacora_rondines(location=ubicacion)
+        response = class_obj.get_bitacora_rondines(location=ubicacion, year=year, month=month)
     elif option == 'get_check_by_id':
         response = class_obj.get_check_by_id(record_id=record_id)
     elif option == 'get_bitacora_by_id':
