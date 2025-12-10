@@ -31,6 +31,18 @@ class PCI_Utils():
         self.CATALOG_ID_COPES = 46944
         self.CATALOG_ID_TIPOS_TAREA_FACTIBLES = 56269
 
+        self.map_descuentos_by_xls = {
+            "anticipo": "f19620000000000000000f7c", 
+            "desmontaje de modems": "665e0d3ddd21dc84aae05e49", 
+            "queja no atendida": "665e0d3ddd21dc84aae05e4a", 
+            "cobro improcedente": "665e0d3ddd21dc84aae05e4b", 
+            "nomina": "68f02c8b1e159ec1f864d867", 
+            "prestamo": "6938be2954a3f5b19d30fa0a", 
+            "adeudo": "6938be2954a3f5b19d30fa0b", 
+            "vehiculo": "6938be2954a3f5b19d30fa0c", 
+            "ahorro": "6938be2954a3f5b19d30fa0d", 
+        }
+
         self.equivalcens_map = { 
             'Aerea': ['AEREA', 'M. AEREO'],
             # 'Alfanumérico':['SERIE ONT ALFANUMÉRICO','ONT ALFANUMÉRICO','SERIE ONT ALFANUMERICO','Serie ONT Alfanumerico', 'Serie ONT Alfanumérico',

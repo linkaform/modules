@@ -68,7 +68,9 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         #print("--- descuentos:",records_descuentos)
         dict_emails_descuentos = {}
         error_descuentos = []
-        descuentos_aceptados = ["anticipo", "desmontaje de modems", "queja no atendida", "cobro improcedente", "nomina", "bono"]
+        # descuentos_aceptados = ["anticipo", "desmontaje de modems", "queja no atendida", "cobro improcedente", "nomina", "bono"]
+        descuentos_aceptados = list( p_utils.map_descuentos_by_xls.keys() )
+        descuentos_aceptados.append( "bono" )
         
         for rec_des in records_descuentos:
             email_rec = str(rec_des[1]).lower().strip()
@@ -110,6 +112,10 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
 
                 if descripcion_descuento == 'nómina':
                     descripcion_descuento = "nomina"
+                elif descripcion_descuento == "préstamo":
+                    descripcion_descuento = "prestamo"
+                elif descripcion_descuento == "vehículo":
+                    descripcion_descuento = "vehiculo"
 
                 # Si hay un descuento por nomina en el excel pero también esta en la forma se da prioridad a la forma
                 if descripcion_descuento == 'nomina':
@@ -152,6 +158,30 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         # print(dict_emails_descuentos)
         # stop
         return dict_emails_descuentos
+
+    def get_descuentos_to_oc( self, dict_descuentos_apply, total_oc ):
+        """
+        Genera un diccionario de descuentos aplicables a una Orden de Compra,
+        se mapea la descripcion del descuento a su campo correspondiente en la forma.
+        """
+        descuentos_to_oc = {}
+
+        for descripcion_descuento, detail_descuento in dict_descuentos_apply.items():
+            # Si el descuento no esta en el map se omite.
+            field_descuento = p_utils.map_descuentos_by_xls.get( descripcion_descuento )
+            if not field_descuento:
+                continue
+            
+            value_descuento = detail_descuento.get('val', 0)
+            
+            # Si el tipo de descuento es porcentual, se hace el cálculo correspondiente
+            if detail_descuento['type'] == 'porcentaje':
+                value_descuento = total_oc * ( value_descuento / 100.0 )
+            
+            # Se actualiza el diccionario de descuentos
+            descuentos_to_oc[ field_descuento ] = p_utils.add_coma(value_descuento)
+
+        return descuentos_to_oc
 
     def get_retenciones_resico(self):
         """
@@ -1132,20 +1162,22 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                         total_oc = default_subtotal
                     total_oc = total_oc - descuento + monto_bono
 
-                    for descripcion_descuento, detail_descuento in dict_descuentos_apply.items():
-                        value_descuento = detail_descuento.get('val', 0)
-                        if detail_descuento['type'] == 'porcentaje':
-                            value_descuento = total_oc * (value_descuento/float(100))
-                        if "anticipo" in descripcion_descuento:
-                            answers['f19620000000000000000f7c'] = p_utils.add_coma(value_descuento)
-                        elif "desmontaje de modems" in descripcion_descuento:
-                            answers['665e0d3ddd21dc84aae05e49'] = p_utils.add_coma(value_descuento)
-                        elif "queja no atendida" in descripcion_descuento:
-                            answers['665e0d3ddd21dc84aae05e4a'] = p_utils.add_coma(value_descuento)
-                        elif "cobro improcedente" in descripcion_descuento:
-                            answers['665e0d3ddd21dc84aae05e4b'] = p_utils.add_coma(value_descuento)
-                        elif "nomina" in descripcion_descuento:
-                            answers['68f02c8b1e159ec1f864d867'] = p_utils.add_coma(value_descuento)
+                    answers.update( self.get_descuentos_to_oc( dict_descuentos_apply, total_oc ) )
+
+                    # for descripcion_descuento, detail_descuento in dict_descuentos_apply.items():
+                    #     value_descuento = detail_descuento.get('val', 0)
+                    #     if detail_descuento['type'] == 'porcentaje':
+                    #         value_descuento = total_oc * (value_descuento/float(100))
+                    #     if "anticipo" in descripcion_descuento:
+                    #         answers['f19620000000000000000f7c'] = p_utils.add_coma(value_descuento)
+                    #     elif "desmontaje de modems" in descripcion_descuento:
+                    #         answers['665e0d3ddd21dc84aae05e49'] = p_utils.add_coma(value_descuento)
+                    #     elif "queja no atendida" in descripcion_descuento:
+                    #         answers['665e0d3ddd21dc84aae05e4a'] = p_utils.add_coma(value_descuento)
+                    #     elif "cobro improcedente" in descripcion_descuento:
+                    #         answers['665e0d3ddd21dc84aae05e4b'] = p_utils.add_coma(value_descuento)
+                    #     elif "nomina" in descripcion_descuento:
+                    #         answers['68f02c8b1e159ec1f864d867'] = p_utils.add_coma(value_descuento)
                     
                     if porcentaje_descuento:
                         monto_desccuento = total_oc * (porcentaje_descuento / float(100))
@@ -1575,20 +1607,22 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             total_oc = default_subtotal
         total_oc = total_oc - descuento + monto_bono
 
-        for descripcion_descuento, detail_descuento in dict_descuentos_apply.items():
-            value_descuento = detail_descuento.get('val', 0)
-            if detail_descuento['type'] == 'porcentaje':
-                value_descuento = total_oc * (value_descuento/float(100))
-            if "anticipo" in descripcion_descuento:
-                answers['f19620000000000000000f7c'] = p_utils.add_coma(value_descuento)
-            elif "desmontaje de modems" in descripcion_descuento:
-                answers['665e0d3ddd21dc84aae05e49'] = p_utils.add_coma(value_descuento)
-            elif "queja no atendida" in descripcion_descuento:
-                answers['665e0d3ddd21dc84aae05e4a'] = p_utils.add_coma(value_descuento)
-            elif "cobro improcedente" in descripcion_descuento:
-                answers['665e0d3ddd21dc84aae05e4b'] = p_utils.add_coma(value_descuento)
-            elif "nomina" in descripcion_descuento:
-                answers['68f02c8b1e159ec1f864d867'] = p_utils.add_coma(value_descuento)
+        answers.update( self.get_descuentos_to_oc( dict_descuentos_apply, total_oc ) )
+
+        # for descripcion_descuento, detail_descuento in dict_descuentos_apply.items():
+        #     value_descuento = detail_descuento.get('val', 0)
+        #     if detail_descuento['type'] == 'porcentaje':
+        #         value_descuento = total_oc * (value_descuento/float(100))
+        #     if "anticipo" in descripcion_descuento:
+        #         answers['f19620000000000000000f7c'] = p_utils.add_coma(value_descuento)
+        #     elif "desmontaje de modems" in descripcion_descuento:
+        #         answers['665e0d3ddd21dc84aae05e49'] = p_utils.add_coma(value_descuento)
+        #     elif "queja no atendida" in descripcion_descuento:
+        #         answers['665e0d3ddd21dc84aae05e4a'] = p_utils.add_coma(value_descuento)
+        #     elif "cobro improcedente" in descripcion_descuento:
+        #         answers['665e0d3ddd21dc84aae05e4b'] = p_utils.add_coma(value_descuento)
+        #     elif "nomina" in descripcion_descuento:
+        #         answers['68f02c8b1e159ec1f864d867'] = p_utils.add_coma(value_descuento)
         
         if porcentaje_descuento:
             monto_desccuento = total_oc * (porcentaje_descuento / float(100))
