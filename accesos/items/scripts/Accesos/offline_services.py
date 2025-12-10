@@ -637,10 +637,6 @@ class Accesos(Accesos):
         answers={}
         areas_list = []
         conf_recorrido = {}
-
-        if not isinstance(data, dict):
-            return self.LKFException({'title': 'Error', 'msg': 'Invalid data format, check update_bitacora function'})
-
         estatus_bitacora_in_couch = data.get('status_rondin', '')
         
         incidencias_list = self.format_incidencias_to_bitacora(bitacora_in_lkf, new_incidencias, new_areas)
@@ -1078,6 +1074,22 @@ class Accesos(Accesos):
     def create_checks_in_lkf(self, records):
         with ThreadPoolExecutor(max_workers=5) as executor:
             executor.map(self._process_single_check_record, records)
+
+    def _process_attachment_upload(self, check_id, name, existing_urls):
+        # Check if already uploaded
+        current_url = existing_urls.get(name, '')
+        if current_url and current_url.startswith('http'):
+            return None
+
+        attachment = self.cr_db.get_attachment(check_id, name)
+        data = attachment.read()
+        ref_field = None
+        if name.endswith('.png') or name.endswith('.jpg') or name.endswith('.jpeg'):
+            ref_field = self.f['foto_evidencia_area']
+        else:
+            ref_field = self.f['documento_check']
+        upload_image = self.upload_file_from_couchdb(data, name, self.CHECK_UBICACIONES, ref_field)
+        return upload_image
     
     def sync_rondin_to_lkf(self, data):
         status = {}
@@ -1123,21 +1135,10 @@ class Accesos(Accesos):
             attachments = i.get('_attachments', {})
             if attachments:
                 media = []
-                for name in attachments:
-                    # Check if already uploaded
-                    current_url = existing_urls.get(name, '')
-                    if current_url and current_url.startswith('http'):
-                        continue
-
-                    attachment = self.cr_db.get_attachment(i.get('_id'), name)
-                    data = attachment.read()
-                    ref_field = None
-                    if name.endswith('.png') or name.endswith('.jpg') or name.endswith('.jpeg'):
-                        ref_field = self.f['foto_evidencia_area']
-                    else:
-                        ref_field = self.f['documento_check']
-                    upload_image = self.upload_file_from_couchdb(data, name, self.CHECK_UBICACIONES, ref_field)
-                    media.append(upload_image)
+                with ThreadPoolExecutor(max_workers=5) as executor:
+                    data_list = [(i.get('_id'), name, existing_urls) for name in attachments]
+                    results = executor.map(lambda x: self._process_attachment_upload(*x), data_list)
+                    media = [r for r in results if r]
 
                 for m in media:
                     m_name = m.get('file_name')
@@ -1206,6 +1207,10 @@ class Accesos(Accesos):
                 'record_id': check.get('_id', '')
             })
         new_incidencias = bitacora_in_couch.get('incidencia_rondin', [])
+        
+        if not isinstance(data, dict):
+            data = self.cr_db.get(rondin_id)
+
         bitacora_response = self.update_bitacora(bitacora_in_lkf, data, new_incidencias, new_areas)
         aux = self.cr_db.get(rondin_id)
         if bitacora_response and bitacora_response.get('status_code') in [200, 201, 202]:
