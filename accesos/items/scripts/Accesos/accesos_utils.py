@@ -116,15 +116,15 @@ class Accesos( Accesos):
 
     def set_boot_status(self, checkin_type):
         if checkin_type == 'in':
-            set_boot_status = 'disponible'
+            set_boot_status = 'abierta'
         elif checkin_type == 'out':
-            set_boot_status = 'cierre'
+            set_boot_status = 'cerrada'
         return set_boot_status
 
     def is_boot_available(self, location, area):
         self.last_check_in = self.get_last_checkin(location, area)
         last_status = self.last_check_in.get('checkin_type')
-        if last_status in ['entrada','apertura', 'disponible']:
+        if last_status in ['entrada','apertura', 'disponible', 'abierta']:
             return False, last_status
         else:
             return True, last_status
@@ -168,17 +168,17 @@ class Accesos( Accesos):
     def get_booth_status(self, booth_area, location):
         last_chekin = self.get_last_checkin(location, booth_area)
         booth_status = {
-            "status":'Disponible',
+            "status":'Cerrada',
             "guard_on_dutty":'',
             "user_id":'',
             "stated_at":'',
             "fotografia_inicio_turno":[],
             "fotografia_cierre_turno":[],
             }
-        if last_chekin.get('checkin_type') in ['entrada','apertura','disponible']:
+        if last_chekin.get('checkin_type') in ['entrada','apertura','disponible', 'abierta']:
             #todo
             #user_id 
-            booth_status['status'] = 'No Disponible'
+            booth_status['status'] = 'Abierta'
             booth_status['guard_on_dutty'] = last_chekin.get('employee') 
             booth_status['stated_at'] = last_chekin.get('boot_checkin_date')
             booth_status['checkin_id'] = last_chekin['_id']
@@ -279,7 +279,7 @@ class Accesos( Accesos):
     def do_checkin(self, location, area, employee_list=[], fotografia=[], check_in_manual={}, nombre_suplente="", checkin_id=""):
         # Realiza el check-in en una ubicación y área específica.
         resp, last_status = self.is_boot_available(location, area)
-        if not resp and last_status == 'disponible':
+        if not resp and last_status == 'abierta':
             user = self.lkf_api.get_user_by_id(self.user.get('user_id'))
             res = self.update_guards_checkin([{'user_id': self.user.get('user_id'), 'name': user.get('name', '')}], checkin_id, location, area)
             format_res = self.unlist(res)
@@ -434,7 +434,7 @@ class Accesos( Accesos):
             checkin_answers[self.checkin_fields['commentario_checkin_caseta']] = \
                 checkin_answers.get(self.checkin_fields['commentario_checkin_caseta'],'')
             # Si no especifica guardas va a cerrar toda la casta
-            checkin_answers[self.checkin_fields['checkin_type']] = 'cierre'
+            checkin_answers[self.checkin_fields['checkin_type']] = 'cerrada'
             checkin_answers[self.checkin_fields['boot_checkout_date']] = now_datetime
             checkin_answers[self.checkin_fields['forzar_cierre']] = 'regular'
             if comments:
