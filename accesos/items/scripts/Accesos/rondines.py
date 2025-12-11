@@ -1489,6 +1489,8 @@ class Accesos(Accesos):
                 return ("cancelado", record_id)
             elif estatus_bitacora_programada == 'programado':
                 return ("programado", record_id)
+            elif estatus_bitacora_programada == 'realizado':
+                return ("fuera_de_hora", record_id)
             else:
                 return ("no_inspeccionada", record_id)
 
@@ -1577,6 +1579,8 @@ class Accesos(Accesos):
             estatus_bitacora_programada = bitacora_programada.get('estatus_del_recorrido', '')
             if estatus_bitacora_programada == 'cancelado':
                 return "cancelado"
+            elif estatus_bitacora_programada == 'realizado':
+                return "fuera_de_hora"
             else:
                 return "no_inspeccionada"
         
