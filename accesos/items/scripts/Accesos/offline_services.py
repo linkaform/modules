@@ -709,7 +709,7 @@ class Accesos(Accesos):
         answers[self.f['estatus_del_recorrido']] = 'en_proceso' if estatus_bitacora_in_couch != 'completed' else 'realizado'
         answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = conf_recorrido
         if not answers.get(self.f['fecha_inicio_rondin']):
-            answers[self.f['fecha_inicio_rondin']] = all_areas_sorted[0].get(self.f['fecha_hora_inspeccion_area'], '') if len(all_areas_sorted) > 0 else ''
+            answers[self.f['fecha_inicio_rondin']] = data.get('record', {}).get('fecha_inicio', '')
 
         comentarios_in_couch = data.get('record', {}).get('comentarios_rondin', [])
         comentarios_in_lkf = bitacora_in_lkf.get('grupo_comentarios_generales', [])
@@ -759,6 +759,7 @@ class Accesos(Accesos):
                 '_id': bitacora_in_lkf.get('_id')
             })
             res = self.net.patch_forms_answers(metadata)
+            print("======log: ", res)
             return res
         
     def create_check_area(self, data):
@@ -1057,6 +1058,7 @@ class Accesos(Accesos):
         response = {}
         try:
             response = self.create_check_area(record)
+            print("======log: ", response)
         except Exception as e:
             self.LKFException({'title': 'Error inesperado', 'msg': str(e)})
         
@@ -1185,12 +1187,13 @@ class Accesos(Accesos):
                 checks_in_lkf.append(item.get('incidente_area'))
             
         #! 2. Obtener la bitacora del rondin en CouchDB y obtener las areas ya revisadas
-        bitacora_in_couch = record
+        bitacora_in_couch = data.get('record', {})
         checks_in_couch = bitacora_in_couch.get('check_areas', [])
         format_checks_in_couch = []
         for item in checks_in_couch:
             #! 2.1 Se compara si el check area ya existe en la bitacora de Linkaform
-            if item.get('checked') and not item.get('area') in checks_in_lkf:
+            if (item.get('checked') and not item.get('area') in checks_in_lkf and item.get('status_check') == 'completed')  \
+                    or data.get('status_rondin') == 'completed':
                 format_checks_in_couch.append(item.get('check_area_id'))
 
         new_checks = self.cr_db.find({
@@ -1202,7 +1205,7 @@ class Accesos(Accesos):
         for check in new_checks:
             new_areas[check.get('record', {}).get('area')] = check.get('record', {})
             new_areas[check.get('record', {}).get('area')].update({
-                'timezone': data.get('timezone', ''),
+                'timezone': check.get('timezone', ''),
                 'fecha_check': check.get('created_at', ''),
                 'record_id': check.get('_id', '')
             })
