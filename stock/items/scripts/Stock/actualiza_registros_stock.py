@@ -17,7 +17,7 @@ class Stock(Stock):
         file_path = '/tmp/folios.txt'
         with open(file_path, 'r') as file:
             folios = file.read().splitlines()
-        batch_size = 36
+        batch_size = 512
         for i in range(0, len(folios), batch_size):
             batch = folios[i:i + batch_size]
             self.update_stock_by_folios(batch)
