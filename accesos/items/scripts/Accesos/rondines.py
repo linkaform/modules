@@ -1142,13 +1142,12 @@ class Accesos(Accesos):
         print("format_response", simplejson.dumps(format_response, indent=4))
         return format_response
 
-    def get_bitacora_rondines(self, location=None, year=None, month=None):
+    def get_bitacora_rondines(self, location=None, nombre_rondin=None, year=None, month=None):
         year_condition = { "$eq": [ { "$year": "$created_at" }, { "$year": "$$NOW" } ] }
         month_condition = { "$eq": [ { "$month": "$created_at" }, { "$month": "$$NOW" } ] }
 
         if year:
             year_condition = { "$eq": [ { "$year": "$created_at" }, int(year) ] }
-        
         if month:
             month_condition = { "$eq": [ { "$month": "$created_at" }, int(month) ] }
 
@@ -1167,7 +1166,10 @@ class Accesos(Accesos):
             }
         }
         
-
+        if nombre_rondin:
+            match.update({
+                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}": nombre_rondin,
+            })
         if location:
             match.update({
                 f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": location,
@@ -1713,6 +1715,7 @@ if __name__ == "__main__":
     folio = data.get("folio", '')
     record_id = data.get("record_id", '')
     ubicacion = data.get("ubicacion", None)
+    nombre_rondin = data.get("nombre_rondin", None)
     area = data.get("area", None)
     paused = data.get("paused", True)
     areas = data.get("areas", [])
@@ -1741,7 +1744,7 @@ if __name__ == "__main__":
     elif option == 'get_rondines_images':
         response = class_obj.get_rondines_images(location=ubicacion, area=area, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
     elif option == 'get_bitacora_rondines':
-        response = class_obj.get_bitacora_rondines(location=ubicacion, year=year, month=month)
+        response = class_obj.get_bitacora_rondines(location=ubicacion, nombre_rondin=nombre_rondin, year=year, month=month)
     elif option == 'get_check_by_id':
         response = class_obj.get_check_by_id(record_id=record_id)
     elif option == 'get_bitacora_by_id':
