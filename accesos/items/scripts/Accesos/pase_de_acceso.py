@@ -72,6 +72,8 @@ if __name__ == "__main__":
         response = acceso_obj.get_user_contacts()
     elif option == 'get_config_modulo_seguridad':
         response = acceso_obj.get_config_modulo_seguridad(location)
+    elif option == 'extends_date_of_pass':
+        response = acceso_obj.extends_date_of_pass(qr_code, update_obj)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})

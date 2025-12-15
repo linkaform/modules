@@ -1792,3 +1792,21 @@ class Accesos( Accesos):
                 return res
             else: 
                 return res
+
+    def extends_date_of_pass(self, qr_code, update_obj):
+        if not qr_code:
+            return self.LKFException({'title': 'Error', 'msg': 'No se proporciono el QR code'})
+        if not update_obj.get('fecha_desde'):
+            return self.LKFException({'title': 'Error', 'msg': 'No se proporciono una fecha valida'})
+        
+        answers = {}
+        answers[self.mf['fecha_desde_visita']] = update_obj.get('fecha_desde')
+        answers[self.mf['fecha_desde_hasta']] = update_obj.get('fecha_hasta', None)
+
+        if answers:
+            res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.PASE_ENTRADA, record_id=[qr_code,])
+            if res.get('status_code') == 201 or res.get('status_code') == 202:
+                return res
+            else:
+                return res
+        return False
