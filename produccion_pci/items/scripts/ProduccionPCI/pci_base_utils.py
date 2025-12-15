@@ -389,6 +389,20 @@ class PCI_Utils():
             return []
         return records_catalog_contratistas
 
+    def get_all_contratistas_from_catalog(self):
+        records_contratistas = self.lkf_api.search_catalog(self.lkf_obj.CATALOGO_CONTRATISTAS_ID, self.get_mango_query_all_records())
+        #print '----------- records_contratistas =',records_contratistas
+        dict_contratistas = { 
+            int(r.get('5f344a0476c82e1bebc991d6', 0)): {
+                'socio_comercial': r.get('614e4cd2c1770ff99f38ac33', ''),
+                'razon_social_fibra': r.get('618057ba8f81fd9179bcd329', ''),
+                'razon_social_cobre': r.get('6180593cb518bbdc7cde8d8d', ''),
+                'liberado_de_conecta': False if not r.get('63bed6a0cd55b21466e6f929') or r.get('63bed6a0cd55b21466e6f929', '').lower() == 'no' else True,
+                'contratista_carso': False if not r.get('665f70d3a7463635ed0e0b81') or r.get('665f70d3a7463635ed0e0b81', '').lower() == 'no' else True
+            } for r in records_contratistas 
+        }
+        return dict_contratistas
+
     def get_all_forms_cobranza(self):
         return {
             'fibra': {

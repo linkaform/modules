@@ -223,22 +223,75 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             }
         return price_list
 
+    def query_get_price_list_dict(self):
+        query = [
+            {'$match':{'deleted_at' : {'$exists':False},
+                    'form_id': self.FORM_ID_PRECIOS_COBRE,
+                    'answers.aaa00000000000000000a007':'compra'}},
+            {'$group':{
+                '_id':{
+                     'tipo_trabajo':'$answers.aaa00000000000000000a002',
+                     'year': '$answers.aaa00000000000000000a003',
+                     'infra':'$answers.aaa00000000000000000a006',
+                     'nivel':'$answers.aaa00000000000000000a004',
+                     'nombre_producto': '$answers.aaa00000000000000000a001',
+                     'clave': '$answers.abc00000000000000000a001'
+                     },
+                'precio' :{'$max':'$answers.aaa00000000000000000a008'}
+            }},
+            {'$sort':{
+                '_id.tipo_trabajo':1,
+                '_id.year':1,
+                '_id.infra':1,
+                '_id.nivel':1,
+                '_id.nombre_producto':1
+            }}
+            ]
+        return query
+
     def get_price_list_cobre(self):
         """
         Consulta en Mongo los registros que existen para la forma de Precios Cobre
 
         Return: Diccionario con la lista de los precios para folios de Cobre
         """
-        prices = self.get_records(self.FORM_ID_PRECIOS_COBRE, select_columns=['folio', 'answers'])
-        # aaa00000000000000000a004 : puede ser MAQTEL, MIGRACION ó CONTRATISTA
-        # aaa00000000000000000a002 : puede ser A0, PSR ó A4
-        # aaa00000000000000000a008 : Monto del precio
-        dict_prices = {}
+        # prices = self.get_records(self.FORM_ID_PRECIOS_COBRE, select_columns=['folio', 'answers'])
+        # # aaa00000000000000000a004 : puede ser MAQTEL, MIGRACION ó CONTRATISTA
+        # # aaa00000000000000000a002 : puede ser A0, PSR ó A4
+        # # aaa00000000000000000a008 : Monto del precio
+        # dict_prices = {}
+        # for price in prices:
+        #     dict_prices.setdefault( price['answers'].get('aaa00000000000000000a004'), {} ).update({
+        #         price['answers'].get('aaa00000000000000000a002'): price['answers'].get('aaa00000000000000000a008')
+        #     })
+        # return dict_prices
+        query = self.query_get_price_list_dict()
+        prices = self.cr.aggregate(query)
+        price_list = {}
         for price in prices:
-            dict_prices.setdefault( price['answers'].get('aaa00000000000000000a004'), {} ).update({
-                price['answers'].get('aaa00000000000000000a002'): price['answers'].get('aaa00000000000000000a008')
-            })
-        return dict_prices
+            tipo_trabajo = price['_id'].get('tipo_trabajo')
+            clave_prod = price['_id'].get('clave')
+            prod = price['_id']['nombre_producto'].replace(' ','_').lower()
+            nivel = price['_id']['nivel']
+            if not tipo_trabajo and 'PSR' in clave_prod:
+                # Es un precio de PSR
+                tipo_trabajo = 'psr_tipo_trabajo'
+                year = 'psr_year'
+                infra = 'psr_infra'
+            else:
+                year = price['_id']['year']
+                infra = price['_id']['infra']
+            
+            price_list \
+                .setdefault(tipo_trabajo, {}) \
+                .setdefault(year, {}) \
+                .setdefault(infra, {}) \
+                .setdefault(nivel, {}) \
+                .setdefault(prod, 0.0)
+
+            # Asignamos el precio que le corresponde
+            price_list[tipo_trabajo][year][infra][nivel][prod] = price['precio']
+        return price_list
 
     def validate_emails_descuentos(self, form_connections, list_descuentos, map_users_email, map_email_connections ):
         """
@@ -317,20 +370,20 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             extra_filters['answers.f2361400a010000000000006.f2361400a0100000000000b6'] = {'$nin': ['tn', 'te']}
         return self.get_records( FORMA_LIBERACION, folios_carga, extra_filters, ['folio', 'user_id', 'form_id', 'answers', '_id'] )
 
-    def get_all_contratistas_from_catalog(self):
-        mango_query = { "selector": { "_id": { "$gt": None } }, "limit":10000, "skip":0 }
-        records_contratistas = lkf_api.search_catalog(self.CATALOGO_CONTRATISTAS_ID, mango_query)
-        #print '----------- records_contratistas =',records_contratistas
-        dict_contratistas = { 
-            int(r.get('5f344a0476c82e1bebc991d6', 0)): {
-                'socio_comercial': r.get('614e4cd2c1770ff99f38ac33', ''),
-                'razon_social_fibra': r.get('618057ba8f81fd9179bcd329', ''),
-                'razon_social_cobre': r.get('6180593cb518bbdc7cde8d8d', ''),
-                'liberado_de_conecta': False if not r.get('63bed6a0cd55b21466e6f929') or r.get('63bed6a0cd55b21466e6f929', '').lower() == 'no' else True,
-                'contratista_carso': False if not r.get('665f70d3a7463635ed0e0b81') or r.get('665f70d3a7463635ed0e0b81', '').lower() == 'no' else True
-            } for r in records_contratistas 
-        }
-        return dict_contratistas
+    # def get_all_contratistas_from_catalog(self):
+    #     mango_query = { "selector": { "_id": { "$gt": None } }, "limit":10000, "skip":0 }
+    #     records_contratistas = lkf_api.search_catalog(self.CATALOGO_CONTRATISTAS_ID, mango_query)
+    #     #print '----------- records_contratistas =',records_contratistas
+    #     dict_contratistas = { 
+    #         int(r.get('5f344a0476c82e1bebc991d6', 0)): {
+    #             'socio_comercial': r.get('614e4cd2c1770ff99f38ac33', ''),
+    #             'razon_social_fibra': r.get('618057ba8f81fd9179bcd329', ''),
+    #             'razon_social_cobre': r.get('6180593cb518bbdc7cde8d8d', ''),
+    #             'liberado_de_conecta': False if not r.get('63bed6a0cd55b21466e6f929') or r.get('63bed6a0cd55b21466e6f929', '').lower() == 'no' else True,
+    #             'contratista_carso': False if not r.get('665f70d3a7463635ed0e0b81') or r.get('665f70d3a7463635ed0e0b81', '').lower() == 'no' else True
+    #         } for r in records_contratistas 
+    #     }
+    #     return dict_contratistas
 
     def _procesar_descuentos(self, descuentos, email_of_connection, total_oc, totalDescuento20porc):
         """
@@ -1388,46 +1441,173 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                 status_pago_folios['otra_oc'].append(folio)
         return status_pago_folios
     
-    def make_estimacion_row_cobre(self, fields_liberacion, folio_lib, price_list, map_campos, conn_carso, conn_id, order_psr):
+    
+
+
+
+
+
+
+
+
+
+
+
+    def make_estimacion_row_cobre(self, fields_liberacion, folio_lib, price_list, map_campos, conn_carso, conn_id, order_psr, conceptos_cobrados_psr_ids):
         print(f'\n=== price_list: {price_list}\n')
         """
         make estimacion row recibe el registro de liberacion y hace el calculo del pago
         fields_liberacion es la lista del grupo repetitivo con n folios a liberar
         regresa una lista con todos los registros a liberar.
         """
-        rows = []
-        nivel_de_pago = 'contratista'
-        if conn_id in conn_carso:
-            nivel_de_pago = 'migrado'
-        elif conn_id == self.ID_CONTRATISTA_TIPO_MAQTEL:
-            nivel_de_pago = 'maqtel'
+        # rows = []
+        # nivel_de_pago = 'contratista'
+        # if conn_id in conn_carso:
+        #     nivel_de_pago = 'migrado'
+        # elif conn_id == self.ID_CONTRATISTA_TIPO_MAQTEL:
+        #     nivel_de_pago = 'maqtel'
 
-        for group_field in fields_liberacion:
-            # Se inicializa arr_detalle con puros ceros en los campos que se cobran
-            arr_detalle = [0] * len(map_campos)
+        # for group_field in fields_liberacion:
+        #     # Se inicializa arr_detalle con puros ceros en los campos que se cobran
+        #     arr_detalle = [0] * len(map_campos)
             
-            tipo_trabajo = group_field.pop('f2361400a0100000000000b6', '')
+        #     tipo_trabajo = group_field.pop('f2361400a0100000000000b6', '')
 
-            # if tipo_trabajo != 'a4':
-            if tipo_trabajo not in ['a4', 'a2']:
-                tipo_trabajo = 'psr' if order_psr else 'a0'
+        #     # if tipo_trabajo != 'a4':
+        #     if tipo_trabajo not in ['a4', 'a2']:
+        #         tipo_trabajo = 'psr' if order_psr else 'a0'
+
+        #     for idx, map_field in enumerate(map_campos):
+        #         map_field_id = map_field['field_id']
+        #         if group_field.get(map_field_id):
+        #             value = group_field[map_field_id]
+        #             try:
+        #                 total_field = value * price_list[ nivel_de_pago ][ tipo_trabajo ]
+        #             except Exception as e:
+        #                 print(f'------------ error en el precio para el folio {folio_lib} msg: {e}')
+        #                 print(f'nivel_de_pago= {nivel_de_pago} tipo_trabajo= {tipo_trabajo} FOLIO= {folio_lib}')
+        #                 return f'Ocurrió un error al obtener el precio para el folio: {folio_lib}'
+        #             arr_detalle[idx] = total_field
+
+        #     rows.append(arr_detalle)
+        # return rows
+
+
+        ##################### Como esta en Admin #########################
+        rows = []
+        precios_not_found_para_a4 = [
+            'montaje_de_puente_en_distribuidor_general',
+            'construccion_de_linea_de_cliente_basica_1_par_y_puesta_en_servicio_(sin_plusvalias_y_sin_pruebas_adsl_o_vdsl)',
+            'plusvalia_por_tramo_adicional_de_50_m._en_construccion',
+            'cableado_interior_1_roseta_aparato_y_1_roseta_modem_para_infinitum_(dit_con_splitter)',
+            'bonificacion_por_distancia_y_volumen_de_1_a_5_o.s_construidas',
+            'migración_a_tba',
+            'prueba_de_transmision_de_datos_vdsl_en_roseta_de_datos_con_equipo_homologado',
+            'ubicación_del_cliente_y_prueba_de_transmision_vdsl_en_terminal_aerea',
+            'prueba_de_transmision_vdsl_adicional_en_terminal_aerea']
+        precios_not_found_para_a0 = ['migración_a_tba', 'quejas', 'pruebas_eléctricas_de_par_principal', 'pruebas_eléctricas_de_par_secundario', 'reporte_de_ivr,_para_liquidación_del_servicio',\
+            'recepción,_manejo_y_almacenaje_de_rosetas._(precio_por_roseta),_(2)']
+        precios_not_found_para_np_plus = ["instalacion_de_poste_de_25'_en_cualquier_tipo_de_terreno"]
+        for group_field in fields_liberacion:
+            arr_detalle = [0] * len(map_campos)
+            tipo_trabajo = group_field.pop('f2361400a0100000000000b6', '')
+            year = str(group_field.pop('f2361400a0100000000000c6', ''))
+            infra = group_field.pop('f2361400a0100000000000d6', '')
+            nivel = group_field.pop('f2361400a0100000000000e6', '')
+            incentivo_con_reparacion_liberacion = group_field.get('6726ff1164633c2f15ba7af6')
+
+            if incentivo_con_reparacion_liberacion:
+
+                psr_payed = '672cfb27388bff96a3650581' in conceptos_cobrados_psr_ids
+                reparacion_payed = '672cfb27388bff96a3650582' in conceptos_cobrados_psr_ids
+                # psr_con_reparacion_payed = '672cfb27388bff96a3650583' in conceptos_cobrados_psr_ids
+
+                # si ya se cobro PSR anteriormente
+                if psr_payed or reparacion_payed:
+                    group_field['6726ff1164633c2f15ba7af6'] = 0
+
+                # solo se permite Incentivo si aun no se ha cobrado
+                if not psr_payed:
+                    group_field['6726ff1164633c2f15ba7af4'] = 1
+
+                # Excepcion de cuando no se ha cobrado repacarion ni incentivo pero ya se intenta cobrar este completo
+                if not psr_payed and not reparacion_payed:
+                    group_field['6726ff1164633c2f15ba7af4'] = 0
+                    group_field['6726ff1164633c2f15ba7af5'] = 0
 
             for idx, map_field in enumerate(map_campos):
                 map_field_id = map_field['field_id']
-                if group_field.get(map_field_id):
-                    value = group_field[map_field_id]
-                    try:
-                        total_field = value * price_list[ nivel_de_pago ][ tipo_trabajo ]
-                    except Exception as e:
-                        print(f'------------ error en el precio para el folio {folio_lib} msg: {e}')
-                        print(f'nivel_de_pago= {nivel_de_pago} tipo_trabajo= {tipo_trabajo} FOLIO= {folio_lib}')
-                        return f'Ocurrió un error al obtener el precio para el folio: {folio_lib}'
-                    arr_detalle[idx] = total_field
+                map_product_name = map_field['name'].replace(' ','_').lower()
 
+                if map_field['oc_field_id'] in conceptos_cobrados_psr_ids:
+                    continue
+                
+                if map_field_id in group_field.keys():
+                    valor_del_campo = group_field.get(map_field_id, 0) or 0
+                    map_product_name_encode = map_product_name.encode('utf-8')
+
+                    if (tipo_trabajo == 'a4' and map_product_name_encode in precios_not_found_para_a4) or \
+                    (tipo_trabajo == 'a0' and map_product_name_encode in precios_not_found_para_a0) or \
+                    (nivel == 'plus' and map_product_name_encode in precios_not_found_para_np_plus) or \
+                    (tipo_trabajo != 'tn' and map_product_name_encode == 'migración_a_tba') or \
+                    (nivel=='bajo' and map_product_name_encode == 'instalar_cadena_de_distribucion'):
+                        valor_del_campo = 0
+                    
+                    if map_product_name == 'construccion_de_linea_de_cliente_basica_1_par_y_puesta_en_servicio_(sin_plusvalias_y_sin_pruebas_adsl_o_vdslsin_modem)' \
+                    and nivel == 'plus' and valor_del_campo > 0:
+                        nivel = 'alto'
+                    
+                    try:
+                        if valor_del_campo:
+                            if order_psr:
+                                # Precios de psr
+                                columna_total = valor_del_campo * price_list['psr_tipo_trabajo']['psr_year']['psr_infra'][nivel].get(map_product_name, -1)
+                            else:
+                                # por ahora se ignoran los folios con tipo de tarea QM porque no estan dados de alta los precios
+                                if tipo_trabajo == 'qm':
+                                    return False
+                                columna_total = valor_del_campo * price_list[tipo_trabajo][year][infra][nivel].get(map_product_name,-1)
+                        else:
+                            columna_total = 0
+                    except Exception as e:
+                        print('------------ error en el precio para el folio {} msg: {}'.format(folio_lib, str(e)))
+                        print(f'tipo_trabajo= {tipo_trabajo} year= {year} infra={infra} nivel={nivel} valor_del_campo={valor_del_campo} map_field_id={map_field_id} map_product_name={map_product_name_encode} FOLIO={folio_lib}')
+                        return 'Ocurrió un error al obtener el precio para el folio: {}'.format(folio_lib)
+                    if columna_total < 0:
+                        print('XXXXX PRECIO NEGATIVO XXXXX')
+                        print(f'tipo_trabajo= {tipo_trabajo} year= {year} infra={infra} nivel={nivel} valor_del_campo={valor_del_campo} map_field_id={map_field_id} map_product_name={map_product_name_encode} FOLIO={folio_lib}')
+                        return False
+                        return 'Ocurrió un error al obtener el precio para el folio: {}'.format(folio_lib)
+                    arr_detalle[idx] = columna_total
             rows.append(arr_detalle)
         return rows
 
-    def get_folio_info_cobre(self, record_lib, FORMA_ORDEN_SERVICIO, price_list, oc_ids_dict, map_campos, oc_ids, order, date_february, conn_carso, total_20_row=False):
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def get_folio_info_cobre(self, record_lib, FORMA_ORDEN_SERVICIO, price_list, oc_ids_dict, map_campos, oc_ids, order, date_february, conn_carso, conceptos_cobrados_psr_ids, total_20_row=False):
         answers_lib = record_lib['answers']
         folio_lib = str(record_lib['folio'])
         paco = answers_lib.get('f2361400a010000000000001',None)
@@ -1442,7 +1622,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             response['connection_id'] = conn_id
             type_proyecto = os_answers.get('633d9f63eb936fb6ec9bf580', '')
             order_psr = type_proyecto == 'psr'
-            rows = self.make_estimacion_row_cobre(fields_liberacion, folio_lib, price_list, map_campos, conn_carso, conn_id, order_psr)
+            rows = self.make_estimacion_row_cobre(fields_liberacion, folio_lib, price_list, map_campos, conn_carso, conn_id, order_psr, conceptos_cobrados_psr_ids)
             if not rows or isinstance(rows, str):
                 return rows
             
@@ -1664,23 +1844,131 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
 
     def generate_ocs_cobre(self, current_record, LIBERACION_PAGOS, FORMA_ORDEN_SERVICIO, OC_CONTRATISTA, map_email_connections, descuentos, only_connections, number_week, \
         price_list_cobre, division, dict_oc_fecha_nomina, conn_carso, ocs_to_psr):
-        map_campos = [{
-            'field_id': '681c0e22e3d9bc611e3a5187',
-            'name': 'PSR',
-            'oc_field_id': '682bc981733bc1ca31734da0'
-        },{
-            'field_id': '681c0e22e3d9bc611e3a5188',
-            'name': 'A4',
-            'oc_field_id': '682bc981733bc1ca31734d9f'
-        },{
-            'field_id': '681c0e22e3d9bc611e3a5189',
-            'name': 'A0',
-            'oc_field_id': '682bc981733bc1ca31734d9e'
-        },{
-            'field_id': '6916c12d5ab0bd965da971b3',
-            'name': 'A2',
-            'oc_field_id': '6916c0d1e6bbebbebfa971b6'
-        }]
+        map_campos = [
+            {'field_id':'f2361400a0100000000000f5',
+             'name':u'CONSTRUCCION DE LINEA DE CLIENTE BASICA 1 PAR Y PUESTA EN SERVICIO (SIN PLUSVALIAS Y SIN PRUEBAS ADSL O VDSL)',
+             'oc_field_id':'5c647760d5351b000dc9986e'},        
+            {'field_id': 'f2361400a0100000000000f9',
+             'name':u'PLUSVALIA POR TRAMO ADICIONAL DE 50 m. EN CONSTRUCCION',
+             'oc_field_id':'5c647760d5351b000dc9986f'},
+            {'field_id':'f2361400a010000000000f17' ,
+             'name':"INSTALACION DE POSTE DE 25' EN CUALQUIER TIPO DE TERRENO" ,
+             'oc_field_id':'5c647760d5351b000dc99870'},
+            {'field_id': 'f2361400a010000000000f19',
+             'name':u'BONIFICACION POR DISTANCIA Y VOLUMEN DE 1 A 5 O.S CONSTRUIDAS' ,
+             'oc_field_id':'5c647760d5351b000dc99871'},
+            {'field_id': 'f2361400a010000000000f20',
+             'name':u'BONIFICACION POR DISTANCIA Y VOLUMEN DE 6 A 15 O.S CONSTRUIDAS' ,
+             'oc_field_id':'5c647760d5351b000dc99872'},
+            {'field_id': 'f2361400a010000000000f21',
+             'name':u'BONIFICACION POR DISTANCIA Y VOLUMEN DE 16 A 25 O.S CONSTRUIDAS',
+             'oc_field_id':'5c647760d5351b000dc99873'},
+            {'field_id':'f2361400a010000000000f22' ,
+             'name': 'BONIFICACION POR DISTANCIA Y VOLUMEN MAS DE 25 O.S CONSTRUIDAS',
+             'oc_field_id':'5c647760d5351b000dc99874'},
+            {'field_id': 'f2361400a010000000000f23',
+             'name':u'MONTAJE DE PUENTE EN DISTRIBUIDOR GENERAL',
+             'oc_field_id':'5c647760d5351b000dc99875'},
+            {'field_id':'f2361400a010000000000f24' ,
+             'name': 'INSTALAR CADENA DE DISTRIBUCION',
+             'oc_field_id':'5c647760d5351b000dc99876'},
+            {'field_id':'f2361400a010000000000f26' ,
+             'name':u'CABLEADO INTERIOR 1 ROSETA APARATO Y 1 ROSETA MODEM PARA INFINITUM (DIT CON SPLITTER)' ,
+             'oc_field_id':'5c647760d5351b000dc99877'},
+            {'field_id': 'f2361400a010000000000f27',
+             'name': 'CABLEADO INTERIOR ADICIONAL PARA EL DIT C/SPLITTER (EXTENSION ADICIONAL)',
+             'oc_field_id':'5c647760d5351b000dc99878'},
+            {'field_id': 'f2361400a010000000000f28',
+             'name':u'PRUEBA DE TRANSMISION DE DATOS VDSL EN ROSETA DE DATOS CON EQUIPO HOMOLOGADO' ,
+             'oc_field_id':'5c647760d5351b000dc99879'},
+            {'field_id':'f2361400a010000000000f29' ,
+             'name':u'UBICACIÓN DEL CLIENTE Y PRUEBA DE TRANSMISION VDSL EN TERMINAL AEREA' ,
+             'oc_field_id':'5c647760d5351b000dc9987a'},
+            {'field_id':'f2361400a010000000000f30' ,
+             'name': 'PRUEBA DE TRANSMISION VDSL ADICIONAL EN TERMINAL AEREA',
+             'oc_field_id':'5c647760d5351b000dc9987b'},
+            {'field_id':'f2361400a010000000000f32' ,
+             'name':u'CONSTRUCCION DE LINEA DE CLIENTE BASICA 1 PAR SIN BAJANTE (IE)',
+             'oc_field_id':'5c647760d5351b000dc9987c'},
+            {'field_id': 'f2361400a010000000000f33',
+             'name': 'INSTALACION DE DIT CON SPLITTER (IE)',
+             'oc_field_id':'5c647760d5351b000dc9987d'},
+            {'field_id': 'f2361400a010000000000f34',
+             'name': 'CABLEADO INTERIOR PARA 1 APARATO Y MODEM PARA INFINITUM(DIT C/SPLITTER) (IE)',
+             'oc_field_id':'5c647760d5351b000dc9987e'},
+            {'field_id': 'f2361400a010000000000f35',
+             'name':u'CABLEADO INTERIOR ADICIONAL PARA EL DIT C/SPLITTER (EXTENSION ) (IE)' ,
+             'oc_field_id':'5c647760d5351b000dc9987f'},
+            {'field_id':'f2361400a010000000000f36' ,
+             'name': 'INSTALACION DE ROSETA COLOR MARFIL (IE)',
+             'oc_field_id':'5cb8c23cc370fa0012f47a23'},
+            {'field_id': 'f2361400a010000000000f37',
+             'name':u'INSTALACION DE ROSETA COLOR GRIS (IE)' ,
+             'oc_field_id':'5cb8c23cc370fa0012f47a24'},
+            {'field_id': '5d5f2c42e1b88601d9aecba1',
+             'name':u'IDENTIFICACION DE NUMERO TELEFONICO EN RED PRINCIPAL, INCLUYE MARCACION *080' ,
+             'oc_field_id':'5d6060b3b1086b98eeaecba6'},
+            {'field_id':'5d5f2c42e1b88601d9aecba2' ,
+             'name':u'IDENTIFICACION DE NUMERO TELEFONICO EN RED SECUNDARIA, INCLUYE MARCACION *080' ,
+             'oc_field_id':'5d6060b3b1086b98eeaecba7'},
+            {'field_id':'5d5f2c42e1b88601d9aecba3' ,
+             'name':u'PRUEBA DE TRANSMISION VDSL ADICIONAL EN TERMINAL AEREA' ,
+             'oc_field_id':'5d6098b1fb82c7aaffaecbd8'},
+            {'field_id': '5d5f2c42e1b88601d9aecba4',
+             'name': 'PRUEBA DE TRANSMISION VDSL ADICIONAL EN TERMINAL AEREA', # Con este id veo que solo aplica pra SUR, antes tenia AREA
+             'oc_field_id':'5d6060b3b1086b98eeaecba9'},
+            {'field_id': '5d5f2c42e1b88601d9aecba5',
+             'name':u'UBICACIÓN DEL CLIENTE Y PRUEBA DE TRANSMISION VDSL EN TERMINAL AEREA' ,
+             'oc_field_id':'5d6060b3b1086b98eeaecba8'},
+            {'field_id':'5d65a56af33393fc1e9d0714',
+             'name': 'CONSTRUCCION O REHABILITACION DE CABLEADO INT PARA 1 APARTO',
+             'oc_field_id':'5d65a612bf3877964df708a6'},
+            {'field_id':'5ebe1b461b45ea3bb0282dcc',
+             'name': u'Migración a TBA',
+             'oc_field_id':'5ebe2dfbddfcbe3c99282dc6'},
+            {'field_id':'5f033e1248598b3eda0e34c4',
+             'name': u'PRUEBAS ELÉCTRICAS DE PAR PRINCIPAL',
+             'oc_field_id':'5f0367db263081d4d60e34a9'},
+            {'field_id':'5f033e1248598b3eda0e34c5',
+             'name': u'PRUEBAS ELÉCTRICAS DE PAR SECUNDARIO',
+             'oc_field_id':'5f0367db263081d4d60e34aa'},
+            {'field_id':'5f033e1248598b3eda0e34c6',
+             'name': u'REPORTE DE IVR, PARA LIQUIDACIÓN DEL SERVICIO',
+             'oc_field_id':'5f0367db263081d4d60e34ab'},
+            {'field_id':'5f033e1248598b3eda0e34c7',
+             'name': u'RECEPCIÓN, MANEJO Y ALMACENAJE DE ROSETAS. (PRECIO POR ROSETA), (2)',
+             'oc_field_id':'5f0367db263081d4d60e34ac'},
+            {'field_id':'5f033e1248598b3eda0e34c8',
+             'name': u'MANEJO, CUSTODIA, ENTREGA Y PUESTA EN SERVICIO DE MODEM EN LA CASA DEL CLIENTE. (SE HACE TODA LA ADMINISTRACIÓN DESDE EL ALMACÉN TELMEX HASTA EL DOMICILIO DEL CLIENTE, SE HACE LA INSTALACIÓN Y PRUEBA DE NAVEGACIÓN EN LA CASA DEL CLIENTE).',
+             'oc_field_id':'5f0367db263081d4d60e34ad'},
+            {'field_id':'5f033e1248598b3eda0e34c9',
+             'name': u'ACTIVACIÓN EXITOSA DE CLARO VIDEO (VÍA TEK o IVR) EN LA CASA DEL CLIENTE',
+             'oc_field_id':'5f0367db263081d4d60e34ae'},
+            {'field_id':'5f033e1248598b3eda0e34ca',
+             'name': u'MONTAJE DE PUENTE NUEVO EN DISTRIBUIDOR GENERAL',
+             'oc_field_id':'5f0367db263081d4d60e34af'},
+            {'field_id':'5f033e1248598b3eda0e34cb',
+             'name': u'DESMONTAJE DE PUENTE EN DISTRIBUIDOR GENERAL',
+             'oc_field_id':'5f0367db263081d4d60e34b0'},
+            {'field_id':'5f5f7df6241d67b2c237e12b',
+             'name': u'QUEJAS',
+             'oc_field_id':'5f5f8e47ed8b5e742237dd14'},
+            {'field_id':'609d51063480a16b03f7721c',
+             'name': u'CONSTRUCCION DE LINEA DE CLIENTE BASICA 1 PAR Y PUESTA EN SERVICIO (SIN PLUSVALIAS Y SIN PRUEBAS ADSL O VDSLSIN MODEM)',
+             'oc_field_id':'609d53650177b8dd74f76ff8'},
+            {'field_id':'60f1b780aea80a7b76393a1e',
+             'name': u'CONSTRUCCION O REHABILITACION DE CABLEADO INT PARA 1 APARTO',
+             'oc_field_id':'60f1bca731fb620beb393a7f'},
+            {'field_id':'6726ff1164633c2f15ba7af4',
+             'name': u'INCENTIVO PSR',
+             'oc_field_id':'672cfb27388bff96a3650581'},
+            {'field_id':'6726ff1164633c2f15ba7af5',
+             'name': u'REPARACIÓN DE INSTALACIONES',
+             'oc_field_id':'672cfb27388bff96a3650582'},
+            {'field_id':'6726ff1164633c2f15ba7af6',
+             'name': u'REPARACION DE INSTALACIONES CON INCENTIVO',
+             'oc_field_id':'672cfb27388bff96a3650583'},
+        ]
         desc_20_porc_as_row = True
 
         # TODO esto se puede mejorar
@@ -1755,7 +2043,10 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                 dict_dates_by_connection[ conn ] = datetime.strptime( str_date_for_nomina, '%Y-%m-%d' )
             date_february = dict_dates_by_connection[ conn ]
 
-            fila_dict = self.get_folio_info_cobre(os_liberada, FORMA_ORDEN_SERVICIO, price_list_cobre, oc_ids_dict, map_campos, oc_ids, order, date_february, conn_carso, total_20_row=desc_20_porc_as_row)
+            # Parece que no hay PSR
+            conceptos_cobrados_psr_ids = []
+
+            fila_dict = self.get_folio_info_cobre(os_liberada, FORMA_ORDEN_SERVICIO, price_list_cobre, oc_ids_dict, map_campos, oc_ids, order, date_february, conn_carso, conceptos_cobrados_psr_ids, total_20_row=desc_20_porc_as_row)
             if not fila_dict:
                 continue
             
@@ -2020,7 +2311,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
 
 
 
-        all_contratistas_1_0 = self.get_all_contratistas_from_catalog()
+        all_contratistas_1_0 = p_utils.get_all_contratistas_from_catalog()
         contratistas_precio_carso = [ idUser for idUser, valsUser in all_contratistas_1_0.items() if valsUser.get('contratista_carso') ]
 
 

@@ -141,6 +141,8 @@ class Produccion_PCI( Produccion_PCI ):
             #     "54416653", "54364103", "54386672", "54408039", "28390810", "28391667", "28393482", "28402695", "28406089", "28410054", "28419328", "28423464", "28429045"
             # ]},
 
+            # 'folio': {'$in': [ '29077197', '29064786', '29075681', '40148737', '40160900', '40141770' ]},
+
             'created_at': {
                 '$gte': datetime.strptime('2020-10-26 00:00:00', "%Y-%m-%d %H:%M:%S")
             },
@@ -532,22 +534,19 @@ class Produccion_PCI( Produccion_PCI ):
 
         return response_liberaciones, libs_by_connection
 
-    def get_detail_record_cobre(self, record, map_campos_cobre, conexion, division, tipo_trabajo='', is_psr=False):
+    def get_detail_record_cobre(self, record, map_campos_cobre, conexion, division, tipo_trabajo, nivel_pago, is_psr=False):
         registro_detalle = {}
 
-        if is_psr:
-            registro_detalle['681c0e22e3d9bc611e3a5187'] = 1
-        elif tipo_trabajo.lower() == 'a4':
-            registro_detalle['681c0e22e3d9bc611e3a5188'] = 1
-        elif tipo_trabajo.lower() == 'a2':
-            registro_detalle['6916c12d5ab0bd965da971b3'] = 1
-        else:
-            registro_detalle['681c0e22e3d9bc611e3a5189'] = 1
+        # if is_psr:
+        #     registro_detalle['681c0e22e3d9bc611e3a5187'] = 1
+        # elif tipo_trabajo.lower() == 'a4':
+        #     registro_detalle['681c0e22e3d9bc611e3a5188'] = 1
+        # elif tipo_trabajo.lower() == 'a2':
+        #     registro_detalle['6916c12d5ab0bd965da971b3'] = 1
+        # else:
+        #     registro_detalle['681c0e22e3d9bc611e3a5189'] = 1
 
         # Determinar tipo de trabajo y ajustar el nivel de pago
-        if tipo_trabajo in ['QI', 'RI', 'EI']:
-            tipo_trabajo = 'QI'
-        
         # Recorrer campos y asignar valores a registro_detalle
         for i, field_id in map_campos_cobre.items():
             if tipo_trabajo in ['QI', 'TN'] and not is_psr:
@@ -559,38 +558,77 @@ class Produccion_PCI( Produccion_PCI ):
                 registro_detalle[field_id] = record[i]
         
         # Asignar campos específicos para tipo_trabajo 'QI' y 'TN' cuando no es PSR
-        # if tipo_trabajo == 'QI' and not is_psr:
-        #     registro_detalle[ map_campos_cobre[21] ] = 1
-        #     registro_detalle[ map_campos_cobre[0] ] = record[0]
-        # if tipo_trabajo == 'TN':
-        #     registro_detalle[ map_campos_cobre[22] ] = 1
-        #     registro_detalle[ map_campos_cobre[0] ] = record[0]
+        if tipo_trabajo == 'QI' and not is_psr:
+            registro_detalle[ map_campos_cobre[21] ] = 1
+            registro_detalle[ map_campos_cobre[0] ] = record[0]
+        if tipo_trabajo == 'TN':
+            registro_detalle[ map_campos_cobre[22] ] = 1
+            registro_detalle[ map_campos_cobre[0] ] = record[0]
         
         '''
         Si es A4 y nivel de pago bajo se agregan conceptos por default y todo lo demás es 0
         '''
-        if (tipo_trabajo == 'A4') and not is_psr:
+        if (tipo_trabajo == 'A4') and (nivel_pago in ['bajo', 'plus', 'carso']) and not is_psr:
             for i, field_id in map_campos_cobre.items():
                 registro_detalle[field_id] = 0
             map_campos_cobre_a4_minimo = ['5f033e1248598b3eda0e34c4', '5f033e1248598b3eda0e34c5','5f033e1248598b3eda0e34c6','5f033e1248598b3eda0e34c7',\
                 '5f033e1248598b3eda0e34c8','5f033e1248598b3eda0e34c9','5f033e1248598b3eda0e34ca','5f033e1248598b3eda0e34cb']
             for min_a4 in map_campos_cobre_a4_minimo:
                 registro_detalle[ min_a4 ] = 1
-            # registro_detalle[ map_campos_cobre[0] ] = record[0]
+            registro_detalle[ map_campos_cobre[0] ] = record[0]
 
+        anio_trabajo = 2020 if tipo_trabajo in ['TN', 'A4'] else 2018
 
-        if tipo_trabajo in ['A7', 'A9', 'AE', 'AT']:
-            tipo_trabajo = 'A0'
-        if tipo_trabajo in ['D1', 'D2', 'D3', 'D4', 'TE']:
-            tipo_trabajo = 'CD'
+        # Ajustar nivel_pago si es PSR
+        if is_psr:
+            if conexion in self.id_tecnicos_directos:
+                nivel_pago = 'tecnicos_directos'
+            elif nivel_pago in ('bajo', 'alto'):
+                nivel_pago = 'medio'
 
         registro_detalle.update({
             'f2361400a0100000000000b6': tipo_trabajo.lower(), # Agrego el tipo de trabajo
+            'f2361400a0100000000000c6': anio_trabajo,
             'f2361400a0100000000000d6': 'sin_ie', # Infraestructura
+            'f2361400a0100000000000e6': nivel_pago
         }) # Agrego el año de trabajo
         return registro_detalle
 
+    def get_tipo_trabajo_nivel_pago(self, tipo_trabajo_in_record, conexion, contratistas_precio_carso, list_conexiones_nivel_alto):
+        tipo_tarea_is_queja = tipo_trabajo_in_record in ['QI', 'RI', 'EI']
+        conexion_as_precio_carso = conexion in contratistas_precio_carso
+
+        # Aqui podria meter lo de validar si la conexion esta en el catalogo de nivel de pago Alto
+        nivel_de_pago = 'alto' if conexion in list_conexiones_nivel_alto else 'bajo'
+        
+        if tipo_trabajo_in_record == 'A4':
+            nivel_de_pago = 'bajo'
+
+        if conexion_as_precio_carso:
+            nivel_de_pago = 'carso'
+
+        if tipo_tarea_is_queja and not conexion_as_precio_carso:
+            nivel_de_pago = 'bajo'
+
+        if conexion == self.ID_CONTRATISTA_TIPO_MAQTEL:
+            nivel_de_pago = 'plus'
+        
+        if tipo_tarea_is_queja:
+            return 'QI', nivel_de_pago
+        elif tipo_trabajo_in_record in ['A7', 'A9', 'AE', 'AT']:
+            return 'A0', nivel_de_pago
+        elif tipo_trabajo_in_record in ['D1', 'D2', 'D3', 'D4', 'TE']:
+            return 'CD', nivel_de_pago
+        
+        return tipo_trabajo_in_record, nivel_de_pago
+
+
     def make_liberaciones_for_cobre(self, current_record, record_id, answers, header, records, tecnologia, division, id_os, id_lib, fols_sin_pdf, **kwargs):
+        all_contratistas_1_0 = p_utils.get_all_contratistas_from_catalog()
+        contratistas_precio_carso = [ idUser for idUser, valsUser in all_contratistas_1_0.items() if valsUser.get('contratista_carso') ]
+        # Por ahora vacío hasta definir si se ocupa o no
+        list_conexiones_nivel_alto = []
+
         #id_os, id_lib = p_utils.get_id_os(answers.get('5f10d39c36da2addb92fbcd3',''), tecnologia)
         folios = [self.strip_special_characters(rec[0]) for rec in records]
         telefonos = [rec[1] for rec in records]
@@ -611,28 +649,28 @@ class Produccion_PCI( Produccion_PCI ):
         registros_acumulados = []
         map_campos_cobre = {
             0: 'f2361400a0100000000000a6', # Folio
-            # 5: 'f2361400a0100000000000f5', # Construccion de linea de cliente basica de 1 par (bajante)
-            # 6: 'f2361400a0100000000000f9', # Plusvalia por tramo adicional de 50m. con bajante de 1 par
-            # 7: 'f2361400a010000000000f19', # Bonificacion por distancia y volumen de 1 a 5 o.s construidas
-            # 8: 'f2361400a010000000000f20', # Bonificacion por distancia y volumen de 6 a 15 o.s construidas
-            # 9: 'f2361400a010000000000f21', # Bonificacion por distancia y volumen de 16 a 25 o.s construidas
-            # 10: 'f2361400a010000000000f22', # Bonificacion por distancia y volumen mas de 25 o.s construidas
-            # 11: 'f2361400a010000000000f23', # Montaje de puente en distribuidor general
-            # 12: '60f1b780aea80a7b76393a1e', # Construccion o rehabilitacion de cableado interior para 1 aparato ---- ESTE NO SE LLENA
-            # 13: 'f2361400a010000000000f27', # Cableado interior adicional para el dit con splitter con proteccion (extension)
-            # 14: 'f2361400a010000000000f17', # INSTALACIÓN DE POSTE DE 25'
-            # 15: 'f2361400a010000000000f28', # Pruebas de transmision de datos vdsl en roseta de datos con equipo homologado
-            # 16: 'f2361400a010000000000f26', # Cableado interior 1 aparato y modem para infinitum (dit con splitter con proteccion)
-            # 17: '5d5f2c42e1b88601d9aecba1', # IDENTIFICACION DE NUMERO TELEFONICO EN RED PRINCIPAL, INCLUYE MARCACION *080 ---- Aplica para SUR
-            # 18: '5d5f2c42e1b88601d9aecba2', # IDENTIFICACION DE NUMERO TELEFONICO EN RED SECUNDARIA, INCLUYE MARCACION *080 ---- Aplica para SUR
-            # 19: 'f2361400a010000000000f29', # UBICACIÓN DEL CLIENTE Y PRUEBA DE TRANSMISION VDSL EN TERMINAL AEREA
-            # 20: '5d5f2c42e1b88601d9aecba4', # PRUEBA DE TRANSMISION VDSL ADICIONAL EN TERMINAL AREA
-            # 21: '5f5f7df6241d67b2c237e12b', # QUEJAS
-            # 22: '5ebe1b461b45ea3bb0282dcc', # Migración a TBA
-            # 23: '609d51063480a16b03f7721c', # Línea de cliente básica de 1 par (bajante) (sin modem)
-            # 32: '6726ff1164633c2f15ba7af4', # INCENTIVO PSR
-            # 33: '6726ff1164633c2f15ba7af5', # REPARACIÓN DE INSTALACIONES
-            # 34: '6726ff1164633c2f15ba7af6', # REPARACION DE INSTALACIONES CON INCENTIVO
+            5: 'f2361400a0100000000000f5', # Construccion de linea de cliente basica de 1 par (bajante)
+            6: 'f2361400a0100000000000f9', # Plusvalia por tramo adicional de 50m. con bajante de 1 par
+            7: 'f2361400a010000000000f19', # Bonificacion por distancia y volumen de 1 a 5 o.s construidas
+            8: 'f2361400a010000000000f20', # Bonificacion por distancia y volumen de 6 a 15 o.s construidas
+            9: 'f2361400a010000000000f21', # Bonificacion por distancia y volumen de 16 a 25 o.s construidas
+            10: 'f2361400a010000000000f22', # Bonificacion por distancia y volumen mas de 25 o.s construidas
+            11: 'f2361400a010000000000f23', # Montaje de puente en distribuidor general
+            12: '60f1b780aea80a7b76393a1e', # Construccion o rehabilitacion de cableado interior para 1 aparato ---- ESTE NO SE LLENA
+            13: 'f2361400a010000000000f27', # Cableado interior adicional para el dit con splitter con proteccion (extension)
+            14: 'f2361400a010000000000f17', # INSTALACIÓN DE POSTE DE 25'
+            15: 'f2361400a010000000000f28', # Pruebas de transmision de datos vdsl en roseta de datos con equipo homologado
+            16: 'f2361400a010000000000f26', # Cableado interior 1 aparato y modem para infinitum (dit con splitter con proteccion)
+            17: '5d5f2c42e1b88601d9aecba1', # IDENTIFICACION DE NUMERO TELEFONICO EN RED PRINCIPAL, INCLUYE MARCACION *080 ---- Aplica para SUR
+            18: '5d5f2c42e1b88601d9aecba2', # IDENTIFICACION DE NUMERO TELEFONICO EN RED SECUNDARIA, INCLUYE MARCACION *080 ---- Aplica para SUR
+            19: 'f2361400a010000000000f29', # UBICACIÓN DEL CLIENTE Y PRUEBA DE TRANSMISION VDSL EN TERMINAL AEREA
+            20: '5d5f2c42e1b88601d9aecba4', # PRUEBA DE TRANSMISION VDSL ADICIONAL EN TERMINAL AREA
+            21: '5f5f7df6241d67b2c237e12b', # QUEJAS
+            22: '5ebe1b461b45ea3bb0282dcc', # Migración a TBA
+            23: '609d51063480a16b03f7721c', # Línea de cliente básica de 1 par (bajante) (sin modem)
+            32: '6726ff1164633c2f15ba7af4', # INCENTIVO PSR
+            33: '6726ff1164633c2f15ba7af5', # REPARACIÓN DE INSTALACIONES
+            34: '6726ff1164633c2f15ba7af6', # REPARACION DE INSTALACIONES CON INCENTIVO
         }
         libs_by_connection = {}
         dict_new_answers = {}
@@ -672,14 +710,15 @@ class Produccion_PCI( Produccion_PCI ):
                 '''
                 Validaciones para liberar el tipo de precio para las A4
                 '''
-                tipo_trabajo = record[2][:2]
+                # tipo_trabajo, nivel_de_pago = self.get_tipo_trabajo_nivel_pago( record[2][:2] )
+                tipo_trabajo, nivel_de_pago = self.get_tipo_trabajo_nivel_pago(record[2][:2], conexion, contratistas_precio_carso, list_conexiones_nivel_alto)
                 a4_telefono = record[1]
                 '''
                 =====================================================
                 '''
                 dict_new_answers[ rec_foliotelefono ] = orden.get('answers', {})
                 record_is_psr = orden.get('answers',{}).get('633d9f63eb936fb6ec9bf580', '') == 'psr'
-                detail_records.update({rec_foliotelefono: self.get_detail_record_cobre(record, map_campos_cobre, conexion, division, tipo_trabajo=tipo_trabajo, is_psr=record_is_psr)})
+                detail_records.update({rec_foliotelefono: self.get_detail_record_cobre(record, map_campos_cobre, conexion, division, tipo_trabajo, nivel_de_pago, is_psr=record_is_psr)})
                 dict_pos_record.update({rec_foliotelefono: pos_rec})
                 dict_ids_record.update({rec_foliotelefono: str( orden['_id'] )})
                 # Esto de evaluate_answer_values ya no se ocupa porque en este modulo no se trabajan todos los campos
@@ -785,6 +824,7 @@ class Produccion_PCI( Produccion_PCI ):
             os_record_telefono = ans.get('f1054000a010000000000005','')
             fecha_de_liquidacion = ans.get( '5a1eecfbb43fdd65914505a1' if tecnologia=='cobre' else 'f1054000a02000000000fa02', '' )
             proyecto_os = ans.get('633d9f63eb936fb6ec9bf580', '')
+            record_is_psr = proyecto_os == 'psr'
             os_record_folio = rec['folio']
             os_record_id = str(rec['_id'])
             dict_ids_folio_telefono[ os_record_id ] = {'folio': os_record_folio, 'telefono': os_record_telefono}
@@ -896,55 +936,61 @@ class Produccion_PCI( Produccion_PCI ):
                 
                 # ============================== Para SR todo esto no se cobra ==============================
 
-                # list_rec.append( 0 if is_clase_10_20 else un_par_bajante )
-                # list_rec.append(plusvalia_tramo_adicional)
-                # list_rec.append(ans.get('5f1721afa63c9a750b820482',0)) # Bonificacion por distancia y volumen de 1 a 5 o.s construidas
-                # list_rec.append(ans.get('5f1721afa63c9a750b820483',0)) # Bonificacion por distancia y volumen de 6 a 15 o.s construidas
-                # list_rec.append(ans.get('5f1721afa63c9a750b820484',0)) # Bonificacion por distancia y volumen de 16 a 25 o.s construidas
-                # list_rec.append(ans.get('5f1721afa63c9a750b820485',0)) # Bonificacion por distancia y volumen mas de 25 o.s construidas
+                list_rec.append( 0 if is_clase_10_20 else un_par_bajante )
+                list_rec.append(plusvalia_tramo_adicional)
+                list_rec.append(ans.get('5f1721afa63c9a750b820482',0)) # Bonificacion por distancia y volumen de 1 a 5 o.s construidas
+                list_rec.append(ans.get('5f1721afa63c9a750b820483',0)) # Bonificacion por distancia y volumen de 6 a 15 o.s construidas
+                list_rec.append(ans.get('5f1721afa63c9a750b820484',0)) # Bonificacion por distancia y volumen de 16 a 25 o.s construidas
+                list_rec.append(ans.get('5f1721afa63c9a750b820485',0)) # Bonificacion por distancia y volumen mas de 25 o.s construidas
 
-                list_rec.extend([0] * 6)
+                # list_rec.extend([0] * 6)
                 
                 # Montaje de puente en distribuidor general
-                # if not montaje_puente_dist_gral:
-                #     montaje_puente_dist_gral = 1 if is_clase_10_20 else 2
-                # list_rec.append(montaje_puente_dist_gral)
-                list_rec.append(0)
+                if not montaje_puente_dist_gral:
+                    montaje_puente_dist_gral = 1 if is_clase_10_20 else 2
+                list_rec.append(montaje_puente_dist_gral)
+                
+                # list_rec.append(0)
                 
                 # Construccion o rehabilitacion de cableado interior para 1 aparato.- Solo se llena en las Estimaciones
                 # # if proceso == 'estimaciones':
-                # val_construccion_rehabilitacion = ans.get('605cd146f499106724acb8c7', 0)
-                # val_construccion_rehabilitacion = 1 if (is_clase_10_20 and not val_construccion_rehabilitacion) else 0
+                val_construccion_rehabilitacion = ans.get('605cd146f499106724acb8c7', 0)
+                val_construccion_rehabilitacion = 1 if (is_clase_10_20 and not val_construccion_rehabilitacion) else 0
                 
-                # list_rec.append(val_construccion_rehabilitacion)
-                # list_rec.append(cableado_interior_extension)
-                # list_rec.append(ans.get('5f1721afa63c9a750b820487',0)) # INSTALACIÓN DE POSTE DE 25'
-                # list_rec.append(ans.get('5f1721afa63c9a750b820488',0)) # Pruebas de transmision de datos vdsl en roseta de datos con equipo homologado
-                # list_rec.append(0 if is_clase_10_20 else cableado_interior_modem_infinitum)
-                list_rec.extend([0] * 5)
+                list_rec.append(val_construccion_rehabilitacion)
+                list_rec.append(cableado_interior_extension)
+                list_rec.append(ans.get('5f1721afa63c9a750b820487',0)) # INSTALACIÓN DE POSTE DE 25'
+                list_rec.append(ans.get('5f1721afa63c9a750b820488',0)) # Pruebas de transmision de datos vdsl en roseta de datos con equipo homologado
+                list_rec.append(0 if is_clase_10_20 else cableado_interior_modem_infinitum)
                 
-                # if division == 'sur' and tipo_tarea[0] == 'D':
-                #     list_rec.append(ans.get('5f1721afa63c9a750b82048a',0)) # IDENTIFICACION DE NUMERO TELEFONICO EN RED PRINCIPAL, INCLUYE MARCACION *080
-                #     list_rec.append(ans.get('5f1721afa63c9a750b82048b',0)) # IDENTIFICACION DE NUMERO TELEFONICO EN RED SECUNDARIA, INCLUYE MARCACION *080
-                # else:
-                #     list_rec.append(0)
-                #     list_rec.append(0)
-                list_rec.extend([0] * 2)
+                # list_rec.extend([0] * 5)
                 
-                # list_rec.append(ans.get('5f1721afa63c9a750b82048c',0)) # UBICACIÓN DEL CLIENTE Y PRUEBA DE TRANSMISION VDSL EN TERMINAL AEREA
-                # list_rec.append(ans.get('5f1721afa63c9a750b82048d',0)) # PRUEBA DE TRANSMISION VDSL ADICIONAL EN TERMINAL AREA
-                # list_rec.append(ans.get('5f90e812f84ca4590ebc5947',0)) # QUEJA
-                # list_rec.append(ans.get('5f90e812f84ca4590ebc5946',0)) # Migración TBA
-                list_rec.extend([0] * 4)
+                if division == 'sur' and tipo_tarea[0] == 'D':
+                    list_rec.append(ans.get('5f1721afa63c9a750b82048a',0)) # IDENTIFICACION DE NUMERO TELEFONICO EN RED PRINCIPAL, INCLUYE MARCACION *080
+                    list_rec.append(ans.get('5f1721afa63c9a750b82048b',0)) # IDENTIFICACION DE NUMERO TELEFONICO EN RED SECUNDARIA, INCLUYE MARCACION *080
+                else:
+                    list_rec.append(0)
+                    list_rec.append(0)
+                
+                # list_rec.extend([0] * 2)
+                
+                list_rec.append(ans.get('5f1721afa63c9a750b82048c',0)) # UBICACIÓN DEL CLIENTE Y PRUEBA DE TRANSMISION VDSL EN TERMINAL AEREA
+                list_rec.append(ans.get('5f1721afa63c9a750b82048d',0)) # PRUEBA DE TRANSMISION VDSL ADICIONAL EN TERMINAL AREA
+                list_rec.append(ans.get('5f90e812f84ca4590ebc5947',0)) # QUEJA
+                list_rec.append(ans.get('5f90e812f84ca4590ebc5946',0)) # Migración TBA
+                
+                # list_rec.extend([0] * 4)
 
                 # Línea de cliente básica de 1 par (bajante) (sin modem)
-                # if is_clase_10_20:
-                #     val_cliente_basica = ans.get('609bf813b3f4e5c00cf76ee0', 0)
-                #     val_cliente_basica = 1 if not val_cliente_basica else val_cliente_basica
-                #     list_rec.append( val_cliente_basica )
-                # else:
-                #     list_rec.append(0)
+                if is_clase_10_20:
+                    val_cliente_basica = ans.get('609bf813b3f4e5c00cf76ee0', 0)
+                    val_cliente_basica = 1 if not val_cliente_basica else val_cliente_basica
+                    list_rec.append( val_cliente_basica )
+                else:
+                    list_rec.append(0)
+                
                 list_rec.append(0)
+                
                 # Otras varias columnas llegan de las nuevas columnas que se agregaron en la carga de producción, revisar notas en el excel de las estimaciones
                 '''
                 Validaciones para estimar las A4
@@ -957,7 +1003,13 @@ class Produccion_PCI( Produccion_PCI ):
                 else:
                     list_rec.extend([0] * 8)
 
-                list_rec.extend([0] * 3)
+                # list_rec.extend([0] * 3)
+                if record_is_psr:
+                    for i in range(5, 32):
+                        list_rec[ i ] = 0
+                    list_rec.extend( positions_psr_concepts )
+                else:
+                    list_rec.extend([0, 0, 0])
 
                 if record_is_cfe:
                     for i in range(5, 35):
