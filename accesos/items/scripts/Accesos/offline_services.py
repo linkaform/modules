@@ -1260,6 +1260,7 @@ class Accesos(Accesos):
                 'rondin_name': rondin_name
             })
             payloads.append(payload)
+        return payloads
         
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
