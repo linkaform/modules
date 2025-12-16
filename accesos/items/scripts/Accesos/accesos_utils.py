@@ -1810,3 +1810,24 @@ class Accesos( Accesos):
             else:
                 return res
         return False
+
+    def assign_rondin(self, record_id, user_to_assign):
+        if not record_id:
+            return self.LKFException({'title': 'Error', 'msg': 'No se proporciono el record_id'})
+        if not user_to_assign.get('user_name'):
+            return self.LKFException({'title': 'Error', 'msg': 'No se proporciono el usuario a asignar'})
+        
+        answers = {}
+        answers[self.USUARIOS_OBJ_ID] = {
+            self.mf['nombre_usuario']: user_to_assign.get('user_name', ''),
+            self.mf['id_usuario']: [user_to_assign.get('user_id')],
+            self.mf['email_visita_a']: [user_to_assign.get('user_email')]
+        }
+
+        if answers:
+            res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=[record_id,])
+            if res.get('status_code') == 201 or res.get('status_code') == 202:
+                return res
+            else:
+                return res
+        return False

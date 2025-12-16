@@ -1721,6 +1721,7 @@ if __name__ == "__main__":
     areas = data.get("areas", [])
     year = data.get("year", None)
     month = data.get("month", None)
+    user_to_assign = data.get("user_to_assign", {})
     data_script = class_obj.current_record
     class_obj.timezone = data_script.get('timezone', 'America/Mexico_City')
     tz = pytz.timezone(class_obj.timezone)
@@ -1755,6 +1756,8 @@ if __name__ == "__main__":
         response = class_obj.pause_or_play_rondin(record_id=record_id, paused=paused)
     elif option == 'update_rondin':
         response = class_obj.update_rondin(folio=folio,rondin_data=rondin_data)
+    elif option == 'assign_rondin':
+        response = class_obj.assign_rondin(record_id=record_id, user_to_assign=user_to_assign)
     
     else:
         response = {"msg": "Empty"}
