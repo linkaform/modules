@@ -648,9 +648,12 @@ class Accesos(Accesos):
         incidencias_list = self.format_incidencias_to_bitacora(bitacora_in_lkf, new_incidencias, new_areas)
         answers[self.f['bitacora_rondin_incidencias']] = incidencias_list
         
+        if 'areas_del_rondin' not in bitacora_in_lkf:
+            bitacora_in_lkf['areas_del_rondin'] = []
+
         for item in bitacora_in_lkf.get('areas_del_rondin', []):
             nombre_area = item.get('incidente_area')
-            check = new_areas.get(nombre_area)
+            check = new_areas.pop(nombre_area, None)
             if check:
                 ts = check.get('fecha_check')
                 timezone_str = check.get('timezone', '')
@@ -669,6 +672,27 @@ class Accesos(Accesos):
                     'comentario_area_rondin': check.get('comentario_check_area', ''),
                     'url_registro_rondin': f"https://app.linkaform.com/#/records/detail/{check.get('record_id', '')}",
                 })
+
+        for nombre_area, check in new_areas.items():
+            ts = check.get('fecha_check')
+            timezone_str = check.get('timezone', '')
+            fecha_str = ""
+            if ts:
+                try:
+                    target_tz = pytz.timezone(timezone_str)
+                    dt_aware = datetime.fromtimestamp(ts, tz=target_tz)
+                    fecha_str = dt_aware.strftime("%Y-%m-%d %H:%M:%S")
+                except (pytz.exceptions.UnknownTimeZoneError, Exception):
+                    fecha_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+            
+            new_item = {
+                'incidente_area': nombre_area,
+                'fecha_hora_inspeccion_area': fecha_str,
+                'foto_evidencia_area_rondin': check.get('evidencia_incidencia', []),
+                'comentario_area_rondin': check.get('comentario_check_area', ''),
+                'url_registro_rondin': f"https://app.linkaform.com/#/records/detail/{check.get('record_id', '')}",
+            }
+            bitacora_in_lkf['areas_del_rondin'].append(new_item)
 
         for key, value in bitacora_in_lkf.items():
             if key == 'new_user_complete_name':
