@@ -59,7 +59,7 @@ class Accesos(Accesos):
             'accion_recurrencia': 'abcde00010000000a0000001',
             'grupo_asignado_rondin':'671055aaa487da57ba57b294',
             'id_grupo':'639b65dfaf316bacfc551ba2',
-            'cron_id':'abcde0001000000000000000',
+            'cron_id':'abcde0001000000000011111',
             'status':'abcde00010000000a0000000',
             'fecha1':'abcde000100000000000f000',
             'fecha2':'abcde000100000000000f001',
@@ -155,6 +155,8 @@ class Accesos(Accesos):
                     }
                     areas_list.append(area_dict)
                 answers[self.rondin_keys[key]] = areas_list
+            elif key == "cron_id":
+                answers[self.rondin_keys['cron_id']] = valor
             elif key == 'sucede_recurrencia' and ('dia_del_mes' in value or 'mes' in value):
                 actual_day = datetime.now().day
                 answers[self.rondin_keys['que_dia_del_mes']] = int(actual_day)
@@ -163,6 +165,7 @@ class Accesos(Accesos):
                 pass
             else:
                 answers[self.rondin_keys[key]] = value
+        print("ANSWERS", simplejson.dumps(answers, indent=4))
         response = self.create_register(
             module='Accesos',
             process='Creacion de un rondin',
