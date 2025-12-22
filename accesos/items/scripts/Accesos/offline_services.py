@@ -278,31 +278,30 @@ class Accesos(Accesos):
         if not _id:
             return {'status_code': 400, 'type': 'error', 'msg': 'ID is required', 'data': {}}
         
-        record = self.cr_db.get(_id, revs_info=True)
-        if not record:
-            return {'status_code': 404, 'type': 'error', 'msg': 'Record not found', 'data': {}}
+        max_retries = 3
+        wait_time = 2
 
-        current_rev = record.rev
-        all_revs = [r['rev'] for r in record['_revs_info'] if r['status'] == 'available']
+        for attempt in range(max_retries):
+            record = self.cr_db.get(_id, revs_info=True)
+            if not record:
+                return {'status_code': 404, 'type': 'error', 'msg': 'Record not found', 'data': {}}
 
-        media = []
-        if _rev == current_rev:
-            attachments = record.get("_attachments", {})
-            print('✅ Revisión actual encontrada')
-            # for name in attachments:
-            #     attachment = self.cr_db.get_attachment(_id, name)
-            #     data = attachment.read()
-            #     upload_image = self.upload_file_from_couchdb(data, name, self.BITACORA_INCIDENCIAS, self.f['evidencia_incidencia'])
-            #     media.append(upload_image)
-            # record['status'] = 'received'
-            # self.cr_db.save(record)
-            return record
-        elif _rev in all_revs:
-            print('⚠️ Revisión vieja')
-            return {'status_code': 461, 'type': 'error', 'msg': 'Old revision found', 'data': {}}
-        else:
-            print('🕓 Revisión aún no propagada')
-            return {'status_code': 462, 'type': 'error', 'msg': 'Revision not yet propagated', 'data': {}}
+            current_rev = record.rev
+            all_revs = [r['rev'] for r in record['_revs_info'] if r['status'] == 'available']
+
+            if _rev == current_rev:
+                attachments = record.get("_attachments", {})
+                print('===> Revisión actual encontrada')
+                return record
+            elif _rev in all_revs:
+                print(f'===> Revisión vieja, ultima revision registrada: {current_rev}')
+                return {'status_code': 461, 'type': 'error', 'msg': 'Old revision found', 'data': {}}
+            else:
+                print(f'===> Revisión aún no propagada (Intento {attempt + 1}/{max_retries})')
+                if attempt < max_retries - 1:
+                    time.sleep(wait_time)
+                else:
+                    return {'status_code': 462, 'type': 'error', 'msg': 'Revision not yet propagated', 'data': {}}
 
     def upload_file_from_couchdb(self, image_data, attachment_name, id_forma_seleccionada, id_field):
         temp_dir = tempfile.gettempdir()
