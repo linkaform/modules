@@ -4,6 +4,7 @@ from linkaform_api import base
 from lkf_addons.addons.accesos.app import Accesos
 import sys, simplejson, json, pytz
 import pytz
+from math import ceil
 
 
 class Accesos( Accesos):
@@ -1867,3 +1868,92 @@ class Accesos( Accesos):
         msg_dict["status"] = msg.get('status', status_default)
 
         return msg_dict
+
+    def get_list_notes(self, location, area, status=None, limit=10, offset=0, dateFrom="", dateTo=""):
+        '''
+        Función para obtener las notas, puedes pasarle un area, una ubicacion, un estatus, una fecha desde
+        y una fecha hasta
+        '''
+        response = []
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id": self.ACCESOS_NOTAS,
+            f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['location']}":location
+        }
+        if area and not area == 'todas':
+            match_query.update({
+                f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['area']}":area
+            })
+        if status != 'dia':
+            match_query.update({f"answers.{self.notes_fields['note_status']}":status})
+        if dateFrom and dateTo:
+            if dateFrom == dateTo:
+                if "T" not in dateFrom:
+                    dateFrom += " 00:00:00"
+                    dateTo += " 23:59:59"
+            else:
+                if "T" not in dateFrom:
+                    dateFrom += " 00:00:00"
+                if "T" not in dateTo:
+                    dateTo += " 23:59:59"
+
+            match_query.update({
+                f"answers.{self.notes_fields['note_open_date']}": {"$gte": dateFrom, "$lte": dateTo}
+            })
+        elif dateFrom:
+            if "T" not in dateFrom:
+                dateFrom += " 00:00:00"
+            match_query.update({
+                f"answers.{self.notes_fields['note_open_date']}": {"$gte": dateFrom}
+            })
+        elif dateTo:
+            if "T" not in dateTo:
+                dateTo += " 23:59:59"
+            match_query.update({
+                f"answers.{self.notes_fields['note_open_date']}": {"$lte": dateTo}
+            })
+        query = [
+            {'$match': match_query },
+            {'$project': {
+                "folio":"$folio",
+                "created_at": 1,
+                "created_by_name": f"$created_by_name",
+                "created_by_id": f"$created_by_id",
+                "created_by_email": f"$created_by_email",
+                "note_status": f"$answers.{self.notes_fields['note_status']}",
+                "note_open_date": f"$answers.{self.notes_fields['note_open_date']}",
+                "note_close_date": f"$answers.{self.notes_fields['note_close_date']}",
+                "note_booth": f"$answers.{self.notes_fields['note_catalog_booth']}.{self.notes_fields['note_booth']}",
+                "note_guard": f"$answers.{self.notes_fields['note_catalog_guard']}.{self.notes_fields['note_guard']}",
+                "note_guard_close": f"$answers.{self.notes_fields['note_catalog_guard_close']}.{self.notes_fields['note_guard_close']}",
+                "note": f"$answers.{self.notes_fields['note']}",
+                "note_file": f"$answers.{self.notes_fields['note_file']}",
+                "note_pic": f"$answers.{self.notes_fields['note_pic']}",
+                "note_comments": f"$answers.{self.notes_fields['note_comments_group']}",
+            }},
+            {'$sort':{'created_at':-1}},
+        ]
+        
+        query.append({'$skip': offset})
+        query.append({'$limit': limit})
+        
+        records = self.format_cr(self.cr.aggregate(query))
+
+        count_query = [
+            {'$match': match_query},
+            {'$count': 'total'}
+        ]
+
+        count_result = self.format_cr(self.cr.aggregate(count_query))
+        total_count = count_result[0]['total'] if count_result else 0
+        total_pages = ceil(total_count / limit) if limit else 1
+        current_page = (offset // limit) + 1 if limit else 1
+
+        notes = {
+            'records': records,
+            'total_records': total_count,
+            'total_pages': total_pages,
+            'actual_page': current_page
+        }
+
+        return notes
