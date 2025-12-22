@@ -1220,9 +1220,15 @@ class Accesos(Accesos):
         aux = self.cr_db.get(rondin_id)
         if bitacora_response and bitacora_response.get('status_code') in [200, 201, 202]:
             if aux.get('status_rondin') == 'completed':
+                bitacora_in_lkf = self.get_bitacora_by_id(rondin_id)
+                checks_in_lkf = [i.get('incidente_area') for i in bitacora_in_lkf.get('areas_del_rondin', []) if i.get('fecha_hora_inspeccion_area')]
+                checks_in_couch = [i.get('area') for i in aux.get('record', {}).get('check_areas', []) if i.get('checked')]
+                if len(checks_in_couch) != len(checks_in_lkf):
+                    return {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
+
                 aux['status'] = 'received'
                 aux['inbox'] = False
-            self.cr_db.save(aux)
+                self.cr_db.save(aux)
             status = {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
         else:
             aux['status'] = 'error'
