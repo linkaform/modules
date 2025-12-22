@@ -278,31 +278,30 @@ class Accesos(Accesos):
         if not _id:
             return {'status_code': 400, 'type': 'error', 'msg': 'ID is required', 'data': {}}
         
-        record = self.cr_db.get(_id, revs_info=True)
-        if not record:
-            return {'status_code': 404, 'type': 'error', 'msg': 'Record not found', 'data': {}}
+        max_retries = 3
+        wait_time = 2
 
-        current_rev = record.rev
-        all_revs = [r['rev'] for r in record['_revs_info'] if r['status'] == 'available']
+        for attempt in range(max_retries):
+            record = self.cr_db.get(_id, revs_info=True)
+            if not record:
+                return {'status_code': 404, 'type': 'error', 'msg': 'Record not found', 'data': {}}
 
-        media = []
-        if _rev == current_rev:
-            attachments = record.get("_attachments", {})
-            print('✅ Revisión actual encontrada')
-            # for name in attachments:
-            #     attachment = self.cr_db.get_attachment(_id, name)
-            #     data = attachment.read()
-            #     upload_image = self.upload_file_from_couchdb(data, name, self.BITACORA_INCIDENCIAS, self.f['evidencia_incidencia'])
-            #     media.append(upload_image)
-            # record['status'] = 'received'
-            # self.cr_db.save(record)
-            return record
-        elif _rev in all_revs:
-            print('⚠️ Revisión vieja')
-            return {'status_code': 461, 'type': 'error', 'msg': 'Old revision found', 'data': {}}
-        else:
-            print('🕓 Revisión aún no propagada')
-            return {'status_code': 462, 'type': 'error', 'msg': 'Revision not yet propagated', 'data': {}}
+            current_rev = record.rev
+            all_revs = [r['rev'] for r in record['_revs_info'] if r['status'] == 'available']
+
+            if _rev == current_rev:
+                attachments = record.get("_attachments", {})
+                print('===> Revisión actual encontrada')
+                return record
+            elif _rev in all_revs:
+                print(f'===> Revisión vieja, ultima revision registrada: {current_rev}')
+                return {'status_code': 461, 'type': 'error', 'msg': 'Old revision found', 'data': {}}
+            else:
+                print(f'===> Revisión aún no propagada (Intento {attempt + 1}/{max_retries})')
+                if attempt < max_retries - 1:
+                    time.sleep(wait_time)
+                else:
+                    return {'status_code': 462, 'type': 'error', 'msg': 'Revision not yet propagated', 'data': {}}
 
     def upload_file_from_couchdb(self, image_data, attachment_name, id_forma_seleccionada, id_field):
         temp_dir = tempfile.gettempdir()
@@ -1220,9 +1219,15 @@ class Accesos(Accesos):
         aux = self.cr_db.get(rondin_id)
         if bitacora_response and bitacora_response.get('status_code') in [200, 201, 202]:
             if aux.get('status_rondin') == 'completed':
+                bitacora_in_lkf = self.get_bitacora_by_id(rondin_id)
+                checks_in_lkf = [i.get('incidente_area') for i in bitacora_in_lkf.get('areas_del_rondin', []) if i.get('fecha_hora_inspeccion_area')]
+                checks_in_couch = [i.get('area') for i in aux.get('record', {}).get('check_areas', []) if i.get('checked')]
+                if len(checks_in_couch) != len(checks_in_lkf):
+                    return {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
+
                 aux['status'] = 'received'
                 aux['inbox'] = False
-            self.cr_db.save(aux)
+                self.cr_db.save(aux)
             status = {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
         else:
             aux['status'] = 'error'
@@ -1236,7 +1241,7 @@ class Accesos(Accesos):
         for i in checks_details:
             check_evidencias = i.get('record', {}).get('evidencia_incidencia', [])
             check_documentos = i.get('record', {}).get('documento_incidencia', [])
-            check_incidencias = i.get('record', {}).get('incidencia', [])
+            check_incidencias = i.get('record', {}).get('incidencias', [])
 
             # Build a map of file_name -> file_url to check existing URLs
             existing_urls = {}
@@ -1253,6 +1258,7 @@ class Accesos(Accesos):
                     data_list = [(i.get('_id'), name, existing_urls) for name in attachments]
                     results = executor.map(lambda x: self._process_attachment_upload(*x), data_list)
                     media = [r for r in results if r]
+                    print('media: ', media)
 
                 for m in media:
                     m_name = m.get('file_name')
