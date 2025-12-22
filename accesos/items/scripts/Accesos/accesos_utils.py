@@ -1831,3 +1831,39 @@ class Accesos( Accesos):
             else:
                 return res
         return False
+
+    def LKFResponse(self, msg={}):
+        """
+        Proporciona un mensaje de respuesta con el formato utilizado en LKF
+
+        Args:
+            msg ({
+                title: str,
+                label: str,
+                msg: str,
+                icon: str,
+                type: str,
+                status: int
+            }): Un diccionario con la informacion del mensaje
+
+        Returns:
+            dict: Un diccionario con la informacion del mensaje
+        """
+        title_default = "Addons Statement"
+        type_default  = "success"
+        label_default = "Addons Statement"
+        icon_default = "fa-circle-check"
+        status_default = 200
+        msg_dict = {}
+
+        if not isinstance(msg, dict):
+            return 'Error: El mensaje debe ser un diccionario'
+
+        msg_dict['title'] = msg.get('title', title_default)
+        msg_dict['label'] = msg.get('label', label_default)
+        msg_dict['msg'] = [msg.get('msg', "Something went wrong")]
+        msg_dict['icon'] = msg.get('icon', icon_default)
+        msg_dict['type'] = msg.get('type', type_default)
+        msg_dict["status"] = msg.get('status', status_default)
+
+        return msg_dict
