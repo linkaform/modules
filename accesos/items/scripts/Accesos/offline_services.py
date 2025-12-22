@@ -1236,7 +1236,7 @@ class Accesos(Accesos):
         for i in checks_details:
             check_evidencias = i.get('record', {}).get('evidencia_incidencia', [])
             check_documentos = i.get('record', {}).get('documento_incidencia', [])
-            check_incidencias = i.get('record', {}).get('incidencia', [])
+            check_incidencias = i.get('record', {}).get('incidencias', [])
 
             # Build a map of file_name -> file_url to check existing URLs
             existing_urls = {}
@@ -1253,6 +1253,7 @@ class Accesos(Accesos):
                     data_list = [(i.get('_id'), name, existing_urls) for name in attachments]
                     results = executor.map(lambda x: self._process_attachment_upload(*x), data_list)
                     media = [r for r in results if r]
+                    print('media: ', media)
 
                 for m in media:
                     m_name = m.get('file_name')
