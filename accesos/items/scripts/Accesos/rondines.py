@@ -1080,7 +1080,7 @@ class Accesos(Accesos):
             format_response = self.format_incidencias_rondines(response, area)
         return format_response
 
-    def get_rondines_images(self, location=None, area=None, date_from=None, date_to=None, limit=20, offset=0):
+    def get_rondines_images(self, location=None, areas=None, date_from=None, date_to=None, limit=20, offset=0):
         """Lista las imágenes de los rondines según los filtros proporcionados.
         Params:
             date_from (str): Fecha de inicio del filtro.
@@ -1110,9 +1110,9 @@ class Accesos(Accesos):
             match.update({
                 f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": location
             })
-        if area:
+        if areas:
             unwind_match.update({
-                f"answers.{self.f['grupo_areas_visitadas']}.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['area']}": area
+                f"answers.{self.f['grupo_areas_visitadas']}.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['area']}": {"$in": areas}
             })
         if date_from:
             match.update({
@@ -1724,6 +1724,7 @@ if __name__ == "__main__":
     areas = data.get("areas", [])
     year = data.get("year", None)
     month = data.get("month", None)
+    areas = data.get("areas", [])
     user_to_assign = data.get("user_to_assign", {})
     data_script = class_obj.current_record
     class_obj.timezone = data_script.get('timezone', 'America/Mexico_City')
@@ -1746,7 +1747,7 @@ if __name__ == "__main__":
     elif option == 'get_incidencias_rondines':
         response = class_obj.get_incidencias_rondines(location=ubicacion, area=area, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
     elif option == 'get_rondines_images':
-        response = class_obj.get_rondines_images(location=ubicacion, area=area, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
+        response = class_obj.get_rondines_images(location=ubicacion, areas=areas, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
     elif option == 'get_bitacora_rondines':
         response = class_obj.get_bitacora_rondines(location=ubicacion, nombre_rondin=nombre_rondin, year=year, month=month)
     elif option == 'get_check_by_id':
