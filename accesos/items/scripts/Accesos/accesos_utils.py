@@ -1957,3 +1957,29 @@ class Accesos( Accesos):
         }
 
         return notes
+    
+    def get_areas_by_locations(self, location_names):
+        catalog_id = self.AREAS_DE_LAS_UBICACIONES_CAT_ID
+        form_id = self.PASE_ENTRADA
+        res_list = []
+        response = {}
+        
+        if not isinstance(location_names, list):
+            location_names = [location_names]
+
+        if location_names:
+            for l in location_names:
+                options = {
+                    'startkey': [l],
+                    'endkey': [f"{l}\n",{}],
+                    'group_level':2
+                }
+                res = self.catalogo_view(catalog_id, form_id, options)
+                if res and isinstance(res, list):
+                    res_list.extend(res)
+
+            response.update({
+                "areas_by_location": list(set(res_list))
+            })
+
+        return response
