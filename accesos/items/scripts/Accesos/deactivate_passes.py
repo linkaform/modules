@@ -1,0 +1,66 @@
+# coding: utf-8
+import sys, simplejson
+from datetime import datetime, timedelta
+import pytz
+
+from accesos_utils import Accesos
+
+from account_settings import *
+
+class Accesos(Accesos):
+
+    def deactivate_passes(self):
+        now = datetime.now(pytz.timezone('America/Mexico_City'))
+        now_formatted = now.strftime("%Y-%m-%d %H:%M:%S")
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.PASE_ENTRADA,
+                f"answers.{self.pase_entrada_fields['status_pase']}": "activo",
+            }},
+            {"$addFields": {
+                "effective_end_date": {
+                    "$cond": {
+                        "if": {
+                            "$or": [
+                                {"$eq": [f"$answers.{self.pase_entrada_fields['fecha_hasta_pase']}", None]},
+                                {"$eq": [f"$answers.{self.pase_entrada_fields['fecha_hasta_pase']}", ""]}
+                            ]
+                        },
+                        "then": f"$answers.{self.pase_entrada_fields['fecha_desde_visita']}",
+                        "else": f"$answers.{self.pase_entrada_fields['fecha_hasta_pase']}"
+                    }
+                }
+            }},
+            {"$match": {
+                "effective_end_date": {"$lt": now_formatted}
+            }},
+            {"$project": {
+                "$id": 1,
+            }}
+        ]
+        data = self.format_cr(self.cr.aggregate(query))
+        if data:
+            answers = {}
+            record_ids = []
+            for d in data:
+                record_ids.append(d.get('_id'))
+
+            answers[self.pase_entrada_fields['status_pase']] = 'vencido'
+            print('==============log: Pases vencidos: ', record_ids)
+            if answers:
+                res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.PASE_ENTRADA, record_id=record_ids)
+                if res.get('status_code') == 201 or res.get('status_code') == 202:
+                    return res
+                else:
+                    return res
+        else:
+            return "No hay pases vencidos"
+
+if __name__ == "__main__":
+    script_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
+    script_obj.console_run()
+    
+    response = script_obj.deactivate_passes()
+    print(response)
+

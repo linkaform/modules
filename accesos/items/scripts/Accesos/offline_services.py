@@ -2,7 +2,7 @@
 from hmac import new
 import os
 import pytz
-import sys, simplejson, json
+import sys, simplejson, json, pytz
 import time
 import tempfile
 import unicodedata
@@ -12,6 +12,7 @@ from account_settings import *
 
 from accesos_utils import Accesos
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 
 class Accesos(Accesos):
 
@@ -147,6 +148,7 @@ class Accesos(Accesos):
             "tipo_de_area": "",
             "foto_del_area": [],
             "evidencia_incidencia": [],
+            "documento_incidencia": [],
             "incidencias": [],
             "comentario_check_area": "",
             "status_check_area": "",
@@ -276,33 +278,32 @@ class Accesos(Accesos):
         if not _id:
             return {'status_code': 400, 'type': 'error', 'msg': 'ID is required', 'data': {}}
         
-        record = self.cr_db.get(_id, revs_info=True)
-        if not record:
-            return {'status_code': 404, 'type': 'error', 'msg': 'Record not found', 'data': {}}
+        max_retries = 3
+        wait_time = 2
 
-        current_rev = record.rev
-        all_revs = [r['rev'] for r in record['_revs_info'] if r['status'] == 'available']
+        for attempt in range(max_retries):
+            record = self.cr_db.get(_id, revs_info=True)
+            if not record:
+                return {'status_code': 404, 'type': 'error', 'msg': 'Record not found', 'data': {}}
 
-        media = []
-        if _rev == current_rev:
-            attachments = record.get("_attachments", {})
-            print('✅ Revisión actual encontrada')
-            # for name in attachments:
-            #     attachment = self.cr_db.get_attachment(_id, name)
-            #     data = attachment.read()
-            #     upload_image = self.upload_image_from_couchdb(data, name, self.BITACORA_INCIDENCIAS, self.f['evidencia_incidencia'])
-            #     media.append(upload_image)
-            # record['status'] = 'received'
-            # self.cr_db.save(record)
-            return record
-        elif _rev in all_revs:
-            print('⚠️ Revisión vieja')
-            return {'status_code': 461, 'type': 'error', 'msg': 'Old revision found', 'data': {}}
-        else:
-            print('🕓 Revisión aún no propagada')
-            return {'status_code': 462, 'type': 'error', 'msg': 'Revision not yet propagated', 'data': {}}
+            current_rev = record.rev
+            all_revs = [r['rev'] for r in record['_revs_info'] if r['status'] == 'available']
 
-    def upload_image_from_couchdb(self, image_data, attachment_name, id_forma_seleccionada, id_field):
+            if _rev == current_rev:
+                attachments = record.get("_attachments", {})
+                print('===> Revisión actual encontrada')
+                return record
+            elif _rev in all_revs:
+                print(f'===> Revisión vieja, ultima revision registrada: {current_rev}')
+                return {'status_code': 461, 'type': 'error', 'msg': 'Old revision found', 'data': {}}
+            else:
+                print(f'===> Revisión aún no propagada (Intento {attempt + 1}/{max_retries})')
+                if attempt < max_retries - 1:
+                    time.sleep(wait_time)
+                else:
+                    return {'status_code': 462, 'type': 'error', 'msg': 'Revision not yet propagated', 'data': {}}
+
+    def upload_file_from_couchdb(self, image_data, attachment_name, id_forma_seleccionada, id_field):
         temp_dir = tempfile.gettempdir()
         temp_file_path = os.path.join(temp_dir, attachment_name)
 
@@ -333,8 +334,15 @@ class Accesos(Accesos):
         return update_file
     
     def assign_user_inbox(self, data):
-        user_name = data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['nombre_usuario'], '')
-        self.cr_db = self.lkf_api.couch.set_db(f'clave_{self.user_id}')
+        db_name = f'clave_{self.user_id}'
+        self.cr_db = self.lkf_api.couch.set_db(db_name)
+        record = self.cr_db.get(self.record_id)
+        if record:
+            return {'status_code': 202, 'type': 'success', 'msg': 'Ya existe el registro', 'data': {}}
+
+        user_name_to_assign = data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['nombre_usuario'], '')
+        user_id_to_assign = self.unlist(data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['id_usuario'], ''))
+        self.cr_db = self.lkf_api.couch.set_db(f'clave_{user_id_to_assign}')
         nombre_recorrido = data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.mf['nombre_del_recorrido'], '')
         ubicacion_recorrido = data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], '')
         
@@ -364,14 +372,14 @@ class Accesos(Accesos):
             "status_rondin": "new",
             "created_at": epoc_today,
             "updated_at": epoc_today,
-            "created_by_id": self.user_id,
-            "created_by_name": self.user_name,
+            "created_by_id": user_id_to_assign,
+            "created_by_name": user_name_to_assign,
             "geolocation": {
                 "lat": lat,
                 "long": long
             },
             "record": {
-                "user_name": user_name,
+                "user_name": user_name_to_assign,
                 "nombre_rondin": nombre_recorrido,
                 "ubicacion_rondin": ubicacion_recorrido,
                 "duracion_estimada": recorrido_info.get('duracion_estimada', ''),
@@ -388,11 +396,11 @@ class Accesos(Accesos):
             result = self.cr_db.save(inbox_record)
             if result:
                 status = {'status_code': 200, 'type': 'success', 'msg': 'Inbox assigned successfully', 'data': {
-                    'assigned_user_id': self.user_id,
-                    'assigned_user': user_name,
+                    'assigned_user_id': user_id_to_assign,
+                    'assigned_user': user_name_to_assign,
                     'bitacora_record_id': self.record_id,
-                    'bitacora_ubicacion': data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], ''),
-                    'bitacora_nombre_rondin': data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.mf['nombre_del_recorrido'], ''),
+                    'bitacora_ubicacion': ubicacion_recorrido,
+                    'bitacora_nombre_rondin': nombre_recorrido,
                     'bitacora_fecha_programada': data.get(self.f['fecha_programacion'], ''),
                 }}
         except Exception as e:
@@ -571,8 +579,8 @@ class Accesos(Accesos):
                     self.f['incidente_open']: incidencia.get('otro_incidente', ''),
                     self.f['comentario_incidente_bitacora']: incidencia.get('comentario', ''),
                     self.f['incidente_accion']: incidencia.get('accion', ''),
-                    self.f['incidente_evidencia']: incidencia.get('evidencia', []),
-                    self.f['incidente_documento']: incidencia.get('documento', []),
+                    self.f['incidente_evidencia']: [i for i in incidencia.get('evidencia', []) if i.get('file_url', '')],
+                    self.f['incidente_documento']: [i for i in incidencia.get('documento', []) if i.get('file_url', '')],
                 }
                 incidencias_list.append(new_item)
         
@@ -605,8 +613,8 @@ class Accesos(Accesos):
                         self.f['incidente_open']: incidencia.get('otro_incidente', ''),
                         self.f['comentario_incidente_bitacora']: incidencia.get('comentario', ''),
                         self.f['incidente_accion']: incidencia.get('accion', ''),
-                        self.f['incidente_evidencia']: incidencia.get('evidencia', []),
-                        self.f['incidente_documento']: incidencia.get('documento', []),
+                        self.f['incidente_evidencia']: [i for i in incidencia.get('evidencia', []) if i.get('file_url', '')],
+                        self.f['incidente_documento']: [i for i in incidencia.get('documento', []) if i.get('file_url', '')],
                     }
                     incidencias_list.append(new_item)
         
@@ -624,8 +632,8 @@ class Accesos(Accesos):
                 self.f['incidente_open']: incidencia.get('incidente_open', ''),
                 self.f['comentario_incidente_bitacora']: incidencia.get('comentario_incidente_bitacora', ''),
                 self.f['incidente_accion']: incidencia.get('incidente_accion', ''),
-                self.f['incidente_evidencia']: incidencia.get('incidente_evidencia', []),
-                self.f['incidente_documento']: incidencia.get('incidente_documento', []),
+                self.f['incidente_evidencia']: [i for i in incidencia.get('incidente_evidencia', []) if i.get('file_url', '')],
+                self.f['incidente_documento']: [i for i in incidencia.get('incidente_documento', []) if i.get('file_url', '')],
             }
             incidencias_list.append(new_item)
         return incidencias_list
@@ -639,18 +647,51 @@ class Accesos(Accesos):
         incidencias_list = self.format_incidencias_to_bitacora(bitacora_in_lkf, new_incidencias, new_areas)
         answers[self.f['bitacora_rondin_incidencias']] = incidencias_list
         
+        if 'areas_del_rondin' not in bitacora_in_lkf:
+            bitacora_in_lkf['areas_del_rondin'] = []
+
         for item in bitacora_in_lkf.get('areas_del_rondin', []):
             nombre_area = item.get('incidente_area')
-            check = new_areas.get(nombre_area)
+            check = new_areas.pop(nombre_area, None)
             if check:
                 ts = check.get('fecha_check')
-                fecha_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S") if ts else ""
+                timezone_str = check.get('timezone', '')
+                fecha_str = ""
+                if ts:
+                    try:
+                        target_tz = pytz.timezone(timezone_str)
+                        dt_aware = datetime.fromtimestamp(ts, tz=target_tz)
+                        fecha_str = dt_aware.strftime("%Y-%m-%d %H:%M:%S")
+                    except (pytz.exceptions.UnknownTimeZoneError, Exception):
+                        fecha_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+
                 item.update({
                     'fecha_hora_inspeccion_area': fecha_str,
                     'foto_evidencia_area_rondin': check.get('evidencia_incidencia', []),
                     'comentario_area_rondin': check.get('comentario_check_area', ''),
                     'url_registro_rondin': f"https://app.linkaform.com/#/records/detail/{check.get('record_id', '')}",
                 })
+
+        for nombre_area, check in new_areas.items():
+            ts = check.get('fecha_check')
+            timezone_str = check.get('timezone', '')
+            fecha_str = ""
+            if ts:
+                try:
+                    target_tz = pytz.timezone(timezone_str)
+                    dt_aware = datetime.fromtimestamp(ts, tz=target_tz)
+                    fecha_str = dt_aware.strftime("%Y-%m-%d %H:%M:%S")
+                except (pytz.exceptions.UnknownTimeZoneError, Exception):
+                    fecha_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+            
+            new_item = {
+                'incidente_area': nombre_area,
+                'fecha_hora_inspeccion_area': fecha_str,
+                'foto_evidencia_area_rondin': check.get('evidencia_incidencia', []),
+                'comentario_area_rondin': check.get('comentario_check_area', ''),
+                'url_registro_rondin': f"https://app.linkaform.com/#/records/detail/{check.get('record_id', '')}",
+            }
+            bitacora_in_lkf['areas_del_rondin'].append(new_item)
 
         for key, value in bitacora_in_lkf.items():
             if key == 'new_user_complete_name':
@@ -697,7 +738,37 @@ class Accesos(Accesos):
         answers[self.f['estatus_del_recorrido']] = 'en_proceso' if estatus_bitacora_in_couch != 'completed' else 'realizado'
         answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = conf_recorrido
         if not answers.get(self.f['fecha_inicio_rondin']):
-            answers[self.f['fecha_inicio_rondin']] = all_areas_sorted[0].get(self.f['fecha_hora_inspeccion_area'], '') if len(all_areas_sorted) > 0 else ''
+            answers[self.f['fecha_inicio_rondin']] = data.get('record', {}).get('fecha_inicio', '')
+
+        comentarios_in_couch = data.get('record', {}).get('comentarios_rondin', [])
+        comentarios_in_lkf = bitacora_in_lkf.get('grupo_comentarios_generales', [])
+        comentarios_existentes = set()
+        comentarios_finales = []
+        
+        for comentario in comentarios_in_lkf:
+            fecha = comentario.get('grupo_comentarios_generales_fecha', '')
+            texto = comentario.get('grupo_comentarios_generales_texto', '')
+            comentarios_existentes.add((fecha, texto))
+        
+        for comentario in comentarios_in_lkf:
+            nuevo_comentario = {
+            self.f['grupo_comentarios_generales_fecha']: comentario.get('grupo_comentarios_generales_fecha', ''),
+            self.f['grupo_comentarios_generales_texto']: comentario.get('grupo_comentarios_generales_texto', '')
+            }
+            comentarios_finales.append(nuevo_comentario)
+        
+        for comentario in comentarios_in_couch:
+            fecha = comentario.get('fecha', '')
+            texto = comentario.get('texto', '')
+            
+            if (fecha, texto) not in comentarios_existentes:
+                nuevo_comentario = {
+                    self.f['grupo_comentarios_generales_fecha']: fecha,
+                    self.f['grupo_comentarios_generales_texto']: texto
+                }
+                comentarios_finales.append(nuevo_comentario)
+        
+        answers[self.f['grupo_comentarios_generales']] = comentarios_finales
 
         if answers:
             metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_RONDINES)
@@ -717,6 +788,7 @@ class Accesos(Accesos):
                 '_id': bitacora_in_lkf.get('_id')
             })
             res = self.net.patch_forms_answers(metadata)
+            print("======log: ", res)
             return res
         
     def create_check_area(self, data):
@@ -741,6 +813,11 @@ class Accesos(Accesos):
         if data.get('rondin_id'):
             rondin_id = data.pop('rondin_id')
             answers[self.f['bitacora_rondin_url']] = f"https://app.linkaform.com/#/records/detail/{rondin_id}"
+        if data.get('rondin_name'):
+            rondin_name = data.pop('rondin_name')
+            answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = {
+                self.mf['nombre_del_recorrido']: rondin_name
+            }
         #---Define Answers
         answers[self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID]={}
         answers[self.f['check_status']] = "continuar_siguiente_punto_de_inspección"
@@ -755,6 +832,8 @@ class Accesos(Accesos):
                 })
             elif key == 'evidencia_incidencia':
                 answers[self.f['foto_evidencia_area']] = value
+            elif key == 'documento_incidencia':
+                answers[self.f['documento_check']] = value
             elif key == 'incidencias':
                 incidencias = data.get('incidencias', [])
                 if incidencias:
@@ -812,11 +891,8 @@ class Accesos(Accesos):
                 bad_items.append(item)
                 continue
             
-            if record.get('status_rondin') == 'deleted':
-                good_items.append(_id)
-                record['inbox'] = False
-                record['status'] = 'received'
-                self.cr_db.save(record)
+            good_items.append(_id)
+            self.cr_db.delete(record)
         
         answers[self.f['estatus_del_recorrido']] = 'cancelado'
         if good_items:
@@ -986,36 +1062,78 @@ class Accesos(Accesos):
             format_response = [item.get('_id') for item in response]
         return format_response
     
-    def create_checks_in_lkf(self, records):
-        for record in records:
-            record_id = record.get('record_id', None)
+    def _process_single_check_record(self, record):
+        record_id = record.get('record_id', None)
+
+        # Filter file lists to ensure file_url exists
+        file_keys = ['foto_del_area', 'evidencia_incidencia', 'documento_incidencia']
+        for key in file_keys:
+            if key in record and isinstance(record[key], list):
+                record[key] = [
+                    item for item in record[key] 
+                    if item.get('file_url')
+                ]
+
+        if 'incidencias' in record and isinstance(record['incidencias'], list):
+            for incidencia in record['incidencias']:
+                incidencia_file_keys = ['evidencia', 'documento']
+                for key in incidencia_file_keys:
+                    if key in incidencia and isinstance(incidencia[key], list):
+                        incidencia[key] = [
+                            item for item in incidencia[key] 
+                            if item.get('file_url')
+                        ]
+
+        response = {}
+        try:
             response = self.create_check_area(record)
+            print("======log: ", response)
+        except Exception as e:
+            self.LKFException({'title': 'Error inesperado', 'msg': str(e)})
+        
+        if record_id:
             record = self.cr_db.get(record_id)
-            if response.get('status_code') in [200, 201, 202]:
-                record['status'] = 'received'
-                record['folio'] = response.get('json', {}).get('folio', '')
-                self.cr_db.save(record)
-            else:
-                record['status'] = 'error'
-                self.cr_db.save(record)
+            if record:
+                if response.get('status_code') in [200, 201, 202]:
+                    record['status'] = 'received'
+                    record['folio'] = response.get('json', {}).get('folio', '')
+                    self.cr_db.save(record)
+                else:
+                    record['status'] = 'error'
+                    self.cr_db.save(record)
+
+    def create_checks_in_lkf(self, records):
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            executor.map(self._process_single_check_record, records)
+
+    def _process_attachment_upload(self, check_id, name, existing_urls):
+        # Check if already uploaded
+        current_url = existing_urls.get(name, '')
+        if current_url and current_url.startswith('http'):
+            return None
+
+        attachment = self.cr_db.get_attachment(check_id, name)
+        data = attachment.read()
+        ref_field = None
+        if name.endswith('.png') or name.endswith('.jpg') or name.endswith('.jpeg'):
+            ref_field = self.f['foto_evidencia_area']
+        else:
+            ref_field = self.f['documento_check']
+        upload_image = self.upload_file_from_couchdb(data, name, self.CHECK_UBICACIONES, ref_field)
+        return upload_image
     
     def sync_rondin_to_lkf(self, data):
         status = {}
         rondin_id = data.get('_id', '')
+        rondin_name = data.get('record', {}).get('nombre_rondin', '')
         # record_id = record.pop('_id', None)
         record = data.get('record', {})
         
         if isinstance(record, dict) and 'status_code' in record:
             return record
         
-        # for name in attachments:
-        #     attachment = self.cr_db.get_attachment(_id, name)
-        #     data = attachment.read()
-        #     upload_image = self.upload_image_from_couchdb(data, name, self.BITACORA_INCIDENCIAS, self.f['evidencia_incidencia'])
-        #     media.append(upload_image)
-        
         #! Se obtienen los IDs con checked true en el registro de la bitacora en CouchDB
-        check_ids = [ObjectId(i.get('check_area_id')) if i.get('checked') else None for i in record.get('check_areas', [])]
+        check_ids = [ObjectId(i.get('check_area_id')) if i.get('checked') and i.get('status_check') == 'completed' else None for i in record.get('check_areas', [])]
         #! Se buscan los checks que ya existen en Linkaform
         checks_in_lkf = self.search_checks_in_lkf(check_ids)
         #! Se filtran los checks que no existen en Linkaform
@@ -1030,35 +1148,53 @@ class Accesos(Accesos):
             }
         })
 
-        #! Se crean los payloads para crear los checks en Linkaform
-        payloads = []
-        for i in checks_details:
-            record = i.get('record', {})
-            payload = {k: record[k] for k in self.check_area_filter.keys() if k in record}
-            payload.update({
-                'record_id': i.get('_id'),
-                'rondin_id': rondin_id
-            })
-            payloads.append(payload)
-
+        payloads = self.process_checks(checks_details, rondin_id, rondin_name)
         #! Si hay payloads, se crean los checks en Linkaform
         if payloads:
             self.create_checks_in_lkf(payloads)
-        
+
+        #! Procesar attachments de incidencias del rondin
+        incidencias_rondin = record.get('incidencia_rondin', [])
+        existing_urls_rondin = {}
+        for inc in incidencias_rondin:
+            for item in inc.get('evidencia', []) + inc.get('documento', []):
+                existing_urls_rondin[item.get('file_name')] = item.get('file_url', '')
+
+        attachments_rondin = data.get('_attachments', {})
+        if attachments_rondin:
+            media_rondin = []
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                data_list = [(rondin_id, name, existing_urls_rondin) for name in attachments_rondin]
+                results = executor.map(lambda x: self._process_attachment_upload(*x), data_list)
+                media_rondin = [r for r in results if r]
+            
+            for m in media_rondin:
+                m_name = m.get('file_name')
+                m_url = m.get('file_url')
+                for inc in incidencias_rondin:
+                    for item in inc.get('evidencia', []) + inc.get('documento', []):
+                        if item.get('file_name') == m_name:
+                            item['file_url'] = m_url
+            
+            self.cr_db.save(data)
+
         #! 1. Obtener la bitacora del rondin en Linkaform y obtener las areas ya revisadas
         bitacora_in_lkf = self.get_bitacora_by_id(rondin_id)
+        if not bitacora_in_lkf:
+            self.LKFException({'title':'Error', 'msg': 'No se encontro la bitacora del rondin en Linkaform.'})
         checks_in_lkf = []
         for item in bitacora_in_lkf.get('areas_del_rondin', []):
             if item.get('fecha_hora_inspeccion_area'):
                 checks_in_lkf.append(item.get('incidente_area'))
             
         #! 2. Obtener la bitacora del rondin en CouchDB y obtener las areas ya revisadas
-        bitacora_in_couch = record
+        bitacora_in_couch = data.get('record', {})
         checks_in_couch = bitacora_in_couch.get('check_areas', [])
         format_checks_in_couch = []
         for item in checks_in_couch:
             #! 2.1 Se compara si el check area ya existe en la bitacora de Linkaform
-            if item.get('checked') and not item.get('area') in checks_in_lkf:
+            if (item.get('checked') and not item.get('area') in checks_in_lkf and item.get('status_check') == 'completed')  \
+                    or data.get('status_rondin') == 'completed':
                 format_checks_in_couch.append(item.get('check_area_id'))
 
         new_checks = self.cr_db.find({
@@ -1070,21 +1206,91 @@ class Accesos(Accesos):
         for check in new_checks:
             new_areas[check.get('record', {}).get('area')] = check.get('record', {})
             new_areas[check.get('record', {}).get('area')].update({
+                'timezone': check.get('timezone', ''),
                 'fecha_check': check.get('created_at', ''),
                 'record_id': check.get('_id', '')
             })
-        new_incidencias = bitacora_in_couch.get('incidencias', [])
+        new_incidencias = bitacora_in_couch.get('incidencia_rondin', [])
+        
+        if not isinstance(data, dict):
+            data = self.cr_db.get(rondin_id)
+
         bitacora_response = self.update_bitacora(bitacora_in_lkf, data, new_incidencias, new_areas)
         aux = self.cr_db.get(rondin_id)
         if bitacora_response and bitacora_response.get('status_code') in [200, 201, 202]:
-            record['status'] = 'received'
-            self.cr_db.save(aux)
+            if aux.get('status_rondin') == 'completed':
+                bitacora_in_lkf = self.get_bitacora_by_id(rondin_id)
+                checks_in_lkf = [i.get('incidente_area') for i in bitacora_in_lkf.get('areas_del_rondin', []) if i.get('fecha_hora_inspeccion_area')]
+                checks_in_couch = [i.get('area') for i in aux.get('record', {}).get('check_areas', []) if i.get('checked')]
+                if len(checks_in_couch) != len(checks_in_lkf):
+                    return {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
+
+                aux['status'] = 'received'
+                aux['inbox'] = False
+                self.cr_db.save(aux)
             status = {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
         else:
-            record['status'] = 'error'
+            aux['status'] = 'error'
             self.cr_db.save(aux)
             status = {'status_code': 400, 'type': 'error', 'msg': bitacora_response, 'data': {}}
         return status
+
+    def process_checks(self, checks_details, rondin_id, rondin_name):
+        #! Se crean los payloads para crear los checks en Linkaform
+        payloads = []
+        for i in checks_details:
+            check_evidencias = i.get('record', {}).get('evidencia_incidencia', [])
+            check_documentos = i.get('record', {}).get('documento_incidencia', [])
+            check_incidencias = i.get('record', {}).get('incidencias', [])
+
+            # Build a map of file_name -> file_url to check existing URLs
+            existing_urls = {}
+            for item in check_evidencias + check_documentos:
+                existing_urls[item.get('file_name')] = item.get('file_url', '')
+            for inc in check_incidencias:
+                for item in inc.get('evidencia', []) + inc.get('documento', []):
+                    existing_urls[item.get('file_name')] = item.get('file_url', '')
+
+            attachments = i.get('_attachments', {})
+            if attachments:
+                media = []
+                with ThreadPoolExecutor(max_workers=5) as executor:
+                    data_list = [(i.get('_id'), name, existing_urls) for name in attachments]
+                    results = executor.map(lambda x: self._process_attachment_upload(*x), data_list)
+                    media = [r for r in results if r]
+                    print('media: ', media)
+
+                for m in media:
+                    m_name = m.get('file_name')
+                    m_url = m.get('file_url')
+                    
+                    for item in check_evidencias:
+                        if item.get('file_name') == m_name:
+                            item['file_url'] = m_url
+                            
+                    for item in check_documentos:
+                        if item.get('file_name') == m_name:
+                            item['file_url'] = m_url
+                            
+                    for incidencia in check_incidencias:
+                        for item in incidencia.get('evidencia', []):
+                            if item.get('file_name') == m_name:
+                                item['file_url'] = m_url
+                        for item in incidencia.get('documento', []):
+                            if item.get('file_name') == m_name:
+                                item['file_url'] = m_url
+
+                self.cr_db.save(i)
+
+            record = i.get('record', {})
+            payload = {k: record[k] for k in self.check_area_filter.keys() if k in record}
+            payload.update({
+                'record_id': i.get('_id'),
+                'rondin_id': rondin_id,
+                'rondin_name': rondin_name
+            })
+            payloads.append(payload)
+        return payloads
         
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)

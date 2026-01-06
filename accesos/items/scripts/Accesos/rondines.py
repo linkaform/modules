@@ -1,6 +1,6 @@
 # coding: utf-8
 from datetime import date
-import sys, simplejson
+import sys, simplejson, pytz
 from tkinter import N
 from bson import ObjectId
 from linkaform_api import settings
@@ -59,10 +59,11 @@ class Accesos(Accesos):
             'accion_recurrencia': 'abcde00010000000a0000001',
             'grupo_asignado_rondin':'671055aaa487da57ba57b294',
             'id_grupo':'639b65dfaf316bacfc551ba2',
-            'cron_id':'abcde0001000000000000000',
+            'cron_id':'abcde0001000000000011111',
             'status':'abcde00010000000a0000000',
             'fecha1':'abcde000100000000000f000',
-            'fecha2':'abcde000100000000000f001'
+            'fecha2':'abcde000100000000000f001',
+            "link":'6927eb61d92ecf923b60a0de'
         }
         
     def create_rondin(self, rondin_data: dict = {}):
@@ -154,6 +155,8 @@ class Accesos(Accesos):
                     }
                     areas_list.append(area_dict)
                 answers[self.rondin_keys[key]] = areas_list
+            elif key == "cron_id":
+                answers[self.rondin_keys['cron_id']] = valor
             elif key == 'sucede_recurrencia' and ('dia_del_mes' in value or 'mes' in value):
                 actual_day = datetime.now().day
                 answers[self.rondin_keys['que_dia_del_mes']] = int(actual_day)
@@ -162,6 +165,7 @@ class Accesos(Accesos):
                 pass
             else:
                 answers[self.rondin_keys[key]] = value
+        print("ANSWERS", simplejson.dumps(answers, indent=4))
         response = self.create_register(
             module='Accesos',
             process='Creacion de un rondin',
@@ -224,6 +228,9 @@ class Accesos(Accesos):
         status = {}
         response = self.create_incidence(data)
         if response.get('status_code') in [200, 201, 202]:
+            id_incidencia= response.get("json",{}).get("id")
+            link= "https://app.linkaform.com/#/records/detail/"+id_incidencia
+            print("link",link)
             status = {'status_code': 200, 'type': 'success', 'msg': 'Record created successfully', 'data': {}}
         else:
             status = {'status_code': 400, 'type': 'error', 'msg': response, 'data': {}}
@@ -268,6 +275,7 @@ class Accesos(Accesos):
         else:
             return {"status": "error", "message": "Unexpected error occurred."}
         
+    
     def edit_areas_rondin(self, areas, folio, record_id):
         metadata = self.lkf_api.get_metadata(form_id=self.CONFIGURACION_RECORRIDOS_FORM)
         metadata.update(self.get_record_by_folio(record_id, self.CONFIGURACION_RECORRIDOS_FORM, select_columns={'_id':1}, limit=1))
@@ -388,6 +396,7 @@ class Accesos(Accesos):
                     "comentarios": incidencia.get('comentario_incidente_bitacora', ''),
                     "evidencias": incidencia.get('incidente_evidencia', []),
                     "documentos": incidencia.get('incidente_documento', []),
+                    "link": incidencia.get('link', ""),
                 }
                 format_data.append(format_item)
         return format_data
@@ -411,7 +420,14 @@ class Accesos(Accesos):
         return format_data
 
     def format_bitacora_rondines(self, data):
-        now = datetime.now()
+        if hasattr(self, 'timezone') and self.timezone:
+            try:
+                tz = pytz.timezone(self.timezone)
+                now = datetime.now(tz)
+            except Exception:
+                now = datetime.now()
+        else:
+            now = datetime.now()
         current_year = now.year
         current_month = now.month
         days_in_month = calendar.monthrange(current_year, current_month)[1]
@@ -530,7 +546,7 @@ class Accesos(Accesos):
                     resumen_estados.append({
                         "dia": dia,
                         "estado": estado_bitacora,
-                        "record_id": bitacora_id if estado_bitacora not in ["none", "no_inspeccionada", "no_aplica"] else "",
+                        "record_id": bitacora_id if estado_bitacora not in ["none", "no_aplica"] else "",
                     })
                 
                 # Agregar esta categoría al array
@@ -549,7 +565,14 @@ class Accesos(Accesos):
         return format_data
     
     def format_bitacoras_mes(self, bitacoras_data, nombre_recorrido):
-        now = datetime.now()
+        if hasattr(self, 'timezone') and self.timezone:
+            try:
+                tz = pytz.timezone(self.timezone)
+                now = datetime.now(tz)
+            except Exception:
+                now = datetime.now()
+        else:
+            now = datetime.now()
         current_year = now.year
         current_month = now.month
         days_in_month = calendar.monthrange(current_year, current_month)[1]
@@ -616,7 +639,7 @@ class Accesos(Accesos):
         
         return format_data
 
-    def format_check_by_id(self, data: dict):
+    def format_check_by_id(self, data: dict, record_id: str):
         """
         Formatea los detalles de un check por su ID de registro.
         Args:
@@ -641,12 +664,12 @@ class Accesos(Accesos):
             }
             incidencias_area.append(incidencia_formateada)
             
-        checks_mes = self.get_rondin_checks(data.get('rondin_area', ''), data.get('ubicacion', ''))
+        checks_mes = self.get_rondin_checks(data.get('rondin_area', ''), data.get('ubicacion', ''), data.get('nombre_recorrido', ''), record_id)
         
         format_data = {
             'area': data.get('rondin_area', ''),
             'checks_mes': checks_mes,
-            'fotos': [{'pic_name': item.get('name', ''),'pic_url': item.get('file_url', '')} for item in data.get('foto_evidencia_area_rondin', [])],
+            'fotos': [{'file_name': item.get('file_name', ''),'file_url': item.get('file_url', '')} for item in data.get('foto_evidencia_area_rondin', [])],
             'hora_de_check': data.get('fecha_hora_inspeccion_area', ''),
             'ubicacion': data.get('ubicacion', ''),
             'tiempo_traslado': data.get('duracion_traslado_area', ''),
@@ -655,7 +678,7 @@ class Accesos(Accesos):
         }
         return format_data
     
-    def format_rondin_checks(self, checks_data):
+    def format_rondin_checks(self, checks_data, rec_id):
         """
         Formatea los checks del mes en el formato requerido por el frontend.
         
@@ -667,20 +690,32 @@ class Accesos(Accesos):
             dict: Datos formateados con estructura de estados por día
         """
         # Obtener el mes y año actuales
-        now = datetime.now()
+        if hasattr(self, 'timezone') and self.timezone:
+            try:
+                tz = pytz.timezone(self.timezone)
+                now = datetime.now(tz)
+            except Exception:
+                now = datetime.now()
+        else:
+            now = datetime.now()
         current_year = now.year
         current_month = now.month
         days_in_month = calendar.monthrange(current_year, current_month)[1]
         
-        # Crear diccionario para mapear días a checks
+        # Crear diccionario para mapear días a lista de checks
         checks_por_dia = {}
         for check in checks_data:
             created_at = check.get('created_at')
             if isinstance(created_at, str):
                 try:
-                    fecha_check = datetime.strptime(created_at, '%Y-%m-%d')
-                except Exception:
-                    continue
+                    # Intentar parsear con hora y minuto primero
+                    fecha_check = datetime.strptime(created_at, '%Y-%m-%d %H:%M')
+                except ValueError:
+                    try:
+                        # Fallback al formato solo fecha
+                        fecha_check = datetime.strptime(created_at, '%Y-%m-%d')
+                    except ValueError:
+                        continue
             elif isinstance(created_at, datetime):
                 fecha_check = created_at
             else:
@@ -693,20 +728,32 @@ class Accesos(Accesos):
             # Determinar estado del check
             estado = self._get_estado_check(incidencias, self.unlist(check_area.get('rondin_area', '')))
             
-            # Guardar el check (si hay múltiples checks en un día, mantener el último)
-            if dia not in checks_por_dia or checks_por_dia[dia]['created_at'] < created_at:
-                checks_por_dia[dia] = {
-                    'estado': estado,
-                    'created_at': created_at,
-                    'record_id': str(check.get('_id', ''))
-                }
+            # Guardar el check
+            if dia not in checks_por_dia:
+                checks_por_dia[dia] = []
+            
+            # Si created_at es datetime, formatearlo a string para consistencia en la respuesta
+            created_at_str = created_at
+            if isinstance(created_at, datetime):
+                created_at_str = created_at.strftime('%Y-%m-%d %H:%M')
+            
+            checks_por_dia[dia].append({
+                'estado': estado,
+                'created_at': created_at_str,
+                'record_id': str(check.get('_id', ''))
+            })
         
         # Crear lista de estados para todos los días del mes
         estados = []
         for dia in range(1, days_in_month + 1):
             if dia in checks_por_dia:
-                estado = checks_por_dia[dia]['estado']
-                record_id = checks_por_dia[dia]['record_id']
+                # Ordenar por fecha de creación
+                checks_dia = sorted(checks_por_dia[dia], key=lambda x: x['created_at'])
+                # El estado principal del día es el del último check
+                ultimo_check = self.unlist([check for check in checks_dia if check.get('record_id') == rec_id]) or checks_dia[-1]
+                estado = ultimo_check['estado']
+                record_id = ultimo_check['record_id']
+                registros = checks_dia
             else:
                 # Determinar si es día pasado, presente o futuro
                 fecha_dia = datetime(current_year, current_month, dia)
@@ -715,11 +762,13 @@ class Accesos(Accesos):
                 else:
                     estado = "none"
                 record_id = ""
+                registros = []
             
             estados.append({
                 "dia": dia,
                 "estado": estado,
-                "record_id": record_id
+                "record_id": record_id,
+                "registros": registros
             })
         
         # Obtener el estado del día actual
@@ -803,6 +852,30 @@ class Accesos(Accesos):
                 "fecha_hora_programada": f"$answers.{self.rondin_keys['fecha_hora_programada']}",
                 "cada_cuantos_dias_se_repite": f"$answers.{self.rondin_keys['cada_cuantos_dias_se_repite']}",
                 "areas": f"$answers.{self.rondin_keys['areas']}.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area']}",
+                "se_repite_cada":f"$answers.{self.rondin_keys['se_repite_cada']}",
+
+                "ubicacion_geolocation": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.f['address_geolocation']}",
+                "estatus_rondin": f"$answers.{self.f['status_cron']}",
+                "fecha_inicio_rondin": f"$answers.{self.f['fecha_primer_evento']}",
+                "duracion_esperada_rondin": {"$ifNull": [f"$answers.{self.rondin_keys['duracion_estimada']}", "No especificada"]},
+                "fecha_final_rondin": {"$ifNull": [f"$answers.{self.f['fecha_final_recurrencia']}", "Sin fecha final"]},
+                "cantidad_de_puntos": {"$size": {"$ifNull": [f"$answers.{self.rondin_keys['areas']}", []]}},
+                "la_recurrencia_cuenta_con_fecha_final":f"$answers.{self.rondin_keys['la_recurrencia_cuenta_con_fecha_final']}",
+                "grupo_asignado_rondin":f"$answers.{self.rondin_keys['grupo_asignado_rondin']}",
+                "id_grupo":f"$answers.{self.rondin_keys['id_grupo']}",
+                "cron_id":f"$answers.{self.rondin_keys['cron_id']}",
+                "programar_anticipacion":f"$answers.{self.rondin_keys['programar_anticipacion']}",
+                "accion_recurrencia":f"$answers.{self.rondin_keys['accion_recurrencia']}",
+                "en_que_mes":f"$answers.{self.rondin_keys['en_que_mes']}",
+                "en_que_semana_sucede":f"$answers.{self.rondin_keys['en_que_semana_sucede']}",
+                "que_dias_de_la_semana":f"$answers.{self.rondin_keys['que_dias_de_la_semana']}",
+                "sucede_recurrencia":f"$answers.{self.rondin_keys['sucede_recurrencia']}",
+                "sucede_cada":f"$answers.{self.rondin_keys['sucede_cada']}",
+                "se_repite_cada":f"$answers.{self.rondin_keys['se_repite_cada']}",
+                "tiempo_para_ejecutar_tarea_expresado_en":f"$answers.{self.rondin_keys['tiempo_para_ejecutar_tarea_expresado_en']}",
+                "tiempo_para_ejecutar_tarea":f"$answers.{self.rondin_keys['tiempo_para_ejecutar_tarea']}",
+                "fecha1":f"$answers.abcde000100000000000f000",
+                "fecha2":f"$answers.abcde000100000000000f001",
             }},
             {"$sort": {"folio": -1}},
             {"$skip": offset},
@@ -1015,6 +1088,7 @@ class Accesos(Accesos):
                 "ubicacion": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}",
                 "nombre_recorrido": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}",
                 "incidencias_rondin": f"$answers.{self.f['bitacora_rondin_incidencias']}",
+                "link": f"$answers.{self.rondin_keys['link']}",
             }},
             {"$skip": offset},
             {"$limit": limit}
@@ -1025,7 +1099,7 @@ class Accesos(Accesos):
             format_response = self.format_incidencias_rondines(response, area)
         return format_response
 
-    def get_rondines_images(self, location=None, area=None, date_from=None, date_to=None, limit=20, offset=0):
+    def get_rondines_images(self, location=None, areas=None, date_from=None, date_to=None, limit=20, offset=0):
         """Lista las imágenes de los rondines según los filtros proporcionados.
         Params:
             date_from (str): Fecha de inicio del filtro.
@@ -1055,9 +1129,9 @@ class Accesos(Accesos):
             match.update({
                 f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": location
             })
-        if area:
+        if areas:
             unwind_match.update({
-                f"answers.{self.f['grupo_areas_visitadas']}.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['area']}": area
+                f"answers.{self.f['grupo_areas_visitadas']}.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['area']}": {"$in": areas}
             })
         if date_from:
             match.update({
@@ -1090,7 +1164,15 @@ class Accesos(Accesos):
         print("format_response", simplejson.dumps(format_response, indent=4))
         return format_response
 
-    def get_bitacora_rondines(self, location=None):
+    def get_bitacora_rondines(self, location=None, nombre_rondin=None, year=None, month=None):
+        year_condition = { "$eq": [ { "$year": "$created_at" }, { "$year": "$$NOW" } ] }
+        month_condition = { "$eq": [ { "$month": "$created_at" }, { "$month": "$$NOW" } ] }
+
+        if year:
+            year_condition = { "$eq": [ { "$year": "$created_at" }, int(year) ] }
+        if month:
+            month_condition = { "$eq": [ { "$month": "$created_at" }, int(month) ] }
+
         match = {
             "deleted_at": {"$exists": False},
             "form_id": self.BITACORA_RONDINES,
@@ -1100,13 +1182,16 @@ class Accesos(Accesos):
             f"answers.{self.f['fecha_programacion']}": {"$type": "string", "$ne": ""}, 
             "$expr": {
                 "$and": [
-                    { "$eq": [ { "$year": "$created_at" }, { "$year": "$$NOW" } ] }, #TODO: Cambiar a mes por parametro
-                    { "$eq": [ { "$month": "$created_at" }, { "$month": "$$NOW" } ] }, #TODO: Cambiar a mes por parametro
+                    year_condition,
+                    month_condition
                 ]
             }
         }
         
-
+        if nombre_rondin:
+            match.update({
+                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}": nombre_rondin,
+            })
         if location:
             match.update({
                 f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}": location,
@@ -1233,7 +1318,7 @@ class Accesos(Accesos):
         response = self.unlist(response)
         format_response = {}
         if response:
-            format_response = self.format_check_by_id(response)
+            format_response = self.format_check_by_id(response, record_id)
         return format_response
     
     def get_bitacora_by_id(self, record_id):
@@ -1292,13 +1377,14 @@ class Accesos(Accesos):
             format_response = self.format_bitacoras_mes(response, nombre_recorrido)
         return format_response
 
-    def get_rondin_checks(self, area, location):
+    def get_rondin_checks(self, area, location, nombre_recorrido, record_id):
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
                 "form_id": self.CHECK_UBICACIONES,
                 f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": location,
                 f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['area']}": area,
+                f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}": nombre_recorrido,
                 "$expr": {
                     "$and": [
                         {"$eq": [{"$year": "$created_at"}, {"$year": "$$NOW"}]},
@@ -1311,17 +1397,17 @@ class Accesos(Accesos):
                 "answers": 1,
                 "created_at": {
                     "$dateToString": {
-                        "format": "%Y-%m-%d",
+                        "format": "%Y-%m-%d %H:%M",
                         "date": "$created_at",
                         "timezone": "America/Mexico_City"
                     }
                 }
             }}
         ]
-        response = self.format_cr(self.cr.aggregate(query))
+        response = self.format_cr(self.cr.aggregate(query)) 
         format_response = []
         if response:
-            format_response = self.format_rondin_checks(response)
+            format_response = self.format_rondin_checks(response, record_id)
         return format_response
     
     def _get_estado_check(self, incidencias, area_nombre):
@@ -1409,23 +1495,33 @@ class Accesos(Accesos):
                 return ("finalizado", bitacora_id)
         
         # No se encontró bitácora para este día
-        now = datetime.now()
+        if hasattr(self, 'timezone') and self.timezone:
+            try:
+                tz = pytz.timezone(self.timezone)
+                now = datetime.now(tz)
+            except Exception:
+                now = datetime.now()
+        else:
+            now = datetime.now()
         fecha_evaluada = datetime(year, month, dia)
         
-        # Si es día futuro o presente
-        if fecha_evaluada.date() >= now.date():
-            return ("none", "")
-        
-        # Si es día pasado, verificar si estaba programada una bitácora
-        # Verificar si había una bitácora programada (pero no ejecutada) para ese día
         estaba_programada, bitacora_programada = self._verificar_bitacora_programada(dia, year, month, hora_valida, bitacora_rondines)
-        
         if estaba_programada:
             estatus_bitacora_programada = bitacora_programada.get('estatus_del_recorrido', '')
+            record_id = str(bitacora_programada.get('_id', ''))
             if estatus_bitacora_programada == 'cancelado':
-                return ("cancelado", "")
+                return ("cancelado", record_id)
+            elif estatus_bitacora_programada == 'programado':
+                return ("programado", record_id)
+            elif estatus_bitacora_programada == 'realizado':
+                return ("fuera_de_hora", record_id)
             else:
-                return ("no_inspeccionada", "")
+                return ("no_inspeccionada", record_id)
+
+        if fecha_evaluada.date() > now.date():
+            return ("none", "")
+        elif fecha_evaluada.date() == now.date():
+            return ("programado", "")
         else:
             return ("no_aplica", "")
     
@@ -1490,12 +1586,15 @@ class Accesos(Accesos):
                     return "finalizado"
         
         # No se encontró visita para este día
-        now = datetime.now()
+        if hasattr(self, 'timezone') and self.timezone:
+            try:
+                tz = pytz.timezone(self.timezone)
+                now = datetime.now(tz)
+            except Exception:
+                now = datetime.now()
+        else:
+            now = datetime.now()
         fecha_evaluada = datetime(year, month, dia)
-        
-        # Si es día futuro o presente
-        if fecha_evaluada.date() >= now.date():
-            return "none"
         
         # Si es día pasado, verificar si estaba programada una bitácora
         estaba_programada, bitacora_programada = self._verificar_bitacora_programada(dia, year, month, hora_valida, bitacora_rondines)
@@ -1504,8 +1603,16 @@ class Accesos(Accesos):
             estatus_bitacora_programada = bitacora_programada.get('estatus_del_recorrido', '')
             if estatus_bitacora_programada == 'cancelado':
                 return "cancelado"
+            elif estatus_bitacora_programada == 'realizado':
+                return "fuera_de_hora"
             else:
                 return "no_inspeccionada"
+        
+        # Si es día futuro o presente
+        if fecha_evaluada.date() > now.date():
+            return "none"
+        elif fecha_evaluada.date() == now.date():
+            return "programado"
         else:
             return "no_aplica"
     
@@ -1521,6 +1628,7 @@ class Accesos(Accesos):
             'cancelado': 'no_inspeccionada',
             'pendiente': 'none',
             'en_proceso': 'none',
+            'programado': 'programado',
         }
         
         status_normalizado = estatus_bitacora.lower().strip() if estatus_bitacora else ''
@@ -1629,9 +1737,17 @@ if __name__ == "__main__":
     folio = data.get("folio", '')
     record_id = data.get("record_id", '')
     ubicacion = data.get("ubicacion", None)
+    nombre_rondin = data.get("nombre_rondin", None)
     area = data.get("area", None)
     paused = data.get("paused", True)
     areas = data.get("areas", [])
+    year = data.get("year", None)
+    month = data.get("month", None)
+    areas = data.get("areas", [])
+    user_to_assign = data.get("user_to_assign", {})
+    data_script = class_obj.current_record
+    class_obj.timezone = data_script.get('timezone', 'America/Mexico_City')
+    tz = pytz.timezone(class_obj.timezone)
 
     if option == 'create_rondin':
         response = class_obj.create_rondin(rondin_data=rondin_data)
@@ -1650,9 +1766,9 @@ if __name__ == "__main__":
     elif option == 'get_incidencias_rondines':
         response = class_obj.get_incidencias_rondines(location=ubicacion, area=area, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
     elif option == 'get_rondines_images':
-        response = class_obj.get_rondines_images(location=ubicacion, area=area, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
+        response = class_obj.get_rondines_images(location=ubicacion, areas=areas, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
     elif option == 'get_bitacora_rondines':
-        response = class_obj.get_bitacora_rondines(location=ubicacion)
+        response = class_obj.get_bitacora_rondines(location=ubicacion, nombre_rondin=nombre_rondin, year=year, month=month)
     elif option == 'get_check_by_id':
         response = class_obj.get_check_by_id(record_id=record_id)
     elif option == 'get_bitacora_by_id':
@@ -1663,6 +1779,9 @@ if __name__ == "__main__":
         response = class_obj.pause_or_play_rondin(record_id=record_id, paused=paused)
     elif option == 'update_rondin':
         response = class_obj.update_rondin(folio=folio,rondin_data=rondin_data)
+    elif option == 'assign_rondin':
+        response = class_obj.assign_rondin(record_id=record_id, user_to_assign=user_to_assign)
+    
     else:
         response = {"msg": "Empty"}
     class_obj.HttpResponse({"data": response})
