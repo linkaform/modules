@@ -108,7 +108,14 @@ class Accesos( Accesos):
             'incidente_documento': '685063ba36910b2da9952697',
             'url_registro_rondin': '6750adb2936622aecd075607',
             'bitacora_rondin_incidencias': '686468a637d014b9e0ab5090',
-            'tipo_de_incidencia': '663973809fa65cafa759eb97'
+            'tipo_de_incidencia': '663973809fa65cafa759eb97',
+            'personalizacion_pases': '695d2e1f6be562c3da95c4a7',
+            'pases': '695d31b503ccc7766ac28507',
+            'grupo_alertas': '695d35b618a37ea04899524f',
+            'nombre_alerta': '695d36605f78faab793f497b',
+            'accion_alerta': '695d36605f78faab793f497c',
+            'llamar_num_alerta': '695d36605f78faab793f497d',
+            'email_alerta': '695d36605f78faab793f497e'
         })
         
         self.checkin_fields.update({
@@ -2066,3 +2073,69 @@ class Accesos( Accesos):
             # self.update_pase_entrada(values, record_id=[str(access_pass['_id']),])
         res = self._do_access(access_pass, location, area, data)
         return res
+
+    def get_config_accesos(self):
+        response = []
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id": self.CONF_ACCESOS,
+            f"answers.{self.EMPLOYEE_OBJ_ID}.{self.employee_fields['user_id_id']}":self.user['user_id'],
+        }
+        query = [
+            {'$match': match_query },
+            {'$project': {
+                "usuario":f"$answers.{self.conf_accesos_fields['usuario_cat']}",
+                "grupos":f"$answers.{self.conf_accesos_fields['grupos']}",
+                "menus": f"$answers.{self.conf_accesos_fields['menus']}",
+            }},
+            {'$limit':1},
+            {'$lookup': {
+                'from': 'form_answer',
+                'pipeline': [
+                    {'$match': {
+                        'deleted_at': {'$exists': False},
+                        'form_id': self.CONF_MODULO_SEGURIDAD,
+                    }},
+                    {'$project': {
+                        "_id": 0,
+                        "excluir": f"$answers.{self.f['personalizacion_pases']}",
+                        "alertas": f"$answers.{self.f['grupo_alertas']}",
+                    }}
+                ],
+                'as': 'personalizaciones'
+            }},
+            {'$unwind': '$personalizaciones'},
+            {'$project': {
+                "usuario":1,
+                "grupos":1,
+                "menus":1,
+                "exclude_inputs": "$personalizaciones.excluir",
+                "alertas": "$personalizaciones.alertas",
+            }}
+        ]
+        data = self.format_cr_result(self.cr.aggregate(query),  get_one=True)
+        format_data = {}
+
+        if data:
+            exclude_inputs = data.get('exclude_inputs', [])
+            format_exclude_inputs = self.unlist([i for i in exclude_inputs])
+
+            alertas = data.get('alertas', [])
+            format_alerts = []
+            for i in alertas:
+                new_item = {}
+                new_item[i.get('nombre_alerta')] = {
+                    'accion': i.get('accion_alerta', '') if len(i.get('accion_alerta', [])) > 1 else self.unlist(i.get('accion_alerta', [])),
+                }
+                if 'llamar' in i.get('accion_alerta') or 'sms' in i.get('accion_alerta'):
+                    new_item[i.get('nombre_alerta')]['number'] = i.get('llamar_num_alerta', 0000000000)
+                if 'email' in i.get('accion_alerta'):
+                    new_item[i.get('nombre_alerta')]['email'] = i.get('email_alerta', '')
+                format_alerts.append(new_item)
+
+            data.update({
+                'exclude_inputs': format_exclude_inputs,
+                'alertas': format_alerts,
+            })
+
+        return data
