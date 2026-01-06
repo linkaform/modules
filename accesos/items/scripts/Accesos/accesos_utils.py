@@ -1054,3 +1054,112 @@ class Accesos( Accesos):
         }
 
         return notes
+    
+    def get_areas_by_locations(self, location_names):
+        catalog_id = self.AREAS_DE_LAS_UBICACIONES_CAT_ID
+        form_id = self.PASE_ENTRADA
+        res_list = []
+        response = {}
+        
+        if not isinstance(location_names, list):
+            location_names = [location_names]
+
+        if location_names:
+            for l in location_names:
+                options = {
+                    'startkey': [l],
+                    'endkey': [f"{l}\n",{}],
+                    'group_level':2
+                }
+                res = self.catalogo_view(catalog_id, form_id, options)
+                if res and isinstance(res, list):
+                    res_list.extend(res)
+
+            response.update({
+                "areas_by_location": list(set(res_list))
+            })
+
+        return response
+
+    def do_access(self, qr_code, location, area, data):
+        '''
+        Valida pase de entrada y crea registro de entrada al pase
+        '''
+        access_pass = self.get_detail_access_pass(qr_code)
+        if not qr_code and not location and not area:
+            return False
+        total_entradas = self.get_count_ingresos(qr_code)
+        
+        diasDisponibles = access_pass.get("limitado_a_dias", [])
+        dias_semana = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+        tz = pytz.timezone("America/Mexico_City")
+        hoy = datetime.now(tz)
+        dia_semana = hoy.weekday()
+        nombre_dia = dias_semana[dia_semana]
+
+        if access_pass.get('estatus',"") == 'vencido':
+            self.LKFException({'msg':"El pase esta vencido, edita la información o genera uno nuevo.","title":'Revisa la Configuración'})
+        elif access_pass.get('estatus', '') == 'proceso':
+            self.LKFException({'msg':"El pase no se ha sido completado aun, informa al usuario que debe completarlo primero.","title":'Requisitos faltantes'})
+
+        if diasDisponibles:
+            if nombre_dia not in diasDisponibles:
+                dias_capitalizados = [dia.capitalize() for dia in diasDisponibles]
+
+                if len(dias_capitalizados) > 1:
+                    dias_formateados = ', '.join(dias_capitalizados[:-1]) + ' y ' + dias_capitalizados[-1]
+                else:
+                    dias_formateados = dias_capitalizados[0]
+
+                self.LKFException({
+                        'msg': f"Este pase no te permite ingresar hoy {nombre_dia.capitalize()}. Solo tiene acceso los siguientes dias: {dias_formateados}",
+                        "title":'Aviso'
+                    })
+        
+        limite_acceso = access_pass.get('limite_de_acceso')
+        if len(total_entradas) > 0 and limite_acceso and int(limite_acceso) > 0:
+            if total_entradas['total_records']>= int(limite_acceso) :
+                self.LKFException({'msg':"Se ha completado el limite de entradas disponibles para este pase, edita el pase o crea uno nuevo.","title":'Revisa la Configuración'})
+        
+        timezone = pytz.timezone('America/Mexico_City')
+        fecha_actual = datetime.now(timezone).replace(microsecond=0)
+        fecha_caducidad = access_pass.get('fecha_de_caducidad')
+        fecha_obj_caducidad = datetime.strptime(fecha_caducidad, "%Y-%m-%d %H:%M:%S")
+        fecha_caducidad = timezone.localize(fecha_obj_caducidad)
+
+        # Se agrega 1 hora como margen de tolerancia
+        fecha_caducidad_con_margen = fecha_caducidad + timedelta(hours=1)
+
+        if fecha_caducidad_con_margen < fecha_actual:
+            self.LKFException({'msg':"El pase esta vencido, ya paso su fecha de vigencia.","title":'Advertencia'})
+        
+        fecha_visita = access_pass.get('fecha_de_caducidad')
+        if fecha_visita:
+            fecha_obj_visita = datetime.strptime(fecha_visita, "%Y-%m-%d %H:%M:%S")
+            fecha_visita_tz = timezone.localize(fecha_obj_visita)
+            
+            if fecha_actual < fecha_visita_tz - timedelta(minutes=30):
+                self.LKFException({'msg': f"Aún no es hora de entrada. Tu acceso comienza a las {fecha_visita}", "title": 'Aviso'})
+        
+        if location not in access_pass.get("ubicacion",[]):
+            msg = f"La ubicación {location}, no se encuentra en el pase. Pase valido para las siguientes ubicaciones: {access_pass.get('ubicacion',[])}."
+            self.LKFException({'msg':msg,"title":'Revisa la Configuración'})
+        
+        if self.validate_access_pass_location(qr_code, location):
+            self.LKFException("En usuario ya se encuentra dentro de una ubicacion")
+        val_certificados = self.validate_certificados(qr_code, location)
+
+        
+        pass_dates = self.validate_pass_dates(access_pass)
+        comentario_pase =  data.get('comentario_pase',[])
+        if comentario_pase:
+            values = {self.pase_entrada_fields['grupo_instrucciones_pase']:{
+                -1:{
+                self.pase_entrada_fields['comentario_pase']:comentario_pase,
+                self.mf['tipo_de_comentario']:'caseta'
+                }
+            }
+            }
+            # self.update_pase_entrada(values, record_id=[str(access_pass['_id']),])
+        res = self._do_access(access_pass, location, area, data)
+        return res
