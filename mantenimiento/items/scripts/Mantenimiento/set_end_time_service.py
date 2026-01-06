@@ -17,6 +17,8 @@ class Mantenimiento(Mantenimiento):
     
     def update_end_date(self, answers):
         fecha_inicio_str = answers.get(self.f['hora_inicio_instalacion'])
+        if fecha_inicio_str:
+            fecha_inicio_str = fecha_inicio_str.replace('/', '-')
         fecha_inicio = datetime.strptime(fecha_inicio_str, "%Y-%m-%d %H:%M:%S")
         print(f"Fecha inicio: {fecha_inicio}")
 
