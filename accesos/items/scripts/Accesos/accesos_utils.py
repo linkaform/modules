@@ -809,6 +809,27 @@ class Accesos( Accesos):
 
         return res
 
+    def get_employee_data(self, name=None, user_id=None, username=None, email=None,  get_one=False):
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id": self.EMPLEADOS,
+            }
+        if name:
+            match_query.update(self._get_match_q(self.f['worker_name'], name))
+        if user_id:
+            match_query.update(self._get_match_q(f"{self.USUARIOS_OBJ_ID}.{self.employee_fields['user_id_id']}", user_id))
+        if username:
+            match_query.update(self._get_match_q(self.f['username'], username))
+        if email:
+            match_query.update(self._get_match_q(self.employee_fields['usuario_email'], email)) 
+        query = [
+            {'$match': match_query },    
+            {'$project': self.project_format(self.employee_fields)},
+            {'$sort':{'worker_name':1}},
+            ]
+        res = self.format_cr_result(self.cr.aggregate(query), get_one=get_one)
+        return res
+
     def do_checkin(self, location, area, employee_list=[], fotografia=[], check_in_manual={}, nombre_suplente="", checkin_id=""):
         # Realiza el check-in en una ubicación y área específica.
         resp, last_status = self.is_boot_available(location, area)
@@ -850,9 +871,9 @@ class Accesos( Accesos):
             msg += f"Es necesario primero salirse de cualquier caseta antes de querer entrar a una casta"
             self.LKFException({'msg':msg,"title":'Accion Requerida!!!'})
 
-        employee = self.get_employee_data(email=self.user.get('email'), get_one=True)
+        employee = self.get_employee_data(user_id=self.user.get('user_id'), get_one=True)
         if not employee:
-            msg = f"Ningun empleado encontrado con email: {self.user.get('email')}"
+            msg = f"Ningun empleado encontrado con email: {self.user.get('user_id')}"
             self.LKFException(msg)
         user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
         employee['timezone'] = user_data.get('timezone','America/Monterrey')
