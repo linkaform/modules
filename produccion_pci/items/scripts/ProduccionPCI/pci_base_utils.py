@@ -132,6 +132,8 @@ class PCI_Utils():
             error_json = response.get('json',{}).get('error','')
             if error_json:
                 data_str_err = error_json
+        if not data_str_err:
+            data_str_err = 'Ocurrio un error desconocido favor de contactar a soporte'
         return data_str_err
 
     def asignar_registro_a_conexion(self, connection_id, record_assign):
