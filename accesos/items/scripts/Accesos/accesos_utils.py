@@ -2043,7 +2043,7 @@ class Accesos( Accesos):
         if fecha_caducidad_con_margen < fecha_actual:
             self.LKFException({'msg':"El pase esta vencido, ya paso su fecha de vigencia.","title":'Advertencia'})
         
-        fecha_visita = access_pass.get('fecha_de_caducidad')
+        fecha_visita = access_pass.get('fecha_de_expedicion')
         if fecha_visita:
             fecha_obj_visita = datetime.strptime(fecha_visita, "%Y-%m-%d %H:%M:%S")
             fecha_visita_tz = timezone.localize(fecha_obj_visita)
