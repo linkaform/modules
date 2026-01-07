@@ -2,7 +2,9 @@
 from datetime import datetime, timedelta
 from linkaform_api import base
 from lkf_addons.addons.accesos.app import Accesos
+import sys, simplejson, json, pytz
 import pytz
+from math import ceil
 
 
 class Accesos( Accesos):
@@ -106,7 +108,14 @@ class Accesos( Accesos):
             'incidente_documento': '685063ba36910b2da9952697',
             'url_registro_rondin': '6750adb2936622aecd075607',
             'bitacora_rondin_incidencias': '686468a637d014b9e0ab5090',
-            'tipo_de_incidencia': '663973809fa65cafa759eb97'
+            'tipo_de_incidencia': '663973809fa65cafa759eb97',
+            'personalizacion_pases': '695d2e1f6be562c3da95c4a7',
+            'pases': '695d31b503ccc7766ac28507',
+            'grupo_alertas': '695d35b618a37ea04899524f',
+            'nombre_alerta': '695d36605f78faab793f497b',
+            'accion_alerta': '695d36605f78faab793f497c',
+            'llamar_num_alerta': '695d36605f78faab793f497d',
+            'email_alerta': '695d36605f78faab793f497e'
         })
         
         self.checkin_fields.update({
@@ -115,18 +124,18 @@ class Accesos( Accesos):
 
     def set_boot_status(self, checkin_type):
         if checkin_type == 'in':
-            set_boot_status = 'disponible'
+            set_boot_status = 'abierta'
         elif checkin_type == 'out':
-            set_boot_status = 'cierre'
+            set_boot_status = 'cerrada'
         return set_boot_status
 
     def is_boot_available(self, location, area):
         self.last_check_in = self.get_last_checkin(location, area)
         last_status = self.last_check_in.get('checkin_type')
-        if last_status in ['entrada','apertura', 'disponible']:
-            return False
+        if last_status in ['entrada','apertura', 'disponible', 'abierta']:
+            return False, last_status
         else:
-            return True
+            return True, last_status
 
     def get_guard_last_checkin(self, user_ids):
         '''
@@ -164,8 +173,674 @@ class Accesos( Accesos):
             ]
         return self.format_cr_result(self.cr.aggregate(query), get_one=True)
 
-    def do_checkin(self, location, area, employee_list=[], fotografia=[], check_in_manual={},nombre_suplente=""):
+    def get_booth_status(self, booth_area, location):
+        last_chekin = self.get_last_checkin(location, booth_area)
+        booth_status = {
+            "status":'Cerrada',
+            "guard_on_dutty":'',
+            "user_id":'',
+            "stated_at":'',
+            "fotografia_inicio_turno":[],
+            "fotografia_cierre_turno":[],
+            }
+        if last_chekin.get('checkin_type') in ['entrada','apertura','disponible', 'abierta']:
+            #todo
+            #user_id 
+            booth_status['status'] = 'Abierta'
+            booth_status['guard_on_dutty'] = last_chekin.get('employee') 
+            booth_status['stated_at'] = last_chekin.get('boot_checkin_date')
+            booth_status['checkin_id'] = last_chekin['_id']
+            booth_status['fotografia_inicio_turno'] = last_chekin.get('fotografia_inicio_turno',[]) 
+            booth_status['fotografia_cierre_turno'] = last_chekin.get('fotografia_cierre_turno',[]) 
+        return booth_status
+
+    def get_shift_data(self, booth_location=None, booth_area=None, search_default=True):
+        """
+        Obtiene informacion del turno del usuario logeado
+        """
+
+        load_shift_json = { }
+        username = self.user.get('username')
+        user_id = self.user.get('user_id')
+        config_accesos_user="" #get_config_accesos(user_id)
+        user_status = self.get_employee_checkin_status(user_id, as_shift=True,  available=False)
+        this_user = user_status.get(user_id)
+        if not this_user:
+            this_user =  self.get_employee_data(email=self.user.get('email'), get_one=True)
+            this_user['name'] = this_user.get('worker_name','')
+        user_booths = []
+        guards_positions = self.config_get_guards_positions()
+        if not guards_positions:
+            self.LKFException({"status_code":400, "msg":'No Existen puestos de guardias configurados.'})
+
+        if this_user and this_user.get('status') == 'out':
+            check_aux_guard = self.check_in_aux_guard()
+
+            for user_id_aux, each_user in check_aux_guard.items():
+                if user_id_aux == user_id:
+                    this_user = each_user
+                    this_user['status'] = 'in' if each_user.get('status') == 'in' else 'out'
+                    this_user['location'] = each_user.get('location')
+                    this_user['area'] = each_user.get('area')
+                    this_user['checkin_date'] = each_user.get('checkin_date')
+                    this_user['checkout_date'] = each_user.get('checkout_date')
+                    this_user['checkin_position'] = each_user.get('checkin_position')
+
+        if this_user and this_user.get('status') == 'in':
+            location_employees = {self.chife_guard:{},self.support_guard:[]}
+            booth_area = this_user['area']
+            booth_location = this_user['location']
+            for u_id, each_user in user_status.items():
+                if u_id == user_id:
+                    location_employees[self.support_guard].append(each_user)
+                    guard = each_user
+                else:
+                    if each_user.get('status') == 'in':
+                        location_employees[self.support_guard].append(each_user)
+        else:
+            # location_employees = {}
+            default_booth , user_booths = self.get_user_booth(search_default=False)
+            # location = default_booth.get('location')
+            if not booth_location:
+                booth_area = default_booth.get('area')
+            if not booth_location:
+                booth_location = default_booth.get('location')
+            if not default_booth:
+                return self.LKFException({"status_code":400, "msg":'No booth found or configure for user'})
+            location_employees = self.get_booths_guards(booth_location, booth_area, solo_disponibles=True)
+            guard = self.get_user_guards(location_employees=location_employees)
+            if not guard:
+                return self.LKFException({
+                    "status_code":400, 
+                    "msg":f"Usuario {self.user['user_id']} no confgurado como guardia, favor de revisar su configuracion."}) 
+        location_employees = self.set_employee_pic(location_employees)
+        support_guards = location_employees.get('guardia_de_apoyo', [])
+        user_id = self.user.get('user_id')
+        for idx, guard in enumerate(support_guards):
+            if guard.get('user_id') == user_id:
+                support_guards.pop(idx)
+                break
+        location_employees['guardia_de_apoyo'] = support_guards
+        booth_address = self.get_area_address(booth_location, booth_area)
+        notes = self.get_list_notes(booth_location, booth_area, status='abierto')
+        load_shift_json["location"] = {
+            "name":  booth_location,
+            "area": booth_area,
+            "city": booth_address.get('city'),
+            "state": booth_address.get('state'),
+            "address": booth_address.get('address'),
+            }
+        # guards_online = self.get_guards_booths(booth_location, booth_area)
+        load_shift_json["booth_stats"] = self.get_page_stats( booth_area, booth_location, "Turnos")
+        load_shift_json["booth_status"] = self.get_booth_status(booth_area, booth_location)
+        # load_shift_json["support_guards"] = location_employees[self.support_guard]
+        load_shift_json["support_guards"] = location_employees.get(self.support_guard, "")
+        load_shift_json["guard"] = self.update_guard_status(guard, this_user)
+        load_shift_json["notes"] = notes
+        load_shift_json["user_booths"] = user_booths
+        load_shift_json['config_accesos_user']=config_accesos_user
+        # load_shift_json["guards_online"] = guards_online
+        print(simplejson.dumps(load_shift_json, indent=4))
+        return load_shift_json
+
+    def get_page_stats(self, booth_area, location, page=''):
+        timezone = pytz.timezone('America/Mexico_City')
+        today = datetime.now(timezone).strftime("%Y-%m-%d")        
+        res={}
+
+        if page == 'Turnos':
+            #Visitas dentro, Gafetes pendientes y Vehiculos estacionados
+            query_visitas = [
+                {'$match': {
+                    "deleted_at": {"$exists": False},
+                    "form_id": self.BITACORA_ACCESOS,
+                    f"answers.{self.bitacora_fields['status_visita']}": "entrada",
+                    f"answers.{self.PASE_ENTRADA_OBJ_ID}.{self.pase_entrada_fields['status_pase']}": {"$in": ["Activo"]},
+                    f"answers.{self.bitacora_fields['caseta_entrada']}": booth_area,
+                    f"answers.{self.bitacora_fields['ubicacion']}": location,
+                    # f"answers.{self.mf['fecha_entrada']}": {"$gte": f"{today} 00:00:00", "$lte": f"{today} 23:59:59"}
+                }},
+                {'$project': {
+                    '_id': 1,
+                    'vehiculos': {"$ifNull": [f"$answers.{self.mf['grupo_vehiculos']}", []]},
+                    'equipos': {"$ifNull": [f"$answers.{self.mf['grupo_equipos']}", []]},
+                    'status_visita': f"$answers.{self.bitacora_fields['status_visita']}",
+                    'id_gafete': f"$answers.{self.GAFETES_CAT_OBJ_ID}.{self.gafetes_fields['gafete_id']}",
+                    'status_gafete': f"$answers.{self.mf['status_gafete']}"
+                }},
+                {'$group': {
+                    '_id': None,
+                    'total_visitas_dentro': {'$sum': 1},
+                    'total_equipos_dentro': {
+                        '$sum': {
+                            '$cond': {
+                                'if': {'$eq': ['$status_visita', 'entrada']},
+                                'then': {'$size': '$equipos'},
+                                'else': 0
+                            }
+                        }
+                    },
+                    'total_vehiculos_dentro': {'$sum': {'$size': '$vehiculos'}},
+                    'gafetes_info': {
+                        '$push': {
+                            'id_gafete':'$id_gafete',
+                            'status_gafete':'$status_gafete'
+                        }
+                    }
+                }}
+            ]
+
+            resultado = self.format_cr(self.cr.aggregate(query_visitas))
+            total_vehiculos_dentro = resultado[0]['total_vehiculos_dentro'] if resultado else 0
+            total_visitas_dentro = resultado[0]['total_visitas_dentro'] if resultado else 0
+            total_equipos_dentro = resultado[0]['total_equipos_dentro'] if resultado else 0
+            gafetes_info = resultado[0]['gafetes_info'] if resultado else []
+            gafetes_pendientes = sum(1
+                for gafete in gafetes_info
+                    if gafete.get('id_gafete') and gafete.get('status_gafete', '').lower() != 'entregado'
+            )
+            
+            res['total_vehiculos_dentro'] = total_vehiculos_dentro
+            res['in_invitees'] = total_visitas_dentro
+            res['total_equipos_dentro'] = total_equipos_dentro
+            res['gafetes_pendientes'] = gafetes_pendientes
+
+            #Articulos concesionados
+            query_concesionados = [
+                {'$match': {
+                    "deleted_at": {"$exists": False},
+                    "form_id": self.CONCESSIONED_ARTICULOS,
+                    f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}": location,
+                }},
+                {'$project': {
+                    '_id': 1,
+                }},
+                {'$group': {
+                    '_id': None,
+                    'articulos_concesionados': {'$sum': 1}
+                }}
+            ]
+
+            resultado = self.format_cr(self.cr.aggregate(query_concesionados))
+            articulos_concesionados = resultado[0]['articulos_concesionados'] if resultado else 0
+            
+            res['articulos_concesionados'] = articulos_concesionados
+
+            #Incidentes pendientes
+            query_incidentes = [
+                {'$match': {
+                    "deleted_at": {"$exists": False},
+                    "form_id": self.BITACORA_INCIDENCIAS,
+                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.incidence_fields['area_incidencia']}": booth_area,
+                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.incidence_fields['ubicacion_incidencia']}": location,
+                    f"answers.{self.incidence_fields['estatus']}": 'abierto'
+                }},
+                {'$project': {
+                    '_id': 1,
+                }},
+                {'$group': {
+                    '_id': None,
+                    'incidentes_pendientes': {'$sum': 1}
+                }}
+            ]
+
+            resultado = self.format_cr(self.cr.aggregate(query_incidentes))
+            incidentes_pendientes = resultado[0]['incidentes_pendientes'] if resultado else 0
+            
+            res['incidentes_pendites'] = incidentes_pendientes
+
+            #Fallas pendientes
+            query_fallas = [
+                {'$match': {
+                    "deleted_at": {"$exists": False},
+                    "form_id": self.BITACORA_FALLAS,
+                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.fallas_fields['falla_caseta']}": booth_area,
+                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.fallas_fields['falla_ubicacion']}": location,
+                    f"answers.{self.fallas_fields['falla_estatus']}": 'abierto',
+                    # f"answers.{self.incidence_fields['fecha_hora_incidencia']}": {"$gte": today,"$lt": f"{today}T23:59:59"}
+                }},
+                {'$project': {
+                    '_id': 1,
+                }},
+                {'$group': {
+                    '_id': None,
+                    'fallas_pendientes': {'$sum': 1}
+                }}
+            ]
+
+            resultado = self.format_cr(self.cr.aggregate(query_fallas))
+            fallas_pendientes = resultado[0]['fallas_pendientes'] if resultado else 0
+
+            res['fallas_pendientes'] = fallas_pendientes
+
+        elif page == 'Accesos' or page == 'Bitacoras':
+            #Visitas en el dia, personal dentro, vehiculos dentro, salidas registradas y personas dentro
+            match_query_one = {
+                "deleted_at": {"$exists": False},
+                "form_id": self.BITACORA_ACCESOS,
+                f"answers.{self.PASE_ENTRADA_OBJ_ID}.{self.pase_entrada_fields['status_pase']}": {"$in": ["Activo"]},
+                f"answers.{self.bitacora_fields['ubicacion']}": location,
+            }
+
+            match_query_two = {
+                "deleted_at": {"$exists": False},
+                "form_id": self.BITACORA_ACCESOS,
+                f"answers.{self.PASE_ENTRADA_OBJ_ID}.{self.pase_entrada_fields['status_pase']}": {"$in": ["Activo"]},
+                f"answers.{self.bitacora_fields['ubicacion']}": location,
+                f"answers.{self.mf['fecha_entrada']}": {"$gte": f"{today} 00:00:00", "$lte": f"{today} 23:59:59"}
+            }
+
+            if not booth_area == 'todas' and booth_area:
+                match_query_one.update({
+                    f"answers.{self.bitacora_fields['caseta_entrada']}": booth_area,
+                })
+                match_query_two.update({
+                    f"answers.{self.bitacora_fields['caseta_entrada']}": booth_area,
+                })
+
+            query_visitas = [
+                {'$match': match_query_one},
+                {'$project': {
+                    '_id': 1,
+                    'vehiculos': {"$ifNull": [f"$answers.{self.mf['grupo_vehiculos']}", []]},
+                    'equipos': {"$ifNull": [f"$answers.{self.mf['grupo_equipos']}", []]},
+                    'perfil': f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['nombre_perfil']}",
+                    'status_visita': f"$answers.{self.bitacora_fields['status_visita']}",
+                    'fecha_salida': f"$answers.{self.mf['fecha_salida']}"
+                }},
+                {'$group': {
+                    '_id': None,
+                    'visitas_en_dia': {'$sum': 1},
+                    'total_vehiculos_dentro': {
+                        '$sum': {
+                            '$cond': {
+                                'if': {'$eq': ['$status_visita', 'entrada']},
+                                'then': {'$size': '$vehiculos'},
+                                'else': 0
+                            }
+                        }
+                    },
+                    'total_equipos_dentro': {
+                        '$sum': {
+                            '$cond': {
+                                'if': {'$eq': ['$status_visita', 'entrada']},
+                                'then': {'$size': '$equipos'},
+                                'else': 0
+                            }
+                        }
+                    },
+                    'detalle_visitas': {
+                        '$push': {
+                            'perfil': '$perfil',
+                            'status_visita': '$status_visita',
+                            'fecha_salida': '$fecha_salida'
+                        }
+                    }
+                }}
+            ]
+
+            query_visitas_dia = [
+                {'$match': match_query_two},
+                {'$project': {
+                    '_id': 1,
+                    'vehiculos': {"$ifNull": [f"$answers.{self.mf['grupo_vehiculos']}", []]},
+                    'equipos': {"$ifNull": [f"$answers.{self.mf['grupo_equipos']}", []]},
+                    'perfil': f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['nombre_perfil']}",
+                    'status_visita': f"$answers.{self.bitacora_fields['status_visita']}"
+                }},
+                {'$group': {
+                    '_id': None,
+                    'visitas_en_dia': {'$sum': 1},
+                    'total_vehiculos_dentro': {
+                        '$sum': {
+                            '$cond': {
+                                'if': {'$eq': ['$status_visita', 'entrada']},
+                                'then': {'$size': '$vehiculos'},
+                                'else': 0
+                            }
+                        }
+                    },
+                    'total_equipos_dentro': {
+                        '$sum': {
+                            '$cond': {
+                                'if': {'$eq': ['$status_visita', 'entrada']},
+                                'then': {'$size': '$equipos'},
+                                'else': 0
+                            }
+                        }
+                    },
+                    'detalle_visitas': {
+                        '$push': {
+                            'perfil': '$perfil',
+                            'status_visita': '$status_visita'
+                        }
+                    }
+                }}
+            ]
+
+            resultado = self.format_cr(self.cr.aggregate(query_visitas))
+            today_salida = f"{today} 00:00:00"
+            resultado_dia = self.format_cr(self.cr.aggregate(query_visitas_dia))
+
+            total_vehiculos_dentro = resultado[0]['total_vehiculos_dentro'] if resultado else 0
+            total_equipos_dentro = resultado[0]['total_equipos_dentro'] if resultado else 0
+            detalle_visitas_todas = resultado[0]['detalle_visitas'] if resultado else []
+            visitas_en_dia = resultado_dia[0]['visitas_en_dia'] if resultado_dia else 0
+
+            personal_dentro = 0
+            salidas = 0
+            personas_dentro = 0
+
+            for visita in detalle_visitas_todas:
+                status_visita = visita['status_visita'].lower()
+
+                if status_visita == "entrada":
+                    personas_dentro += 1
+                    
+                if visita.get('fecha_salida') and visita.get('fecha_salida') >= today_salida:
+                    salidas += 1
+
+            res['total_vehiculos_dentro'] = total_vehiculos_dentro
+            res['total_equipos_dentro'] = total_equipos_dentro
+            res['visitas_en_dia'] = visitas_en_dia
+            res['personal_dentro'] = personal_dentro
+            res['salidas_registradas'] = salidas
+            res['personas_dentro'] = personas_dentro
+
+            query_paqueteria = [
+                {'$match': {
+                    "deleted_at": {"$exists": False},
+                    "form_id": self.PAQUETERIA,
+                    f"answers.{self.paquetes_fields['estatus_paqueteria']}": "guardado",
+                    f"answers.{self.paquetes_fields['fecha_recibido_paqueteria']}": {"$gte": f"{today} 00:00:00", "$lte": f"{today} 23:59:59"}
+                }},
+                {'$project': {
+                    '_id': 1,
+                }},
+                {'$group': {
+                    '_id': None,
+                    'paquetes_recibidos': {'$sum': 1},
+                }}
+            ]
+
+            resultado_paquetes = self.format_cr(self.cr.aggregate(query_paqueteria))
+            paquetes_recibidos = resultado_paquetes[0]['paquetes_recibidos'] if resultado_paquetes else 0
+
+            res['paquetes_recibidos'] = paquetes_recibidos
+
+        elif page == 'Incidencias':
+            #Incidentes por dia, por semana y por mes
+            now = datetime.now(pytz.timezone("America/Mexico_City"))
+            today_date = now.date()
+            user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
+            zona = user_data.get('timezone','America/Monterrey')
+            dateFromWeek, dateToWeek = self.get_range_dates('this_week', zona)
+
+            match_query_incidentes = {
+                "deleted_at": {"$exists": False},
+                "form_id": self.BITACORA_INCIDENCIAS,
+            }
+
+            if location:
+                match_query_incidentes.update({
+                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.incidence_fields['ubicacion_incidencia']}": location,
+                })
+            if booth_area:
+                match_query_incidentes.update({
+                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.incidence_fields['area_incidencia']}": booth_area,
+                })
+
+            query_incidentes = [
+                {'$match': match_query_incidentes},
+                {'$addFields': {
+                    'fecha_incidencia': {
+                        '$dateFromString': {
+                            'dateString': f"$answers.{self.incidence_fields['fecha_hora_incidencia']}",
+                            'format': "%Y-%m-%d %H:%M:%S"
+                        }
+                    }
+                }},
+                {'$facet': {
+                    'por_dia': [
+                        {'$match': {
+                            'fecha_incidencia': {
+                                '$gte': datetime.combine(today_date, time.min),
+                                '$lte': datetime.combine(today_date, time.max)
+                            }
+                        }},
+                        {'$count': 'incidentes_x_dia'}
+                    ],
+                    'por_semana': [
+                        {'$match': {
+                            'fecha_incidencia': {
+                                '$gte': dateFromWeek,
+                                '$lte': dateToWeek
+                            }
+                        }},
+                        {'$group': {
+                            '_id': {
+                                'year': {'$isoWeekYear': '$fecha_incidencia'},
+                                'week': {'$isoWeek': '$fecha_incidencia'}
+                            },
+                            'incidentes_x_semana': {'$sum': 1}
+                        }}
+                    ],
+                    'por_mes': [
+                        {'$match': {
+                            'fecha_incidencia': {
+                                '$gte': datetime.combine(today_date.replace(day=1), time.min),
+                                '$lte': datetime.combine(today_date, time.max)
+                            }
+                        }},
+                        {'$group': {
+                            '_id': {
+                                'year': {'$year': '$fecha_incidencia'},
+                                'month': {'$month': '$fecha_incidencia'}
+                            },
+                            'incidentes_x_mes': {'$sum': 1}
+                        }}
+                    ]
+                }}
+            ]
+
+            resultado = self.format_cr(self.cr.aggregate(query_incidentes))[0]
+
+            res['incidentes_x_dia'] = resultado['por_dia'][0]['incidentes_x_dia'] if resultado['por_dia'] else 0
+            res['incidentes_x_semana'] = resultado['por_semana'][0]['incidentes_x_semana'] if resultado['por_semana'] else 0
+            res['incidentes_x_mes'] = resultado['por_mes'][0]['incidentes_x_mes'] if resultado['por_mes'] else 0
+
+            match_query_fallas = {
+                "deleted_at": {"$exists": False},
+                "form_id": self.BITACORA_FALLAS,
+                f"answers.{self.fallas_fields['falla_estatus']}": 'abierto',
+            }
+
+            if location:
+                match_query_fallas.update({
+                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.fallas_fields['falla_ubicacion']}": location,
+                })
+            if booth_area:
+                match_query_fallas.update({
+                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.fallas_fields['falla_caseta']}": booth_area,
+                })
+
+            #Fallas pendientes
+            query_fallas = [
+                {'$match': match_query_fallas},
+                {'$project': {
+                    '_id': 1,
+                }},
+                {'$group': {
+                    '_id': None,
+                    'fallas_pendientes': {'$sum': 1}
+                }}
+            ]
+
+            resultado = self.format_cr(self.cr.aggregate(query_fallas))
+            fallas_pendientes = resultado[0]['fallas_pendientes'] if resultado else 0
+
+            res['fallas_pendientes'] = fallas_pendientes
+        elif page == 'Articulos':
+            #Articulos concesionados pendientes
+            query_concesionados = [
+                {'$match': {
+                    "deleted_at": {"$exists": False},
+                    "form_id": self.CONCESSIONED_ARTICULOS,
+                    f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}": location,
+                    f"answers.{self.consecionados_fields['status_concesion']}": "abierto",
+                }},
+                {'$project': {
+                    '_id': 1,
+                }},
+                {'$group': {
+                    '_id': None,
+                    'articulos_concesionados_pendientes': {'$sum': 1}
+                }}
+            ]
+
+            resultado = self.format_cr(self.cr.aggregate(query_concesionados))
+            articulos_concesionados_pendientes = resultado[0]['articulos_concesionados_pendientes'] if resultado else 0
+            
+            res['articulos_concesionados_pendientes'] = articulos_concesionados_pendientes
+
+            #Articulos perdidos
+            query_perdidos = [
+                {'$match': {
+                    "deleted_at": {"$exists": False},
+                    "form_id": self.BITACORA_OBJETOS_PERDIDOS,
+                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.perdidos_fields['ubicacion_perdido']}": location,
+                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.perdidos_fields['area_perdido']}": booth_area,
+                }},
+                {'$project': {
+                    '_id': 1,
+                    'status_perdido': f"$answers.{self.perdidos_fields['estatus_perdido']}",
+                }},
+                {'$group': {
+                    '_id': None,
+                    'perdidos_info': {
+                        '$push': {
+                            'status_perdido':'$status_perdido'
+                        }
+                    }
+                }}
+            ]
+
+            resultado = self.format_cr(self.cr.aggregate(query_perdidos))
+            perdidos_info = resultado[0]['perdidos_info'] if resultado else []
+
+            articulos_perdidos = 0
+            for perdido in perdidos_info:
+                status_perdido = perdido.get('status_perdido', '').lower()
+                if status_perdido not in ['entregado', 'donado']:
+                    articulos_perdidos += 1
+
+            res['articulos_perdidos'] = articulos_perdidos
+
+            match_query_paqueteria = {
+                "deleted_at": {"$exists": False},
+                "form_id": self.PAQUETERIA,
+                f"answers.{self.paquetes_fields['estatus_paqueteria']}": "guardado",
+            }
+
+            if location:
+                match_query_paqueteria.update({
+                    f"answers.{self.paquetes_fields['ubicacion_paqueteria']}": location,
+                })
+            if booth_area and not booth_area == "todas" and not booth_area == "":
+                match_query_paqueteria.update({
+                    f"answers.{self.paquetes_fields['area_paqueteria']}": booth_area,
+                })
+
+            query_paqueteria = [
+                {'$match': match_query_paqueteria },
+                {'$project': {
+                    '_id': 1,
+                }},
+                {'$group': {
+                    '_id': None,
+                    'paquetes_recibidos': {'$sum': 1},
+                }}
+            ]
+
+            resultado_paquetes = self.format_cr(self.cr.aggregate(query_paqueteria))
+            paquetes_recibidos = resultado_paquetes[0]['paquetes_recibidos'] if resultado_paquetes else 0
+
+            res['paquetes_recibidos'] = paquetes_recibidos
+
+        elif page == 'Notas':
+            #Notas
+            match_query = {
+                "deleted_at": {"$exists": False},
+                "form_id": self.ACCESOS_NOTAS,
+                f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}": location,
+            }
+
+            if booth_area and not booth_area == "todas" and not booth_area == "":
+                match_query.update({
+                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['nombre_area']}": booth_area,
+                })
+                
+            query_notas = [
+                {'$match': match_query},
+                {'$project': {
+                    '_id': 1,
+                    'nota_status': f"$answers.{self.notes_fields['note_status']}",
+                    'fecha_apertura': f"$answers.{self.notes_fields['note_open_date']}",
+                    'fecha_cierre': f"$answers.{self.notes_fields['note_close_date']}"
+                }},
+            ]
+
+            notas = self.format_cr(self.cr.aggregate(query_notas))
+            notas_del_dia = 0
+            notas_abiertas = 0
+            notas_cerradas = 0
+
+            for nota in notas:
+                if(nota.get('nota_status') == 'abierto'):
+                    notas_abiertas += 1
+                if(nota.get('fecha_apertura') >= f"{today} 00:00:00" and nota.get('fecha_apertura') <= f"{today} 23:59:59"):
+                    notas_del_dia += 1
+                if(nota.get('fecha_cierre') and nota.get('nota_status') == 'cerrado'):
+                   notas_cerradas += 1
+
+            res['notas_abiertas'] = notas_abiertas
+            res['notas_del_dia'] = notas_del_dia
+            res['notas_cerradas'] = notas_cerradas
+
+        return res
+
+    def get_employee_data(self, name=None, user_id=None, username=None, email=None,  get_one=False):
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id": self.EMPLEADOS,
+            }
+        if name:
+            match_query.update(self._get_match_q(self.f['worker_name'], name))
+        if user_id:
+            match_query.update(self._get_match_q(f"{self.USUARIOS_OBJ_ID}.{self.employee_fields['user_id_id']}", user_id))
+        if username:
+            match_query.update(self._get_match_q(self.f['username'], username))
+        if email:
+            match_query.update(self._get_match_q(self.employee_fields['usuario_email'], email)) 
+        query = [
+            {'$match': match_query },    
+            {'$project': self.project_format(self.employee_fields)},
+            {'$sort':{'worker_name':1}},
+            ]
+        res = self.format_cr_result(self.cr.aggregate(query), get_one=get_one)
+        return res
+
+    def do_checkin(self, location, area, employee_list=[], fotografia=[], check_in_manual={}, nombre_suplente="", checkin_id=""):
         # Realiza el check-in en una ubicación y área específica.
+        resp, last_status = self.is_boot_available(location, area)
+        if not resp and last_status == 'abierta':
+            user = self.lkf_api.get_user_by_id(self.user.get('user_id'))
+            res = self.update_guards_checkin([{'user_id': self.user.get('user_id'), 'name': user.get('name', '')}], checkin_id, location, area)
+            format_res = self.unlist(res)
+            if format_res.get('status_code') in [200, 201, 202]:
+                return format_res
+            else:
+                self.LKFException({'title': 'Error al hacer check-in', 'msg': format_res.get('json')})
         if employee_list:
             user_id = [self.user.get('user_id'),] + [x['user_id'] for x in employee_list]
         else:
@@ -196,9 +871,9 @@ class Accesos( Accesos):
             msg += f"Es necesario primero salirse de cualquier caseta antes de querer entrar a una casta"
             self.LKFException({'msg':msg,"title":'Accion Requerida!!!'})
 
-        employee = self.get_employee_data(email=self.user.get('email'), get_one=True)
+        employee = self.get_employee_data(user_id=self.user.get('user_id'), get_one=True)
         if not employee:
-            msg = f"Ningun empleado encontrado con email: {self.user.get('email')}"
+            msg = f"Ningun empleado encontrado con email: {self.user.get('user_id')}"
             self.LKFException(msg)
         user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
         employee['timezone'] = user_data.get('timezone','America/Monterrey')
@@ -274,6 +949,91 @@ class Accesos( Accesos):
             else:
                 resp_create.update({'registro_de_asistencia': 'Error'})
         return resp_create
+
+    def do_checkout(self, checkin_id=None, location=None, area=None, guards=[], forzar=False, comments=False, fotografia=[]):
+        # self.get_answer(keys)
+        employee =  self.get_employee_data(email=self.user.get('email'), get_one=True)
+        timezone = employee.get('cat_timezone', employee.get('timezone', 'America/Monterrey'))
+        now_datetime =self.today_str(timezone, date_format='datetime')
+        last_chekin = {}
+        if not checkin_id:
+            if guards:
+                last_chekin = self.get_guard_last_checkin(guards)
+            elif location or area:
+                last_chekin = self.get_last_checkin(location, area)
+            checkin_id = last_chekin.get('_id')
+        if not checkin_id:
+            self.LKFException({
+                "msg":"No encontramos un checking valido del cual podemos hacer checkout...", 
+                "title":"Una Disculpa!!!"})
+        record = self.get_record_by_id(checkin_id)
+        checkin_answers = record['answers']
+        folio = record['folio']
+        area = checkin_answers.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID,{}).get(self.f['area'])
+        location = checkin_answers.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID,{}).get(self.f['location'])
+        rec_guards = checkin_answers.get(self.checkin_fields['guard_group'])
+        
+        guards_in = [idx for idx, guard in enumerate(rec_guards) if not guard.get(self.checkin_fields['checkout_date'])]
+        guards_ids = []
+        for guard in rec_guards:
+            fecha_cierre_turno = guard.get(self.checkin_fields['checkout_date'])
+            guard_id = self.unlist(guard.get(self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID, {}).get(self.employee_fields['user_id_jefes']))
+            actual_guard_id = self.unlist(employee.get('usuario_id'))
+            guards_ids.append(guard_id)
+            if not fecha_cierre_turno and len(guards_in) > 1 and guard_id == actual_guard_id:
+                resp = self.do_checkout_aux_guard(guards=[actual_guard_id], location=location, area=area)
+                return resp
+
+        if not guards:
+            checkin_answers[self.checkin_fields['commentario_checkin_caseta']] = \
+                checkin_answers.get(self.checkin_fields['commentario_checkin_caseta'],'')
+            # Si no especifica guardas va a cerrar toda la casta
+            checkin_answers[self.checkin_fields['checkin_type']] = 'cerrada'
+            checkin_answers[self.checkin_fields['boot_checkout_date']] = now_datetime
+            checkin_answers[self.checkin_fields['forzar_cierre']] = 'regular'
+            if comments:
+                checkin_answers[self.checkin_fields['commentario_checkin_caseta']] += comments + ' '
+            if forzar:
+                checkin_answers[self.checkin_fields['commentario_checkin_caseta']] += f"Cerrado por: {employee.get('worker_name')}"
+                checkin_answers[self.checkin_fields['forzar_cierre']] = 'forzar'
+        resp, last_status = self.is_boot_available(location, area)
+        if resp:
+            msg = f"Can not make a CHEKOUT on a boot that hasn't checkin. Location: {location} at the area {area}."
+            msg += f"You need to checkin first."
+            self.LKFException(msg)
+        if not checkin_id:
+            msg = f"No checking found for this  Location: {location} at the area {area}."
+            msg += f"You need to checkin first."
+            self.LKFException(msg)
+
+        data = self.lkf_api.get_metadata(self.CHECKIN_CASETAS)
+        checkin_answers = self.check_in_out_employees('out', now_datetime, checkin=checkin_answers, employee_list=guards)
+        # response = self.lkf_api.patch_multi_record( answers=checkin, form_id=self.CHECKIN_CASETAS, folios=[folio,])
+        data['answers'] = checkin_answers
+
+        if fotografia:
+            checkin_answers.update({
+                self.checkin_fields['fotografia_cierre_turno']: fotografia
+            })
+
+        response = self.lkf_api.patch_record( data=data, record_id=checkin_id)
+        if response.get('status_code') in [200, 201, 202]:
+            if employee:
+                record_id = self.search_guard_asistance(location, area, self.unlist(employee.get('usuario_id')))
+                asistencia_answers = {
+                    self.f['foto_cierre_turno']: fotografia,
+                    self.checkin_fields['checkin_type']: 'cerrar_turno',
+                }
+                res = self.lkf_api.patch_multi_record(answers=asistencia_answers, form_id=self.REGISTRO_ASISTENCIA, record_id=record_id)
+                if res.get('status_code') in [200, 201, 202]:
+                    response.update({'registro_de_asistencia': 'Correcto'})
+                else:
+                    response.update({'registro_de_asistencia': 'Error'})
+        elif response.get('status_code') == 401:
+            return self.LKFException({
+                "title":"Error de Configuracion",
+                "msg":"El guardia NO tiene permisos sobre el formulario de cierre de casetas"})
+        return response
 
     def get_cantidades_de_pases(self, x_empresa=False):
         print('entra a get_cantidades_de_pases')
@@ -1061,3 +1821,342 @@ class Accesos( Accesos):
                 return res
             else: 
                 return res
+
+    def extends_date_of_pass(self, qr_code, update_obj):
+        if not qr_code:
+            return self.LKFException({'title': 'Error', 'msg': 'No se proporciono el QR code'})
+        if not update_obj.get('fecha_desde'):
+            return self.LKFException({'title': 'Error', 'msg': 'No se proporciono una fecha valida'})
+        
+        answers = {}
+        answers[self.mf['fecha_desde_visita']] = update_obj.get('fecha_desde')
+        answers[self.mf['fecha_desde_hasta']] = update_obj.get('fecha_hasta', None)
+
+        if answers:
+            res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.PASE_ENTRADA, record_id=[qr_code,])
+            if res.get('status_code') == 201 or res.get('status_code') == 202:
+                return res
+            else:
+                return res
+        return False
+
+    def assign_rondin(self, record_id, user_to_assign):
+        if not record_id:
+            return self.LKFException({'title': 'Error', 'msg': 'No se proporciono el record_id'})
+        if not user_to_assign.get('user_name'):
+            return self.LKFException({'title': 'Error', 'msg': 'No se proporciono el usuario a asignar'})
+        
+        answers = {}
+        answers[self.USUARIOS_OBJ_ID] = {
+            self.mf['nombre_usuario']: user_to_assign.get('user_name', ''),
+            self.mf['id_usuario']: [user_to_assign.get('user_id')],
+            self.mf['email_visita_a']: [user_to_assign.get('user_email')]
+        }
+
+        if answers:
+            res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=[record_id,])
+            if res.get('status_code') == 201 or res.get('status_code') == 202:
+                return res
+            else:
+                return res
+        return False
+
+    def LKFResponse(self, msg={}):
+        """
+        Proporciona un mensaje de respuesta con el formato utilizado en LKF
+
+        Args:
+            msg ({
+                title: str,
+                label: str,
+                msg: str,
+                icon: str,
+                type: str,
+                status: int
+            }): Un diccionario con la informacion del mensaje
+
+        Returns:
+            dict: Un diccionario con la informacion del mensaje
+        """
+        title_default = "Addons Statement"
+        type_default  = "success"
+        label_default = "Addons Statement"
+        icon_default = "fa-circle-check"
+        status_default = 200
+        msg_dict = {}
+
+        if not isinstance(msg, dict):
+            return 'Error: El mensaje debe ser un diccionario'
+
+        msg_dict['title'] = msg.get('title', title_default)
+        msg_dict['label'] = msg.get('label', label_default)
+        msg_dict['msg'] = [msg.get('msg', "Something went wrong")]
+        msg_dict['icon'] = msg.get('icon', icon_default)
+        msg_dict['type'] = msg.get('type', type_default)
+        msg_dict["status"] = msg.get('status', status_default)
+
+        return msg_dict
+
+    def get_list_notes(self, location, area, status=None, limit=10, offset=0, dateFrom="", dateTo=""):
+        '''
+        Función para obtener las notas, puedes pasarle un area, una ubicacion, un estatus, una fecha desde
+        y una fecha hasta
+        '''
+        response = []
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id": self.ACCESOS_NOTAS,
+            f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['location']}":location
+        }
+        if area and not area == 'todas':
+            match_query.update({
+                f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['area']}":area
+            })
+        if status != 'dia':
+            match_query.update({f"answers.{self.notes_fields['note_status']}":status})
+        if dateFrom and dateTo:
+            if dateFrom == dateTo:
+                if "T" not in dateFrom:
+                    dateFrom += " 00:00:00"
+                    dateTo += " 23:59:59"
+            else:
+                if "T" not in dateFrom:
+                    dateFrom += " 00:00:00"
+                if "T" not in dateTo:
+                    dateTo += " 23:59:59"
+
+            match_query.update({
+                f"answers.{self.notes_fields['note_open_date']}": {"$gte": dateFrom, "$lte": dateTo}
+            })
+        elif dateFrom:
+            if "T" not in dateFrom:
+                dateFrom += " 00:00:00"
+            match_query.update({
+                f"answers.{self.notes_fields['note_open_date']}": {"$gte": dateFrom}
+            })
+        elif dateTo:
+            if "T" not in dateTo:
+                dateTo += " 23:59:59"
+            match_query.update({
+                f"answers.{self.notes_fields['note_open_date']}": {"$lte": dateTo}
+            })
+        query = [
+            {'$match': match_query },
+            {'$project': {
+                "folio":"$folio",
+                "created_at": 1,
+                "created_by_name": f"$created_by_name",
+                "created_by_id": f"$created_by_id",
+                "created_by_email": f"$created_by_email",
+                "note_status": f"$answers.{self.notes_fields['note_status']}",
+                "note_open_date": f"$answers.{self.notes_fields['note_open_date']}",
+                "note_close_date": f"$answers.{self.notes_fields['note_close_date']}",
+                "note_booth": f"$answers.{self.notes_fields['note_catalog_booth']}.{self.notes_fields['note_booth']}",
+                "note_guard": f"$answers.{self.notes_fields['note_catalog_guard']}.{self.notes_fields['note_guard']}",
+                "note_guard_close": f"$answers.{self.notes_fields['note_catalog_guard_close']}.{self.notes_fields['note_guard_close']}",
+                "note": f"$answers.{self.notes_fields['note']}",
+                "note_file": f"$answers.{self.notes_fields['note_file']}",
+                "note_pic": f"$answers.{self.notes_fields['note_pic']}",
+                "note_comments": f"$answers.{self.notes_fields['note_comments_group']}",
+            }},
+            {'$sort':{'created_at':-1}},
+        ]
+        
+        query.append({'$skip': offset})
+        query.append({'$limit': limit})
+        
+        records = self.format_cr(self.cr.aggregate(query))
+
+        count_query = [
+            {'$match': match_query},
+            {'$count': 'total'}
+        ]
+
+        count_result = self.format_cr(self.cr.aggregate(count_query))
+        total_count = count_result[0]['total'] if count_result else 0
+        total_pages = ceil(total_count / limit) if limit else 1
+        current_page = (offset // limit) + 1 if limit else 1
+
+        notes = {
+            'records': records,
+            'total_records': total_count,
+            'total_pages': total_pages,
+            'actual_page': current_page
+        }
+
+        return notes
+    
+    def get_areas_by_locations(self, location_names):
+        catalog_id = self.AREAS_DE_LAS_UBICACIONES_CAT_ID
+        form_id = self.PASE_ENTRADA
+        res_list = []
+        response = {}
+        
+        if not isinstance(location_names, list):
+            location_names = [location_names]
+
+        if location_names:
+            for l in location_names:
+                options = {
+                    'startkey': [l],
+                    'endkey': [f"{l}\n",{}],
+                    'group_level':2
+                }
+                res = self.catalogo_view(catalog_id, form_id, options)
+                if res and isinstance(res, list):
+                    res_list.extend(res)
+
+            response.update({
+                "areas_by_location": list(set(res_list))
+            })
+
+        return response
+
+    def do_access(self, qr_code, location, area, data):
+        '''
+        Valida pase de entrada y crea registro de entrada al pase
+        '''
+        access_pass = self.get_detail_access_pass(qr_code)
+        if not qr_code and not location and not area:
+            return False
+        total_entradas = self.get_count_ingresos(qr_code)
+        
+        diasDisponibles = access_pass.get("limitado_a_dias", [])
+        dias_semana = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+        tz = pytz.timezone("America/Mexico_City")
+        hoy = datetime.now(tz)
+        dia_semana = hoy.weekday()
+        nombre_dia = dias_semana[dia_semana]
+
+        if access_pass.get('estatus',"") == 'vencido':
+            self.LKFException({'msg':"El pase esta vencido, edita la información o genera uno nuevo.","title":'Revisa la Configuración'})
+        elif access_pass.get('estatus', '') == 'proceso':
+            self.LKFException({'msg':"El pase no se ha sido completado aun, informa al usuario que debe completarlo primero.","title":'Requisitos faltantes'})
+
+        if diasDisponibles:
+            if nombre_dia not in diasDisponibles:
+                dias_capitalizados = [dia.capitalize() for dia in diasDisponibles]
+
+                if len(dias_capitalizados) > 1:
+                    dias_formateados = ', '.join(dias_capitalizados[:-1]) + ' y ' + dias_capitalizados[-1]
+                else:
+                    dias_formateados = dias_capitalizados[0]
+
+                self.LKFException({
+                        'msg': f"Este pase no te permite ingresar hoy {nombre_dia.capitalize()}. Solo tiene acceso los siguientes dias: {dias_formateados}",
+                        "title":'Aviso'
+                    })
+        
+        limite_acceso = access_pass.get('limite_de_acceso')
+        if len(total_entradas) > 0 and limite_acceso and int(limite_acceso) > 0:
+            if total_entradas['total_records']>= int(limite_acceso) :
+                self.LKFException({'msg':"Se ha completado el limite de entradas disponibles para este pase, edita el pase o crea uno nuevo.","title":'Revisa la Configuración'})
+        
+        timezone = pytz.timezone('America/Mexico_City')
+        fecha_actual = datetime.now(timezone).replace(microsecond=0)
+        fecha_caducidad = access_pass.get('fecha_de_caducidad')
+        fecha_obj_caducidad = datetime.strptime(fecha_caducidad, "%Y-%m-%d %H:%M:%S")
+        fecha_caducidad = timezone.localize(fecha_obj_caducidad)
+
+        # Se agrega 1 hora como margen de tolerancia
+        fecha_caducidad_con_margen = fecha_caducidad + timedelta(hours=1)
+
+        if fecha_caducidad_con_margen < fecha_actual:
+            self.LKFException({'msg':"El pase esta vencido, ya paso su fecha de vigencia.","title":'Advertencia'})
+        
+        fecha_visita = access_pass.get('fecha_de_expedicion')
+        if fecha_visita:
+            fecha_obj_visita = datetime.strptime(fecha_visita, "%Y-%m-%d %H:%M:%S")
+            fecha_visita_tz = timezone.localize(fecha_obj_visita)
+            
+            if fecha_actual < fecha_visita_tz - timedelta(minutes=30):
+                self.LKFException({'msg': f"Aún no es hora de entrada. Tu acceso comienza a las {fecha_visita}", "title": 'Aviso'})
+        
+        if location not in access_pass.get("ubicacion",[]):
+            msg = f"La ubicación {location}, no se encuentra en el pase. Pase valido para las siguientes ubicaciones: {access_pass.get('ubicacion',[])}."
+            self.LKFException({'msg':msg,"title":'Revisa la Configuración'})
+        
+        if self.validate_access_pass_location(qr_code, location):
+            self.LKFException("En usuario ya se encuentra dentro de una ubicacion")
+        val_certificados = self.validate_certificados(qr_code, location)
+
+        
+        pass_dates = self.validate_pass_dates(access_pass)
+        comentario_pase =  data.get('comentario_pase',[])
+        if comentario_pase:
+            values = {self.pase_entrada_fields['grupo_instrucciones_pase']:{
+                -1:{
+                self.pase_entrada_fields['comentario_pase']:comentario_pase,
+                self.mf['tipo_de_comentario']:'caseta'
+                }
+            }
+            }
+            # self.update_pase_entrada(values, record_id=[str(access_pass['_id']),])
+        res = self._do_access(access_pass, location, area, data)
+        return res
+
+    def get_config_accesos(self):
+        response = []
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id": self.CONF_ACCESOS,
+            f"answers.{self.EMPLOYEE_OBJ_ID}.{self.employee_fields['user_id_id']}":self.user['user_id'],
+        }
+        query = [
+            {'$match': match_query },
+            {'$project': {
+                "usuario":f"$answers.{self.conf_accesos_fields['usuario_cat']}",
+                "grupos":f"$answers.{self.conf_accesos_fields['grupos']}",
+                "menus": f"$answers.{self.conf_accesos_fields['menus']}",
+            }},
+            {'$limit':1},
+            {'$lookup': {
+                'from': 'form_answer',
+                'pipeline': [
+                    {'$match': {
+                        'deleted_at': {'$exists': False},
+                        'form_id': self.CONF_MODULO_SEGURIDAD,
+                    }},
+                    {'$project': {
+                        "_id": 0,
+                        "excluir": f"$answers.{self.f['personalizacion_pases']}",
+                        "alertas": f"$answers.{self.f['grupo_alertas']}",
+                    }}
+                ],
+                'as': 'personalizaciones'
+            }},
+            {'$unwind': '$personalizaciones'},
+            {'$project': {
+                "usuario":1,
+                "grupos":1,
+                "menus":1,
+                "exclude_inputs": "$personalizaciones.excluir",
+                "alertas": "$personalizaciones.alertas",
+            }}
+        ]
+        data = self.format_cr_result(self.cr.aggregate(query),  get_one=True)
+        format_data = {}
+
+        if data:
+            exclude_inputs = data.get('exclude_inputs', [])
+            format_exclude_inputs = self.unlist([i for i in exclude_inputs])
+
+            alertas = data.get('alertas', [])
+            format_alerts = []
+            for i in alertas:
+                new_item = {}
+                new_item[i.get('nombre_alerta')] = {
+                    'accion': i.get('accion_alerta', '') if len(i.get('accion_alerta', [])) > 1 else self.unlist(i.get('accion_alerta', [])),
+                }
+                if 'llamar' in i.get('accion_alerta') or 'sms' in i.get('accion_alerta'):
+                    new_item[i.get('nombre_alerta')]['number'] = i.get('llamar_num_alerta', 0000000000)
+                if 'email' in i.get('accion_alerta'):
+                    new_item[i.get('nombre_alerta')]['email'] = i.get('email_alerta', '')
+                format_alerts.append(new_item)
+
+            data.update({
+                'exclude_inputs': format_exclude_inputs,
+                'alertas': format_alerts,
+            })
+
+        return data
