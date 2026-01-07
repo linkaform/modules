@@ -46,15 +46,12 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             descuentos_nomina[correo_contratista][tecnologia_nomina][division_nomina]['folios'].append( rec_nomina['folio'] )
         return descuentos_nomina
 
-    def get_descuentos_en_xls(self):
+    def get_descuentos_en_xls(self, descuentos_form_nomina):
         """
         Se obtienen los descuentos que cargarn en formato excel para cada contratista
 
         Return: Diccionario con el email del contratista y el descuento que se aplicará
         """
-        # Se consultan los descuentos que estan en la forma Nomina
-        descuentos_form_nomina = self.get_descuentos_form_nomina()
-        # print('dddddddddddescuentos =',descuentos_form_nomina)
 
         if not current_record['answers'].get('f2362800a0100000000000b2') and not descuentos_form_nomina:
             return {}
@@ -548,12 +545,12 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
     
     def get_migracion_price(self, migration, order, price_list, payment_connection_id):
         if migration[0] == 1:
-            if payment_connection_id in [self.ID_CONTRATISTA_TIPO_MAQTEL]:
+            if payment_connection_id in self.ID_CONTRATISTA_TIPO_MAQTEL:
                 return ['Migracion VSI', self.get_price(price_list, 'PUAM9', 'buy_price')]
             return ['Migracion VSI', self.get_price(price_list, 'MVSI', 'buy_price')]
         if migration[1] == 1:
             print('migracion solo voz')
-            if payment_connection_id in [self.ID_CONTRATISTA_TIPO_MAQTEL]:
+            if payment_connection_id in self.ID_CONTRATISTA_TIPO_MAQTEL:
                 return ['Migracion solo Voz', self.get_price(price_list, 'PUAM10', 'buy_price')]
             return ['Migracion solo Voz', self.get_price(price_list, 'MSV', 'buy_price')]
         return ['',0]
@@ -620,7 +617,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             code += 'S' if tipo_instalacion == 'subterranea' else 'A'
 
         # Se agrega el M para el caso que sea la conexión de MAQTEL
-        if payment_connection_id == self.ID_CONTRATISTA_TIPO_MAQTEL:
+        if payment_connection_id in self.ID_CONTRATISTA_TIPO_MAQTEL:
             code += 'M'
         elif payment_connection_id in conn_carso:
             code += 'C'
@@ -657,17 +654,17 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             diccionario con claves y conceptos que aplican segun la conexion
         """
         claves_dict = {
-            self.ID_CONTRATISTA_TIPO_MAQTEL: {  # MAQTEL
-                'incentivo_psr': 'PSRMI',
-                'reparacion_instalaciones': 'PSRM',
-                'reparacion_instalaciones_con_incentivo': 'PSRMCI',
-                'reparacion_radial': 'PUAM8',
-                'radial_cepa': 'PUAM7',
-                'radial_banqueta': 'PUAM6',
-                'migracion_exitosa': 'MVCAVFVMAQ',
-                'desmontaje_migracion': 'DESMIGRACIONMAQ',
-                'instalacion_poste': 'IDP25MAQ'
-            },
+            # self.ID_CONTRATISTA_TIPO_MAQTEL: {  # MAQTEL
+            #     'incentivo_psr': 'PSRMI',
+            #     'reparacion_instalaciones': 'PSRM',
+            #     'reparacion_instalaciones_con_incentivo': 'PSRMCI',
+            #     'reparacion_radial': 'PUAM8',
+            #     'radial_cepa': 'PUAM7',
+            #     'radial_banqueta': 'PUAM6',
+            #     'migracion_exitosa': 'MVCAVFVMAQ',
+            #     'desmontaje_migracion': 'DESMIGRACIONMAQ',
+            #     'instalacion_poste': 'IDP25MAQ'
+            # },
             "carso": {  # CARSO
                 'incentivo_psr': 'PSRCMI',
                 'reparacion_instalaciones': 'PSRCM',
@@ -703,9 +700,23 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             }
         }
 
+        for id_conn_maqtel in self.ID_CONTRATISTA_TIPO_MAQTEL:
+            claves_dict[ id_conn_maqtel ] = {  # MAQTEL
+                'incentivo_psr': 'PSRMI',
+                'reparacion_instalaciones': 'PSRM',
+                'reparacion_instalaciones_con_incentivo': 'PSRMCI',
+                'reparacion_radial': 'PUAM8',
+                'radial_cepa': 'PUAM7',
+                'radial_banqueta': 'PUAM6',
+                'migracion_exitosa': 'MVCAVFVMAQ',
+                'desmontaje_migracion': 'DESMIGRACIONMAQ',
+                'instalacion_poste': 'IDP25MAQ'
+            }
+
         # Seleccionar claves según el payment_connection_id
-        if payment_connection_id == self.ID_CONTRATISTA_TIPO_MAQTEL:
-            return claves_dict[self.ID_CONTRATISTA_TIPO_MAQTEL]
+        if payment_connection_id in self.ID_CONTRATISTA_TIPO_MAQTEL:
+            # return claves_dict[self.ID_CONTRATISTA_TIPO_MAQTEL]
+            return claves_dict[payment_connection_id]
         elif payment_connection_id in id_tecnicos_directos:
             return claves_dict["tecnicos_directos"]
         elif payment_connection_id in conn_carso:
@@ -823,7 +834,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                     PSRC = Contratista
                 """
                 codigo_psr = 'PSRC'
-                if payment_connection_id == self.ID_CONTRATISTA_TIPO_MAQTEL:
+                if payment_connection_id in self.ID_CONTRATISTA_TIPO_MAQTEL:
                     codigo_psr = 'PSRM'
                 elif payment_connection_id in conn_carso:
                     codigo_psr = 'PSRCM'
@@ -833,36 +844,36 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                 campos_psr = [0, total_reparacion_instalaciones, 0]
             else:
 
-                nivel_de_pago = 'contratista' 
-                if payment_connection_id == self.ID_CONTRATISTA_TIPO_MAQTEL:
-                    nivel_de_pago = 'maqtel'
-                elif payment_connection_id in conn_carso:
-                    nivel_de_pago = 'migracion'
+                # nivel_de_pago = 'contratista' 
+                # if payment_connection_id in self.ID_CONTRATISTA_TIPO_MAQTEL:
+                #     nivel_de_pago = 'maqtel'
+                # elif payment_connection_id in conn_carso:
+                #     nivel_de_pago = 'migracion'
 
-                campos_a4[ 0 ] = price_list_cobre[ nivel_de_pago ][ 'a4' ]
-                name = 'A4'
+                # campos_a4[ 0 ] = price_list_cobre[ nivel_de_pago ][ 'a4' ]
+                # name = 'A4'
 
                 # EJEMPLO DE CALCULO EN COBRE ===== columna_total = valor_del_campo * price_list[tipo_trabajo][year][infra][nivel].get(map_product_name,-1)
-                # a4_par_principal = answers_lib.get('5f033e1248598b3eda0e34c4', 0)# PRUEBAS ELÉCTRICAS DE PAR PRINCIPAL
-                # a4_par_secundario = answers_lib.get('5f033e1248598b3eda0e34c5', 0)# PRUEBAS ELÉCTRICAS DE PAR SECUNDARIO
-                # a4_reporte_ivr = answers_lib.get('5f033e1248598b3eda0e34c6', 0)# REPORTE DE IVR, PARA LIQUIDACIÓN DEL SERVICIO
-                # a4_rosetas = answers_lib.get('5f033e1248598b3eda0e34c7', 0)# RECEPCIÓN, MANEJO Y ALMACENAJE DE ROSETAS. (PRECIO POR ROSETA), (2)
-                # a4_modem = answers_lib.get('5f033e1248598b3eda0e34c8', 0)# MANEJO, CUSTODIA, ENTREGA Y PUESTA EN SERVICIO DE MODEM EN LA CASA DEL CLIENTE....
-                # a4_claro = answers_lib.get('5f033e1248598b3eda0e34c9', 0)# ACTIVACIÓN EXITOSA DE CLARO VIDEO (VÍA TEK o IVR) EN LA CASA DEL CLIENTE
-                # a4_montaje_puente = answers_lib.get('5f033e1248598b3eda0e34ca', 0)# MONTAJE DE PUENTE NUEVO EN DISTRIBUIDOR GENERAL
-                # a4_desmontaje_puente = answers_lib.get('5f033e1248598b3eda0e34cb', 0)# DESMONTAJE DE PUENTE EN DISTRIBUIDOR GENERAL
+                a4_par_principal = answers_lib.get('5f033e1248598b3eda0e34c4', 0)# PRUEBAS ELÉCTRICAS DE PAR PRINCIPAL
+                a4_par_secundario = answers_lib.get('5f033e1248598b3eda0e34c5', 0)# PRUEBAS ELÉCTRICAS DE PAR SECUNDARIO
+                a4_reporte_ivr = answers_lib.get('5f033e1248598b3eda0e34c6', 0)# REPORTE DE IVR, PARA LIQUIDACIÓN DEL SERVICIO
+                a4_rosetas = answers_lib.get('5f033e1248598b3eda0e34c7', 0)# RECEPCIÓN, MANEJO Y ALMACENAJE DE ROSETAS. (PRECIO POR ROSETA), (2)
+                a4_modem = answers_lib.get('5f033e1248598b3eda0e34c8', 0)# MANEJO, CUSTODIA, ENTREGA Y PUESTA EN SERVICIO DE MODEM EN LA CASA DEL CLIENTE....
+                a4_claro = answers_lib.get('5f033e1248598b3eda0e34c9', 0)# ACTIVACIÓN EXITOSA DE CLARO VIDEO (VÍA TEK o IVR) EN LA CASA DEL CLIENTE
+                a4_montaje_puente = answers_lib.get('5f033e1248598b3eda0e34ca', 0)# MONTAJE DE PUENTE NUEVO EN DISTRIBUIDOR GENERAL
+                a4_desmontaje_puente = answers_lib.get('5f033e1248598b3eda0e34cb', 0)# DESMONTAJE DE PUENTE EN DISTRIBUIDOR GENERAL
 
-                # precios_a4_cobre = price_list_cobre['a4']['2020']['sin_ie']['bajo']
-                # total_a4_par_principal = a4_par_principal * precios_a4_cobre.get('pruebas_eléctricas_de_par_principal', -1)
-                # total_a4_par_secundario = a4_par_secundario * precios_a4_cobre.get('pruebas_eléctricas_de_par_secundario', -1)
-                # total_a4_reporte_ivr = a4_reporte_ivr * precios_a4_cobre.get('reporte_de_ivr,_para_liquidación_del_servicio', -1)
-                # total_a4_rosetas = a4_rosetas * precios_a4_cobre.get('recepción,_manejo_y_almacenaje_de_rosetas._(precio_por_roseta),_(2)', -1)
-                # total_a4_modem = a4_modem * precios_a4_cobre.get('manejo,_custodia,_entrega_y_puesta_en_servicio_de_modem_en_la_casa_del_cliente._(se_hace_toda_la_administración_desde_el_almacén_telmex_hasta_el_domicilio_del_cliente,_se_hace_la_instalación_y_prueba_de_navegación_en_la_casa_del_cliente).', -1)
-                # total_a4_claro = a4_claro * precios_a4_cobre.get('activación_exitosa_de_claro_video_(vía_tek_o_ivr)_en_la_casa_del_cliente', -1)
-                # total_a4_montaje_puente = a4_montaje_puente * precios_a4_cobre.get('montaje_de_puente_nuevo_en_distribuidor_general', -1)
-                # total_a4_desmontaje_puente = a4_desmontaje_puente * precios_a4_cobre.get('desmontaje_de_puente_en_distribuidor_general', -1)
+                precios_a4_cobre = price_list_cobre['a4']['2020']['sin_ie']['bajo']
+                total_a4_par_principal = a4_par_principal * precios_a4_cobre.get('pruebas_eléctricas_de_par_principal', -1)
+                total_a4_par_secundario = a4_par_secundario * precios_a4_cobre.get('pruebas_eléctricas_de_par_secundario', -1)
+                total_a4_reporte_ivr = a4_reporte_ivr * precios_a4_cobre.get('reporte_de_ivr,_para_liquidación_del_servicio', -1)
+                total_a4_rosetas = a4_rosetas * precios_a4_cobre.get('recepción,_manejo_y_almacenaje_de_rosetas._(precio_por_roseta),_(2)', -1)
+                total_a4_modem = a4_modem * precios_a4_cobre.get('manejo,_custodia,_entrega_y_puesta_en_servicio_de_modem_en_la_casa_del_cliente._(se_hace_toda_la_administración_desde_el_almacén_telmex_hasta_el_domicilio_del_cliente,_se_hace_la_instalación_y_prueba_de_navegación_en_la_casa_del_cliente).', -1)
+                total_a4_claro = a4_claro * precios_a4_cobre.get('activación_exitosa_de_claro_video_(vía_tek_o_ivr)_en_la_casa_del_cliente', -1)
+                total_a4_montaje_puente = a4_montaje_puente * precios_a4_cobre.get('montaje_de_puente_nuevo_en_distribuidor_general', -1)
+                total_a4_desmontaje_puente = a4_desmontaje_puente * precios_a4_cobre.get('desmontaje_de_puente_en_distribuidor_general', -1)
 
-                # campos_a4 = [ total_a4_par_principal, total_a4_par_secundario, total_a4_reporte_ivr, total_a4_rosetas, total_a4_modem, total_a4_claro, total_a4_montaje_puente, total_a4_desmontaje_puente ]
+                campos_a4 = [ total_a4_par_principal, total_a4_par_secundario, total_a4_reporte_ivr, total_a4_rosetas, total_a4_modem, total_a4_claro, total_a4_montaje_puente, total_a4_desmontaje_puente ]
         else:
             """
             NO es A4 y tampoco PSR... considerando los demas campos
@@ -1464,7 +1475,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         # nivel_de_pago = 'contratista'
         # if conn_id in conn_carso:
         #     nivel_de_pago = 'migrado'
-        # elif conn_id == self.ID_CONTRATISTA_TIPO_MAQTEL:
+        # elif conn_id in self.ID_CONTRATISTA_TIPO_MAQTEL:
         #     nivel_de_pago = 'maqtel'
 
         # for group_field in fields_liberacion:
@@ -2176,9 +2187,15 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         Return:
             Lista de Órdenes de compra creadas
         """
+        
+        # Se consultan los descuentos que estan en la forma Nomina
+        descuentos_form_nomina = self.get_descuentos_form_nomina()
+        # print('dddddddddddescuentos =',descuentos_form_nomina)
+        if not descuentos_form_nomina:
+            return p_utils.set_status_proceso(current_record, record_id, 'error', f"No se encontró registro de NÓMINA pendiente")
 
         # Se obtienen los descuentos desde el archivo excel
-        dict_emails_descuentos = self.get_descuentos_en_xls()
+        dict_emails_descuentos = self.get_descuentos_en_xls(descuentos_form_nomina)
         if dict_emails_descuentos.get('error'):
             file_errores_desc = p_utils.upload_error_file(dict_emails_descuentos['header'], dict_emails_descuentos['error'], current_record['form_id'], file_field_id='f2362800a010000000000005')
             current_record['answers'].update(file_errores_desc)

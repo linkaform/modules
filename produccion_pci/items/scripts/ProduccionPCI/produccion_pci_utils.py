@@ -67,7 +67,7 @@ class Produccion_PCI(Produccion_PCI):
         # Script que se ejecuta para pegar el folio de OC en las OS
         self.SCRIPT_ID_SET_FOLIO_OC = self.lkm.script_id('set_folio_oc_to_os', 'id')
 
-        self.ID_CONTRATISTA_TIPO_MAQTEL = 17798
+        self.ID_CONTRATISTA_TIPO_MAQTEL = [29125, 29305, 29310]
         self.id_tecnicos_directos = [2071, 2072, 2073]
 
         self.MONTO_MAXIMO_POR_OC = 200000 # Monto maximo por OCs en Cobre

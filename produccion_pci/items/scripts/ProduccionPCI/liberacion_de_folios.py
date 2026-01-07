@@ -610,7 +610,7 @@ class Produccion_PCI( Produccion_PCI ):
         if tipo_tarea_is_queja and not conexion_as_precio_carso:
             nivel_de_pago = 'bajo'
 
-        if conexion == self.ID_CONTRATISTA_TIPO_MAQTEL:
+        if conexion in self.ID_CONTRATISTA_TIPO_MAQTEL:
             nivel_de_pago = 'plus'
         
         if tipo_tarea_is_queja:
@@ -1005,6 +1005,7 @@ class Produccion_PCI( Produccion_PCI ):
 
                 # list_rec.extend([0] * 3)
                 if record_is_psr:
+                    positions_psr_concepts = [0, 0, 0]
                     for i in range(5, 32):
                         list_rec[ i ] = 0
                     list_rec.extend( positions_psr_concepts )
