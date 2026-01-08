@@ -2325,3 +2325,268 @@ class Accesos( Accesos):
         metadata.update({'answers':answers})
         response_create = self.lkf_api.post_forms_answers(metadata)
         return response_create
+
+    def create_access_pass(self, location, access_pass):
+        #---Define Metadata
+        metadata = self.lkf_api.get_metadata(form_id=self.PASE_ENTRADA)
+        metadata.update({
+            "properties": {
+                "device_properties":{
+                    "System": "Script",
+                    "Module": "Accesos",
+                    "Process": "Creación de pase",
+                    "Action": "create_access_pass",
+                    "File": "accesos/app.py"
+                }
+            },
+        })
+
+        #---Define Answers
+        answers = {}
+        perfil_pase = access_pass.get('perfil_pase')
+        location_name = access_pass.get('ubicacion')
+        if not location:
+            location = location_name
+        address = self.get_location_address(location_name=location_name)
+        access_pass['direccion'] = [address.get('address', '')]
+        user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
+        timezone = user_data.get('timezone','America/Monterrey')
+        now_datetime =self.today_str(timezone, date_format='datetime')
+        employee = self.get_employee_data(email=self.user.get('email'), get_one=True)
+        company = employee.get('company', 'Soter')
+        nombre_visita_a = employee.get('worker_name')
+
+        if(access_pass.get('site', '') == 'accesos'):
+            nombre_visita_a = access_pass.get('visita_a')
+            access_pass['ubicaciones'] = [location]
+
+        answers[self.UBICACIONES_CAT_OBJ_ID] = {}
+        # answers[self.UBICACIONES_CAT_OBJ_ID][self.f['location']] = location
+        if access_pass.get('custom') == True :
+            answers[self.pase_entrada_fields['tipo_visita_pase']] = access_pass.get('tipo_visita_pase',"")
+            answers[self.pase_entrada_fields['fecha_desde_visita']] = access_pass.get('fecha_desde_visita',"")
+            answers[self.pase_entrada_fields['fecha_desde_hasta']] = access_pass.get('fecha_desde_hasta',"")
+            answers[self.pase_entrada_fields['config_dia_de_acceso']] = access_pass.get('config_dia_de_acceso',"")
+            answers[self.pase_entrada_fields['config_dias_acceso']] = access_pass.get('config_dias_acceso',"")
+            answers[self.pase_entrada_fields['catalago_autorizado_por']] =  {self.pase_entrada_fields['autorizado_por']:nombre_visita_a}
+            answers[self.pase_entrada_fields['status_pase']] = access_pass.get('status_pase',"").lower()
+            answers[self.pase_entrada_fields['empresa_pase']] = access_pass.get('empresa',"")
+            # answers[self.pase_entrada_fields['ubicacion_cat']] = {self.mf['ubicacion']:access_pass['ubicacion'], self.mf['direccion']:access_pass.get('direccion',"")}
+            answers[self.pase_entrada_fields['tema_cita']] = access_pass.get('tema_cita',"") 
+            answers[self.pase_entrada_fields['descripcion']] = access_pass.get('descripcion',"") 
+            answers[self.pase_entrada_fields['config_limitar_acceso']] = access_pass.get('config_limitar_acceso',"") 
+
+        else:
+            answers[self.mf['fecha_desde_visita']] = now_datetime
+            answers[self.mf['tipo_visita_pase']] = 'fecha_fija'
+        answers[self.pase_entrada_fields['tipo_visita']] = 'alta_de_nuevo_visitante'
+        answers[self.pase_entrada_fields['walkin_nombre']] = access_pass.get('nombre')
+        answers[self.pase_entrada_fields['walkin_email']] = access_pass.get('email', '')
+        answers[self.pase_entrada_fields['walkin_empresa']] = access_pass.get('empresa')
+        answers[self.pase_entrada_fields['walkin_fotografia']] = access_pass.get('foto')
+        answers[self.pase_entrada_fields['walkin_identificacion']] = access_pass.get('identificacion')
+        answers[self.pase_entrada_fields['walkin_telefono']] = access_pass.get('telefono', '')
+        answers[self.pase_entrada_fields['status_pase']] = access_pass.get('status_pase',"").lower()
+        
+        if access_pass.get('ubicaciones'):
+            ubicaciones = access_pass.get('ubicaciones',[])
+            address_list = self.get_locations_address(list_locations=ubicaciones)
+            if ubicaciones:
+                ubicaciones_list = []
+                for ubi in ubicaciones:
+                    ubicaciones_list.append(
+                        {
+                            self.pase_entrada_fields['ubicacion_cat']: { 
+                                self.mf["ubicacion"]: ubi,
+                                self.mf["direccion"]: [address_list.get(ubi, {}).get('address', '')],
+                                self.f["address_geolocation"]: address_list.get(ubi, {}).get('geolocation', [])
+                            }
+                        }
+                    )
+                answers.update({self.pase_entrada_fields['ubicaciones']:ubicaciones_list})
+                
+        if access_pass.get('comentarios'):
+            comm = access_pass.get('comentarios',[])
+            if comm:
+                comm_list = []
+                for c in comm:
+                    comm_list.append(
+                        {
+                            self.pase_entrada_fields['comentario_pase']:c.get('comentario_pase'),
+                            self.pase_entrada_fields['tipo_comentario'] :c.get('tipo_comentario').lower()
+                        }
+                    )
+                answers.update({self.pase_entrada_fields['grupo_instrucciones_pase']:comm_list})
+
+        if access_pass.get('todas_las_areas'):
+            answers[self.pase_entrada_fields['todas_las_areas']]='sí'
+            todas_areas = [] 
+            for location in access_pass.get('ubicaciones', []):
+                areas = self.get_areas_by_location(location)
+                if isinstance(areas, list):
+                    for area in areas:
+                        todas_areas.append({
+                            "nombre_area": area,
+                            "commentario_area": "" 
+                        })
+            print(f"Todas las áreas hasta ahora: {todas_areas}")
+            access_pass["areas"] = todas_areas
+
+        if access_pass.get('areas'):
+            areas = access_pass.get('areas',[])
+            if areas:
+                areas_list = []
+                for c in areas:
+                    areas_list.append(
+                        {
+                            self.pase_entrada_fields['commentario_area']:c.get('commentario_area'),
+                            self.pase_entrada_fields['area_catalog_normal'] :{self.mf['nombre_area']: c.get('nombre_area')}
+                        }
+                    )
+                answers.update({self.pase_entrada_fields['grupo_areas_acceso']:areas_list})
+
+        print(access_pass.get('areas'))
+
+        #Visita A
+        answers[self.mf['grupo_visitados']] = []
+        nombre_visita_a = access_pass.get('visita_a') if not nombre_visita_a else nombre_visita_a
+        if access_pass.get('selected_visita_a'):
+            nombre_visita_a = access_pass.get('selected_visita_a')
+        visita_set = {
+            self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID:{
+                self.mf['nombre_empleado'] : nombre_visita_a,
+                }
+            }
+        options_vistia = {
+              "group_level": 3,
+              "startkey": [location, nombre_visita_a],
+              "endkey": [location, f"{nombre_visita_a}\n",{}],
+            }
+        cat_visita = self.catalogo_view(self.CONF_AREA_EMPLEADOS_CAT_ID, self.PASE_ENTRADA, options_vistia)
+        if len(cat_visita) > 0:
+            cat_visita =  {key: [value,] for key, value in cat_visita[0].items() if value}
+        else:
+            selector = {}
+            selector.update({f"answers.{self.mf['nombre_empleado']}": nombre_visita_a})
+            fields = ["_id", f"answers.{self.mf['nombre_empleado']}", f"answers.{self.mf['email_visita_a']}", f"answers.{self.mf['id_usuario']}"]
+
+            mango_query = {
+                "selector": selector,
+                "fields": fields,
+                "limit": 1
+            }
+
+            row_catalog = self.lkf_api.search_catalog(self.CONF_AREA_EMPLEADOS_CAT_ID, mango_query)
+            if row_catalog:
+                visita_set[self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID].update({
+                    self.mf['nombre_empleado']: nombre_visita_a,
+                    self.mf['email_visita_a']: [row_catalog[0].get(self.mf['email_visita_a'], "")],
+                    self.mf['id_usuario']: [row_catalog[0].get(self.mf['id_usuario'], "")],
+                })
+
+        visita_set[self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID].update(cat_visita)
+        answers[self.mf['grupo_visitados']].append(visita_set)
+
+        # Perfil de Pase
+        answers[self.CONFIG_PERFILES_OBJ_ID] = {
+            self.mf['nombre_perfil'] : perfil_pase,
+        }
+        if answers[self.CONFIG_PERFILES_OBJ_ID].get(self.mf['nombre_permiso']) and \
+           type(answers[self.CONFIG_PERFILES_OBJ_ID][self.mf['nombre_permiso']]) == str:
+            answers[self.CONFIG_PERFILES_OBJ_ID][self.mf['nombre_permiso']] = [answers[self.CONFIG_PERFILES_OBJ_ID][self.mf['nombre_permiso']],]
+
+        #---Valor
+        metadata.update({'answers':answers})
+        res = self.lkf_api.post_forms_answers(metadata)
+        qrcode_to_google_pass = ''
+        id_forma = ''
+        if res.get("status_code") ==200 or res.get("status_code")==201:
+            qrcode_to_google_pass = res.get('json', {}).get('id', '')
+            link_info=access_pass.get('link', "")
+            docs=""
+            
+            if link_info:
+                for index, d in enumerate(link_info["docs"]): 
+                    if(d == "agregarIdentificacion"):
+                        docs+="iden"
+                    elif(d == "agregarFoto"):
+                        docs+="foto"
+                    if index==0 :
+                        docs+="-"
+                link_pass= f"{link_info['link']}?id={res.get('json')['id']}&user={link_info['creado_por_id']}&docs={docs}"
+                id_forma = self.PASE_ENTRADA
+                id_campo = self.pase_entrada_fields['archivo_invitacion']
+
+                tema_cita = access_pass.get("tema_cita")
+                descripcion = access_pass.get("descripcion")
+                fecha_desde_visita = access_pass.get("fecha_desde_visita")
+                fecha_desde_hasta = access_pass.get("fecha_desde_hasta")
+                creado_por_email = access_pass.get("link", {}).get("creado_por_email")
+                ubicacion = access_pass.get("ubicacion")
+                nombre = access_pass.get("nombre")
+                visita_a = access_pass.get("visita_a")
+                email = access_pass.get("email")
+
+                start_datetime = datetime.strptime(fecha_desde_visita, "%Y-%m-%d %H:%M:%S")
+
+                if not fecha_desde_hasta:
+                    stop_datetime = start_datetime + timedelta(hours=1)
+                    meeting = [
+                        {
+                            "id": 1,
+                            "start": start_datetime,
+                            "stop": stop_datetime,
+                            "name": tema_cita,
+                            "description": descripcion,
+                            "location": ubicacion,
+                            "allday": False,
+                            "rrule": None,
+                            "alarm_ids": [{"interval": "minutes", "duration": 10, "name": "Reminder"}],
+                            'organizer_name': visita_a,
+                            'organizer_email': creado_por_email,
+                            "attendee_ids": [{"email": email, "nombre": nombre}, {"email": creado_por_email, "nombre": visita_a}],
+                        }
+                    ]
+
+                    try:
+                        respuesta_ics = self.upload_ics(id_forma, id_campo, meetings=meeting)
+                    except Exception as e:
+                        print(f"Error al generar o subir el archivo ICS: {e}")
+                        respuesta_ics = {}
+
+                    file_name = respuesta_ics.get('file_name', '')
+                    file_url = respuesta_ics.get('file_url', '')
+
+                    access_pass_custom={
+                        "link":link_pass,
+                        "enviar_correo_pre_registro": access_pass.get("enviar_correo_pre_registro",[]),
+                        "archivo_invitacion": [
+                            {
+                                "file_name": f"{file_name}",
+                                "file_url": f"{file_url}"
+                            }
+                        ]
+                    }
+                else:
+                    access_pass_custom={
+                        "link":link_pass,
+                        "enviar_correo_pre_registro": access_pass.get("enviar_correo_pre_registro",[])
+                    }
+
+                data_to_google_pass = {
+                    "nombre": access_pass.get("nombre"),
+                    "visita_a": access_pass.get("visita_a"),
+                    "ubicacion": access_pass.get("ubicaciones"),
+                    "address": address.get('address'),
+                    "empresa": company,
+                    "all_data": access_pass
+                }
+
+                google_wallet_pass_url = self.create_class_google_wallet(data=data_to_google_pass, qr_code=qrcode_to_google_pass)
+                access_pass_custom.update({
+                    "google_wallet_pass_url": google_wallet_pass_url,
+                })
+                
+                self.update_pass(access_pass=access_pass_custom, folio=res.get("json")["id"])
+            
+        return res
