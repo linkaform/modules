@@ -2185,3 +2185,143 @@ class Accesos( Accesos):
             })
 
         return data
+
+    def _do_access(self, access_pass, location, area, data):
+        '''
+        Registra el acceso del pase de entrada a ubicación.
+        solo puede ser ejecutado después de revisar los accesos
+        '''
+        employee =  self.get_employee_data(email=self.user.get('email'), get_one=True)
+        metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_ACCESOS)
+        metadata.update({
+            'properties': {
+                "device_properties":{
+                    "System": "Script",
+                    "Module": "Accesos",
+                    "Process": "Ingreso de Personal",
+                    "Action": 'Do Access',
+                    "File": "accesos/app.py"
+                }
+            },
+        })
+        # metadata['folio'] = self.create_poruction_lot_number()
+
+        try:
+            pase = {
+                    f"{self.mf['nombre_visita']}": access_pass['nombre'],
+                    f"{self.mf['curp']}":access_pass['curp'],
+                    ### Campos Select
+                    f"{self.mf['empresa']}":[access_pass.get('empresa'),],
+                    f"{self.pase_entrada_fields['perfil_pase_id']}": [access_pass['tipo_de_pase'],],
+                    # f"{self.pase_entrada_fields['status_pase']}":[access_pass['estatus'],],
+                    f"{self.pase_entrada_fields['status_pase']}":['Activo',],
+                    f"{self.pase_entrada_fields['foto_pase_id']}": access_pass.get("foto",[]), #[access_pass['foto'],], #.get('foto','')
+                    f"{self.pase_entrada_fields['identificacion_pase_id']}": access_pass.get("identificacion",[]) #[access_pass['identificacion'],], #.get('identificacion','')
+                    }
+        except Exception as e:
+            self.LKFException({"msg":f"Error al crear registro ingreso, no se encontro: {e}"}) 
+
+        answers = {
+            f"{self.mf['tipo_registro']}": 'entrada',
+            f"{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}":{
+                f"{self.f['location']}":location,
+                f"{self.f['area']}":area
+                },
+            f"{self.PASE_ENTRADA_OBJ_ID}":pase,
+            f"{self.mf['codigo_qr']}": str(access_pass['_id']),
+            f"{self.mf['fecha_entrada']}":self.today_str(employee.get('timezone', 'America/Monterrey'), date_format='datetime'),
+        }
+        vehiculos = data.get('vehiculo',[])
+        if vehiculos:
+            list_vehiculos = []
+            for item in vehiculos:
+                if item:
+                    tipo = item.get('tipo','')
+                    marca = item.get('marca','')
+                    modelo = item.get('modelo','')
+                    estado = item.get('estado','')
+                    placas = item.get('placas','')
+                    color = item.get('color','')
+                    list_vehiculos.append({
+                        self.TIPO_DE_VEHICULO_OBJ_ID:{
+                            self.mf['tipo_vehiculo']:tipo,
+                            self.mf['marca_vehiculo']:marca,
+                            self.mf['modelo_vehiculo']:modelo,
+                        },
+                        self.ESTADO_OBJ_ID:{
+                            self.mf['nombre_estado']:estado,
+                        },
+                        self.mf['placas_vehiculo']:placas,
+                        self.mf['color_vehiculo']:color,
+                    })
+            answers[self.mf['grupo_vehiculos']] = list_vehiculos  
+
+        equipos = data.get('equipo',[])
+
+        if equipos:
+            list_equipos = []
+            for item in equipos:
+                tipo = item.get('tipo','').lower().replace(' ', '_')
+                nombre = item.get('nombre','')
+                marca = item.get('marca','')
+                modelo = item.get('modelo','')
+                color = item.get('color','')
+                serie = item.get('serie','')
+                list_equipos.append({
+                    self.mf['tipo_equipo']:tipo,
+                    self.mf['nombre_articulo']:nombre,
+                    self.mf['marca_articulo']:marca,
+                    self.mf['modelo_articulo']:modelo,
+                    self.mf['color_articulo']:color,
+                    self.mf['numero_serie']:serie,
+                })
+            answers[self.mf['grupo_equipos']] = list_equipos
+
+        gafete = data.get('gafete',{})
+        if gafete:
+            gafete_ans = {}
+            gafete_ans[self.GAFETES_CAT_OBJ_ID] = {self.gafetes_fields['gafete_id']:gafete.get('gafete_id')}
+            gafete_ans[self.LOCKERS_CAT_OBJ_ID] = {self.mf['locker_id']:gafete.get('locker_id')}
+            gafete_ans[self.mf['documento']] = gafete.get('documento_garantia')
+            answers.update(gafete_ans)
+            self.update_gafet_status(answers)
+
+
+        comment = data.get('comentario_acceso',[])
+        comments_pase = data.get('comentario_pase',[])
+        if comment or comments_pase:
+            comment_list = []
+            for c in comment:
+                comment_list.append(
+                    {
+                        self.bitacora_fields['comentario']:c.get('comentario_pase'),
+                        self.bitacora_fields['tipo_comentario'] :c.get('tipo_de_comentario').lower().replace(' ', '_')
+                    }
+                )
+            for c in comments_pase:
+                comment_list.append(
+                    {
+                        self.bitacora_fields['comentario']:c.get('comentario_pase'),
+                        self.bitacora_fields['tipo_comentario'] :c.get('tipo_de_comentario').lower().replace(' ', '_')
+                    }
+                )
+            answers.update({self.bitacora_fields['grupo_comentario']:comment_list})
+
+        visit_list = data.get('visita_a',[])
+        if visit_list:
+            visit_list2 = []
+            for c in visit_list:
+                visit_list2.append(
+                   { f"{self.bitacora_fields['visita']}":{ 
+                       self.bitacora_fields['visita_nombre_empleado']:c.get('nombre'),
+                       self.mf['id_usuario'] :[c.get('user_id')],
+                       self.bitacora_fields['visita_departamento_empleado']:[c.get('departamento')],
+                       self.bitacora_fields['puesto_empleado']:[c.get('puesto')],
+                       self.mf['email_visita_a'] :[c.get('email')]
+                   }}
+                )
+            answers.update({self.bitacora_fields['visita_a']:visit_list2})
+
+        metadata.update({'answers':answers})
+        response_create = self.lkf_api.post_forms_answers(metadata)
+        return response_create
