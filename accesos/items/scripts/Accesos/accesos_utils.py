@@ -807,6 +807,31 @@ class Accesos( Accesos):
             res['notas_del_dia'] = notas_del_dia
             res['notas_cerradas'] = notas_cerradas
 
+        elif page == 'PasesHistorial':
+            query_pases = [
+                {
+                    "$match": {
+                        "deleted_at": {"$exists": False},
+                        "form_id": self.PASE_ENTRADA,
+                        f"answers.{self.pase_entrada_fields['status_pase']}": {
+                            "$in": ["activo", "proceso"]
+                        }
+                    }
+                },
+                {
+                    "$group": {
+                        "_id": f"$answers.{self.pase_entrada_fields['status_pase']}",
+                        "total": {"$sum": 1}
+                    }
+                }
+            ]
+            pases = self.format_cr(self.cr.aggregate(query_pases))
+            if pases:
+                for item in pases:
+                    if item.get('_id') == 'activo':
+                        res['pases_activos'] = item.get('total')
+                    if item.get('_id') == 'proceso':
+                        res['pases_proceso'] = item.get('total')
         return res
 
     def get_employee_data(self, name=None, user_id=None, username=None, email=None,  get_one=False):
