@@ -240,7 +240,7 @@ class Oracle(Oracle):
                     'answers.'+self.f['tipo_registro'] : 'registro_oracle'
                 } },
                 { '$sort': { 'answers.'+self.f['fecha'] : -1 } },
-                {'$limit':100},
+                {'$limit':500},
                 { '$project': { 
                     'fecha': '$answers.'+self.f['fecha'],
                     'answers': { '$objectToArray': '$answers' }
