@@ -62,8 +62,7 @@ class Accesos( Accesos):
             'grupo_comentarios_generales_fecha': '6927a0ea1c378cbd7f60a135',
             'grupo_comentarios_generales_texto': '6927a0ea1c378cbd7f60a136',
             'nombre_suplente': '6927a1176c60848998a157a2',
-            'documento_check': '692a1b4e005c84ce5cd5167f',
-            
+            'documento_check': '692a1b4e005c84ce5cd5167f'
         })
 
         #BORRAR
@@ -855,6 +854,202 @@ class Accesos( Accesos):
             ]
         res = self.format_cr_result(self.cr.aggregate(query), get_one=get_one)
         return res
+
+    def check_in_aux_guard(self):
+        match_query = {
+            "deleted_at": {"$exists": False},
+            "form_id": self.CHECKIN_CASETAS,
+        }
+        query = [
+            {'$match': match_query},
+            {'$unwind': f"$answers.{self.f['guard_group']}"},
+            {'$project': {
+                '_id': 1,
+                'folio': "$folio",
+                'created_at': "$created_at",
+                'name': f"$answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.f['worker_name_jefes']}",
+                'user_id': {"$first": f"$answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}"},
+                'location': f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['ubicacion']}",
+                'area': f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_area']}",
+                'checkin_date': f"$answers.{self.f['guard_group']}.{self.f['checkin_date']}",
+                'checkout_date': f"$answers.{self.f['guard_group']}.{self.f['checkout_date']}",
+                'checkin_status': f"$answers.{self.f['guard_group']}.{self.f['checkin_status']}",
+                'checkin_position': f"$answers.{self.f['guard_group']}.{self.f['checkin_position']}",
+            }},
+            {'$sort': {'updated_at': -1}},
+            {'$group': {
+                '_id': {'user_id': '$user_id'},
+                'name': {'$last': '$name'},
+                'location': {'$last': '$location'},
+                'area': {'$last': '$area'},
+                'checkin_date': {'$last': '$checkin_date'},
+                'checkout_date': {'$last': '$checkout_date'},
+                'checkin_status': {'$last': '$checkin_status'},
+                'checkin_position': {'$last': '$checkin_position'},
+            }},
+            {'$project': {
+                '_id': 0,
+                'user_id': '$_id.user_id',
+                'name': '$name',
+                'location': '$location',
+                'area': '$area',
+                'checkin_date': '$checkin_date',
+                'checkout_date': '$checkout_date',
+                'checkin_status': {'$cond': [{'$eq': ['$checkin_status', 'entrada']}, 'in', 'out']},
+                'checkin_position': '$checkin_position',
+            }},
+        ]
+        data = self.format_cr(self.cr.aggregate(query))
+        res = {}
+        for rec in data:
+            status = 'in' if rec.get('checkin_status') in ['in', 'entrada'] else 'out'
+            user_id = rec.get('user_id') or 0
+            res[int(user_id)] = {
+                'status': status,
+                'name': rec.get('name'),
+                'user_id': rec.get('user_id'),
+                'location': rec.get('location'),
+                'area': rec.get('area'),
+                'checkin_date': rec.get('checkin_date'),
+                'checkout_date': rec.get('checkout_date'),
+                'checkin_position': rec.get('checkin_position')
+            }
+        return res
+
+    def get_employee_checkin_status(self, user_ids, as_shift=False,  **kwargs):
+        query = []
+        if kwargs.get('user_id'):
+            user_id = kwargs['user_id']
+        else:
+            user_id = self.user.get('user_id')
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id": self.CHECKIN_CASETAS,
+            }
+        unwind = {'$unwind': f"$answers.{self.f['guard_group']}"}
+        query = [{'$match': match_query }, unwind ]
+
+        unwind_query = {f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": {"$exists":True}}
+        if as_shift:
+            match_query.update({'created_by_id':user_id})
+            query = [
+                {'$match': match_query },
+                {'$sort':{'created_at':-1}},
+                {'$limit':1},
+                unwind
+                ]
+        else:
+            if type(user_ids) == list:
+                unwind_query.update({f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": {"$in": user_ids}})
+            else:
+                unwind_query.update({f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": user_ids })
+        query += [ {'$match': unwind_query }]
+        query += [
+            {'$project':
+                {'_id': 1,
+                    'folio': "$folio",
+                    'created_at': "$created_at",
+                    'name': f"$answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.f['worker_name_jefes']}",
+                    'user_id': {"$first":f"$answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}"},
+                    'location': f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['ubicacion']}",
+                    'area': f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_area']}",
+                    'checkin_date': f"$answers.{self.f['guard_group']}.{self.f['checkin_date']}",
+                    'checkout_date': f"$answers.{self.f['guard_group']}.{self.f['checkout_date']}",
+                    'checkin_status': f"$answers.{self.f['guard_group']}.{self.f['checkin_status']}",
+                    'checkin_position': f"$answers.{self.f['guard_group']}.{self.f['checkin_position']}",
+                    'nombre_suplente': f"$answers.{self.f['guard_group']}.{self.checkin_fields['nombre_suplente']}",
+                    }
+            },
+            {'$sort':{'updated_at':-1}},
+            {'$group':{
+                '_id':{
+                    'user_id':'$user_id',
+                    },
+                'name':{'$last':'$name'},
+                'location':{'$last':'$location'},
+                'area':{'$last':'$area'},
+                'checkin_date':{'$last':'$checkin_date'},
+                'checkout_date':{'$last':'$checkout_date'},
+                'checkin_status':{'$last':'$checkin_status'},
+                'checkin_position':{'$last':'$checkin_position'},
+                'folio':{'$last':'$folio'},
+                'id_register':{'$last':'$_id'},
+                'nombre_suplente':{'$last':'$nombre_suplente'}
+            }},
+            {'$project':{
+                '_id':0,
+                'user_id':'$_id.user_id',
+                'name':'$name',
+                'location':'$location',
+                'area':'$area',
+                'checkin_date':'$checkin_date',
+                'checkout_date':'$checkout_date',
+                'checkin_status': {'$cond': [ {'$eq':['$checkin_status','entrada']},'in','out']}, 
+                'checkin_position':'$checkin_position',
+                'folio':'$folio',
+                'id_register':'$id_register',
+                'nombre_suplente':'$nombre_suplente'
+            }}
+            ]
+        data = self.format_cr(self.cr.aggregate(query))
+        res = {}
+        for rec in data:
+            status = 'in' if rec.get('checkin_status') in ['in','entrada'] else 'out'
+            user_id = rec.get('user_id') or 0
+            res[int(user_id)] = {
+                'status':status, 
+                'name': rec.get('name'), 
+                'folio': rec.get('folio'),
+                '_id': str(rec.get('id_register')),
+                'user_id': rec.get('user_id'), 
+                'location':rec.get('location'),
+                'area':rec.get('area'),
+                'checkin_date':rec.get('checkin_date'),
+                'checkout_date':rec.get('checkout_date'),
+                'checkin_position':rec.get('checkin_position'),
+                'nombre_suplente':rec.get('nombre_suplente',"")
+                }
+        return res
+
+    def check_in_out_employees(self,  checkin_type, check_datetime, checkin={}, employee_list=[], **kwargs):
+        checkin_status = 'entrada' if checkin_type == 'in' else 'salida'
+        date_id = 'checkin_date' if checkin_type == 'in' else 'checkout_date'
+        checkin[self.f['guard_group']] = checkin.get(self.f['guard_group'],[])
+        if checkin_type == 'out':
+            for guard in checkin[self.f['guard_group']]:
+                user_id = int(self.unlist(guard.get(self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID,{})\
+                    .get(self.mf['id_usuario'],0)))
+                if guard[self.checkin_fields['checkin_status']] != checkin_status:
+                    if not employee_list:
+                        guard[self.checkin_fields['checkin_status']] = checkin_status
+                        guard[self.checkin_fields[date_id]] = check_datetime                    
+                    elif user_id in employee_list:
+                        guard[self.checkin_fields['checkin_status']] = checkin_status
+                        guard[self.checkin_fields[date_id]] = check_datetime
+        elif employee_list:
+            for idx, guard in enumerate(employee_list):
+                print("guard", guard)
+                empl_cat = {}
+                empl_cat[self.f['worker_name_b']] = guard.get('name')
+                if isinstance(guard.get('usuario_id'), list):
+                    empl_cat[self.mf['id_usuario']] = [(guard.get('usuario_id', [])[0]),]
+                else:
+                    empl_cat[self.mf['id_usuario']] = [guard.get('user_id'),]
+                guard_data = {
+                        self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID : empl_cat,
+                        self.checkin_fields['checkin_position']:'guardia_de_apoyo',
+                        self.checkin_fields['checkin_status']:checkin_status,
+                        self.checkin_fields[date_id]:check_datetime,
+                        self.checkin_fields['nombre_suplente']:guard.get("nombre_suplente",''),
+                       }
+                if kwargs.get('employee_type'):
+                    guard_data.update({self.checkin_fields['checkin_position']: kwargs['employee_type'] })
+                elif idx == 0:
+                    guard_data.update({self.checkin_fields['checkin_position']: self.chife_guard})
+                else:
+                    guard_data.update({self.checkin_fields['checkin_position']: self.support_guard})
+                checkin[self.f['guard_group']] += [guard_data,]
+        return checkin
 
     def do_checkin(self, location, area, employee_list=[], fotografia=[], check_in_manual={}, nombre_suplente="", checkin_id=""):
         # Realiza el check-in en una ubicación y área específica.
