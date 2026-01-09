@@ -125,6 +125,7 @@ if __name__ == "__main__":
     limit = data.get("limit", 10)
     offset = data.get("offset", 0)
     fotografia=data.get("fotografia",[])
+    nombre_suplente=data.get("nombre_suplente","")
     #-FUNCTIONS
     print('option', option)
     if option == 'load_shift':
@@ -147,8 +148,7 @@ if __name__ == "__main__":
     elif option == 'catalog_location':
         response = acceso_obj.get_catalog_locations(location)
     elif option == 'checkin':
-        # used
-        response = acceso_obj.do_checkin(location, area, employee_list, fotografia=fotografia)
+        response = acceso_obj.do_checkin(location, area, employee_list, fotografia=fotografia ,nombre_suplente=nombre_suplente, checkin_id=checkin_id)
     elif option == 'checkout':
         # used
         response = acceso_obj.do_checkout(checkin_id=checkin_id, \
@@ -194,7 +194,8 @@ if __name__ == "__main__":
         response = acceso_obj.create_enviar_msj(data_msj=data_msj, data_cel_msj=data_cel_msj)
     elif option == 'send_msj_by_access':
         response = acceso_obj.send_email_and_sms(data=data_msj)
-
+    elif option == 'update_delete_suplente':
+        response = acceso_obj.update_delete_suplente(nombre_suplente=nombre_suplente)
     else :
         response = {"msg": "Empty"}
     # print('================ END RETURN =================')

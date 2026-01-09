@@ -855,6 +855,202 @@ class Accesos( Accesos):
         res = self.format_cr_result(self.cr.aggregate(query), get_one=get_one)
         return res
 
+    def check_in_aux_guard(self):
+        match_query = {
+            "deleted_at": {"$exists": False},
+            "form_id": self.CHECKIN_CASETAS,
+        }
+        query = [
+            {'$match': match_query},
+            {'$unwind': f"$answers.{self.f['guard_group']}"},
+            {'$project': {
+                '_id': 1,
+                'folio': "$folio",
+                'created_at': "$created_at",
+                'name': f"$answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.f['worker_name_jefes']}",
+                'user_id': {"$first": f"$answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}"},
+                'location': f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['ubicacion']}",
+                'area': f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_area']}",
+                'checkin_date': f"$answers.{self.f['guard_group']}.{self.f['checkin_date']}",
+                'checkout_date': f"$answers.{self.f['guard_group']}.{self.f['checkout_date']}",
+                'checkin_status': f"$answers.{self.f['guard_group']}.{self.f['checkin_status']}",
+                'checkin_position': f"$answers.{self.f['guard_group']}.{self.f['checkin_position']}",
+            }},
+            {'$sort': {'updated_at': -1}},
+            {'$group': {
+                '_id': {'user_id': '$user_id'},
+                'name': {'$last': '$name'},
+                'location': {'$last': '$location'},
+                'area': {'$last': '$area'},
+                'checkin_date': {'$last': '$checkin_date'},
+                'checkout_date': {'$last': '$checkout_date'},
+                'checkin_status': {'$last': '$checkin_status'},
+                'checkin_position': {'$last': '$checkin_position'},
+            }},
+            {'$project': {
+                '_id': 0,
+                'user_id': '$_id.user_id',
+                'name': '$name',
+                'location': '$location',
+                'area': '$area',
+                'checkin_date': '$checkin_date',
+                'checkout_date': '$checkout_date',
+                'checkin_status': {'$cond': [{'$eq': ['$checkin_status', 'entrada']}, 'in', 'out']},
+                'checkin_position': '$checkin_position',
+            }},
+        ]
+        data = self.format_cr(self.cr.aggregate(query))
+        res = {}
+        for rec in data:
+            status = 'in' if rec.get('checkin_status') in ['in', 'entrada'] else 'out'
+            user_id = rec.get('user_id') or 0
+            res[int(user_id)] = {
+                'status': status,
+                'name': rec.get('name'),
+                'user_id': rec.get('user_id'),
+                'location': rec.get('location'),
+                'area': rec.get('area'),
+                'checkin_date': rec.get('checkin_date'),
+                'checkout_date': rec.get('checkout_date'),
+                'checkin_position': rec.get('checkin_position')
+            }
+        return res
+
+    def get_employee_checkin_status(self, user_ids, as_shift=False,  **kwargs):
+        query = []
+        if kwargs.get('user_id'):
+            user_id = kwargs['user_id']
+        else:
+            user_id = self.user.get('user_id')
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id": self.CHECKIN_CASETAS,
+            }
+        unwind = {'$unwind': f"$answers.{self.f['guard_group']}"}
+        query = [{'$match': match_query }, unwind ]
+
+        unwind_query = {f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": {"$exists":True}}
+        if as_shift:
+            match_query.update({'created_by_id':user_id})
+            query = [
+                {'$match': match_query },
+                {'$sort':{'created_at':-1}},
+                {'$limit':1},
+                unwind
+                ]
+        else:
+            if type(user_ids) == list:
+                unwind_query.update({f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": {"$in": user_ids}})
+            else:
+                unwind_query.update({f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": user_ids })
+        query += [ {'$match': unwind_query }]
+        query += [
+            {'$project':
+                {'_id': 1,
+                    'folio': "$folio",
+                    'created_at': "$created_at",
+                    'name': f"$answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.f['worker_name_jefes']}",
+                    'user_id': {"$first":f"$answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}"},
+                    'location': f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['ubicacion']}",
+                    'area': f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_area']}",
+                    'checkin_date': f"$answers.{self.f['guard_group']}.{self.f['checkin_date']}",
+                    'checkout_date': f"$answers.{self.f['guard_group']}.{self.f['checkout_date']}",
+                    'checkin_status': f"$answers.{self.f['guard_group']}.{self.f['checkin_status']}",
+                    'checkin_position': f"$answers.{self.f['guard_group']}.{self.f['checkin_position']}",
+                    'nombre_suplente': f"$answers.{self.f['guard_group']}.{self.checkin_fields['nombre_suplente']}",
+                    }
+            },
+            {'$sort':{'updated_at':-1}},
+            {'$group':{
+                '_id':{
+                    'user_id':'$user_id',
+                    },
+                'name':{'$last':'$name'},
+                'location':{'$last':'$location'},
+                'area':{'$last':'$area'},
+                'checkin_date':{'$last':'$checkin_date'},
+                'checkout_date':{'$last':'$checkout_date'},
+                'checkin_status':{'$last':'$checkin_status'},
+                'checkin_position':{'$last':'$checkin_position'},
+                'folio':{'$last':'$folio'},
+                'id_register':{'$last':'$_id'},
+                'nombre_suplente':{'$last':'$nombre_suplente'}
+            }},
+            {'$project':{
+                '_id':0,
+                'user_id':'$_id.user_id',
+                'name':'$name',
+                'location':'$location',
+                'area':'$area',
+                'checkin_date':'$checkin_date',
+                'checkout_date':'$checkout_date',
+                'checkin_status': {'$cond': [ {'$eq':['$checkin_status','entrada']},'in','out']}, 
+                'checkin_position':'$checkin_position',
+                'folio':'$folio',
+                'id_register':'$id_register',
+                'nombre_suplente':'$nombre_suplente'
+            }}
+            ]
+        data = self.format_cr(self.cr.aggregate(query))
+        res = {}
+        for rec in data:
+            status = 'in' if rec.get('checkin_status') in ['in','entrada'] else 'out'
+            user_id = rec.get('user_id') or 0
+            res[int(user_id)] = {
+                'status':status, 
+                'name': rec.get('name'), 
+                'folio': rec.get('folio'),
+                '_id': str(rec.get('id_register')),
+                'user_id': rec.get('user_id'), 
+                'location':rec.get('location'),
+                'area':rec.get('area'),
+                'checkin_date':rec.get('checkin_date'),
+                'checkout_date':rec.get('checkout_date'),
+                'checkin_position':rec.get('checkin_position'),
+                'nombre_suplente':rec.get('nombre_suplente',"")
+                }
+        return res
+
+    def check_in_out_employees(self,  checkin_type, check_datetime, checkin={}, employee_list=[], **kwargs):
+        checkin_status = 'entrada' if checkin_type == 'in' else 'salida'
+        date_id = 'checkin_date' if checkin_type == 'in' else 'checkout_date'
+        checkin[self.f['guard_group']] = checkin.get(self.f['guard_group'],[])
+        if checkin_type == 'out':
+            for guard in checkin[self.f['guard_group']]:
+                user_id = int(self.unlist(guard.get(self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID,{})\
+                    .get(self.mf['id_usuario'],0)))
+                if guard[self.checkin_fields['checkin_status']] != checkin_status:
+                    if not employee_list:
+                        guard[self.checkin_fields['checkin_status']] = checkin_status
+                        guard[self.checkin_fields[date_id]] = check_datetime                    
+                    elif user_id in employee_list:
+                        guard[self.checkin_fields['checkin_status']] = checkin_status
+                        guard[self.checkin_fields[date_id]] = check_datetime
+        elif employee_list:
+            for idx, guard in enumerate(employee_list):
+                print("guard", guard)
+                empl_cat = {}
+                empl_cat[self.f['worker_name_b']] = guard.get('name')
+                if isinstance(guard.get('usuario_id'), list):
+                    empl_cat[self.mf['id_usuario']] = [(guard.get('usuario_id', [])[0]),]
+                else:
+                    empl_cat[self.mf['id_usuario']] = [guard.get('user_id'),]
+                guard_data = {
+                        self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID : empl_cat,
+                        self.checkin_fields['checkin_position']:'guardia_de_apoyo',
+                        self.checkin_fields['checkin_status']:checkin_status,
+                        self.checkin_fields[date_id]:check_datetime,
+                        self.checkin_fields['nombre_suplente']:guard.get("nombre_suplente",''),
+                       }
+                if kwargs.get('employee_type'):
+                    guard_data.update({self.checkin_fields['checkin_position']: kwargs['employee_type'] })
+                elif idx == 0:
+                    guard_data.update({self.checkin_fields['checkin_position']: self.chife_guard})
+                else:
+                    guard_data.update({self.checkin_fields['checkin_position']: self.support_guard})
+                checkin[self.f['guard_group']] += [guard_data,]
+        return checkin
+
     def do_checkin(self, location, area, employee_list=[], fotografia=[], check_in_manual={}, nombre_suplente="", checkin_id=""):
         # Realiza el check-in en una ubicación y área específica.
         resp, last_status = self.is_boot_available(location, area)
@@ -2590,3 +2786,229 @@ class Accesos( Accesos):
                 self.update_pass(access_pass=access_pass_custom, folio=res.get("json")["id"])
             
         return res
+
+    def update_full_pass(self, access_pass,folio=None, qr_code=None, location=None):
+        answers = {}
+        perfil_pase = access_pass.get('perfil_pase', 'Visita General')
+        user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
+        timezone = user_data.get('timezone','America/Monterrey')
+        now_datetime =self.today_str(timezone, date_format='datetime')
+        answers[self.mf['grupo_visitados']] = []
+        # answers[self.UBICACIONES_CAT_OBJ_ID] = {}
+        # answers[self.UBICACIONES_CAT_OBJ_ID][self.f['location']] = location
+        answers[self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID] = {}
+        answers[self.CONFIG_PERFILES_OBJ_ID] = {}
+        answers[self.VISITA_AUTORIZADA_CAT_OBJ_ID] = {}
+        # answers[self.pase_entrada_fields['qr_pase']] = []
+        for key, value in access_pass.items():
+            if key == 'grupo_vehiculos':
+                vehiculos = access_pass.get('grupo_vehiculos',[])
+                if vehiculos:
+                    list_vehiculos = []
+                    for item in vehiculos:
+                        tipo = item.get('tipo_vehiculo', item.get('tipo', ''))
+                        marca = item.get('marca_vehiculo', item.get('marca', ''))
+                        modelo = item.get('modelo_vehiculo', item.get('modelo', ''))
+                        estado = item.get('state', item.get('estado', ''))
+                        placas = item.get('placas_vehiculo', item.get('placas', ''))
+                        color = item.get('color_vehiculo', item.get('color', ''))
+                        list_vehiculos.append({
+                            self.TIPO_DE_VEHICULO_OBJ_ID:{
+                                self.mf['tipo_vehiculo']:tipo,
+                                self.mf['marca_vehiculo']:marca,
+                                self.mf['modelo_vehiculo']:modelo,
+                            },
+                            self.ESTADO_OBJ_ID:{
+                                self.mf['nombre_estado']:estado,
+                            },
+                            self.mf['placas_vehiculo']:placas,
+                            self.mf['color_vehiculo']:color,
+                        })
+                    answers[self.mf['grupo_vehiculos']] = list_vehiculos  
+            elif key == 'grupo_equipos':
+                equipos = access_pass.get('grupo_equipos',[])
+                if equipos:
+                    list_equipos = []
+                    for item in equipos:
+                        tipo = item.get('tipo_equipo', item.get('tipo', '')).lower().replace(' ', '_')
+                        nombre = item.get('nombre_articulo', item.get('nombre', ''))
+                        marca = item.get('marca_articulo', item.get('marca', ''))
+                        modelo = item.get('modelo_articulo', item.get('modelo', ''))
+                        color = item.get('color_articulo', item.get('color', ''))
+                        serie = item.get('numero_serie', item.get('serie', ''))
+                        list_equipos.append({
+                            self.mf['tipo_equipo']:tipo,
+                            self.mf['nombre_articulo']:nombre,
+                            self.mf['marca_articulo']:marca,
+                            self.mf['modelo_articulo']:modelo,
+                            self.mf['color_articulo']:color,
+                            self.mf['numero_serie']:serie,
+                        })
+                    answers[self.mf['grupo_equipos']] = list_equipos
+            elif key == 'grupo_instrucciones_pase':
+                acciones = access_pass.get('grupo_instrucciones_pase',[])
+                if acciones:
+                    acciones_list = []
+                    for c in acciones:
+                        acciones_list.append(
+                            {
+                                self.pase_entrada_fields['tipo_comentario']:c.get('tipo_comentario'),
+                                self.pase_entrada_fields['comentario_pase'] :c.get('comentario_pase')
+                            }
+                        )
+                    answers.update({self.pase_entrada_fields['grupo_instrucciones_pase']:acciones_list})
+            elif key == 'grupo_areas_acceso':
+                acciones = access_pass.get('grupo_areas_acceso',[])
+                if acciones:
+                    acciones_list = []
+                    for c in acciones:
+                        acciones_list.append(
+                            {
+                                self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID : {
+                                    self.pase_entrada_fields['nombre_area']:c.get('nombre_area')
+                                } ,
+                                self.pase_entrada_fields['commentario_area'] :c.get('commentario_area')
+                            }
+                        )
+                    answers.update({self.pase_entrada_fields['grupo_areas_acceso']:acciones_list})
+            elif key == 'autorizado_por':
+                answers[self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID] = {
+                    self.mf['nombre_guardia_apoyo'] : access_pass.get('visita_a', ''),
+                }
+            elif key == 'link':
+                link_info=access_pass.get('link', '')
+                if link_info:
+                    docs=""
+                    for index, d in enumerate(link_info["docs"]): 
+                        if(d == "agregarIdentificacion"):
+                            docs+="iden"
+                        elif(d == "agregarFoto"):
+                            docs+="foto"
+                        if index==0 :
+                            docs+="-"
+                    link_pass= f"{link_info['link']}?id={link_info['qr_code']}&user={link_info['creado_por_id']}&docs={docs}"
+
+                answers.update({f"{self.pase_entrada_fields[key]}":link_pass}) 
+            elif key == 'ubicacion':
+                # answers[self.pase_entrada_fields['ubicacion_cat']] = {self.mf['ubicacion']:access_pass['ubicacion']}
+                ubicaciones = access_pass.get('ubicacion',[])
+                if ubicaciones:
+                    ubicaciones_list = []
+                    for ubi in ubicaciones:
+                        ubicaciones_list.append(
+                            {
+                                self.pase_entrada_fields['ubicacion_cat']:{ self.mf["ubicacion"] : ubi}
+                            }
+                        )
+                    answers.update({self.pase_entrada_fields['ubicaciones']:ubicaciones_list})
+            elif key == 'visita_a': 
+                #Visita A
+                answers[self.mf['grupo_visitados']] = []
+                visita_a = access_pass.get('visita_a')
+                visita_set = {
+                    self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID:{
+                        self.mf['nombre_empleado'] : visita_a,
+                        }
+                    }
+                options_vistia = {
+                      "group_level": 3,
+                      "startkey": [location, visita_a],
+                      "endkey": [location, f"{visita_a}\n",{}],
+                    }
+                cat_visita = self.catalogo_view(self.CONF_AREA_EMPLEADOS_CAT_ID, self.PASE_ENTRADA, options_vistia)
+                if len(cat_visita) > 0:
+                    cat_visita =  {key: [value,] for key, value in cat_visita[0].items() if value}
+                visita_set[self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID].update(cat_visita)
+                answers[self.mf['grupo_visitados']].append(visita_set)
+            elif key == 'perfil_pase':
+                # Perfil de Pase
+                answers[self.CONFIG_PERFILES_OBJ_ID] = {}
+                answers[self.CONFIG_PERFILES_OBJ_ID] = {
+                    self.mf['nombre_perfil'] : perfil_pase,
+                }
+                options = {
+                      "group_level": 2,
+                      "startkey": [perfil_pase],
+                      "endkey": [f"{perfil_pase}\n",{}],
+                    }
+                cat_perfil = self.catalogo_view(self.CONFIG_PERFILES_ID, self.PASE_ENTRADA, options)
+                if len(cat_perfil) > 0:
+                    cat_perfil[0][self.mf['motivo']]= [cat_perfil[0].get(self.mf['motivo'])]
+                    cat_perfil = cat_perfil[0]
+                answers[self.CONFIG_PERFILES_OBJ_ID].update(cat_perfil)
+                if answers[self.CONFIG_PERFILES_OBJ_ID].get(self.mf['nombre_permiso']) and \
+                   type(answers[self.CONFIG_PERFILES_OBJ_ID][self.mf['nombre_permiso']]) == str:
+                    answers[self.CONFIG_PERFILES_OBJ_ID][self.mf['nombre_permiso']] = [answers[self.CONFIG_PERFILES_OBJ_ID][self.mf['nombre_permiso']],]
+            elif key == 'archivo_invitacion':
+                # id_forma = 121736
+                id_forma = self.PASE_ENTRADA
+                # id_campo = '673773741b2adb2d05d99d63'
+                id_campo = self.pase_entrada_fields['archivo_invitacion']
+                tema_cita = access_pass.get("tema_cita")
+                descripcion = access_pass.get("descripcion")
+                fecha_desde_visita = access_pass.get("fecha_desde_visita")
+                fecha_desde_hasta = access_pass.get("fecha_desde_hasta")
+                creado_por_email = access_pass.get("link", {}).get("creado_por_email")
+                ubicacion = access_pass.get("ubicacion",'')
+                nombre = access_pass.get("nombre_pase",'')
+                visita_a = access_pass.get("visita_a",'')
+                email = access_pass.get("email_pase",'')
+
+                start_datetime = datetime.strptime(fecha_desde_visita, "%Y-%m-%d %H:%M:%S")
+
+                if not fecha_desde_hasta:
+                    stop_datetime = start_datetime + timedelta(hours=1)
+                else:
+                    stop_datetime = datetime.strptime(fecha_desde_hasta, "%Y-%m-%d %H:%M:%S")
+
+                meeting = [
+                    {
+                        "id": 1,
+                        "start": start_datetime,
+                        "stop": stop_datetime,
+                        "name": tema_cita,
+                        "description": descripcion,
+                        "location": ubicacion,
+                        "allday": False,
+                        "rrule": None,
+                        "alarm_ids": [{"interval": "minutes", "duration": 10, "name": "Reminder"}],
+                        'organizer_name': visita_a,
+                        'organizer_email': creado_por_email,
+                        "attendee_ids": [{"email": email, "nombre": nombre}, {"email": creado_por_email, "nombre": visita_a}],
+                    }
+                ]
+                respuesta_ics = self.upload_ics(id_forma, id_campo, meetings=meeting)
+                file_name = respuesta_ics.get('file_name', '')
+                file_url = respuesta_ics.get('file_url', '')
+
+                archivo_invitacion= [
+                    {
+                        "file_name": f"{file_name}",
+                        "file_url": f"{file_url}"
+                    }
+                ]
+                answers.update({f"{self.pase_entrada_fields[key]}": archivo_invitacion})
+            else:
+                answers.update({f"{self.pase_entrada_fields[key]}":value})
+
+        if answers or folio:
+            metadata = self.lkf_api.get_metadata(form_id=self.PASE_ENTRADA)
+            metadata.update(self.get_record_by_folio(folio, self.PASE_ENTRADA, select_columns={'_id':1}, limit=1))
+
+            metadata.update({
+                    'properties': {
+                        "device_properties":{
+                            "system": "Addons",
+                            "process":"Actualizacion de Pase de Entrada", 
+                            "accion":'update_full_pass', 
+                            "folio": folio, 
+                            "archive": "pase_acceso.py"
+                        }
+                    },
+                    'answers': answers,
+                    '_id': qr_code
+                })
+            res= self.net.patch_forms_answers(metadata)
+            return res
+        else:
+            self.LKFException('No se mandarón parametros para actualizar')

@@ -95,7 +95,7 @@ class Accesos(Accesos):
                     rondines_expirados.append(rondin)
                 else:
                     rondines_por_ubicacion_nombre[ubicacion].append(nombre)
-                    self.notificacion_rondin_no_arrancado(rondin, ahora, fecha_programacion)
+                    # self.notificacion_rondin_no_arrancado(rondin, ahora, fecha_programacion)
                 
                 if ahora > fecha_programacion + timedelta(hours=24):
                     rondines_expirados.append(rondin)
@@ -111,10 +111,21 @@ class Accesos(Accesos):
                 if ultima_fecha and ahora > ultima_fecha + timedelta(minutes=15):
                     rondines_en_proceso_vencidos.append(rondin)
 
-        rondines_ids = []
         rondines_expirados = rondines_expirados + rondines_en_proceso_vencidos
-        for rondin in rondines_expirados:
-            rondines_ids.append(rondin.get('_id'))
+        rondines_ids = [i.get('_id') for i in rondines_expirados]
+        print("======log: ", rondines_ids)
+
+        db_name = f'clave_{self.user.get("user_id")}'
+        self.cr_db = self.lkf_api.couch.set_db(db_name)
+
+        records = list(self.cr_db.find({
+            "selector": {"_id": {"$in": rondines_ids}}
+        }))
+
+        for record in records:
+            record['inbox'] = False
+            record['status_rondin'] = 'closed'
+        self.cr_db.update(records)
 
         answers[self.f['estatus_del_recorrido']] = 'cerrado'
         answers[self.f['fecha_fin_rondin']] = ahora.strftime('%Y-%m-%d %H:%M:%S')

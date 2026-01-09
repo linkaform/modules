@@ -370,7 +370,12 @@ if __name__ == "__main__":
     else:
         #! Validacion para evitar problema con areas creadas directamente en el catalogo
         search_area = acceso_obj.get_record_ubicacion(ubicacion=data.get('ubicacion'), area=data.get('area'))
-        if search_area and search_area.get('ubicacion') == data.get('ubicacion') and search_area.get('area') == data.get('area'):
+        if not search_area:
+            msg = 'Revisa el catalogo, no se encontró el área seleccionada en la forma Areas de las Ubicaciones.'
+            acceso_obj.LKFException({'msg': msg, 'title': 'Área no encontrada'})
+        searched_ubicacion = acceso_obj.unlist(search_area.get('ubicacion', ''))
+        searched_area = acceso_obj.unlist(search_area.get('area', ''))
+        if search_area and searched_ubicacion == data.get('ubicacion') and searched_area == data.get('area'):
             pass
         else:
             msg = 'No se encontró el área seleccionada en la forma Areas de las Ubicaciones.'
