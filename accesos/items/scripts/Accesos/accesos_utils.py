@@ -62,7 +62,8 @@ class Accesos( Accesos):
             'grupo_comentarios_generales_fecha': '6927a0ea1c378cbd7f60a135',
             'grupo_comentarios_generales_texto': '6927a0ea1c378cbd7f60a136',
             'nombre_suplente': '6927a1176c60848998a157a2',
-            'documento_check': '692a1b4e005c84ce5cd5167f'
+            'documento_check': '692a1b4e005c84ce5cd5167f',
+            
         })
 
         #BORRAR
