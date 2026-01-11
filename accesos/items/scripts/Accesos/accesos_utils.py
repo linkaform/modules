@@ -1028,7 +1028,6 @@ class Accesos( Accesos):
                         guard[self.checkin_fields[date_id]] = check_datetime
         elif employee_list:
             for idx, guard in enumerate(employee_list):
-                print("guard", guard)
                 empl_cat = {}
                 empl_cat[self.f['worker_name_b']] = guard.get('name')
                 if isinstance(guard.get('usuario_id'), list):
