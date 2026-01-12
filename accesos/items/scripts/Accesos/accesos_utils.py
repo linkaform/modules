@@ -808,16 +808,16 @@ class Accesos( Accesos):
             res['notas_cerradas'] = notas_cerradas
 
         elif page == 'PasesHistorial':
+            employee = self.get_employee_data(user_id=self.user.get('user_id'), get_one=True)
+            name = employee.get('worker_name')
+
             query_pases = [
-                {
-                    "$match": {
-                        "deleted_at": {"$exists": False},
-                        "form_id": self.PASE_ENTRADA,
-                        f"answers.{self.pase_entrada_fields['status_pase']}": {
-                            "$in": ["activo", "proceso"]
-                        }
-                    }
-                },
+                {"$match": {
+                    "deleted_at": {"$exists": False},
+                    "form_id": self.PASE_ENTRADA,
+                    f"answers.{self.pase_entrada_fields['status_pase']}": {"$in": ["activo", "proceso"]},
+                    f"answers.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['nombre_guardia_apoyo']}": name
+                }},
                 {
                     "$group": {
                         "_id": f"$answers.{self.pase_entrada_fields['status_pase']}",
@@ -3011,3 +3011,31 @@ class Accesos( Accesos):
             return res
         else:
             self.LKFException('No se mandarón parametros para actualizar')
+
+    def assets_access_pass(self, location):
+        ### Areas
+        catalog_id = self.AREAS_DE_LAS_UBICACIONES_CAT_ID
+        form_id = self.PASE_ENTRADA
+        group_level = 2
+        options = {
+              "group_level": group_level,
+              "startkey": [
+                location
+              ],
+              "endkey": [
+                f"{location}\n",
+                {}
+              ]
+            }
+        areas = self.lkf_api.catalog_view(catalog_id, form_id, options) 
+        ### Aquien Visita
+        catalog_id = self.CONF_AREA_EMPLEADOS_CAT_ID
+        visita_a = self.lkf_api.catalog_view(catalog_id, form_id, {"group_level": group_level}) 
+        # visita_a = [r.get('key')[group_level-1] for r in visita_a]
+        ### Pases de accesos
+        res = {
+            'Areas': areas,
+            'Visita_a': visita_a,
+            'Perfiles': self.get_pefiles_walkin(location),
+        }
+        return res
