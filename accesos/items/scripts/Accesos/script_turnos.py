@@ -96,7 +96,7 @@ if __name__ == "__main__":
 
     area = data.get("area")
     comments = data.get('comments',"")
-    checkin_id = data.get("checkin_id","")
+    checkin_id = data.get("checkin_id", "")
     employee_list = data.get("employee_list",[])
     equipo = data.get('equipo',"")
     forzar = data.get('forzar')

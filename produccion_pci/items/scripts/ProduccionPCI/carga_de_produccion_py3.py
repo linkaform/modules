@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import re, sys, datetime, simplejson
+import re, sys, datetime, simplejson, time
 import random, os, shutil, wget, zipfile, collections
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from copy import deepcopy
@@ -69,22 +69,36 @@ class Produccion_PCI( Produccion_PCI ):
     """
     # Descomprimir archivos zip para obtener los pdfs y Distómetros
     """
-    def get_files_names(self, nueva_ruta, namefile):
+    def get_files_names(self, nueva_ruta, namefile, read_distometros=False):
         files_dir = os.listdir(nueva_ruta)
         error_por_extension = []
         folios_in_zip = {}
-        arr_extenciones = [".pdf",".jpg",".jpeg",".png",".PDF", ".JPG", '.JPEG']
+        
+        extensiones_img = [".jpg",".jpeg",".png", ".JPG", '.JPEG']
+        arr_extenciones = extensiones_img + [".pdf", ".PDF"]
+
         for file_barrido in files_dir:
             ruta_pdf, archivo_pdf = os.path.split(file_barrido)
             namefile_pdf = os.path.splitext(archivo_pdf)[0]
             extension_pdf = os.path.splitext(archivo_pdf)[1]
+            
             if namefile_pdf == namefile:
                 # Esto para que no tome en cuenta el archivo zip que contiene todos los documentos
                 continue
+            
             if extension_pdf not in arr_extenciones:
                 error_por_extension.append( namefile_pdf )
                 continue
+            
+            if read_distometros and extension_pdf not in extensiones_img:
+                error_por_extension.append( archivo_pdf )
+                continue
+
             folios_in_zip.update( { namefile_pdf: nueva_ruta+archivo_pdf } )
+        
+        if error_por_extension:
+            return 'error', error_por_extension
+
         return folios_in_zip, error_por_extension
 
     def descomprimeZips(self,  zip_field, current_folio, rutaSave ):
@@ -113,7 +127,8 @@ class Produccion_PCI( Produccion_PCI ):
                 f.filename = p_utils.rename_file_extract(f.filename).replace(' ', '_')
                 archivo_zip.extract(f, nueva_ruta)
             
-            folios_in_zip, error_por_extension = self.get_files_names( nueva_ruta, namefile )
+            read_distos = rutaSave == "cargaPorduccionDistometros"
+            folios_in_zip, error_por_extension = self.get_files_names( nueva_ruta, namefile, read_distometros=read_distos )
             return folios_in_zip, error_por_extension, nueva_ruta, None
             archivo_zip.close()
             try:
@@ -135,7 +150,7 @@ class Produccion_PCI( Produccion_PCI ):
         rmv_admin = cr_admin.delete_one(query_to_restore)
         print("++ Eliminado admin =", rmv_admin.deleted_count)
 
-    def desasignar_registro(self, id_connection_assigned, user_id_old, form_id, folio, telefono, area, is_updating_record=False):
+    def desasignar_registro(self, id_connection_assigned, user_id_old, form_id, folio, telefono, area, answers_before_assign, is_updating_record=False):
         if is_updating_record:
             return
         print('+++++++++++ desasignando el registro original')
@@ -149,7 +164,12 @@ class Produccion_PCI( Produccion_PCI ):
         print('+++ rmv_contratista',rmv_contratista)
         unset_conn = cr_admin.update_one(query_to_restore,{"$unset":{'connection_id':''}})
         print('+++ unset_conn:',unset_conn)
-        reset_pci = cr_admin.update_one(query_to_restore,{"$set":{'user_id':user_id_old}})
+
+        data_set = { 'user_id': user_id_old }
+        if answers_before_assign:
+            data_set['answers'] = answers_before_assign
+
+        reset_pci = cr_admin.update_one(query_to_restore,{"$set": data_set})
         print('+++ reset_pci',reset_pci)
 
     def check_os_cobre(self, folio, telefono):
@@ -375,6 +395,7 @@ class Produccion_PCI( Produccion_PCI ):
 
             
             if continue_to_update:
+                answers_before_assign = deepcopy( actual_record['answers'] )
                 this_record = self.create_order_format(record, metadata, pos_field_id, folio, is_update=True, found_record=actual_record, tecnologia_orden=tecnologia_orden, hibrida=hibrida, form_id_turno=form_id_turno, current_record=current_record,\
                     info_cope=info_cope, pos_tipo=pos_tipo, can_create_records=can_create_records, connection_id_base=connection_id, pos_telefono=pos_telefono, autorizaciones_carga_folio=autorizaciones_carga_folio,\
                     tipo_tarea_is_queja=tipo_tarea_is_queja, descuentoXdesfase=descuento15dias, datos_tecnico=datos_tecnico, permisos_contratista=permisos_contratista)
@@ -393,6 +414,7 @@ class Produccion_PCI( Produccion_PCI ):
                 this_record['answers']['_id'] = str(actual_record['_id'])
                 this_record['_id'] = str(actual_record['_id'])
                 this_record['folio_record_admin'] = actual_record['folio']
+                this_record['answers_before_assign'] = answers_before_assign
                 this_record.update( continue_to_update )
                 result['update'] = this_record
                 if msg_error_folio_vencido:
@@ -894,7 +916,7 @@ class Produccion_PCI( Produccion_PCI ):
         if not is_cfe: 
             if answer.get('633d9f63eb936fb6ec9bf581'):
                 answer.pop('633d9f63eb936fb6ec9bf581')
-            if proyecto_record and proyecto_record not in ['psr', 'degradado']:
+            if proyecto_record and proyecto_record not in ['psr', 'degradado', 'contingencia', 'queja_especial']:
                 answer.pop('633d9f63eb936fb6ec9bf580')
         
         this_record.update(metadata)
@@ -1014,7 +1036,19 @@ class Produccion_PCI( Produccion_PCI ):
             field_id_docto = def_field_id
         else:
             field_id_docto = self.dict_ids_os_pdf[ form_id_docto ]
-        upload_url = lkf_api.post_upload_file(data={'form_id': form_id_docto, 'field_id': field_id_docto}, up_file=pdf_file_dir, jwt_settings_key='JWT_KEY')
+        
+
+        try:
+            upload_url = lkf_api.post_upload_file(data={'form_id': form_id_docto, 'field_id': field_id_docto}, up_file=pdf_file_dir, jwt_settings_key='JWT_KEY')
+        except Exception as e:
+            print('     ... ... ... ... Error al subir el documento, descansa 10 segundos y reintenta')
+            time.sleep(10)
+            try:
+                upload_url = lkf_api.post_upload_file(data={'form_id': form_id_docto, 'field_id': field_id_docto}, up_file=pdf_file_dir, jwt_settings_key='JWT_KEY')
+            except:
+                return {'error': 'Ocurrió un error al subir el documento. Favor de intentar nuevamente.'}
+        
+
         print('-upload_url=',upload_url)
         try:
             file_url = upload_url['data']['file']
@@ -1048,7 +1082,7 @@ class Produccion_PCI( Produccion_PCI ):
         else:
             doctos_found, doctos_error, ruta_doctos, data_img_distos = self.descomprimeZips( val_field_zip, current_record['folio'], f'cargaPorduccion{docto_process}' )
             if isinstance(doctos_found, str):
-                return 'error', f"Ocurrió un error con el zip de {docto_process}: {doctos_error}", None, None
+                return 'error', f"Ocurrió un error con el zip de {docto_process}: {self.list_to_str(doctos_error) if isinstance(doctos_error, list) else doctos_error}", None, None
         
         print(f'Documentos encontrados en zip de {docto_process}: {list(doctos_found.keys())} No tienen una extensión válida: {doctos_error}')
         return doctos_found, doctos_error, ruta_doctos, data_img_distos
@@ -1100,6 +1134,7 @@ class Produccion_PCI( Produccion_PCI ):
         record_orden.pop('aerea', None)
         record_orden.pop('user_id_old', None)
         record_orden.pop('assigned_to', None)
+        record_orden.pop('answers_before_assign', None)
         return record_orden
 
     def create_record_fibra_cobre_hibrida(self, pos_field_id, records, header, current_record, parent_id, header_dict, pdfs_found, distometros_found, carga_sin_pdf, carga_sin_disto, dif_type='', 
@@ -1374,11 +1409,12 @@ class Produccion_PCI( Produccion_PCI ):
                         telefono_to_update = this_record['update'].get('answers',{}).get('f1054000a010000000000005','')
                         area_to_update = this_record['update'].get('answers',{}).get('f1054000a0100000000000a2','')
                         id_user_old = this_record['update'].get('user_id_old')
+                        answers_prev = this_record['update'].get('answers_before_assign')
 
                         if this_record['update'].get('error'):
                             if this_record['update'].get('assigned_to'):
                                 id_connection_assigned = this_record['update']['assigned_to']
-                                self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update )
+                                self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, answers_prev )
                             if type(this_record['update']['error']) == str:
                                 msg_error_record = this_record['update']['error']
                                 if this_record['update'].get('can_upload_pdf', False):
@@ -1408,14 +1444,14 @@ class Produccion_PCI( Produccion_PCI ):
                         pdf_uploaded = self.upload_pdf_disto( nombre_docto_a_buscar, form_id_to_update, pdfs_found )
                         if pdf_uploaded.get('error', False):
                             record_errors.append(record + [pdf_uploaded.get('error'),])
-                            self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, is_updating_record_exists )
+                            self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, answers_prev, is_updating_record_exists )
                             continue
                         this_record['update']['answers'].update(pdf_uploaded)
                         # Cargando el Distómetro
                         disto_uploaded = self.upload_pdf_disto( nombre_docto_a_buscar, form_id_to_update, distometros_found, def_field_id='5fff390f68b587d973f1958f' )
                         if disto_uploaded.get('error', False):
                             record_errors.append(record + [disto_uploaded.get('error'),])
-                            self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, is_updating_record_exists )
+                            self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, answers_prev, is_updating_record_exists )
                             continue
                         this_record['update']['answers'].update(disto_uploaded)
 
@@ -1435,7 +1471,7 @@ class Produccion_PCI( Produccion_PCI ):
                                 resp_copy = self.make_copy_os( this_record['update']['answers'], form_id_turno, current_record['folio'], folio_to_update, connection_id, data_os_copy=record_os_copy )
                                 if resp_copy.get('error'):
                                     record_errors.append(record + [resp_copy['error'],])
-                                    self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, is_updating_record_exists )
+                                    self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, answers_prev, is_updating_record_exists )
                                     continue
                                 records_ok.append(record+[msg_exitoso,])
                                 create_json.update(p_utils.update_create_json(create_json, this_record))
@@ -1446,7 +1482,7 @@ class Produccion_PCI( Produccion_PCI ):
                                 if this_record['update'].get('assigned_to'):
                                     id_connection_assigned = this_record['update']['assigned_to']
                                     id_user_old = this_record['update']['user_id_old']
-                                    self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, is_updating_record_exists )
+                                    self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, answers_prev, is_updating_record_exists )
                                 msg_error_completo = p_utils.arregla_msg_error_sistema(response)
                                 record_errors.append(record + [msg_error_completo,])
                     elif this_record.get('cambio_tecnologia'):
