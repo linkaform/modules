@@ -193,91 +193,105 @@ class Accesos( Accesos):
 
     def get_shift_data(self, booth_location=None, booth_area=None, search_default=True):
         """
-        Obtiene informacion del turno del usuario logeado
-        """
+        Se obtienen los datos del turno.
 
-        load_shift_json = { }
+        Args:
+            booth_location (str, optional): Ubicacion de la caseta. Defaults to None.
+            booth_area (str, optional): Area de la caseta. Defaults to None.
+            search_default (bool, optional): Buscar caseta por defecto. Defaults to True.
+
+        Returns:
+            dict: Datos del turno.
+        """
+        load_shift_json = {}
         username = self.user.get('username')
         user_id = self.user.get('user_id')
-        config_accesos_user="" #get_config_accesos(user_id)
-        user_status = self.get_employee_checkin_status(user_id, as_shift=True,  available=False)
-        this_user = user_status.get(user_id)
+        email = self.user.get('email')
+
+        #! Se obtiene la informacion del usuario, si esta dentro o fuera de turno.
+        this_user = self.get_employee_checkin_status_by_id(user_id)
         if not this_user:
-            this_user =  self.get_employee_data(email=self.user.get('email'), get_one=True)
+            this_user = self.get_employee_data(email=email, get_one=True)
             this_user['name'] = this_user.get('worker_name','')
+        
+        #! Se obtienen los puestos de guardia configurados.
         user_booths = []
         guards_positions = self.config_get_guards_positions()
         if not guards_positions:
-            self.LKFException({"status_code":400, "msg":'No Existen puestos de guardias configurados.'})
+            return self.LKFException({'title': 'Advertencia', 'msg': 'No existen puestos de guardias configurados.'})
 
+        #! Si el usuario esta fuera de turno, se verifica si se encuentra como guardia de apoyo para obtener la informacion del usuario.
+        check_aux_guard = self.check_in_aux_guard()
         if this_user and this_user.get('status') == 'out':
-            check_aux_guard = self.check_in_aux_guard()
+            for aux_id, aux_data in check_aux_guard.items():
+                if aux_id == user_id:
+                    this_user = aux_data
+                    this_user['status'] = 'in' if aux_data.get('status') == 'in' else 'out'
+                    this_user['location'] = aux_data.get('location')
+                    this_user['area'] = aux_data.get('area')
+                    this_user['checkin_date'] = aux_data.get('checkin_date')
+                    this_user['checkout_date'] = aux_data.get('checkout_date')
+                    this_user['checkin_position'] = aux_data.get('checkin_position')
 
-            for user_id_aux, each_user in check_aux_guard.items():
-                if user_id_aux == user_id:
-                    this_user = each_user
-                    this_user['status'] = 'in' if each_user.get('status') == 'in' else 'out'
-                    this_user['location'] = each_user.get('location')
-                    this_user['area'] = each_user.get('area')
-                    this_user['checkin_date'] = each_user.get('checkin_date')
-                    this_user['checkout_date'] = each_user.get('checkout_date')
-                    this_user['checkin_position'] = each_user.get('checkin_position')
-
+        #! Si el usuario esta dentro de turno, se obtienen los guardias de apoyo registrados con el.
         if this_user and this_user.get('status') == 'in':
-            location_employees = {self.chife_guard:{},self.support_guard:[]}
+            location_employees = {self.chife_guard: {}, self.support_guard:[]}
             booth_area = this_user['area']
             booth_location = this_user['location']
-            for u_id, each_user in user_status.items():
-                if u_id == user_id:
-                    location_employees[self.support_guard].append(each_user)
-                    guard = each_user
-                else:
-                    if each_user.get('status') == 'in':
-                        location_employees[self.support_guard].append(each_user)
+            for aux_id, aux_data in check_aux_guard.items():
+                if aux_id == user_id:
+                    guard = aux_data
+                if aux_data.get('status') == 'in':
+                    location_employees[self.support_guard].append(aux_data)
         else:
-            # location_employees = {}
+            #! Si el usuario esta fuera de turno, se obtienen los guardias disponibles.
             default_booth , user_booths = self.get_user_booth(search_default=False)
-            # location = default_booth.get('location')
             if not booth_location:
-                booth_area = default_booth.get('area')
-            if not booth_location:
-                booth_location = default_booth.get('location')
+                booth_location = default_booth.get('location', '')
+                booth_area = default_booth.get('area', '')
             if not default_booth:
-                return self.LKFException({"status_code":400, "msg":'No booth found or configure for user'})
+                return self.LKFException({'title': 'Advertencia', 'msg': 'No se encontro la caseta por defecto, revisa la configuracion.'})
+
             location_employees = self.get_booths_guards(booth_location, booth_area, solo_disponibles=True)
+            print('location_employees', location_employees)
             guard = self.get_user_guards(location_employees=location_employees)
             if not guard:
-                return self.LKFException({
-                    "status_code":400, 
-                    "msg":f"Usuario {self.user['user_id']} no confgurado como guardia, favor de revisar su configuracion."}) 
+                #! Si el usuario no esta configurado como guardia se agrega su informacion general.
+                common_user = {
+                    "user_id": self.unlist(this_user.get('usuario_id')),
+                    "name": this_user.get('name'),
+                    "location": booth_location,
+                    "area": booth_area,
+                }
+                load_shift_json["common_user"] = common_user
+                return load_shift_json
+
+        #! Se agregan las fotos de los guardias y se filtran los guardias de apoyo.
         location_employees = self.set_employee_pic(location_employees)
         support_guards = location_employees.get('guardia_de_apoyo', [])
-        user_id = self.user.get('user_id')
         for idx, guard in enumerate(support_guards):
             if guard.get('user_id') == user_id:
                 support_guards.pop(idx)
                 break
         location_employees['guardia_de_apoyo'] = support_guards
+        
+        #! Se obtienen los detalles de la caseta..
         booth_address = self.get_area_address(booth_location, booth_area)
-        notes = self.get_list_notes(booth_location, booth_area, status='abierto')
         load_shift_json["location"] = {
             "name":  booth_location,
             "area": booth_area,
             "city": booth_address.get('city'),
             "state": booth_address.get('state'),
             "address": booth_address.get('address'),
-            }
-        # guards_online = self.get_guards_booths(booth_location, booth_area)
+        }
+        
+        #! Se obtienen los detalles del turno.
         load_shift_json["booth_stats"] = self.get_page_stats( booth_area, booth_location, "Turnos")
         load_shift_json["booth_status"] = self.get_booth_status(booth_area, booth_location)
-        # load_shift_json["support_guards"] = location_employees[self.support_guard]
         load_shift_json["support_guards"] = location_employees.get(self.support_guard, "")
         load_shift_json["guard"] = self.update_guard_status(guard, this_user)
-        load_shift_json["notes"] = notes
+        load_shift_json["notes"] = self.get_list_notes(booth_location, booth_area, status='abierto')
         load_shift_json["user_booths"] = user_booths
-        load_shift_json['config_accesos_user']=config_accesos_user
-        # load_shift_json["guards_online"] = guards_online
-        print(simplejson.dumps(load_shift_json, indent=4))
         return load_shift_json
 
     def get_page_stats(self, booth_area, location, page=''):
@@ -3140,3 +3154,105 @@ class Accesos( Accesos):
         elif response.get('status_code') == 401:
             return self.LKFException({"title": "Advertencia", "msg":"El guardia NO tiene permisos sobre el formulario de cierre de casetas"})
         return response
+
+    def get_user_guards(self, location_employees=[]):
+        location_guards = []
+        for clave in ["guardia_de_apoyo", "guardia_lider"]:
+            if location_employees.get(clave):
+                for usuario in location_employees[clave]:
+                    if usuario.get("user_id") == self.user.get('user_id'):
+                        location_guards = location_employees[clave]
+                
+        location_employees = location_guards
+
+        for employee in location_employees:
+            if employee.get('user_id',0) == self.user.get('user_id'):
+                    return employee
+        return None
+
+    def get_employee_checkin_status_by_id(self, user_id):
+        """
+        Obtiene el estado de checkin de un empleado
+        Args:
+            user_id (int): ID del usuario
+
+        Returns:
+            dict: Estado de checkin del usuario
+        """
+        query = [
+            {'$match': {
+                "deleted_at":{"$exists":False},
+                "form_id": self.CHECKIN_CASETAS,
+                # "created_by_id": user_id
+            }},
+            {'$sort': {'created_at': -1}},
+            {'$limit': 1},
+            {'$unwind': f"$answers.{self.f['guard_group']}"},
+            {'$match': {
+                f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": {"$exists":True},
+                f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": user_id
+            }},
+            {'$project': {
+                '_id': 1,
+                'folio': "$folio",
+                'created_at': "$created_at",
+                'name': f"$answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.f['worker_name_jefes']}",
+                'user_id': {"$first":f"$answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}"},
+                'location': f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['ubicacion']}",
+                'area': f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_area']}",
+                'checkin_date': f"$answers.{self.f['guard_group']}.{self.f['checkin_date']}",
+                'checkout_date': f"$answers.{self.f['guard_group']}.{self.f['checkout_date']}",
+                'checkin_status': f"$answers.{self.f['guard_group']}.{self.f['checkin_status']}",
+                'checkin_position': f"$answers.{self.f['guard_group']}.{self.f['checkin_position']}",
+                'nombre_suplente': f"$answers.{self.f['guard_group']}.{self.checkin_fields['nombre_suplente']}",
+            }},
+            {'$sort': {'updated_at': -1}},
+            {'$group':{
+                '_id': {
+                    'user_id':'$user_id',
+                },
+                'name': {'$last':'$name'},
+                'location': {'$last':'$location'},
+                'area': {'$last':'$area'},
+                'checkin_date': {'$last':'$checkin_date'},
+                'checkout_date': {'$last':'$checkout_date'},
+                'checkin_status': {'$last':'$checkin_status'},
+                'checkin_position': {'$last':'$checkin_position'},
+                'folio': {'$last':'$folio'},
+                'id_register': {'$last':'$_id'},
+                'nombre_suplente': {'$last':'$nombre_suplente'}
+            }},
+            {'$project':{
+                '_id': 0,
+                'user_id': '$_id.user_id',
+                'name': '$name',
+                'location': '$location',
+                'area': '$area',
+                'checkin_date': '$checkin_date',
+                'checkout_date': '$checkout_date',
+                'checkin_status': {'$cond': [ {'$eq':['$checkin_status','entrada']},'in','out']}, 
+                'checkin_position': '$checkin_position',
+                'folio': '$folio',
+                'id_register': '$id_register',
+                'nombre_suplente': '$nombre_suplente'
+            }}
+        ]
+        data = self.format_cr(self.cr.aggregate(query))
+        format_data = {}
+        if data:
+            record = self.unlist(data)
+            status = 'in' if record.get('checkin_status') in ['in', 'entrada'] else 'out'
+            format_data = {
+                'status':status, 
+                'name': record.get('name'), 
+                'folio': record.get('folio'),
+                '_id': str(record.get('id_register')),
+                'user_id': record.get('user_id'), 
+                'location':record.get('location'),
+                'area':record.get('area'),
+                'checkin_date':record.get('checkin_date'),
+                'checkout_date':record.get('checkout_date'),
+                'checkin_position':record.get('checkin_position'),
+                'nombre_suplente':record.get('nombre_suplente',"")
+            }
+        return format_data
