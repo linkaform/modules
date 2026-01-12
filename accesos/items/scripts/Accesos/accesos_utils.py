@@ -131,11 +131,8 @@ class Accesos( Accesos):
 
     def is_boot_available(self, location, area):
         self.last_check_in = self.get_last_checkin(location, area)
-        last_status = self.last_check_in.get('checkin_type')
-        if last_status in ['entrada','apertura', 'disponible', 'abierta']:
-            return False, last_status
-        else:
-            return True, last_status
+        last_status = True if self.last_check_in.get('checkin_type') == 'abierta' else False
+        return last_status
 
     def get_guard_last_checkin(self, user_ids):
         '''
@@ -1051,64 +1048,90 @@ class Accesos( Accesos):
         return checkin
 
     def do_checkin(self, location, area, employee_list=[], fotografia=[], check_in_manual={}, nombre_suplente="", checkin_id=""):
-        # Realiza el check-in en una ubicación y área específica.
-        resp, last_status = self.is_boot_available(location, area)
-        if not resp and last_status == 'abierta':
-            user = self.lkf_api.get_user_by_id(self.user.get('user_id'))
-            res = self.update_guards_checkin([{'user_id': self.user.get('user_id'), 'name': user.get('name', '')}], checkin_id, location, area)
+        """
+        Se encarga de hacer el check in de un guardia.
+
+        Args:
+            location (str): Ubicacion de la caseta.
+            area (str): Area de la caseta.
+            employee_list (list, optional): Lista de guardias a checkear. Defaults to [].
+            fotografia (list, optional): Lista de fotos para el check in. Defaults to [].
+            check_in_manual (dict, optional): Datos del check in manual. Defaults to {}.
+            nombre_suplente (str, optional): Nombre del suplente. Defaults to "".
+            checkin_id (str, optional): ID del check in. Defaults to "".
+
+        Returns:
+            dict: Resultado del check in.
+        """
+        
+        #! Se verifica si la caseta esta abierta.
+        is_caseta_open = self.is_boot_available(location, area)
+        user_id = self.user.get('user_id')
+        user = self.lkf_api.get_user_by_id(user_id)
+        user_name = user.get('name', '')
+        
+        #! Si la caseta esta abierta se actualizan los guardias solamente.
+        if is_caseta_open:
+            res = self.update_guards_checkin(user, [{'user_id': user_id, 'name': user_name}], checkin_id, location, area)
             format_res = self.unlist(res)
             if format_res.get('status_code') in [200, 201, 202]:
                 return format_res
             else:
                 self.LKFException({'title': 'Error al hacer check-in', 'msg': format_res.get('json')})
-        if employee_list:
-            user_id = [self.user.get('user_id'),] + [x['user_id'] for x in employee_list]
-        else:
-            user_id = self.user.get('user_id')
+
+        #! Se hace una lista de los ids de los guardias, el usuario actual y la lista de guardias por parametro.
+        user_ids = [user_id] + [x['user_id'] for x in employee_list]
+        #! Se obtienen los guardias por ubicacion y area.
         boot_config = self.get_users_by_location_area(
             location_name=location, 
             area_name=area, 
-            user_id=user_id)
+            user_id=user_ids)
+
+        #! Si el guardia no tiene configurada la caseta actual arroja Exception.
         if not boot_config:
-            msg = f"User can not login to this area : {area} at location: {location} ."
-            msg += f"Please check your configuration."
-            self.LKFException(msg)
+            msg = f"El usuario no puede hacer check-in en la caseta: {area} - {location}."
+            msg += f"Por favor verifica la configuracion."
+            return self.LKFException({'title': 'Advertencia', 'msg': msg})
         else:
+            #! Se hace una lista de los ids de los guardias permitidos.
             allowed_users = [x['user_id'] for x in boot_config]
-            if type(user_id) == int:
-                user_id=[user_id]
-            common_values = list(set(user_id) & set(allowed_users))
-            not_allowed = [value for value in user_id if value not in common_values]
+            common_values = list(set(user_ids) & set(allowed_users))
+            not_allowed = [user_id for user_id in user_ids if user_id not in common_values]
+
+        #! Si hay algun guardia que no tiene permiso para hacer check-in arroja Exception.
         if not_allowed:
             msg = f"Usuarios con ids {not_allowed}. "
-            msg += f"No estan permitidos de hacer checking en esta area : {area} de la ubicacion {location} ."
-            self.LKFException({'msg':msg,"title":'Error de Configuracion'})
+            msg += f"No tienen permitido hacer check-in en esta caseta: {area} - {location}."
+            return self.LKFException({'title': 'Advertencia', 'msg': msg})
 
-        validate_status = self.get_employee_checkin_status(user_id)
-        not_allowed = [uid for uid, u_data in validate_status.items() if u_data['status'] =='in']
+        #! Si alguno de los guardias ya tiene un check-in abierto arroja Exception.
+        validate_status = self.get_employee_checkin_status(user_ids)
+        not_allowed = [user_id for user_id, user_data in validate_status.items() if user_data.get('status') == 'in']
         if not_allowed:
-            msg = f"El usuario(s) con ids {not_allowed}. Se encuentran actualmente logeado en otra caseta."
-            msg += f"Es necesario primero salirse de cualquier caseta antes de querer entrar a una casta"
-            self.LKFException({'msg':msg,"title":'Accion Requerida!!!'})
+            msg = f"El usuario(s) con id(s) {not_allowed}. Se encuentran actualmente registrados en otra caseta."
+            msg += f" Es necesario hacer check-out de cualquier caseta antes de querer entrar a una nueva."
+            return self.LKFException({'title': 'Advertencia', 'msg': msg})
 
-        employee = self.get_employee_data(user_id=self.user.get('user_id'), get_one=True)
+        #! Se obtiene el empleado actual.
+        employee = self.get_employee_data(user_id=user_id, get_one=True)
         if not employee:
-            msg = f"Ningun empleado encontrado con email: {self.user.get('user_id')}"
-            self.LKFException(msg)
-        user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
-        employee['timezone'] = user_data.get('timezone','America/Monterrey')
+            msg = f"No se encontro ningun empleado con id: {user_id}"
+            return self.LKFException({'title': 'Advertencia', 'msg': msg})
+        user_data = self.lkf_api.get_user_by_id(user_id)
+        employee['timezone'] = user_data.get('timezone', 'America/Monterrey')
         employee['name'] = employee['worker_name']
         employee['position'] = self.chife_guard
         employee['nombre_suplente'] = nombre_suplente
-
         timezone = employee.get('cat_timezone', employee.get('timezone', 'America/Monterrey'))
         data = self.lkf_api.get_metadata(self.CHECKIN_CASETAS)
-        now_datetime =self.today_str(timezone, date_format='datetime')
-        checkin = self.checkin_data(employee, location, area, 'in', now_datetime)
-        employee_list.insert(0,employee)
+        now_datetime = self.today_str(timezone, date_format='datetime')
 
+        #! Se obtiene la informacion formateada para hacer el check in.
+        checkin = self.checkin_data(employee, location, area, 'in', now_datetime)
+        employee_list.insert(0, employee)
         checkin = self.check_in_out_employees('in', now_datetime, checkin=checkin, employee_list=employee_list)
 
+        #! Se actualiza el check in con la informacion faltante.
         data.update({
                 'properties': {
                     "device_properties":{
@@ -1130,8 +1153,8 @@ class Accesos( Accesos):
                 self.checkin_fields['fotografia_inicio_turno']: fotografia
             })
 
+        #! Se crea el check in.
         resp_create = self.lkf_api.post_forms_answers(data)
-        #TODO agregar nombre del Guardia Quien hizo el checkin
         if resp_create.get('status_code') == 201:
             resp_create['json'].update({'boot_status':{'guard_on_duty':user_data['name']}})
             asistencia_answers = {
@@ -1163,6 +1186,7 @@ class Accesos( Accesos):
                 },
             })
             metadata.update({'answers':asistencia_answers})
+            #! Se registra la asistencia.
             response = self.lkf_api.post_forms_answers(metadata)
             if response.get('status_code') in [200, 201, 202]:
                 resp_create.update({'registro_de_asistencia': 'Correcto'})
@@ -3039,3 +3063,30 @@ class Accesos( Accesos):
             'Perfiles': self.get_pefiles_walkin(location),
         }
         return res
+
+    def update_guards_checkin(self, user_data, data_guard, record_id, location, area):
+        response = []
+        timezone = user_data.get('timezone', 'America/Monterrey')
+        now_datetime =self.today_str(timezone, date_format='datetime')
+        checkin = self.check_in_out_employees(
+            'in',
+            now_datetime,
+            checkin={},
+            employee_list=data_guard,
+            **{'employee_type': self.support_guard}
+        )
+        
+        for idx, employee in enumerate(checkin.get(self.mf['guard_group'],[])):
+            user_id = employee[self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID].get(self.mf['id_usuario'])
+            
+            validate_status = self.get_employee_checkin_status(user_id)
+            not_allowed = [user_id for user_id, user_data in validate_status.items() if user_data.get('status') == 'in']
+            if not_allowed:
+                msg = f"El usuario con id {not_allowed}. Se encuentra actualmente registrado en una caseta."
+                msg += f"Es necesario primero cerrar turno de cualquier caseta antes de querer entrar a una nueva."
+                return self.LKFException({'msg': msg, "title": 'Advertencia'})
+
+            answers = {}
+            answers[self.mf['guard_group']] = {'-1': employee}
+            response.append(self.lkf_api.patch_multi_record( answers = answers, form_id=self.CHECKIN_CASETAS, record_id=[record_id]))
+        return response
