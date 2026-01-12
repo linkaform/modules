@@ -1195,64 +1195,71 @@ class Accesos( Accesos):
         return resp_create
 
     def do_checkout(self, checkin_id=None, location=None, area=None, guards=[], forzar=False, comments=False, fotografia=[]):
-        # self.get_answer(keys)
-        employee =  self.get_employee_data(email=self.user.get('email'), get_one=True)
+        """
+        Se encarga de hacer el check out de un empleado.
+
+        Args:
+            checkin_id (str): Id del check in.
+            location (str): Ubicacion.
+            area (str): Area.
+            guards (list): Lista de guardias.
+            forzar (bool): Forzar el check out.
+            comments (bool): Comentarios.
+            fotografia (list): Fotografia.
+
+        Returns:
+            dict: Response.
+        """
+        user_email = self.user.get('email')
+        employee =  self.get_employee_data(email=user_email, get_one=True)
         timezone = employee.get('cat_timezone', employee.get('timezone', 'America/Monterrey'))
         now_datetime =self.today_str(timezone, date_format='datetime')
         last_chekin = {}
+
         if not checkin_id:
-            if guards:
-                last_chekin = self.get_guard_last_checkin(guards)
-            elif location or area:
-                last_chekin = self.get_last_checkin(location, area)
-            checkin_id = last_chekin.get('_id')
-        if not checkin_id:
-            self.LKFException({
-                "msg":"No encontramos un checking valido del cual podemos hacer checkout...", 
-                "title":"Una Disculpa!!!"})
+            return self.LKFException({"msg":"No encontramos un checking valido del cual podemos hacer checkout...", "title": "Advertencia"})
+        
+        is_caseta_open = self.is_boot_available(location, area)
+        if not is_caseta_open:
+            msg = f"No se puede hacer check-out sin antes haber hecho check-in. Caseta: {location} - {area}."
+            return self.LKFException({"msg":msg, "title": "Advertencia"})
+        
         record = self.get_record_by_id(checkin_id)
         checkin_answers = record['answers']
         folio = record['folio']
         area = checkin_answers.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID,{}).get(self.f['area'])
         location = checkin_answers.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID,{}).get(self.f['location'])
         rec_guards = checkin_answers.get(self.checkin_fields['guard_group'])
-        
-        guards_in = [idx for idx, guard in enumerate(rec_guards) if not guard.get(self.checkin_fields['checkout_date'])]
+        guards_in = sum(
+            1
+            for guard in rec_guards
+            if not guard.get(self.checkin_fields['checkout_date'])
+        )
         guards_ids = []
         for guard in rec_guards:
             fecha_cierre_turno = guard.get(self.checkin_fields['checkout_date'])
-            guard_id = self.unlist(guard.get(self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID, {}).get(self.employee_fields['user_id_jefes']))
+            guard_id = self.unlist(guard.get(self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID, {}).get(self.mf['id_usuario']))
             actual_guard_id = self.unlist(employee.get('usuario_id'))
             guards_ids.append(guard_id)
-            if not fecha_cierre_turno and len(guards_in) > 1 and guard_id == actual_guard_id:
-                resp = self.do_checkout_aux_guard(guards=[actual_guard_id], location=location, area=area)
+            if not fecha_cierre_turno and guards_in > 1 and guard_id == actual_guard_id:
+                resp = self.do_checkout_aux_guard(checkin_id=checkin_id, guards=[actual_guard_id], location=location, area=area, fotografia=fotografia)
                 return resp
 
         if not guards:
             checkin_answers[self.checkin_fields['commentario_checkin_caseta']] = \
                 checkin_answers.get(self.checkin_fields['commentario_checkin_caseta'],'')
-            # Si no especifica guardas va a cerrar toda la casta
             checkin_answers[self.checkin_fields['checkin_type']] = 'cerrada'
             checkin_answers[self.checkin_fields['boot_checkout_date']] = now_datetime
             checkin_answers[self.checkin_fields['forzar_cierre']] = 'regular'
+
             if comments:
                 checkin_answers[self.checkin_fields['commentario_checkin_caseta']] += comments + ' '
             if forzar:
                 checkin_answers[self.checkin_fields['commentario_checkin_caseta']] += f"Cerrado por: {employee.get('worker_name')}"
                 checkin_answers[self.checkin_fields['forzar_cierre']] = 'forzar'
-        resp, last_status = self.is_boot_available(location, area)
-        if resp:
-            msg = f"Can not make a CHEKOUT on a boot that hasn't checkin. Location: {location} at the area {area}."
-            msg += f"You need to checkin first."
-            self.LKFException(msg)
-        if not checkin_id:
-            msg = f"No checking found for this  Location: {location} at the area {area}."
-            msg += f"You need to checkin first."
-            self.LKFException(msg)
-
+        
         data = self.lkf_api.get_metadata(self.CHECKIN_CASETAS)
         checkin_answers = self.check_in_out_employees('out', now_datetime, checkin=checkin_answers, employee_list=guards)
-        # response = self.lkf_api.patch_multi_record( answers=checkin, form_id=self.CHECKIN_CASETAS, folios=[folio,])
         data['answers'] = checkin_answers
 
         if fotografia:
@@ -1274,9 +1281,7 @@ class Accesos( Accesos):
                 else:
                     response.update({'registro_de_asistencia': 'Error'})
         elif response.get('status_code') == 401:
-            return self.LKFException({
-                "title":"Error de Configuracion",
-                "msg":"El guardia NO tiene permisos sobre el formulario de cierre de casetas"})
+            return self.LKFException({"title": "Advertencia", "msg":"El guardia NO tiene permisos sobre el formulario de cierre de casetas"})
         return response
 
     def get_cantidades_de_pases(self, x_empresa=False):
@@ -3089,4 +3094,49 @@ class Accesos( Accesos):
             answers = {}
             answers[self.mf['guard_group']] = {'-1': employee}
             response.append(self.lkf_api.patch_multi_record( answers = answers, form_id=self.CHECKIN_CASETAS, record_id=[record_id]))
+        return response
+
+    def do_checkout_aux_guard(self, checkin_id=None, location=None, area=None, guards=[], forzar=False, comments=False, fotografia=[]):
+        """
+        Realiza el checkout de los guardias auxiliares especificados en guards.
+        """
+        employee = self.get_employee_data(email=self.user.get('email'), get_one=True)
+        timezone = employee.get('cat_timezone', employee.get('timezone', 'America/Monterrey'))
+        now_datetime = self.today_str(timezone, date_format='datetime')
+        last_chekin = {}
+
+        # Solo buscamos el último checkin de los guards especificados
+        if not checkin_id and guards:
+            last_chekin = self.get_guard_last_checkin(guards)
+            checkin_id = last_chekin.get('_id')
+
+        if not checkin_id:
+            self.LKFException({
+                "msg": "No encontramos un checking valido del cual podemos hacer checkout...", 
+                "title": "Una Disculpa!!!"
+            })
+
+        record = self.get_record_by_id(checkin_id)
+        checkin_answers = record['answers']
+        folio = record['folio']
+
+        # Realiza el checkout solo de los guards especificados
+        data = self.lkf_api.get_metadata(self.CHECKIN_CASETAS)
+        checkin_answers = self.check_in_out_employees('out', now_datetime, checkin=checkin_answers, employee_list=guards)
+        data['answers'] = checkin_answers
+        response = self.lkf_api.patch_record(data=data, record_id=checkin_id)
+        if response.get('status_code') in [200, 201, 202]:
+            if employee:
+                record_id = self.search_guard_asistance(location, area, self.unlist(employee.get('usuario_id')))
+                asistencia_answers = {
+                    self.f['foto_cierre_turno']: fotografia,
+                    self.checkin_fields['checkin_type']: 'cerrar_turno',
+                }
+                res = self.lkf_api.patch_multi_record(answers=asistencia_answers, form_id=self.REGISTRO_ASISTENCIA, record_id=record_id)
+                if res.get('status_code') in [200, 201, 202]:
+                    response.update({'registro_de_asistencia': 'Correcto'})
+                else:
+                    response.update({'registro_de_asistencia': 'Error'})
+        elif response.get('status_code') == 401:
+            return self.LKFException({"title": "Advertencia", "msg":"El guardia NO tiene permisos sobre el formulario de cierre de casetas"})
         return response
