@@ -220,9 +220,9 @@ class Accesos( Accesos):
         if not guards_positions:
             return self.LKFException({'title': 'Advertencia', 'msg': 'No existen puestos de guardias configurados.'})
 
-        #! Si el usuario esta fuera de turno, se verifica si se encuentra como guardia de apoyo para obtener la informacion del usuario.
         check_aux_guard = self.check_in_aux_guard()
         if this_user and this_user.get('status') == 'out':
+            #! Si el usuario esta fuera de turno, se verifica si se encuentra como guardia de apoyo para obtener la informacion del usuario.
             for aux_id, aux_data in check_aux_guard.items():
                 if aux_id == user_id:
                     this_user = aux_data
@@ -241,7 +241,10 @@ class Accesos( Accesos):
             for aux_id, aux_data in check_aux_guard.items():
                 if aux_id == user_id:
                     guard = aux_data
-                if aux_data.get('status') == 'in':
+                if aux_data.get('status') == 'in' \
+                    and aux_data.get('location') == booth_location \
+                    and aux_data.get('area') == booth_area \
+                    and aux_data.get('user_id') != user_id:
                     location_employees[self.support_guard].append(aux_data)
         else:
             #! Si el usuario esta fuera de turno, se obtienen los guardias disponibles.
@@ -253,7 +256,6 @@ class Accesos( Accesos):
                 return self.LKFException({'title': 'Advertencia', 'msg': 'No se encontro la caseta por defecto, revisa la configuracion.'})
 
             location_employees = self.get_booths_guards(booth_location, booth_area, solo_disponibles=True)
-            print('location_employees', location_employees)
             guard = self.get_user_guards(location_employees=location_employees)
             if not guard:
                 #! Si el usuario no esta configurado como guardia se agrega su informacion general.
@@ -887,6 +889,7 @@ class Accesos( Accesos):
                 'checkin_status': f"$answers.{self.f['guard_group']}.{self.f['checkin_status']}",
                 'checkin_position': f"$answers.{self.f['guard_group']}.{self.f['checkin_position']}",
             }},
+            {'$match': {'user_id': {'$ne': None}}},
             {'$sort': {'updated_at': -1}},
             {'$group': {
                 '_id': {'user_id': '$user_id'},
