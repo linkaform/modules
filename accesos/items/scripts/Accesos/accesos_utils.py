@@ -220,9 +220,9 @@ class Accesos( Accesos):
         if not guards_positions:
             return self.LKFException({'title': 'Advertencia', 'msg': 'No existen puestos de guardias configurados.'})
 
-        #! Si el usuario esta fuera de turno, se verifica si se encuentra como guardia de apoyo para obtener la informacion del usuario.
         check_aux_guard = self.check_in_aux_guard()
         if this_user and this_user.get('status') == 'out':
+            #! Si el usuario esta fuera de turno, se verifica si se encuentra como guardia de apoyo para obtener la informacion del usuario.
             for aux_id, aux_data in check_aux_guard.items():
                 if aux_id == user_id:
                     this_user = aux_data
@@ -241,7 +241,10 @@ class Accesos( Accesos):
             for aux_id, aux_data in check_aux_guard.items():
                 if aux_id == user_id:
                     guard = aux_data
-                if aux_data.get('status') == 'in':
+                if aux_data.get('status') == 'in' \
+                    and aux_data.get('location') == booth_location \
+                    and aux_data.get('area') == booth_area \
+                    and aux_data.get('user_id') != user_id:
                     location_employees[self.support_guard].append(aux_data)
         else:
             #! Si el usuario esta fuera de turno, se obtienen los guardias disponibles.
@@ -253,7 +256,6 @@ class Accesos( Accesos):
                 return self.LKFException({'title': 'Advertencia', 'msg': 'No se encontro la caseta por defecto, revisa la configuracion.'})
 
             location_employees = self.get_booths_guards(booth_location, booth_area, solo_disponibles=True)
-            print('location_employees', location_employees)
             guard = self.get_user_guards(location_employees=location_employees)
             if not guard:
                 #! Si el usuario no esta configurado como guardia se agrega su informacion general.
@@ -887,6 +889,7 @@ class Accesos( Accesos):
                 'checkin_status': f"$answers.{self.f['guard_group']}.{self.f['checkin_status']}",
                 'checkin_position': f"$answers.{self.f['guard_group']}.{self.f['checkin_position']}",
             }},
+            {'$match': {'user_id': {'$ne': None}}},
             {'$sort': {'updated_at': -1}},
             {'$group': {
                 '_id': {'user_id': '$user_id'},
@@ -2600,8 +2603,8 @@ class Accesos( Accesos):
 
         answers[self.UBICACIONES_CAT_OBJ_ID] = {}
         # answers[self.UBICACIONES_CAT_OBJ_ID][self.f['location']] = location
-        if access_pass.get('selected_visita_a'):
-            nombre_visita_a = access_pass.get('selected_visita_a')
+        # if access_pass.get('selected_visita_a'):
+        #     nombre_visita_a = access_pass.get('selected_visita_a')
         if access_pass.get('custom') == True :
             answers[self.pase_entrada_fields['tipo_visita_pase']] = access_pass.get('tipo_visita_pase',"")
             answers[self.pase_entrada_fields['fecha_desde_visita']] = access_pass.get('fecha_desde_visita',"")
@@ -2835,6 +2838,8 @@ class Accesos( Accesos):
         answers = {}
         perfil_pase = access_pass.get('perfil_pase', 'Visita General')
         user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
+        this_user = self.get_employee_data(user_id=self.user.get('user_id'), get_one=True)
+        this_user_name = this_user.get('worker_name', '')
         timezone = user_data.get('timezone','America/Monterrey')
         now_datetime =self.today_str(timezone, date_format='datetime')
         answers[self.mf['grupo_visitados']] = []
@@ -2917,7 +2922,7 @@ class Accesos( Accesos):
                     answers.update({self.pase_entrada_fields['grupo_areas_acceso']:acciones_list})
             elif key == 'autorizado_por':
                 answers[self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID] = {
-                    self.mf['nombre_guardia_apoyo'] : access_pass.get('visita_a', ''),
+                    self.mf['nombre_guardia_apoyo'] : this_user_name,
                 }
             elif key == 'link':
                 link_info=access_pass.get('link', '')
