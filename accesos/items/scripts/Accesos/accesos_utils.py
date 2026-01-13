@@ -2600,6 +2600,8 @@ class Accesos( Accesos):
 
         answers[self.UBICACIONES_CAT_OBJ_ID] = {}
         # answers[self.UBICACIONES_CAT_OBJ_ID][self.f['location']] = location
+        if access_pass.get('selected_visita_a'):
+            nombre_visita_a = access_pass.get('selected_visita_a')
         if access_pass.get('custom') == True :
             answers[self.pase_entrada_fields['tipo_visita_pase']] = access_pass.get('tipo_visita_pase',"")
             answers[self.pase_entrada_fields['fecha_desde_visita']] = access_pass.get('fecha_desde_visita',"")
