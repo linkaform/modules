@@ -2600,8 +2600,8 @@ class Accesos( Accesos):
 
         answers[self.UBICACIONES_CAT_OBJ_ID] = {}
         # answers[self.UBICACIONES_CAT_OBJ_ID][self.f['location']] = location
-        if access_pass.get('selected_visita_a'):
-            nombre_visita_a = access_pass.get('selected_visita_a')
+        # if access_pass.get('selected_visita_a'):
+        #     nombre_visita_a = access_pass.get('selected_visita_a')
         if access_pass.get('custom') == True :
             answers[self.pase_entrada_fields['tipo_visita_pase']] = access_pass.get('tipo_visita_pase',"")
             answers[self.pase_entrada_fields['fecha_desde_visita']] = access_pass.get('fecha_desde_visita',"")
@@ -2835,6 +2835,8 @@ class Accesos( Accesos):
         answers = {}
         perfil_pase = access_pass.get('perfil_pase', 'Visita General')
         user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
+        this_user = self.get_employee_data(user_id=self.user.get('user_id'), get_one=True)
+        this_user_name = this_user.get('worker_name', '')
         timezone = user_data.get('timezone','America/Monterrey')
         now_datetime =self.today_str(timezone, date_format='datetime')
         answers[self.mf['grupo_visitados']] = []
@@ -2917,7 +2919,7 @@ class Accesos( Accesos):
                     answers.update({self.pase_entrada_fields['grupo_areas_acceso']:acciones_list})
             elif key == 'autorizado_por':
                 answers[self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID] = {
-                    self.mf['nombre_guardia_apoyo'] : access_pass.get('visita_a', ''),
+                    self.mf['nombre_guardia_apoyo'] : this_user_name,
                 }
             elif key == 'link':
                 link_info=access_pass.get('link', '')
