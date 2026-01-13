@@ -3186,13 +3186,13 @@ class Accesos( Accesos):
                 "form_id": self.CHECKIN_CASETAS,
                 # "created_by_id": user_id
             }},
-            {'$sort': {'created_at': -1}},
-            {'$limit': 1},
             {'$unwind': f"$answers.{self.f['guard_group']}"},
             {'$match': {
                 f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": {"$exists":True},
-                f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": user_id
+                f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": {"$in": [user_id]}
             }},
+            {'$sort': {'created_at': -1}},
+            {'$limit': 1},
             {'$project': {
                 '_id': 1,
                 'folio': "$folio",
