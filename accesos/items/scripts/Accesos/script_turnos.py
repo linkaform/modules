@@ -126,6 +126,7 @@ if __name__ == "__main__":
     offset = data.get("offset", 0)
     fotografia=data.get("fotografia",[])
     nombre_suplente=data.get("nombre_suplente","")
+    guard_id=data.get("guard_id","")
     #-FUNCTIONS
     print('option', option)
     if option == 'load_shift':
@@ -152,7 +153,7 @@ if __name__ == "__main__":
     elif option == 'checkout':
         # used
         response = acceso_obj.do_checkout(checkin_id=checkin_id, \
-            location=location, area= area, guards=guards, forzar=forzar, comments=comments, fotografia=fotografia)
+            location=location, area= area, guards=guards, forzar=forzar, comments=comments, fotografia=fotografia, guard_id=guard_id)
     elif option == 'get_user_menu':
         response = acceso_obj.get_config_accesos()
     elif option == 'search_access_pass':
