@@ -220,9 +220,9 @@ class Accesos( Accesos):
         if not guards_positions:
             return self.LKFException({'title': 'Advertencia', 'msg': 'No existen puestos de guardias configurados.'})
 
-        #! Si el usuario esta fuera de turno, se verifica si se encuentra como guardia de apoyo para obtener la informacion del usuario.
         check_aux_guard = self.check_in_aux_guard()
         if this_user and this_user.get('status') == 'out':
+            #! Si el usuario esta fuera de turno, se verifica si se encuentra como guardia de apoyo para obtener la informacion del usuario.
             for aux_id, aux_data in check_aux_guard.items():
                 if aux_id == user_id:
                     this_user = aux_data
@@ -241,7 +241,10 @@ class Accesos( Accesos):
             for aux_id, aux_data in check_aux_guard.items():
                 if aux_id == user_id:
                     guard = aux_data
-                if aux_data.get('status') == 'in':
+                if aux_data.get('status') == 'in' \
+                    and aux_data.get('location') == booth_location \
+                    and aux_data.get('area') == booth_area \
+                    and aux_data.get('user_id') != user_id:
                     location_employees[self.support_guard].append(aux_data)
         else:
             #! Si el usuario esta fuera de turno, se obtienen los guardias disponibles.
@@ -253,7 +256,6 @@ class Accesos( Accesos):
                 return self.LKFException({'title': 'Advertencia', 'msg': 'No se encontro la caseta por defecto, revisa la configuracion.'})
 
             location_employees = self.get_booths_guards(booth_location, booth_area, solo_disponibles=True)
-            print('location_employees', location_employees)
             guard = self.get_user_guards(location_employees=location_employees)
             if not guard:
                 #! Si el usuario no esta configurado como guardia se agrega su informacion general.
@@ -263,7 +265,7 @@ class Accesos( Accesos):
                     "location": booth_location,
                     "area": booth_area,
                 }
-                load_shift_json["common_user"] = common_user
+                load_shift_json["guard"] = common_user
                 return load_shift_json
 
         #! Se agregan las fotos de los guardias y se filtran los guardias de apoyo.
@@ -887,6 +889,7 @@ class Accesos( Accesos):
                 'checkin_status': f"$answers.{self.f['guard_group']}.{self.f['checkin_status']}",
                 'checkin_position': f"$answers.{self.f['guard_group']}.{self.f['checkin_position']}",
             }},
+            {'$match': {'user_id': {'$ne': None}}},
             {'$sort': {'updated_at': -1}},
             {'$group': {
                 '_id': {'user_id': '$user_id'},
@@ -1086,7 +1089,7 @@ class Accesos( Accesos):
         
         #! Si la caseta esta abierta se actualizan los guardias solamente.
         if is_caseta_open:
-            res = self.update_guards_checkin(user, [{'user_id': user_id, 'name': user_name}], checkin_id, location, area)
+            res = self.update_guards_checkin([{'user_id': user_id, 'name': user_name}], checkin_id, location, area, user)
             format_res = self.unlist(res)
             if format_res.get('status_code') in [200, 201, 202]:
                 return format_res
@@ -1208,7 +1211,7 @@ class Accesos( Accesos):
                 resp_create.update({'registro_de_asistencia': 'Error'})
         return resp_create
 
-    def do_checkout(self, checkin_id=None, location=None, area=None, guards=[], forzar=False, comments=False, fotografia=[]):
+    def do_checkout(self, checkin_id=None, location=None, area=None, guards=[], forzar=False, comments=False, fotografia=[], guard_id=None):
         """
         Se encarga de hacer el check out de un empleado.
 
@@ -1224,8 +1227,15 @@ class Accesos( Accesos):
         Returns:
             dict: Response.
         """
-        user_email = self.user.get('email')
-        employee =  self.get_employee_data(email=user_email, get_one=True)
+
+        if guard_id:
+            user_id = guard_id
+        elif guards:
+            user_id = guards[0]
+        else:
+            user_id = self.user.get('user_id')
+        
+        employee =  self.get_employee_data(user_id=user_id, get_one=True)
         timezone = employee.get('cat_timezone', employee.get('timezone', 'America/Monterrey'))
         now_datetime =self.today_str(timezone, date_format='datetime')
         last_chekin = {}
@@ -1249,14 +1259,12 @@ class Accesos( Accesos):
             for guard in rec_guards
             if not guard.get(self.checkin_fields['checkout_date'])
         )
-        guards_ids = []
         for guard in rec_guards:
             fecha_cierre_turno = guard.get(self.checkin_fields['checkout_date'])
             guard_id = self.unlist(guard.get(self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID, {}).get(self.mf['id_usuario']))
             actual_guard_id = self.unlist(employee.get('usuario_id'))
-            guards_ids.append(guard_id)
             if not fecha_cierre_turno and guards_in > 1 and guard_id == actual_guard_id:
-                resp = self.do_checkout_aux_guard(checkin_id=checkin_id, guards=[actual_guard_id], location=location, area=area, fotografia=fotografia)
+                resp = self.do_checkout_aux_guard(user_id=guard_id, checkin_id=checkin_id, guards=[actual_guard_id], location=location, area=area, fotografia=fotografia)
                 return resp
 
         if not guards:
@@ -3088,7 +3096,7 @@ class Accesos( Accesos):
         }
         return res
 
-    def update_guards_checkin(self, user_data, data_guard, record_id, location, area):
+    def update_guards_checkin(self, data_guard, record_id, location, area, user_data={}):
         response = []
         timezone = user_data.get('timezone', 'America/Monterrey')
         now_datetime =self.today_str(timezone, date_format='datetime')
@@ -3115,11 +3123,11 @@ class Accesos( Accesos):
             response.append(self.lkf_api.patch_multi_record( answers = answers, form_id=self.CHECKIN_CASETAS, record_id=[record_id]))
         return response
 
-    def do_checkout_aux_guard(self, checkin_id=None, location=None, area=None, guards=[], forzar=False, comments=False, fotografia=[]):
+    def do_checkout_aux_guard(self, user_id=None, checkin_id=None, location=None, area=None, guards=[], forzar=False, comments=False, fotografia=[]):
         """
         Realiza el checkout de los guardias auxiliares especificados en guards.
         """
-        employee = self.get_employee_data(email=self.user.get('email'), get_one=True)
+        employee = self.get_employee_data(user_id=user_id, get_one=True)
         timezone = employee.get('cat_timezone', employee.get('timezone', 'America/Monterrey'))
         now_datetime = self.today_str(timezone, date_format='datetime')
         last_chekin = {}

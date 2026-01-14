@@ -12,7 +12,7 @@ Script utilizado en Testing con Pytest para manejar la logica de las distintas s
 import sys, simplejson
 from linkaform_api import settings
 from account_settings import *
-# from accesos_utils import Accesos
+from accesos_utils import Accesos
 
 # uncomment below line for testing purposes - dont remove!!!
 # from lkf_modules.accesos.items.scripts.Accesos.accesos_utils import Accesos
@@ -22,13 +22,13 @@ class Accesos(Accesos):
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
 
-def get_turn_data(acceso_obj, data):
+def get_shift_data(acceso_obj, data):
     return acceso_obj.get_shift_data(
         booth_location=data.get("location"),
         booth_area=data.get("area")
     )
 
-def start_turn(acceso_obj, data):
+def do_checkin(acceso_obj, data):
     return acceso_obj.do_checkin(
         location=data.get("location"),
         area=data.get("area"), 
@@ -38,7 +38,7 @@ def start_turn(acceso_obj, data):
         checkin_id=data.get("checkin_id")
     )
 
-def end_turn(acceso_obj, data):
+def do_checkout(acceso_obj, data):
     return acceso_obj.do_checkout(
         checkin_id=data.get("checkin_id"),
         location=data.get("location"), 
@@ -50,9 +50,9 @@ def end_turn(acceso_obj, data):
     )
 
 DISPATCHER = {
-    "get_turn_data": get_turn_data,
-    "start_turn": start_turn,
-    "end_turn": end_turn,
+    "load_shift": get_shift_data,
+    "do_checkin": do_checkin,
+    "do_checkout": do_checkout,
 }
 
 if __name__ == "__main__":

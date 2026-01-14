@@ -113,6 +113,7 @@ class Accesos(Accesos):
 
         rondines_expirados = rondines_expirados + rondines_en_proceso_vencidos
         rondines_ids = [i.get('_id') for i in rondines_expirados]
+        rondines_ids = list(set(rondines_ids))
         print("======log: ", rondines_ids)
 
         db_name = f'clave_{self.user.get("user_id")}'
