@@ -42,18 +42,19 @@ class Accesos(Accesos):
         data = self.format_cr(self.cr.aggregate(query))
         if data:
             answers = {}
-            record_ids = []
+            record_ids = set()
             for d in data:
-                record_ids.append(d.get('_id'))
+                record_ids.add(d.get('_id'))
+            format_record_ids = list(record_ids)
 
             answers[self.pase_entrada_fields['status_pase']] = 'vencido'
-            print('==============log: Pases vencidos: ', record_ids)
+            print('==============log: Pases vencidos: ', format_record_ids)
             if answers:
-                res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.PASE_ENTRADA, record_id=record_ids)
+                res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.PASE_ENTRADA, record_id=format_record_ids)
                 if res.get('status_code') == 201 or res.get('status_code') == 202:
                     return res
                 else:
-                    return res
+                    return self.LKFException({"title": "Error al actualizar pases", "msg": res})
         else:
             return "No hay pases vencidos"
 
@@ -62,5 +63,4 @@ if __name__ == "__main__":
     script_obj.console_run()
     
     response = script_obj.deactivate_passes()
-    print(response)
-
+    script_obj.HttpResponse({"data": response})
