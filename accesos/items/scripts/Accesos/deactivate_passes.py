@@ -16,7 +16,7 @@ class Accesos(Accesos):
             {"$match": {
                 "deleted_at": {"$exists": False},
                 "form_id": self.PASE_ENTRADA,
-                f"answers.{self.pase_entrada_fields['status_pase']}": "activo",
+                f"answers.{self.pase_entrada_fields['status_pase']}": {"$in": ["activo", "proceso"]},
             }},
             {"$addFields": {
                 "date_from": f"$answers.{self.pase_entrada_fields['fecha_desde_visita']}",
