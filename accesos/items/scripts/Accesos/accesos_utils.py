@@ -191,6 +191,38 @@ class Accesos( Accesos):
             booth_status['fotografia_cierre_turno'] = last_chekin.get('fotografia_cierre_turno',[]) 
         return booth_status
 
+    def get_attendance_images(self, user_id):
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.REGISTRO_ASISTENCIA,
+                "created_by_id": user_id,
+            }},
+            {"$sort": {"created_at": -1}},
+            {"$limit": 1},
+            {"$project": {
+                "_id": 0,
+                "start_turn_image": {"$ifNull": [f"$answers.{self.f['image_checkin']}", ""]},
+                "end_turn_image": {"$ifNull": [f"$answers.{self.f['foto_cierre_turno']}", ""]},
+            }}
+        ]
+        data = self.format_cr(self.cr.aggregate(query))
+        format_data = {}
+        if data:
+            format_data = self.unlist(data)
+        return format_data
+
+    def update_guard_status(self, guard, this_user):
+        attendance_images = self.get_attendance_images(this_user.get('user_id', self.unlist(this_user.get('usuario_id', 0000))))
+        status_turn = 'Turno Cerrado'
+        if this_user.get('status') == 'in':
+            status_turn = 'Turno Abierto'
+
+        this_user['start_turn_image'] = attendance_images.get('start_turn_image', [])
+        this_user['end_turn_image'] = attendance_images.get('end_turn_image', [])
+        this_user['status_turn'] = status_turn
+        return this_user
+
     def get_shift_data(self, booth_location=None, booth_area=None, search_default=True):
         """
         Se obtienen los datos del turno.
@@ -294,6 +326,7 @@ class Accesos( Accesos):
         load_shift_json["guard"] = self.update_guard_status(guard, this_user)
         load_shift_json["notes"] = self.get_list_notes(booth_location, booth_area, status='abierto')
         load_shift_json["user_booths"] = user_booths
+        # print(simplejson.dumps(load_shift_json, indent=4))
         return load_shift_json
 
     def get_page_stats(self, booth_area, location, page=''):
@@ -1089,7 +1122,7 @@ class Accesos( Accesos):
         
         #! Si la caseta esta abierta se actualizan los guardias solamente.
         if is_caseta_open:
-            res = self.update_guards_checkin([{'user_id': user_id, 'name': user_name}], checkin_id, location, area, user, nombre_suplente)
+            res = self.update_guards_checkin([{'user_id': user_id, 'name': user_name}], checkin_id, location, area, user, nombre_suplente, fotografia)
             format_res = self.unlist(res)
             if format_res.get('status_code') in [200, 201, 202]:
                 return format_res
@@ -3096,7 +3129,7 @@ class Accesos( Accesos):
         }
         return res
 
-    def update_guards_checkin(self, data_guard, record_id, location, area, user_data={}, nombre_suplente=""):
+    def update_guards_checkin(self, data_guard, record_id, location, area, user_data={}, nombre_suplente="", foto_checkin=[]):
         response = []
         timezone = user_data.get('timezone', 'America/Monterrey')
         now_datetime =self.today_str(timezone, date_format='datetime')
@@ -3129,7 +3162,7 @@ class Accesos( Accesos):
                     },
                     self.f['tipo_guardia']: 'guardia_regular',
                     self.checkin_fields['checkin_type']: 'iniciar_turno',
-                    # self.f['image_checkin']: fotografia
+                    self.f['image_checkin']: foto_checkin
                 }
 
                 if nombre_suplente:
