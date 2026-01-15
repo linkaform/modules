@@ -209,7 +209,7 @@ class Accesos( Accesos):
         email = self.user.get('email')
 
         #! Se obtiene la informacion del usuario, si esta dentro o fuera de turno.
-        this_user = self.get_employee_checkin_status_by_id(user_id)
+        this_user = self.get_employee_checkin_status_by_id(user_id, booth_location, booth_area)
         if not this_user:
             this_user = self.get_employee_data(email=email, get_one=True)
             this_user['name'] = this_user.get('worker_name','')
@@ -3220,7 +3220,7 @@ class Accesos( Accesos):
                     return employee
         return None
 
-    def get_employee_checkin_status_by_id(self, user_id):
+    def get_employee_checkin_status_by_id(self, user_id, location, area):
         """
         Obtiene el estado de checkin de un empleado
         Args:
@@ -3233,12 +3233,14 @@ class Accesos( Accesos):
             {'$match': {
                 "deleted_at":{"$exists":False},
                 "form_id": self.CHECKIN_CASETAS,
-                # "created_by_id": user_id
+                f"answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['ubicacion']}": location,
+                f"answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_area']}": area,
             }},
             {'$unwind': f"$answers.{self.f['guard_group']}"},
             {'$match': {
                 f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": {"$exists":True},
-                f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": {"$in": [user_id]}
+                f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": {"$in": [user_id]},
+                f"answers.{self.f['guard_group']}.{self.f['checkout_date']}": {"$in": [None, ""]}
             }},
             {'$sort': {'created_at': -1}},
             {'$limit': 1},
