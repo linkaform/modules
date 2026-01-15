@@ -16,19 +16,25 @@ class Accesos(Accesos):
             {"$match": {
                 "deleted_at": {"$exists": False},
                 "form_id": self.PASE_ENTRADA,
-                f"answers.{self.pase_entrada_fields['status_pase']}": "activo",
+                f"answers.{self.pase_entrada_fields['status_pase']}": {"$in": ["activo", "proceso"]},
+            }},
+            {"$addFields": {
+                "date_from": f"$answers.{self.pase_entrada_fields['fecha_desde_visita']}",
+                "date_to": f"$answers.{self.pase_entrada_fields['fecha_hasta_pase']}",
             }},
             {"$addFields": {
                 "effective_end_date": {
                     "$cond": {
                         "if": {
                             "$or": [
-                                {"$eq": [f"$answers.{self.pase_entrada_fields['fecha_hasta_pase']}", None]},
-                                {"$eq": [f"$answers.{self.pase_entrada_fields['fecha_hasta_pase']}", ""]}
+                                {"$eq": ["$date_to", None]},
+                                {"$eq": ["$date_to", ""]},
+                                {"$eq": ["$date_to", []]},
+                                {"$ne": [{"$type": "$date_to"}, "string"]}
                             ]
                         },
-                        "then": f"$answers.{self.pase_entrada_fields['fecha_desde_visita']}",
-                        "else": f"$answers.{self.pase_entrada_fields['fecha_hasta_pase']}"
+                        "then": "$date_from",
+                        "else": "$date_to"
                     }
                 }
             }},
@@ -36,24 +42,25 @@ class Accesos(Accesos):
                 "effective_end_date": {"$lt": now_formatted}
             }},
             {"$project": {
-                "$id": 1,
+                "_id": 1,
             }}
         ]
         data = self.format_cr(self.cr.aggregate(query))
         if data:
             answers = {}
-            record_ids = []
+            record_ids = set()
             for d in data:
-                record_ids.append(d.get('_id'))
+                record_ids.add(d.get('_id'))
+            format_record_ids = list(record_ids)
 
             answers[self.pase_entrada_fields['status_pase']] = 'vencido'
-            print('==============log: Pases vencidos: ', record_ids)
+            print('==============log: Pases vencidos: ', format_record_ids)
             if answers:
-                res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.PASE_ENTRADA, record_id=record_ids)
+                res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.PASE_ENTRADA, record_id=format_record_ids)
                 if res.get('status_code') == 201 or res.get('status_code') == 202:
                     return res
                 else:
-                    return res
+                    return self.LKFException({"title": "Error al actualizar pases", "msg": res})
         else:
             return "No hay pases vencidos"
 
@@ -62,5 +69,4 @@ if __name__ == "__main__":
     script_obj.console_run()
     
     response = script_obj.deactivate_passes()
-    print(response)
-
+    script_obj.HttpResponse({"data": response})
