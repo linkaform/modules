@@ -19,16 +19,22 @@ class Accesos(Accesos):
                 f"answers.{self.pase_entrada_fields['status_pase']}": "activo",
             }},
             {"$addFields": {
+                "date_from": f"$answers.{self.pase_entrada_fields['fecha_desde_visita']}",
+                "date_to": f"$answers.{self.pase_entrada_fields['fecha_hasta_pase']}",
+            }},
+            {"$addFields": {
                 "effective_end_date": {
                     "$cond": {
                         "if": {
                             "$or": [
-                                {"$eq": [f"$answers.{self.pase_entrada_fields['fecha_hasta_pase']}", None]},
-                                {"$eq": [f"$answers.{self.pase_entrada_fields['fecha_hasta_pase']}", ""]}
+                                {"$eq": ["$date_to", None]},
+                                {"$eq": ["$date_to", ""]},
+                                {"$eq": ["$date_to", []]},
+                                {"$ne": [{"$type": "$date_to"}, "string"]}
                             ]
                         },
-                        "then": f"$answers.{self.pase_entrada_fields['fecha_desde_visita']}",
-                        "else": f"$answers.{self.pase_entrada_fields['fecha_hasta_pase']}"
+                        "then": "$date_from",
+                        "else": "$date_to"
                     }
                 }
             }},
@@ -36,7 +42,7 @@ class Accesos(Accesos):
                 "effective_end_date": {"$lt": now_formatted}
             }},
             {"$project": {
-                "$id": 1,
+                "_id": 1,
             }}
         ]
         data = self.format_cr(self.cr.aggregate(query))
