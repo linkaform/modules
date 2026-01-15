@@ -3262,13 +3262,23 @@ class Accesos( Accesos):
         Returns:
             dict: Estado de checkin del usuario
         """
-        query = [
-            {'$match': {
-                "deleted_at":{"$exists":False},
-                "form_id": self.CHECKIN_CASETAS,
+
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id": self.CHECKIN_CASETAS,
+        }
+
+        if location:
+            match_query.update({
                 f"answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['ubicacion']}": location,
+            })
+        if area:
+            match_query.update({
                 f"answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_area']}": area,
-            }},
+            })
+        
+        query = [
+            {'$match': match_query},
             {'$unwind': f"$answers.{self.f['guard_group']}"},
             {'$match': {
                 f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": {"$exists":True},
