@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time, date
 from linkaform_api import base
 from lkf_addons.addons.accesos.app import Accesos
 import sys, simplejson, json, pytz
