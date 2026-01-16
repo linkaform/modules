@@ -11,32 +11,32 @@ class ReviewReasignados( Produccion_PCI ):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
 
         # ENDA
-        # self.account_id_base = 1868
-        # self.form_id_carga = 132847
-        # self.map_forms_admin_account = {
-        #     11044: self.ORDEN_SERVICIO_FIBRA,
-        #     10540: self.ORDEN_SERVICIO_COBRE,
-        #     21953: self.ORDEN_SERVICIO_FIBRA_OCCIDENTE,
-        #     25929: self.ORDEN_SERVICIO_COBRE_OCCIDENTE,
-        #     21954: self.ORDEN_SERVICIO_FIBRA_NORTE,
-        #     25928: self.ORDEN_SERVICIO_COBRE_NORTE,
-        #     16343: self.ORDEN_SERVICIO_FIBRA_SURESTE,
-        #     25927: self.ORDEN_SERVICIO_COBRE_SURESTE
-        # }
+        self.account_id_base = 1868
+        self.form_id_carga = 132847
+        self.map_forms_admin_account = {
+            11044: self.ORDEN_SERVICIO_FIBRA,
+            10540: self.ORDEN_SERVICIO_COBRE,
+            21953: self.ORDEN_SERVICIO_FIBRA_OCCIDENTE,
+            25929: self.ORDEN_SERVICIO_COBRE_OCCIDENTE,
+            21954: self.ORDEN_SERVICIO_FIBRA_NORTE,
+            25928: self.ORDEN_SERVICIO_COBRE_NORTE,
+            16343: self.ORDEN_SERVICIO_FIBRA_SURESTE,
+            25927: self.ORDEN_SERVICIO_COBRE_SURESTE
+        }
 
         # IASA
-        self.account_id_base = 1940
-        self.form_id_carga = 84721
-        self.map_forms_admin_account = {
-            11044: None,
-            10540: None,
-            21953: 84725,
-            25929: 84727,
-            21954: 84724,
-            25928: 84726,
-            16343: None,
-            25927: None,
-        }
+        # self.account_id_base = 1940
+        # self.form_id_carga = 84721
+        # self.map_forms_admin_account = {
+        #     11044: None,
+        #     10540: None,
+        #     21953: 84725,
+        #     25929: 84727,
+        #     21954: 84724,
+        #     25928: 84726,
+        #     16343: None,
+        #     25927: None,
+        # }
 
     def review_record(self, record_os, field_cliente='58e6d4cff851c244a78f35ca'):
         # print(f"... {record_os['folio']} {record_os['form_id']}")
@@ -116,15 +116,20 @@ class ReviewReasignados( Produccion_PCI ):
                     # Se crea registro Copia en la cuenta de IASA
                     metadata_os = lkf_obj.lkf_api.get_metadata(form_id)
                     metadata_os['answers'] = rec_admin['answers']
+
+                    metadata_os['answers']['5fff390f68b587d973f1958f'] = rec_admin['answers']['5fff390f68b587d973f1958f'][0]
+
                     metadata_os['properties'] = rec_admin['properties']
                     metadata_os['folio'] = rec_admin['folio']
-                    resp_create = lkf_obj.lkf_api.post_forms_answers(metadata_os, jwt_settings_key='JWT_TEMP_IASA')
+                    # resp_create = lkf_obj.lkf_api.post_forms_answers(metadata_os, jwt_settings_key='JWT_TEMP_IASA')
+                    resp_create = lkf_obj.lkf_api.post_forms_answers(metadata_os)
                     print('-- -- -- -- -- -- resp_create =',resp_create)
                     if resp_create.get('status_code') == 201:
                         new_record = '/api/infosync/form_answer/' + str(resp_create.get('json', {}).get('id')) +'/'
                         print('new_record =',new_record)
                         print('*** asignando a:',conexion_carga)
-                        response_assign = lkf_obj.lkf_api.assigne_connection_records( conexion_carga, [new_record,], jwt_settings_key='JWT_TEMP_IASA')
+                        # response_assign = lkf_obj.lkf_api.assigne_connection_records( conexion_carga, [new_record,], jwt_settings_key='JWT_TEMP_IASA')
+                        response_assign = lkf_obj.lkf_api.assigne_connection_records( conexion_carga, [new_record,])
                         print('----->response assigne for update:',response_assign)
                     # stop
 
@@ -167,10 +172,11 @@ class ReviewReasignados( Produccion_PCI ):
             'form_id': self.form_id_carga,
             'deleted_at': {'$exists': False},
             'answers.f1074100a010000000000003': {'$exists': True},
-            'folio': {
-                '$in': ["254655-1940", "254826-1940", "255432-1940", "255482-1940", "255598-1940",]
-            },
+            # 'folio': {
+            #     '$in': ["254655-1940", "254826-1940", "255432-1940", "255482-1940", "255598-1940",]
+            # },
             # 'created_at': {'$gte': datetime.strptime("2025-09-09", "%Y-%m-%d"), '$lte': datetime.strptime("2025-09-16", "%Y-%m-%d")}
+            'created_at': {'$gte': datetime.strptime("2026-01-01", "%Y-%m-%d"), '$lte': datetime.strptime("2026-01-08", "%Y-%m-%d")}
         }, select_columns)
 
         for rec_carga_prod in records_carga_prod:
@@ -178,8 +184,8 @@ class ReviewReasignados( Produccion_PCI ):
             if not file_carga:
                 continue
             print(f"=== === === PROCESANDO CARGA {rec_carga_prod['folio']} ({rec_carga_prod['_id']}) creado el {rec_carga_prod['created_at']} por {rec_carga_prod['connection_email']}")
-            if not rec_carga_prod['answers'].get('f1074100a010000000000003'):
-                continue
+            # if not rec_carga_prod['answers'].get('f1074100a010000000000003'):
+            #     continue
             self.process_archivo_carga(file_carga, rec_carga_prod['folio'], rec_carga_prod['connection_id'])
             # stop
 
@@ -198,8 +204,8 @@ if __name__ == '__main__':
     colection_account = CollectionConnection(lkf_obj.account_id_base, settings)
     cr_account = colection_account.get_collections_connection()
 
-    config['JWT_TEMP_IASA'] = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImRpYW5hcmV5ZXNpdGVzYUBvcGVyYWNpb25wY2kuY29tLm14IiwidXNlcl9pZCI6MTk0MCwicGFyZW50X2lkIjoxOTQwLCJpc19tb2JpbGUiOmZhbHNlLCJleHAiOjE3NTg1ODU5MDcsImRldmljZV9vcyI6IndlYiIsImVtYWlsIjoiZGlhbmFyZXllc2l0ZXNhQG9wZXJhY2lvbnBjaS5jb20ubXgifQ.S-kbknmPAFIwe1mWdM5H14h1LdRJVTl_mKsTps3Yjmp_1ts2LTPSl7MxxVKeU5SZDuZuKyqvTdTPQ7rTQ65J7asLq896R4kOzTvKt5SLpiYghDt8T6Z8U5bz8Z-N48Y3PbRMsTKzyT9zvebexIe-40rrXi4gd_-kjADdcwap_jX583ivt7adVGMBEkwyCRYcUaxxvBa7MOa2x8MhHMfgc0J35desIBKtc_zo3Axc0GzwEuwsd2cGEkrkijSbhyZXEabzZrEH55MZODLEx5Y4sbF3EoSY591Xqwtkr65yOUVCtErG6Hz45l1_sIAmZT24xIZ0w7mjVSGpP4ocmw5y1sdp954jQinRssD0RkR6ztV8HixVxB5Mhs533m3DDaXhUKPgl_60EUJqVmVBr7zXg0rYof3aIPr29mllIRQI-I4f0KppR1dtxkosmDaV1B8Hc-i094dP252PBDxosv6PC5erL85JwGMGEE8IEDK3QkE6eRWwe3uw6HgTK532Yy5BrsQPhKVbzfSXCOOEQM0kaSCOT_sSxG8aPNWk_gACi0QdLR8EVBmRdQMuv-9dvNVQAkegYm8eeO1ACV5noe6_GVtkZxcwma4CwQJCm9hbJpJE-n1hgOzyP0YCDROImw0EJIZIlfYyf0Dxx9IRieoFpfGLIwSaG2c_Q9YWLDqaSEo'
-    settings.config.update(config)
+    # config['JWT_TEMP_IASA'] = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImRpYW5hcmV5ZXNpdGVzYUBvcGVyYWNpb25wY2kuY29tLm14IiwidXNlcl9pZCI6MTk0MCwicGFyZW50X2lkIjoxOTQwLCJpc19tb2JpbGUiOmZhbHNlLCJleHAiOjE3NTg1ODU5MDcsImRldmljZV9vcyI6IndlYiIsImVtYWlsIjoiZGlhbmFyZXllc2l0ZXNhQG9wZXJhY2lvbnBjaS5jb20ubXgifQ.S-kbknmPAFIwe1mWdM5H14h1LdRJVTl_mKsTps3Yjmp_1ts2LTPSl7MxxVKeU5SZDuZuKyqvTdTPQ7rTQ65J7asLq896R4kOzTvKt5SLpiYghDt8T6Z8U5bz8Z-N48Y3PbRMsTKzyT9zvebexIe-40rrXi4gd_-kjADdcwap_jX583ivt7adVGMBEkwyCRYcUaxxvBa7MOa2x8MhHMfgc0J35desIBKtc_zo3Axc0GzwEuwsd2cGEkrkijSbhyZXEabzZrEH55MZODLEx5Y4sbF3EoSY591Xqwtkr65yOUVCtErG6Hz45l1_sIAmZT24xIZ0w7mjVSGpP4ocmw5y1sdp954jQinRssD0RkR6ztV8HixVxB5Mhs533m3DDaXhUKPgl_60EUJqVmVBr7zXg0rYof3aIPr29mllIRQI-I4f0KppR1dtxkosmDaV1B8Hc-i094dP252PBDxosv6PC5erL85JwGMGEE8IEDK3QkE6eRWwe3uw6HgTK532Yy5BrsQPhKVbzfSXCOOEQM0kaSCOT_sSxG8aPNWk_gACi0QdLR8EVBmRdQMuv-9dvNVQAkegYm8eeO1ACV5noe6_GVtkZxcwma4CwQJCm9hbJpJE-n1hgOzyP0YCDROImw0EJIZIlfYyf0Dxx9IRieoFpfGLIwSaG2c_Q9YWLDqaSEo'
+    # settings.config.update(config)
 
     # cr_account = lkf_obj.cr
 
