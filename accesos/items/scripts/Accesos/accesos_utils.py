@@ -3351,3 +3351,113 @@ class Accesos( Accesos):
                 'nombre_suplente':record.get('nombre_suplente',"")
             }
         return format_data
+
+    def update_pass(self, access_pass,folio=None):
+        pass_selected= self.get_detail_access_pass(qr_code=folio)
+        qr_code= folio
+        _folio= pass_selected.get("folio")
+        answers={}
+        for key, value in access_pass.items():
+            if key == 'grupo_vehiculos':
+                answers[self.mf['grupo_vehiculos']]={}
+                for index, item in enumerate(access_pass.get('grupo_vehiculos',[])):
+                    tipo = item.get('tipo',item.get('tipo_vehiculo',''))
+                    marca = item.get('marca',item.get('marca_vehiculo',''))
+                    modelo = item.get('modelo',item.get('modelo_vehiculo',''))
+                    estado = item.get('estado',item.get('nombre_estado',''))
+                    placas = item.get('placas',item.get('placas_vehiculo',''))
+                    color = item.get('color',item.get('color_vehiculo',''))
+                    obj={
+                        self.TIPO_DE_VEHICULO_OBJ_ID:{
+                            self.mf['tipo_vehiculo']:tipo,
+                            self.mf['marca_vehiculo']:marca,
+                            self.mf['modelo_vehiculo']:modelo,
+                        },
+                        self.ESTADO_OBJ_ID:{
+                            self.mf['nombre_estado']:estado,
+                        },
+                        self.mf['placas_vehiculo']:placas,
+                        self.mf['color_vehiculo']:color,
+                    }
+                    answers[self.mf['grupo_vehiculos']][(index+1)*-1]=obj
+            elif key == 'grupo_equipos':
+                answers[self.mf['grupo_equipos']]={}
+                for index, item in enumerate(value):
+                    nombre = item.get('nombre',item.get('nombre_articulo',''))
+                    marca = item.get('marca',item.get('marca_articulo',''))
+                    color = item.get('color',item.get('color_articulo',''))
+                    tipo = item.get('tipo',item.get('tipo_equipo',''))
+                    serie = item.get('serie',item.get('numero_serie',''))
+                    modelo = item.get('modelo',item.get('modelo_articulo',''))
+                    obj={
+                        self.mf['tipo_equipo']:tipo.lower(),
+                        self.mf['nombre_articulo']:nombre,
+                        self.mf['marca_articulo']:marca,
+                        self.mf['numero_serie']:serie,
+                        self.mf['color_articulo']:color,
+                        self.mf['modelo_articulo']:modelo,
+                    }
+                    answers[self.mf['grupo_equipos']][(index+1)*-1]=obj
+            elif key == 'status_pase':
+                answers.update({f"{self.pase_entrada_fields[key]}":value.lower()})
+            elif key == 'archivo_invitacion':
+                answers.update({f"{self.pase_entrada_fields[key]}": value})
+            elif key == "google_wallet_pass_url":
+                answers.update({f"{self.pase_entrada_fields[key]}": value})
+            elif key == "apple_wallet_pass":
+                answers.update({f"{self.pase_entrada_fields[key]}": value})
+            elif key == "pdf_to_img":
+                answers.update({f"{self.pase_entrada_fields[key]}": value})
+            elif key == 'favoritos':
+                answers.update({f"{self.pase_entrada_fields[key]}": [value]})  
+            elif key == 'conservar_datos_por':
+                answers.update({f"{self.pase_entrada_fields[key]}": value.replace(" ", "_")})      
+            else:
+                answers.update({f"{self.pase_entrada_fields[key]}":value})
+
+        print("1ans", simplejson.dumps(answers, indent=4))
+        # print(ans)
+        employee = self.get_employee_data(email=self.user.get('email'), get_one=True)
+        print("empleado", employee)
+        if answers:
+            res= self.lkf_api.patch_multi_record( answers = answers, form_id=self.PASE_ENTRADA, record_id=[qr_code])
+            pdf_to_img = None
+            if answers.get(self.pase_entrada_fields['status_pase'], '') == 'activo':
+                pdf_to_img = self.update_pass_img(qr_code)
+            if res.get('status_code') == 201 or res.get('status_code') == 202 and folio:
+                pdf = self.lkf_api.get_pdf_record(qr_code, template_id = 618, name_pdf='Pase de Entrada', send_url=True)
+                res['json'].update({'qr_pase':pass_selected.get("qr_pase")})
+                res['json'].update({'telefono':pass_selected.get("telefono")})
+                res['json'].update({'enviar_a':pass_selected.get("nombre")})
+                res['json'].update({'enviar_de':employee.get('worker_name')})
+                res['json'].update({'enviar_de_correo':employee.get('email')})
+                res['json'].update({'ubicacion':pass_selected.get('ubicacion')})
+                res['json'].update({'fecha_desde':pass_selected.get('fecha_de_expedicion')})
+                res['json'].update({'fecha_hasta':pass_selected.get('fecha_de_caducidad')})
+                res['json'].update({'asunto':pass_selected.get('tema_cita')})
+                res['json'].update({'descripcion':pass_selected.get('descripcion')})
+                res['json'].update({'pdf_to_img': pdf_to_img if pdf_to_img else pass_selected.get('pdf_to_img')})
+                res['json'].update({'pdf': pdf})
+                return res
+            else: 
+                return res
+        else:
+            self.LKFException('No se mandarón parametros para actualizar')
+
+    def update_pass_img(self, qr_code=None):
+        pdf = self.lkf_api.get_pdf_record(qr_code, template_id = 618, name_pdf='Pase de Entrada', send_url=True)
+        pdf_url = pdf.get('json', {}).get('download_url')
+        id_forma = self.PASE_ENTRADA
+        id_campo_pdf_to_img = self.pase_entrada_fields['pdf_to_img']
+        pass_img_url = self.upload_pdf_as_image(id_forma, id_campo_pdf_to_img, pdf_url)
+        pass_img_file_name = pass_img_url.get('file_name')
+        pass_img_file_url = pass_img_url.get('file_url')
+        answers = {
+            self.pase_entrada_fields['pdf_to_img']: [{
+                'file_name': pass_img_file_name,
+                'file_url': pass_img_file_url
+            }]
+        }
+        res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.PASE_ENTRADA, record_id=[qr_code])
+        print('pass_img_response', res)
+        return [{'file_name': pass_img_file_name, 'file_url': pass_img_file_url}]
