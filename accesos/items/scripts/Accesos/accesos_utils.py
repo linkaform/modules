@@ -1216,6 +1216,7 @@ class Accesos( Accesos):
         checkin = self.checkin_data(employee, location, area, 'in', now_datetime)
         employee_list.insert(0, employee)
         checkin = self.check_in_out_employees('in', now_datetime, checkin=checkin, employee_list=employee_list)
+        checkin[self.f['configuracion_de_accesos']] = self.get_booth_config(location)
 
         #! Se actualiza el check in con la informacion faltante.
         data.update({
