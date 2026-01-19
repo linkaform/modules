@@ -15,8 +15,8 @@ class EjecutarLiberaciones( Produccion_PCI ):
 
     def ejecutar_liberaciones(self):
         print('... ... Ejecutando proceso de Liberaciones ... ...')
-        self.next_step_process()
-        # print('.. por ahora no se hace nada')
+        # self.next_step_process()
+        print('.. por ahora no se hace nada')
 
 if __name__ == '__main__':
     lkf_obj = EjecutarLiberaciones(settings, sys_argv=sys.argv)
