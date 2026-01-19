@@ -124,8 +124,9 @@ class Accesos(Accesos):
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
     script_obj.console_run()
-    script_obj.MASIV_USER = ''
-    script_obj.MASIV_TOKEN = ''
+    sms_creds = script_obj.lkf_api.get_sms_creds(use_api_key=True, jwt_settings_key=False)
+    script_obj.MASIV_USER = sms_creds.get('json', {}).get('masiv_user', '')
+    script_obj.MASIV_TOKEN = sms_creds.get('json', {}).get('masiv_token', '')
 
     # script_obj.send_test_sms_masiv()
     
