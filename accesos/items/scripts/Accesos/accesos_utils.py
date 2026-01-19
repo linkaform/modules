@@ -170,6 +170,17 @@ class Accesos( Accesos):
             ]
         return self.format_cr_result(self.cr.aggregate(query), get_one=True)
 
+    def get_boot_coonfig(self, location):
+        """
+        Se obtiene la configuracion de la ubicacion de la forma Configuracion Modulo Seguridad
+        Opciones actuales: impresion_de_pase, auto_acceso
+        Args:
+            location  (str): Ubicacion de la caseta.
+        Returns:
+            Lista de configuraciones
+        """
+        return []
+
     def get_booth_status(self, booth_area, location):
         last_chekin = self.get_last_checkin(location, booth_area)
         booth_status = {
@@ -326,6 +337,7 @@ class Accesos( Accesos):
         load_shift_json["guard"] = self.update_guard_status(guard, this_user)
         load_shift_json["notes"] = self.get_list_notes(booth_location, booth_area, status='abierto')
         load_shift_json["user_booths"] = user_booths
+        load_shift_json["booth_config"] = self.get_boot_coonfig(booth_location)
         # print(simplejson.dumps(load_shift_json, indent=4))
         return load_shift_json
 
