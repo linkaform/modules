@@ -66,16 +66,14 @@ class Accesos(Accesos):
         employees_list = self.get_employees_list()
         employees_ids = list(i.get('employee_id', '') for i in employees_list)
         now = datetime.now(timezone('America/Mexico_City'))
-        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
         
         match = {
             "deleted_at": {"$exists": False},
-            # "form_id": 140286,
             "form_id": self.REGISTRO_ASISTENCIA,
-            "user_id": {"$in": employees_ids},
+            "created_by_id": {"$in": employees_ids},
             "created_at": {"$gte": start_of_month},
             f"answers.{self.f['start_shift']}": {"$exists": True},
-            f"answers.{self.f['end_shift']}": {"$exists": True},
         }
         
         if locations:
@@ -85,10 +83,19 @@ class Accesos(Accesos):
 
         query = [
             {"$match": match},
+            {"$sort": {"created_at": -1}},
             {"$group": {
-                "_id": "$user_id",
+                "_id": {
+                    "user_id": "$created_by_id",
+                    "date": {"$substr": [f"$answers.{self.f['start_shift']}", 0, 10]}
+                },
+                "doc": {"$first": "$$ROOT"}
+            }},
+            {"$sort": {"doc.created_at": -1}},
+            {"$group": {
+                "_id": "$_id.user_id",
                 "registros": {"$push": {
-                    "answers": "$answers",
+                    "answers": "$doc.answers",
                 }}
             }},
             {"$project": {
@@ -271,6 +278,8 @@ class Accesos(Accesos):
                     "asistencia_mes": asistencia_mes,
                     "resumen": resumen
                 })
+
+        result = sorted(result, key=lambda x: x['nombre'])
         return result
 
     def get_guard_turn_details(self, names=[], selected_day=None, location=None):
