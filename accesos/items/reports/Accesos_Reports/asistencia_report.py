@@ -282,7 +282,7 @@ class Accesos(Accesos):
         result = sorted(result, key=lambda x: x['nombre'])
         return result
 
-    def get_guard_turn_details(self, names=[], selected_day=None, location=None):
+    def get_guard_turn_details(self, user_ids=[], selected_day=None, location=None):
         now = datetime.now(timezone('America/Mexico_City'))
         start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         end_of_month = now.replace(day=monthrange(now.year, now.month)[1], hour=23, minute=59, second=59, microsecond=999999)
@@ -290,9 +290,8 @@ class Accesos(Accesos):
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
-                # "form_id": 140286,
                 "form_id": self.REGISTRO_ASISTENCIA,
-                "created_by_name": {"$in": names},
+                "created_by_id": {"$in": user_ids},
                 f"answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.Location.f['location']}": location,
                 f"answers.{self.f['start_shift']}": {
                     "$gte": start_of_month.strftime("%Y-%m-%d %H:%M:%S"),
@@ -408,6 +407,7 @@ if __name__ == "__main__":
     option = data.get('option', 'get_guard_turn_details')
     turn_id = data.get('turn_id', '')
     names = data.get('names', [])
+    user_ids = data.get('user_ids', [])
     selected_day = data.get('selected_day', 1)
     location = data.get('location', '')
 
@@ -417,7 +417,7 @@ if __name__ == "__main__":
     elif option == 'get_locations':
         response = script_obj.get_locations()
     elif option == 'get_guard_turn_details':
-        response = script_obj.get_guard_turn_details(names=names, selected_day=selected_day, location=location)
+        response = script_obj.get_guard_turn_details(user_ids=user_ids, selected_day=selected_day, location=location)
 
     print(simplejson.dumps(response, indent=4))
     script_obj.HttpResponse({"data": response})
