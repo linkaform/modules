@@ -163,7 +163,7 @@ class Accesos(Accesos):
                     dia_es = dia_map.get(dia_semana, dia_semana)
                     if dias_libres and dia_es in dias_libres:
                         status = "dia_libre"
-                    found["asistencia_mes"][dia - 1]["empleados"].append(f"{nombre_empleado}-{status}")
+                    found["asistencia_mes"][dia - 1]["empleados"].append(f"{nombre_empleado}-{status}-{emp_id}")
                     # Contabilización
                     if status == "presente":
                         found["resumen"]["asistencias"] += 1
