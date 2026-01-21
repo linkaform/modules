@@ -148,7 +148,7 @@ class Produccion_PCI( Produccion_PCI ):
             'answers.f1054000a030000000000002':'liquidada',
             'answers.f1054000a030000000000013': 'en_proceso',
             # 'answers.f1054000a030000000000012':{'$in':['estimacion','paco']},
-            'answers.f1054000a030000000000012': 'pendiente',
+            'answers.f1054000a030000000000012': {'$in': ['pendiente', 'estimacion']},
             f'answers.{field_id_cliente}': {'$exists': True},
             'answers.633d9f63eb936fb6ec9bf580': {'$nin': ['cfe']},
 
