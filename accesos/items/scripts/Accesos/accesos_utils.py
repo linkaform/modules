@@ -3157,8 +3157,7 @@ class Accesos( Accesos):
         areas = self.lkf_api.catalog_view(catalog_id, form_id, options) 
         ### Aquien Visita
         catalog_id = self.CONF_AREA_EMPLEADOS_CAT_ID
-        visita_a = self.lkf_api.catalog_view(catalog_id, form_id, {"group_level": group_level}) 
-        visita_a = list(set(visita_a))
+        visita_a = self.lkf_api.catalog_view(catalog_id, form_id, options) 
         # visita_a = [r.get('key')[group_level-1] for r in visita_a]
         ### Pases de accesos
         res = {
