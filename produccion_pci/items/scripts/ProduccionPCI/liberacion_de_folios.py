@@ -1089,34 +1089,31 @@ class Produccion_PCI( Produccion_PCI ):
                 list_rec.extend(list_bajante_aereo)
                 list_rec.extend(list_bajante_subterranea)
                 # Estos radiales solo aplican para Fibra Metro
-
-                # ============================== Para SR todo esto no se cobra ==============================
-
                 # Si el tipo de trabajo empieza con FC solo se cobran los bajantes, lo demás ya no
-                # if tipo_trabajo == 'fc' or record_is_a4 or record_is_cfe:
-                radial_banqueta = ''
-                radial_cepa = ''
-                reparacion_tropezon = ''
-                # else:
-                #     radial_banqueta = ans.get('5f1f5efb3198fe9c5ccef32d','') # Radial en banqueta
-                #     radial_cepa = ans.get('5f1f5efb3198fe9c5ccef32e','') # Radial en cepa libre
-                #     reparacion_tropezon = ans.get('5f1f5efb3198fe9c5ccef32f','') # Reparacion de tropezon en radial
+                if tipo_trabajo == 'fc' or record_is_a4 or record_is_cfe:
+                    radial_banqueta = ''
+                    radial_cepa = ''
+                    reparacion_tropezon = ''
+                else:
+                    radial_banqueta = ans.get('5f1f5efb3198fe9c5ccef32d','') # Radial en banqueta
+                    radial_cepa = ans.get('5f1f5efb3198fe9c5ccef32e','') # Radial en cepa libre
+                    reparacion_tropezon = ans.get('5f1f5efb3198fe9c5ccef32f','') # Reparacion de tropezon en radial
 
                 # Se integra el concepto Desmontaje en Migracion
                 # solo aplica en tipos de tarea TS Clase de Servicio 1L y 2L con etapa 7S, tecnología G ejm ( TS1L7SG y  TS2L7SG)
                 # no afecta al 7V ya que sera 7S tons se descarta en automático
                 # MAQTEL el unico contratista que tiene otros precios un poco mas altos, tambien te pasare su precio
                 desmontaje_en_migracion = 0
-                # if ('7S' in tipo_tarea) and (clase in ['1L', '2L']) and (tipo_trabajo == 'ts') and ('G' in tipo_tarea):
-                #     desmontaje_en_migracion = 1
+                if ('7S' in tipo_tarea) and (clase in ['1L', '2L']) and (tipo_trabajo == 'ts') and ('G' in tipo_tarea):
+                    desmontaje_en_migracion = 1
                 list_rec.append( desmontaje_en_migracion )
 
                 visitas_adicionales = '' # Visitas adicional / cada insfraestructura nueva
                 conexion_bajante_x_fusion = '' # Conexion de bajante de F.O. por fusion
 
                 # INSTALACIÓN DE POSTE DE 25'
-                # instalacion_poste = ans.get('5f1721afa63c9a750b820487',0)
-                instalacion_poste = 0
+                instalacion_poste = ans.get('5f1721afa63c9a750b820487',0)
+                # instalacion_poste = 0
 
                 list_rec.extend([visitas_adicionales, conexion_bajante_x_fusion, radial_banqueta, radial_cepa, reparacion_tropezon, \
                     migracion_exitosa_vsi, migracion_exitosa_voz_cobre_a_fibra, instalacion_poste])
