@@ -62,7 +62,10 @@ class Accesos( Accesos):
             'grupo_comentarios_generales_fecha': '6927a0ea1c378cbd7f60a135',
             'grupo_comentarios_generales_texto': '6927a0ea1c378cbd7f60a136',
             'nombre_suplente': '6927a1176c60848998a157a2',
-            'documento_check': '692a1b4e005c84ce5cd5167f'
+            'documento_check': '692a1b4e005c84ce5cd5167f',
+            'datos_requeridos': '6769756fc728a0b63b8431ea',
+            'envio_por': '6810180169eeaca9517baa5b',
+            'configuracion_de_accesos': '696e6dda9517e760679e71eb'
         })
 
         #BORRAR
@@ -173,6 +176,38 @@ class Accesos( Accesos):
             {'$limit':1}
             ]
         return self.format_cr_result(self.cr.aggregate(query), get_one=True)
+
+    def get_booth_config(self, location):
+        """
+        Se obtiene la configuracion de la ubicacion de la forma Configuracion Modulo Seguridad
+        Opciones actuales: impresion_de_pase, auto_acceso
+        Args:
+            location  (str): Ubicacion de la caseta.
+        Returns:
+            Lista de configuraciones
+        """
+        query = [
+            {'$match': {
+                "deleted_at": {"$exists": False},
+                "form_id": self.CONF_MODULO_SEGURIDAD,
+            }},
+            {'$sort': {'updated_at': -1}},
+            {'$limit': 1},
+            {'$project': {
+                "answers": 1,
+            }},
+            {'$unwind': f"$answers.{self.conf_modulo_seguridad['grupo_requisitos']}"},
+            {'$match': {
+                f"answers.{self.conf_modulo_seguridad['grupo_requisitos']}.{self.UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}": location
+            }}
+        ]
+        data = self.format_cr(self.cr.aggregate(query))
+        format_data = []
+        if data:
+            data = self.unlist(data)
+            configuracion_de_accesos = data.get('configuracion_de_accesos', [])
+            format_data = list(set(configuracion_de_accesos))
+        return format_data
 
     def get_booth_status(self, booth_area, location):
         last_chekin = self.get_last_checkin(location, booth_area)
@@ -330,6 +365,7 @@ class Accesos( Accesos):
         load_shift_json["guard"] = self.update_guard_status(guard, this_user)
         load_shift_json["notes"] = self.get_list_notes(booth_location, booth_area, status='abierto')
         load_shift_json["user_booths"] = user_booths
+        load_shift_json["booth_config"] = self.get_booth_config(booth_location)
         # print(simplejson.dumps(load_shift_json, indent=4))
         return load_shift_json
 
@@ -1184,6 +1220,7 @@ class Accesos( Accesos):
         checkin = self.checkin_data(employee, location, area, 'in', now_datetime)
         employee_list.insert(0, employee)
         checkin = self.check_in_out_employees('in', now_datetime, checkin=checkin, employee_list=employee_list)
+        checkin[self.f['configuracion_de_accesos']] = self.get_booth_config(location)
 
         #! Se actualiza el check in con la informacion faltante.
         data.update({
