@@ -3498,3 +3498,6 @@ class Accesos( Accesos):
         res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.PASE_ENTRADA, record_id=[qr_code])
         print('pass_img_response', res)
         return [{'file_name': pass_img_file_name, 'file_url': pass_img_file_url}]
+
+    def get_pdf(self, qr_code, template_id=618, name_pdf='Pase de Entrada'):
+        return self.lkf_api.get_pdf_record(qr_code, template_id = template_id, name_pdf =name_pdf, send_url=True)
