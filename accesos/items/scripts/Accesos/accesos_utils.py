@@ -1643,7 +1643,8 @@ class Accesos( Accesos):
         # print( simplejson.dumps(records, indent=4))
         for r in records:
             pase = r.pop('pase')
-            r.pop('pase_id')
+            pase_id = r.pop('pase_id')
+            # r.pop('pase_id')
             if len(pase) > 0 :
                 pase = pase[0]
                 r['motivo_visita'] = self.unlist(pase.get('motivo_visita',''))
@@ -1658,6 +1659,7 @@ class Accesos( Accesos):
             r['vehiculos'] = self.format_vehiculos(r.get('vehiculos',[]))
             r['equipos'] = self.format_equipos(r.get('equipos',[]))
             r['visita_a'] = self.format_visita(r.get('visita_a',[]))
+            r['pase_id']=str(pase_id)
         return  records
 
     def get_pdf_seg(self, qr_code, template_id=491, name_pdf='Pase de Entrada'):
@@ -3155,8 +3157,7 @@ class Accesos( Accesos):
         areas = self.lkf_api.catalog_view(catalog_id, form_id, options) 
         ### Aquien Visita
         catalog_id = self.CONF_AREA_EMPLEADOS_CAT_ID
-        visita_a = self.lkf_api.catalog_view(catalog_id, form_id, {"group_level": group_level}) 
-        visita_a = list(set(visita_a))
+        visita_a = self.lkf_api.catalog_view(catalog_id, form_id, options) 
         # visita_a = [r.get('key')[group_level-1] for r in visita_a]
         ### Pases de accesos
         res = {
