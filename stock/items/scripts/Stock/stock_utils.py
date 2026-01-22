@@ -228,7 +228,7 @@ class Stock(Stock):
                             return self.cr.insert_many(new_records)
                         except Exception as e:
                             print(f"Error en la creacion de registros de Stock: {e}")
-                            self.LKFException(f" Error en la creacion de registros de Stock.")
+                            self.LKFException(f"1. Error en la creacion de registros de Stock. {e}")
                     try:
                         # Comienza la transacción
                         res_new_stock = session.with_transaction(
@@ -248,7 +248,7 @@ class Stock(Stock):
                     res_new_stock = self.cr.insert_many(new_records)
                     print('res_new_stock', res_new_stock)
                 except Exception as e:
-                    self.LKFException(f" Error en la creacion de registros de Stock.")
+                    self.LKFException(f"2.Error en la creacion de registros de Stock.{e}")
             sync_ids = []
             for idx, rec_idx in enumerate(res_new_stock.inserted_ids):
                 res[idx] = {
