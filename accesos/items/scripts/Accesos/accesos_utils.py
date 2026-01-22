@@ -3325,7 +3325,7 @@ class Accesos( Accesos):
             {'$match': {
                 f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": {"$exists":True},
                 f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": {"$in": [user_id]},
-                f"answers.{self.f['guard_group']}.{self.f['checkout_date']}": {"$in": [None, ""]}
+                # f"answers.{self.f['guard_group']}.{self.f['checkout_date']}": {"$in": [None, ""]}
             }},
             {'$sort': {'created_at': -1}},
             {'$limit': 1},
