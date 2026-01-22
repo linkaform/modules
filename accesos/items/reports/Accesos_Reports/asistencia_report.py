@@ -205,6 +205,7 @@ class Accesos(Accesos):
             for location, regs in ubicaciones.items():
                 # Mapear status por día
                 dias_con_registro = {}
+                dias_con_cierre = {}
                 dias_libres = []
                 for reg in regs:
                     fecha_inicio = reg.get('fecha_inicio_turno')
@@ -212,6 +213,8 @@ class Accesos(Accesos):
                     if fecha_inicio:
                         dia = int(fecha_inicio[8:10])
                         dias_con_registro[dia] = status
+                        if reg.get('end_shift'):
+                            dias_con_cierre[dia] = True
                     if reg.get('dias_libres_empleado'):
                         #! POSIBLE CAMBIO: Como considerariamos un cambio en los dias libres a mitad de mes?
                         dias_libres = reg['dias_libres_empleado']
@@ -242,10 +245,14 @@ class Accesos(Accesos):
                     elif status == "falta" or status == "falta_por_retardo":
                         resumen["faltas"] += 1
                         
-                    asistencia_mes.append({
+                    asistencia_data = {
                         "dia": day,
                         "status": status,
-                    })
+                    }
+                    if day in dias_con_cierre:
+                        asistencia_data["closed"] = True
+
+                    asistencia_mes.append(asistencia_data)
 
                 result.append({
                     "employee_id": emp_id,
