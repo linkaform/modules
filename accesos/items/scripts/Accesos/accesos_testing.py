@@ -12,10 +12,10 @@ Script utilizado en Testing con Pytest para manejar la logica de las distintas s
 import sys, simplejson
 from linkaform_api import settings
 from account_settings import *
-from accesos_utils import Accesos
+# from accesos_utils import Accesos
 
 # uncomment below line for testing purposes - dont remove!!!
-# from lkf_modules.accesos.items.scripts.Accesos.accesos_utils import Accesos
+from lkf_modules.accesos.items.scripts.Accesos.accesos_utils import Accesos
 
 class Accesos(Accesos):
 
