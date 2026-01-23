@@ -66,16 +66,14 @@ class Accesos(Accesos):
         employees_list = self.get_employees_list()
         employees_ids = list(i.get('employee_id', '') for i in employees_list)
         now = datetime.now(timezone('America/Mexico_City'))
-        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
         
         match = {
             "deleted_at": {"$exists": False},
-            # "form_id": 140286,
             "form_id": self.REGISTRO_ASISTENCIA,
-            "user_id": {"$in": employees_ids},
+            "created_by_id": {"$in": employees_ids},
             "created_at": {"$gte": start_of_month},
             f"answers.{self.f['start_shift']}": {"$exists": True},
-            f"answers.{self.f['end_shift']}": {"$exists": True},
         }
         
         if locations:
@@ -85,10 +83,19 @@ class Accesos(Accesos):
 
         query = [
             {"$match": match},
+            {"$sort": {"created_at": -1}},
             {"$group": {
-                "_id": "$user_id",
+                "_id": {
+                    "user_id": "$created_by_id",
+                    "date": {"$substr": [f"$answers.{self.f['start_shift']}", 0, 10]}
+                },
+                "doc": {"$first": "$$ROOT"}
+            }},
+            {"$sort": {"doc.created_at": -1}},
+            {"$group": {
+                "_id": "$_id.user_id",
                 "registros": {"$push": {
-                    "answers": "$answers",
+                    "answers": "$doc.answers",
                 }}
             }},
             {"$project": {
@@ -156,7 +163,7 @@ class Accesos(Accesos):
                     dia_es = dia_map.get(dia_semana, dia_semana)
                     if dias_libres and dia_es in dias_libres:
                         status = "dia_libre"
-                    found["asistencia_mes"][dia - 1]["empleados"].append(f"{nombre_empleado}-{status}")
+                    found["asistencia_mes"][dia - 1]["empleados"].append(f"{nombre_empleado}-{status}-{emp_id}")
                     # Contabilización
                     if status == "presente":
                         found["resumen"]["asistencias"] += 1
@@ -198,6 +205,7 @@ class Accesos(Accesos):
             for location, regs in ubicaciones.items():
                 # Mapear status por día
                 dias_con_registro = {}
+                dias_con_cierre = {}
                 dias_libres = []
                 for reg in regs:
                     fecha_inicio = reg.get('fecha_inicio_turno')
@@ -205,6 +213,8 @@ class Accesos(Accesos):
                     if fecha_inicio:
                         dia = int(fecha_inicio[8:10])
                         dias_con_registro[dia] = status
+                        if reg.get('end_shift'):
+                            dias_con_cierre[dia] = True
                     if reg.get('dias_libres_empleado'):
                         #! POSIBLE CAMBIO: Como considerariamos un cambio en los dias libres a mitad de mes?
                         dias_libres = reg['dias_libres_empleado']
@@ -235,10 +245,14 @@ class Accesos(Accesos):
                     elif status == "falta" or status == "falta_por_retardo":
                         resumen["faltas"] += 1
                         
-                    asistencia_mes.append({
+                    asistencia_data = {
                         "dia": day,
                         "status": status,
-                    })
+                    }
+                    if day in dias_con_cierre:
+                        asistencia_data["closed"] = True
+
+                    asistencia_mes.append(asistencia_data)
 
                 result.append({
                     "employee_id": emp_id,
@@ -271,9 +285,11 @@ class Accesos(Accesos):
                     "asistencia_mes": asistencia_mes,
                     "resumen": resumen
                 })
+
+        result = sorted(result, key=lambda x: x['nombre'])
         return result
 
-    def get_guard_turn_details(self, names=[], selected_day=None, location=None):
+    def get_guard_turn_details(self, user_ids=[], selected_day=None, location=None):
         now = datetime.now(timezone('America/Mexico_City'))
         start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         end_of_month = now.replace(day=monthrange(now.year, now.month)[1], hour=23, minute=59, second=59, microsecond=999999)
@@ -281,9 +297,8 @@ class Accesos(Accesos):
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
-                # "form_id": 140286,
                 "form_id": self.REGISTRO_ASISTENCIA,
-                "created_by_name": {"$in": names},
+                "created_by_id": {"$in": user_ids},
                 f"answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.Location.f['location']}": location,
                 f"answers.{self.f['start_shift']}": {
                     "$gte": start_of_month.strftime("%Y-%m-%d %H:%M:%S"),
@@ -399,6 +414,7 @@ if __name__ == "__main__":
     option = data.get('option', 'get_guard_turn_details')
     turn_id = data.get('turn_id', '')
     names = data.get('names', [])
+    user_ids = data.get('user_ids', [])
     selected_day = data.get('selected_day', 1)
     location = data.get('location', '')
 
@@ -408,7 +424,7 @@ if __name__ == "__main__":
     elif option == 'get_locations':
         response = script_obj.get_locations()
     elif option == 'get_guard_turn_details':
-        response = script_obj.get_guard_turn_details(names=names, selected_day=selected_day, location=location)
+        response = script_obj.get_guard_turn_details(user_ids=user_ids, selected_day=selected_day, location=location)
 
     print(simplejson.dumps(response, indent=4))
     script_obj.HttpResponse({"data": response})
