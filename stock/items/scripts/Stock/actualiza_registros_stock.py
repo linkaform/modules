@@ -124,6 +124,8 @@ class Stock(Stock):
         res[self.f['product_lot_scrapped']] = stock['scrapped']
         res[self.f['adjustments']] = stock['adjustments']
         res[self.f['actuals']] = stock['actuals']
+        res[self.f['actuals']] = stock['actuals']
+        res[self.f['actual_eaches_on_hand']] = stock['actuals']
         if stock['actuals'] <= 0:
             res[self.f['status']] = 'done'
         else:
@@ -153,7 +155,7 @@ class Stock(Stock):
             sku = rec['sku']
             product_lot = rec['product_lot']
             stock = self.get_product_stock(product_code, sku, product_lot, warehouse, location)
-            if actuals != stock.get('actuals',0):
+            if actuals != stock.get('actuals',0) or True:
                 print(f'ONT: {product_lot} warehouse: {warehouse}, location: {location}, ACTUALS: {actuals} / Stock: {stock["actuals"]}' )
                 update_stock = self.update_actuals(stock)
                 record['answers'].update(update_stock)
