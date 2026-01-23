@@ -207,6 +207,52 @@ class Produccion_PCI( Produccion_PCI ):
         resp_create = lkf_api.post_forms_answers(metadata_cambio, jwt_settings_key='JWT_KEY_ADMIN')
         return resp_create
 
+
+
+
+
+    """ Se valida que no exista otro registro con folio - telefono cargados en una tecnologia diferente """
+    def eval_folio_in_other_tec(self, val_form, val_folio, val_telefono):
+        map_other_tecs_admin = {
+            11044: 10540, 16343: 25927, 21954: 25928, 21953: 25929,
+            10540: 11044, 25927: 16343, 25928: 21954, 25929: 21953,
+        }
+        id_form_other_tec = map_other_tecs_admin[ val_form ]
+        query_rec_other_tec = {
+            'form_id': id_form_other_tec, 
+            'deleted_at': {'$exists': False}, 
+            'folio': val_folio,
+            'answers.f1054000a010000000000005': val_telefono
+        }
+        print(f'     +++ Buscando registro en otra Tecnologia. Forma original: {val_form} Query: {query_rec_other_tec}')
+        record_found = cr_admin.find_one(query_rec_other_tec, {'folio': 1})
+        
+        if record_found:
+            msg_error = "El folio ya fue cargado en una Tecnología diferente"
+            print(f'        --- {msg_error}')
+            return msg_error
+        return False
+
+    def validate_correct_folio(self, val_folio):
+        if not val_folio:
+            return "El folio es obligatorio"
+
+        if not re.match(r"^[0-9]*$", val_folio):
+            return "El folio debe ser solo numeros y sin espacios en blanco"
+        
+        try:
+            int( val_folio )
+        except Exception as e:
+            return "El folio solo debe ser numerico"
+        
+        if len( str( val_folio ).strip() ) != 8:
+            return "El folio debe tener la logitud de 8 caracteres"
+        
+        return False
+
+    
+
+
     def prepare_record(self, record, metadata, pos_field_id, folio, connection_id, RECORDS_PASSED, tecnologia_orden='fibra', hibrida=False, form_id_turno='', current_record = {}, copes_consultados={}, cambio_tecnologia='', records_for_cambio_tec=[], info_cope={}, \
         pos_tipo=0, pos_telefono=0, datos_tecnico={}, permisos_contratista={}, dict_info_connections={}, header_dict={}):
         ###
@@ -219,12 +265,15 @@ class Produccion_PCI( Produccion_PCI ):
             print(e)
             result['create']['error'] = 'Error en el telefono, favor de revisar'
             return result
+        
+        puerto = record[ header_dict['puerto'] ] if header_dict.get('puerto') else None
         actual_record = False
         descuento15dias = False
         metadata['form_id'] = form_id_turno
         print("*********************** metadata form id: {} folio:{} telefono:{}************".format(metadata['form_id'], folio, telefono_registro))
+        form_id_admin = self.dict_equivalences_forms_id[ metadata['form_id'] ]
         if tecnologia_orden in ('cobre', 'hibrida', 'fibra', 'migracion'):
-            actual_record = p_utils.check_folio(self.dict_equivalences_forms_id[ metadata['form_id'] ], folio, telefono_registro, info_cope['area'])
+            actual_record = p_utils.check_folio(form_id_admin, folio, telefono_registro, info_cope['area'])
         
         if tecnologia_orden == 'fibra' and cambio_tecnologia in ('si', 'sí'):
             print("... ... Folio para Cambio de tecnologia... revisando si existe registro en Cobre y no esta en proceso de cobranza")
@@ -246,7 +295,6 @@ class Produccion_PCI( Produccion_PCI ):
                 alfanumerico = record[pos_alfanumerico] if pos_alfanumerico else ''
                 alfanumerico_pic = os_cobre_found['answers'].get('f1054000a020000000000003', '')
                 
-                puerto = record[ header_dict['puerto'] ] if header_dict.get('puerto') else None
                 
                 terminal_optica = record[ header_dict['terminal_optica'] ] if header_dict.get('terminal_optica') else ''
                 
@@ -283,6 +331,22 @@ class Produccion_PCI( Produccion_PCI ):
 
             if not os_in_psr:
                 result['create']['error'] = 'Verifica que tu folio sea el correcto y se encuentre liquidado completado en PIC Movil'
+                return result
+
+            # El registro no puede existir en otra tecnologia
+            record_other_tec = self.eval_folio_in_other_tec(form_id_admin, folio, telefono_registro)
+            if record_other_tec:
+                result['create']['error'] = record_other_tec
+                return result
+
+            # Validaciones requeridas para crear el registro
+            incorrect_folio = self.validate_correct_folio( folio )
+            if incorrect_folio:
+                result['create']['error'] = incorrect_folio
+                return result
+
+            if puerto and not ( len( str(puerto) ) == 1 and str(puerto).isdigit() ):
+                result['create']['error'] = "El Puerto debe ser solo un dígitos numérico"
                 return result
 
             # if os_in_psr:
@@ -449,7 +513,7 @@ class Produccion_PCI( Produccion_PCI ):
         this_record = {
             'folio': found_record.get('folio')
         }
-        record_existente = 'si' if answer else ''
+        record_existente = True if answer else False
         error = []
         alerts = []
         aerea = subterranea = None
@@ -778,7 +842,7 @@ class Produccion_PCI( Produccion_PCI ):
                     answer.update(lkf_api.make_infosync_json(position, element, best_effort=True))
             else:
                 try:
-                    if record_existente == 'si':
+                    if record_existente:
                         if element.get('label') and element['label'] not in ['Telefono', 'Teléfono','Tecnico','Division','AREA','COPE','Cable Par','Modem - Numero de Serie','Tipo de Tarea','Fecha de Liquidacion','Expediente del Tecnico','Expediente del Técnico','Expediente Del Tecnico']:
                             if record[position] and isinstance(record[position], str):
                                 record[position] = record[position].encode('utf8')
@@ -854,24 +918,25 @@ class Produccion_PCI( Produccion_PCI ):
                 else:
                     answer['f1054000a020000000000007'] = 0
                     answer['f1054000a020000000000004'] = 'aerea'
-                if tecnologia_orden == 'fibra':
-                    alfanumerico = str(answer.get(self.f['field_no_serie_contratista'],''))
-                    if not is_cargado_desde_pic:
-                        if len(alfanumerico) != 12:
-                            error.append('Longitud de alfanumerico diferente de 12')
-                    terminal_optica = answer.get('f1054000a020000000000aa1','')
-                    if terminal_optica:
-                        try:
-                            regex = re.compile('[a-z]|[A-Z]')
-                            if len(terminal_optica) != 2:
-                                error.append('Terminal Optica debe de contener 2 caracteres')
-                            elif not regex.findall(terminal_optica[0]):
-                                error.append('EL primer digito de la terminal optica debe de ser un caracter A-Z')
-                            elif terminal_optica[1] not in '1234567890':
-                                error.append('EL segundo digito de la terminal optica debe de ser un numero 0-9')
-                        except Exception as e:
-                            print(e)
-                            print('pass sin terminal optica')
+            if tecnologia_orden == 'fibra':
+                alfanumerico = str(answer.get(self.f['field_no_serie_contratista'],''))
+                # if not is_cargado_desde_pic:
+                if not record_existente:
+                    if len(alfanumerico) != 12:
+                        error.append('Longitud de alfanumerico diferente de 12')
+                terminal_optica = answer.get('f1054000a020000000000aa1','')
+                if terminal_optica:
+                    try:
+                        regex = re.compile('[a-z]|[A-Z]')
+                        if len(terminal_optica) != 2:
+                            error.append('Terminal Optica debe de contener 2 caracteres')
+                        elif not regex.findall(terminal_optica[0]):
+                            error.append('EL primer digito de la terminal optica debe de ser un caracter A-Z')
+                        elif terminal_optica[1] not in '1234567890':
+                            error.append('EL segundo digito de la terminal optica debe de ser un numero 0-9')
+                    except Exception as e:
+                        print(e)
+                        print('pass sin terminal optica')
             if tecnologia_orden == 'fibra' and metraje_cargado > 300:
                 direccion = answer.get('5ff63afdde49fee5e218a474','').strip()
                 if not direccion:
@@ -887,7 +952,7 @@ class Produccion_PCI( Produccion_PCI ):
         num_expediente = answer.get(field_id_expediente,0)
 
         if not can_create_records:
-            if record_existente == 'si' or answers_psr:
+            if record_existente or answers_psr:
                 if 'expediente' not in autorizaciones_carga_folio:
                     permiso_expediente_contratista = 'si' if str(tecnico_pic).lower().strip() == 'pisaplex' else permisos_contratista.get('expediente', '')
                     if not permiso_expediente_contratista or permiso_expediente_contratista.lower() == 'no':
@@ -939,7 +1004,7 @@ class Produccion_PCI( Produccion_PCI ):
                 'f1054000a010000000000002':cope_recu.lower().replace('\xa0',' ').strip().replace(' ', '_')
             })
         
-        accion_actualizacion = 'ACTUALIZACION' if record_existente == 'si' else 'CARGA INICIAL'
+        accion_actualizacion = 'ACTUALIZACION' if record_existente else 'CARGA INICIAL'
 
         metadata_extra = {}
         metadata_agregar_script = {"device_properties":{"system": "SCRIPT","process":"PROCESO CARGA DE PRODUCCION HIBRIDO", "accion":accion_actualizacion, "folio carga":current_record['folio'], "archive":"carga_de_produccion_py3.py"}}
@@ -951,6 +1016,8 @@ class Produccion_PCI( Produccion_PCI ):
             distrito_answer = self.quita_FO_de_distrito(distrito_answer)
             if len(str(distrito_answer)) != 7:
                 error.append('Longitud del Distrito es diferente de 7')
+            if distrito_answer == tipo_tarea_record:
+                error.append('El Tipo de Tarea no debe ser igual al Distrito')
             answer['f1054000a0100000000000d5'] = distrito_answer
 
         # Los campos IDENTIFICACION DE NUMERO TELEFONICO EN RED PRINCIPAL, INCLUYE MARCACION *080, IDENTIFICACION DE NUMERO TELEFONICO EN RED SECUNDARIA, INCLUYE MARCACION *080
@@ -965,7 +1032,7 @@ class Produccion_PCI( Produccion_PCI ):
             this_record.update({'error':  error})
         if alerts:
             this_record.update({'alerts': alerts})
-        if record_existente == 'si':
+        if record_existente:
             found_record['answers'].update(answer)
             this_record["answers"] = found_record['answers']
         else:
@@ -1294,6 +1361,10 @@ class Produccion_PCI( Produccion_PCI ):
                 except Exception as e:
                     print(e)
                     record_errors.append(record + ["Error en el telefono, favor de revisar"])
+                    continue
+
+                if len( str(telefono_registro) ) != 10:
+                    record_errors.append(record + ["El teléfono debe tener 10 dígitos"])
                     continue
                 
                 # if folio:
