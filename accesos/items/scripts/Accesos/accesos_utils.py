@@ -3154,15 +3154,25 @@ class Accesos( Accesos):
             }
         """
         ### Areas
-        areas = self.get_areas_by_location(location)
+        try:
+            areas = self.get_areas_by_location(location)
+        except:
+            areas = []
         ### Aquien Visita
-        visita_a =  self.Employee.get_users_by_location_area(location_name=location)
-        visita_a = [x['name'] for x in visita_a if x.get('name')]
-        ### Pases de accesos
+        try:
+            visita_a =  self.Employee.get_users_by_location_area(location_name=location)
+            visita_a = [x['name'] for x in visita_a if x.get('name')]
+        except:
+            visita_a = []
+        ### Perfiles de accesos
+        try:
+            perfiles = self.get_pefiles_walkin(location)
+        except:
+            perfiles = []
         res = {
             'Areas': areas,
             'Visita_a': visita_a,
-            'Perfiles': self.get_pefiles_walkin(location),
+            'Perfiles': perfiles
         }
         return res
 
