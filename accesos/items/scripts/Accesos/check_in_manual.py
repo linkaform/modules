@@ -171,8 +171,8 @@ class Accesos(Accesos):
 
     def get_guard_data(self, guard_id, location, hora_inicio):
         dt_inicio = datetime.strptime(hora_inicio, "%Y-%m-%d %H:%M:%S")
-        hora_minuto_segundo_minus10 = (dt_inicio - timedelta(minutes=10)).strftime("%H:%M:%S")
-        hora_minuto_segundo_plus10 = (dt_inicio + timedelta(minutes=10)).strftime("%H:%M:%S")
+        hora_minuto_segundo_minus10 = (dt_inicio - timedelta(minutes=60)).strftime("%H:%M:%S")
+        hora_minuto_segundo_plus10 = (dt_inicio + timedelta(minutes=60)).strftime("%H:%M:%S")
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
@@ -228,35 +228,35 @@ class Accesos(Accesos):
         response = self.unlist(response)
         if response.get('turno') == 'sin_registro':
             dt_inicio = datetime.strptime(hora_inicio, "%Y-%m-%d %H:%M:%S")
+            dt_inicio = dt_inicio.replace(microsecond=0)
             hora_inicio_time = dt_inicio.time()
-
             turno_seleccionado = None
-            min_diff = None
+            min_diff_seconds = None
 
             for nombre_turno, datos_turno in self.default_shifts.items():
-                h_start = datetime.strptime(datos_turno["start"], "%H:%M:%S").time()
-                # Calcula diferencia en minutos (puede ser negativa si el turno es después de la hora actual)
-                diff = (
-                    (datetime.combine(datetime.today(), hora_inicio_time) -
-                    datetime.combine(datetime.today(), h_start)).total_seconds() / 60
-                )
-                # Si la hora de inicio del turno es antes o igual a la hora actual y la diferencia es la menor (más reciente)
-                if diff >= 0:
-                    if min_diff is None or diff < min_diff:
-                        min_diff = diff
-                        turno_seleccionado = {**datos_turno, "nombre_horario": nombre_turno}
+                start_str = datos_turno["start"]
+                if len(start_str.split(':')) == 2:
+                    start_str += ":00"
+                
+                t_start = datetime.strptime(start_str, "%H:%M:%S").time()
+                
+                candidates = [
+                    datetime.combine(dt_inicio.date() - timedelta(days=1), t_start),
+                    datetime.combine(dt_inicio.date(), t_start),
+                    datetime.combine(dt_inicio.date() + timedelta(days=1), t_start)
+                ]
+                
+                closest_start = min(candidates, key=lambda d: abs((d - dt_inicio).total_seconds()))
+                delta_seconds = (dt_inicio - closest_start).total_seconds()
+                abs_diff = abs(delta_seconds)
 
-            # Si no encontró ninguno (por ejemplo, turno nocturno), toma el primero cuyo inicio sea después de la hora actual
-            if turno_seleccionado is None:
-                for nombre_turno, datos_turno in self.default_shifts.items():
-                    h_start = datetime.strptime(datos_turno["start"], "%H:%M:%S").time()
-                    diff = (
-                        (datetime.combine(datetime.today(), h_start) -
-                        datetime.combine(datetime.today(), hora_inicio_time)).total_seconds() / 60
-                    )
-                    if diff > 0:
-                        turno_seleccionado = {**datos_turno, "nombre_horario": nombre_turno}
-                        break
+                # Si llega muy temprano (mas de 60 min antes), ignorar este turno como candidato
+                if delta_seconds < 0 and abs_diff > 3600:
+                    continue
+
+                if min_diff_seconds is None or abs_diff < min_diff_seconds:
+                    min_diff_seconds = abs_diff
+                    turno_seleccionado = {**datos_turno, "nombre_horario": nombre_turno}
 
             if turno_seleccionado:
                 response.update({
@@ -281,7 +281,7 @@ class Accesos(Accesos):
 
         minutos_retraso = minutos_inicio - minutos_turno_inicio
 
-        if -10 <= minutos_retraso <= 10:
+        if minutos_retraso <= tolerancia:
             return "presente"
         elif tolerancia < minutos_retraso <= retardo_maximo:
             return "retardo"
