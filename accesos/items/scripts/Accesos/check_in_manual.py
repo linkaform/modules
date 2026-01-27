@@ -226,6 +226,11 @@ class Accesos(Accesos):
         ]
         response = self.format_cr(self.cr.aggregate(query))
         response = self.unlist(response)
+
+        if response.get('turno') and response.get('turno') != 'sin_registro':
+            turno_data = response.pop('turno')
+            response.update(turno_data)
+
         if response.get('turno') == 'sin_registro':
             dt_inicio = datetime.strptime(hora_inicio, "%Y-%m-%d %H:%M:%S")
             dt_inicio = dt_inicio.replace(microsecond=0)
@@ -272,14 +277,19 @@ class Accesos(Accesos):
     def calculate_status(self, hora_inicio, guard_data):
         dt_inicio = datetime.strptime(hora_inicio, "%Y-%m-%d %H:%M:%S")
         minutos_inicio = dt_inicio.hour * 60 + dt_inicio.minute
+        segundos_inicio = dt_inicio.second
+        
         turno_inicio = guard_data.get('hora_inicio', '00:00:00')
         dt_turno_inicio = datetime.strptime(turno_inicio, "%H:%M:%S")
         minutos_turno_inicio = dt_turno_inicio.hour * 60 + dt_turno_inicio.minute
+        segundos_turno_inicio = dt_turno_inicio.second
 
         tolerancia = int(guard_data.get('tolerancia_retardo', 0))
         retardo_maximo = int(guard_data.get('retardo_maximo', 0))
 
-        minutos_retraso = minutos_inicio - minutos_turno_inicio
+        # Diferencia exacta en minutos incluyendo segundos
+        delta_seconds = (minutos_inicio * 60 + segundos_inicio) - (minutos_turno_inicio * 60 + segundos_turno_inicio)
+        minutos_retraso = delta_seconds / 60.0
 
         if minutos_retraso <= tolerancia:
             return "presente"
@@ -288,7 +298,7 @@ class Accesos(Accesos):
         elif minutos_retraso > retardo_maximo:
             return "falta_por_retardo"
         else:
-            return ""
+            return "presente"
 
     def check_in_manual(self):
         #! Se cierra cualquier turno anterior que este abierto
