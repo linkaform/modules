@@ -1281,27 +1281,18 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             total_inspecciones
         )
         
-        # 4. Graficos y Tablas que requieren procesamiento especifico
-        calificacion_x_hotel_grafica = self.get_cuatrimestres_by_hotel(hoteles=hoteles, anio=anio, cuatrimestres=[1, 2, 3])
+        # 4. Tablas que requieren procesamiento especifico
         habitaciones_inspeccionadas = self.get_table_habitaciones_inspeccionadas(inspecciones=inspecciones)
-        graph_radar = self.get_graph_radar(inspecciones=inspecciones)
-        hoteles_fotografias = self.get_fotografias(inspecciones=inspecciones)
         
-        # 5. Detalles y Comentarios (misma data formateada)
+        # 5. Detalles
         rooms_details = self.get_rooms_details(inspecciones=inspecciones)
-        hoteles_comentarios = rooms_details # Reutilizamos la lista
 
         report_data = {
             'cards': metrics.get('cards'),
             'porcentaje_propiedades_inspeccionadas': propiedades_inspeccionadas,
-            'calificacion_x_hotel_grafica': calificacion_x_hotel_grafica,
             'fallas': metrics.get('fallas'),
             'table_habitaciones_inspeccionadas': habitaciones_inspeccionadas,
             'mejor_y_peor_habitacion': metrics.get('mejor_y_peor_habitacion'),
-            'graph_radar': graph_radar,
-            'hoteles_fotografias': hoteles_fotografias,
-            'hoteles_comentarios': {'hoteles_comentarios': hoteles_comentarios}, # Ajuste para mantener estructura esperada {'key': list} si el original retornaba dict
-            'rooms_details': rooms_details,
         }
 
         # Nota: get_comentarios original retornaba {'hoteles_comentarios': [...]}, get_rooms_details retornaba [...].
@@ -1645,6 +1636,70 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         }
         return resultado_final
 
+    def get_background_graphs(self, anio=None, cuatrimestres=None, hoteles=None):
+        # Normaliza los nombres de hoteles usando las abreviaturas si corresponde
+        if hoteles:
+            hoteles_actualizados = []
+            for hotel in hoteles:
+                encontrado = False
+                hotel_norm = hotel.lower().replace(' ', '_')
+                for k, v in self.hotel_name_abreviatura.items():
+                    v_norm = v.lower().replace(' ', '_')
+                    k_norm = k.lower().replace(' ', '_')
+                    if v_norm == hotel_norm:
+                        hoteles_actualizados.append(k_norm)
+                        encontrado = True
+                        break
+                if not encontrado:
+                    hoteles_actualizados.append(hotel_norm)
+            hoteles = hoteles_actualizados
+
+        forms_id_list = self.get_forms_id_list(hoteles)
+        self.get_labels(forms_id_list=forms_id_list)
+
+        inspecciones = self.get_inspecciones(forms_id_list=forms_id_list, anio=anio, cuatrimestres=cuatrimestres)
+        calificacion_x_hotel_grafica = self.get_cuatrimestres_by_hotel(hoteles=hoteles, anio=anio, cuatrimestres=[1, 2, 3])
+        graph_radar = self.get_graph_radar(inspecciones=inspecciones)
+
+        report_data = {
+            'calificacion_x_hotel_grafica': calificacion_x_hotel_grafica,
+            'graph_radar': graph_radar,
+        }
+        return report_data
+
+    def get_background_comments_and_images(self, anio=None, cuatrimestres=None, hoteles=None):
+        # Normaliza los nombres de hoteles usando las abreviaturas si corresponde
+        if hoteles:
+            hoteles_actualizados = []
+            for hotel in hoteles:
+                encontrado = False
+                hotel_norm = hotel.lower().replace(' ', '_')
+                for k, v in self.hotel_name_abreviatura.items():
+                    v_norm = v.lower().replace(' ', '_')
+                    k_norm = k.lower().replace(' ', '_')
+                    if v_norm == hotel_norm:
+                        hoteles_actualizados.append(k_norm)
+                        encontrado = True
+                        break
+                if not encontrado:
+                    hoteles_actualizados.append(hotel_norm)
+            hoteles = hoteles_actualizados
+
+        forms_id_list = self.get_forms_id_list(hoteles)
+        self.get_labels(forms_id_list=forms_id_list)
+
+        inspecciones = self.get_inspecciones(forms_id_list=forms_id_list, anio=anio, cuatrimestres=cuatrimestres)
+        hoteles_fotografias = self.get_fotografias(inspecciones=inspecciones)
+        rooms_details = self.get_rooms_details(inspecciones=inspecciones)
+        hoteles_comentarios = rooms_details
+
+        report_data = {
+            'hoteles_fotografias': hoteles_fotografias,
+            'hoteles_comentarios': {'hoteles_comentarios': hoteles_comentarios},
+            'rooms_details': rooms_details,
+        }
+        return report_data
+
 if __name__ == '__main__':
     module_obj = Inspeccion_Hoteleria(settings, sys_argv=sys.argv, use_api=False)
     module_obj.console_run()
@@ -1673,6 +1728,10 @@ if __name__ == '__main__':
         response = module_obj.get_pdf(record_id=record_id)
     elif option == 'get_multi_line_chart_inspecciones':
         response = module_obj.get_multi_line_chart_inspecciones(hoteles=hoteles)
+    elif option == 'get_background_graphs':
+        response = module_obj.get_background_graphs(anio=anio, cuatrimestres=cuatrimestres, hoteles=hoteles)
+    elif option == 'get_background_comments_and_images':
+        response = module_obj.get_background_comments_and_images(anio=anio, cuatrimestres=cuatrimestres, hoteles=hoteles)
 
     # print('response=', response)
     if data.get('test'):
