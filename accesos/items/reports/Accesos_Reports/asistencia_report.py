@@ -320,7 +320,7 @@ class Accesos(Accesos):
     def format_guard_turn_details(self, data, selected_day=None):
         now = datetime.now(timezone('America/Mexico_City'))
         today_str = now.strftime("%Y-%m-%d")
-        porcentaje_asistencias = 0.0
+        asistencias = 0
         retardos = 0
         faltas = 0
         horas_trabajadas = 0.0
@@ -343,8 +343,9 @@ class Accesos(Accesos):
                 dias_con_registro[dia] = status
                 if selected_day and dia == selected_day:
                     today_item = item
+                    print(simplejson.dumps(today_item, indent=4))
             if item.get('status_turn') == 'presente':
-                porcentaje_asistencias += 1
+                asistencias += 1
             if item.get('status_turn') == 'retardo':
                 retardos += 1
             if item.get('status_turn') == 'falta_por_retardo':
@@ -379,13 +380,12 @@ class Accesos(Accesos):
             'guardia_generales': today_item if today_item else {},
             'asistencia_mes': asistencia_mes,
             'indicadores_generales': {
-                'porcentaje_asistencias': round((porcentaje_asistencias / days_in_month) * 100, 2),
+                'cantidad_asistencias': asistencias,
                 'retardos': retardos,
-                'horas_trabajadas': f"{round(horas_trabajadas, 2)} / 168",
+                'horas_trabajadas': f"{round(horas_trabajadas)} / 168",
                 'faltas': faltas
             },
         }
-        print(simplejson.dumps(format_response, indent=4))
         return format_response
 
     def get_locations(self):
