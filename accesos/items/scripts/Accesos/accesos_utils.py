@@ -3140,30 +3140,39 @@ class Accesos( Accesos):
             self.LKFException('No se mandarón parametros para actualizar')
 
     def assets_access_pass(self, location):
-        ### Areas
-        catalog_id = self.AREAS_DE_LAS_UBICACIONES_CAT_ID
-        form_id = self.PASE_ENTRADA
-        group_level = 2
-        options = {
-              "group_level": group_level,
-              "startkey": [
-                location
-              ],
-              "endkey": [
-                f"{location}\n",
-                {}
-              ]
+        """
+        Regresa diccionario con las areas, personas que puede visitar en esa ubicacion y los perfiles
+            
+        args:
+            location (str|list): Nombre de la ubicacion
+
+        returns:
+            {
+            Areas:[ lista de areas ],
+            Vistia_a:[ lista de personas ]
+            Perfiles:[ lista de prefiles ]
             }
-        areas = self.lkf_api.catalog_view(catalog_id, form_id, options) 
+        """
+        ### Areas
+        try:
+            areas = self.get_areas_by_location(location)
+        except:
+            areas = []
         ### Aquien Visita
-        catalog_id = self.CONF_AREA_EMPLEADOS_CAT_ID
-        visita_a = self.lkf_api.catalog_view(catalog_id, form_id, options) 
-        # visita_a = [r.get('key')[group_level-1] for r in visita_a]
-        ### Pases de accesos
+        try:
+            visita_a =  self.Employee.get_users_by_location_area(location_name=location)
+            visita_a = [x['name'] for x in visita_a if x.get('name')]
+        except:
+            visita_a = []
+        ### Perfiles de accesos
+        try:
+            perfiles = self.get_pefiles_walkin(location)
+        except:
+            perfiles = []
         res = {
             'Areas': areas,
             'Visita_a': visita_a,
-            'Perfiles': self.get_pefiles_walkin(location),
+            'Perfiles': perfiles
         }
         return res
 
