@@ -259,12 +259,12 @@ class Produccion_PCI( Produccion_PCI ):
         ### returns a dict with the instruccions of create or update
         ###
         result = {'create': {}, 'update':{}}
-        try:
-            telefono_registro = int(record[pos_telefono])
-        except Exception as e:
-            print(e)
-            result['create']['error'] = 'Error en el telefono, favor de revisar'
-            return result
+        # try:
+        #     telefono_registro = int(record[pos_telefono])
+        # except Exception as e:
+        #     print(e)
+        #     result['create']['error'] = 'Error en el telefono, favor de revisar'
+        #     return result
         
         puerto = record[ header_dict['puerto'] ] if header_dict.get('puerto') else None
         actual_record = False
