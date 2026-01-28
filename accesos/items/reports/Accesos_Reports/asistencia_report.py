@@ -203,18 +203,23 @@ class Accesos(Accesos):
                 ubicaciones[location].append(reg)
 
             for location, regs in ubicaciones.items():
-                # Mapear status por día
-                dias_con_registro = {}
-                dias_con_cierre = {}
+                # Mapeo status por día
+                dias_info = {}
                 dias_libres = []
                 for reg in regs:
                     fecha_inicio = reg.get('fecha_inicio_turno')
+                    fecha_cierre = reg.get('end_shift')
                     status = reg.get('status_turn', '')
                     if fecha_inicio:
                         dia = int(fecha_inicio[8:10])
-                        dias_con_registro[dia] = status
+                        dias_info[dia] = {
+                            "status": status,
+                            "fecha_inicio": fecha_inicio,
+                            "fecha_cierre": fecha_cierre
+                        }
                         if reg.get('end_shift'):
-                            dias_con_cierre[dia] = True
+                            dias_info[dia]["closed"] = True
+                            
                     if reg.get('dias_libres_empleado'):
                         #! POSIBLE CAMBIO: Como considerariamos un cambio en los dias libres a mitad de mes?
                         dias_libres = reg['dias_libres_empleado']
@@ -229,10 +234,19 @@ class Accesos(Accesos):
                         "thursday": "jueves", "friday": "viernes", "saturday": "sabado", "sunday": "domingo"
                     }
                     dia_es = dia_map.get(dia_semana, dia_semana)
+                    
+                    fecha_inicio = None
+                    fecha_cierre = None
+                    closed = False
+                    
                     if dias_libres and dia_es in dias_libres:
                         status = "dia_libre"
-                    elif day in dias_con_registro:
-                        status = dias_con_registro[day]
+                    elif day in dias_info:
+                        info = dias_info[day]
+                        status = info["status"]
+                        fecha_inicio = info.get("fecha_inicio")
+                        fecha_cierre = info.get("fecha_cierre")
+                        closed = info.get("closed", False)
                     elif day < now.day:
                         status = "falta"
                     else:
@@ -249,7 +263,11 @@ class Accesos(Accesos):
                         "dia": day,
                         "status": status,
                     }
-                    if day in dias_con_cierre:
+                    if fecha_inicio:
+                        asistencia_data["fecha_inicio"] = fecha_inicio
+                    if fecha_cierre:
+                        asistencia_data["fecha_cierre"] = fecha_cierre
+                    if closed:
                         asistencia_data["closed"] = True
 
                     asistencia_mes.append(asistencia_data)
@@ -265,6 +283,8 @@ class Accesos(Accesos):
         empleados_con_registro = set(data.keys())
         for emp in employees_list:
             emp_id = emp['employee_id']
+            if not emp_id or emp_id == 0:
+                continue
             if emp_id not in empleados_con_registro:
                 asistencia_mes = []
                 resumen = {"asistencias": 0, "retardos": 0, "faltas": 0}
