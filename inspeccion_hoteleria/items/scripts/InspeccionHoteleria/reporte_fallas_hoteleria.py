@@ -768,13 +768,92 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             "totales": totales_list
         }
 
-    def get_habitaciones_by_hotel(self, hotel_name, fallas=None):
+    def get_habitaciones_by_hotel(self, hotel_name, fallas=None, anio=None, cuatrimestres=None):
         hotel_name_list = [hotel_name.lower().replace(' ', '_')]
         form_id = self.get_forms_id_list(hotel_name_list)
         form_id = self.unlist(form_id)
 
         if hotel_name in self.hotel_name_abreviatura:
             hotel_name = self.hotel_name_abreviatura[hotel_name]
+
+        lookup_pipeline = [
+            {
+                '$match': {
+                    '$expr': {
+                        '$and': [
+                        {'$eq': ['$form_id', form_id]},
+                        {'$eq': [f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area_habitacion']}", "$$nombre_hab"]}
+                        ]
+                    }
+                }
+            }
+        ]
+
+        if anio is not None or cuatrimestres:
+            lookup_pipeline.extend([
+                {'$addFields': {
+                    "_fecha": {
+                        "$dateToString": {
+                            "format": "%Y-%m-%d",
+                            "date": "$created_at",
+                            "timezone": "America/Mexico_City"
+                        }
+                    },
+                    "_anio": {
+                        "$year": {
+                            "$dateFromString": {
+                                "dateString": {
+                                    "$dateToString": {
+                                        "format": "%Y-%m-%d",
+                                        "date": "$created_at",
+                                        "timezone": "America/Mexico_City"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "_mes": {
+                        "$month": {
+                            "$dateFromString": {
+                                "dateString": {
+                                    "$dateToString": {
+                                        "format": "%Y-%m-%d",
+                                        "date": "$created_at",
+                                        "timezone": "America/Mexico_City"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                }},
+                {'$addFields': {
+                    "_cuatrimestre": {
+                        "$ceil": {"$divide": ["$_mes", 4]}
+                    }
+                }},
+            ])
+            match_date = {}
+            if anio is not None:
+                match_date["_anio"] = anio
+            if cuatrimestres:
+                match_date["_cuatrimestre"] = {"$in": cuatrimestres}
+            
+            if match_date:
+                lookup_pipeline.append({'$match': match_date})
+
+        lookup_pipeline.extend([
+            {
+                '$sort': {'created_at': -1}
+            },
+            {
+                '$limit': 1
+            },
+            {
+                '$project': {
+                    '_id': 1
+                }
+            }
+        ])
 
         query = [
             {'$match': {
@@ -794,29 +873,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 'let': {
                     'nombre_hab': '$nombre_area_habitacion'
                 },
-                'pipeline': [
-                    {
-                        '$match': {
-                            '$expr': {
-                                '$and': [
-                                {'$eq': ['$form_id', form_id]},
-                                {'$eq': [f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area_habitacion']}", "$$nombre_hab"]}
-                                ]
-                            }
-                        }
-                    },
-                    {
-                        '$sort': {'created_at': -1}
-                    },
-                    {
-                        '$limit': 1
-                    },
-                    {
-                        '$project': {
-                            '_id': 1
-                        }
-                    }
-                ],
+                'pipeline': lookup_pipeline,
                 'as': 'inspeccion'
             }
             },
@@ -941,11 +998,11 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         x = {}
         for x in result:
             x['_id'] = str(x['_id'])
-            x['inspeccion'].pop('_id', None)
+            if x.get('inspeccion'):
+                x['inspeccion'].pop('_id', None)
+                x['inspeccion'].pop('created_at', None)
             x['created_at'] = self.get_date_str(x['created_at'])
             x['updated_at'] = self.get_date_str(x['updated_at'])
-            if x['inspeccion'].get('created_at'):
-                x['inspeccion'].pop('created_at', None)
         if not x:
             return {"mensaje": "No hay inspección para esta habitación"}
         return x
@@ -1264,7 +1321,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             hoteles = hoteles_actualizados
 
         forms_id_list = self.get_forms_id_list(hoteles)
-        self.get_labels(forms_id_list=forms_id_list)
+        # self.get_labels(forms_id_list=forms_id_list)
 
         inspecciones = self.get_inspecciones(forms_id_list=forms_id_list, anio=anio, cuatrimestres=cuatrimestres)
         
@@ -1655,7 +1712,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             hoteles = hoteles_actualizados
 
         forms_id_list = self.get_forms_id_list(hoteles)
-        self.get_labels(forms_id_list=forms_id_list)
+        # self.get_labels(forms_id_list=forms_id_list)
 
         inspecciones = self.get_inspecciones(forms_id_list=forms_id_list, anio=anio, cuatrimestres=cuatrimestres)
         calificacion_x_hotel_grafica = self.get_cuatrimestres_by_hotel(hoteles=hoteles, anio=anio, cuatrimestres=[1, 2, 3])
@@ -1686,7 +1743,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             hoteles = hoteles_actualizados
 
         forms_id_list = self.get_forms_id_list(hoteles)
-        self.get_labels(forms_id_list=forms_id_list)
+        # self.get_labels(forms_id_list=forms_id_list)
 
         inspecciones = self.get_inspecciones(forms_id_list=forms_id_list, anio=anio, cuatrimestres=cuatrimestres)
         hoteles_fotografias = self.get_fotografias(inspecciones=inspecciones)
@@ -1721,7 +1778,7 @@ if __name__ == '__main__':
             hoteles = [hotel.get('nombre_hotel', '') for hotel in hoteles]
         response = module_obj.get_report(anio=anio, cuatrimestres=cuatrimestres, hoteles=hoteles)
     elif option == 'get_habitaciones_by_hotel':
-        response = module_obj.get_habitaciones_by_hotel(hotel_name=hotel_name, fallas=fallas)
+        response = module_obj.get_habitaciones_by_hotel(hotel_name=hotel_name, fallas=fallas, anio=anio, cuatrimestres=cuatrimestres)
     elif option == 'get_room_data':
         response = module_obj.get_room_data(hotel_name=hotel_name, room_id=room_id)
     elif option == 'get_room_pdf':
