@@ -677,14 +677,24 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         ]
 
         match_filter = {}
-        # Si pides los 3 cuatrimestres, ajusta el año del cuatrimestre 3
-        if anio is not None and cuatrimestres and set(cuatrimestres) == {1, 2, 3}:
+        # Si pides los 3 cuatrimestres, calculamos el actual y los 2 anteriores dinámicamente
+        if cuatrimestres and set(cuatrimestres) == {1, 2, 3}:
+            now = datetime.datetime.now()
+            current_year = now.year
+            current_cuatri = (now.month - 1) // 4 + 1
+            
+            target_periods = []
+            temp_y, temp_c = current_year, current_cuatri
+            for _ in range(3):
+                target_periods.append({"anio": temp_y, "cuatrimestre": temp_c})
+                temp_c -= 1
+                if temp_c < 1:
+                    temp_c = 3
+                    temp_y -= 1
+
             query.append({
                 "$match": {
-                    "$or": [
-                        {"anio": anio, "cuatrimestre": {"$in": [1, 2]}},
-                        {"anio": anio - 1, "cuatrimestre": 3}
-                    ]
+                    "$or": target_periods
                 }
             })
         else:
