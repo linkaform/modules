@@ -68,7 +68,7 @@ class PCI_Utils():
             'Cope': ['Cope','COPE','cope'],
             'Motivo de Objecion': ['DETALLE'],
             'usuario_reporta': ['usuario_reporta'],
-            'Num. Serie': ['Num. Serie', 'Num Serie'],
+            'Num. Serie': ['Num. Serie', 'Num Serie', 'ALFANUMERICO'],
             'cambio_tecnologia': ['cambio_tecnologia', 'cambio_tecnología', 'cambio_de_tecnologia', 'cambio_de_tecnología'],
         }
 
@@ -338,18 +338,39 @@ class PCI_Utils():
         return status_code
 
     def find_folio_autorizado(self, folio, telefono, division, tecnologia):
-        record_autorizacion = self.cr_admin.find_one({
+        query_autorizacion = {
             'form_id': self.FORM_ID_AUTORIZA_CARGA_FOLIOS, 
             'deleted_at': {'$exists': False}, 
             'answers.5f93173c1a0ae8341d543f65': folio, 
-            'answers.5f93173c1a0ae8341d543f66': int(telefono), 
             'answers.5f93173c1a0ae8341d543f67': division, 
             'answers.5f93173c1a0ae8341d543f68': tecnologia
-        }, {'folio':1, 'answers.5fbbdac8a85f5b2ab8bb033e': 1})
-        if not record_autorizacion:
-            return []
-        return record_autorizacion.get('answers',{}).get('5fbbdac8a85f5b2ab8bb033e', [])
+        }
 
+        # Se valida si es un solo folio el que se consulta para devolver el campo de Autorizaciones
+        if not isinstance(folio, list):
+            query_autorizacion['answers.5f93173c1a0ae8341d543f66'] = int(telefono)
+            record_autorizacion = self.cr_admin.find_one(query_autorizacion, {'folio':1, 'answers.5fbbdac8a85f5b2ab8bb033e': 1})
+            if not record_autorizacion:
+                return []
+            return record_autorizacion.get('answers',{}).get('5fbbdac8a85f5b2ab8bb033e', [])
+
+        # Si llega aqui, es un grupo de folios a consultar
+        folios_autorizados = {}
+        query_autorizacion['answers.5f93173c1a0ae8341d543f65'] = { '$in': folio }
+        query_autorizacion['answers.5f93173c1a0ae8341d543f66'] = { '$in': telefono }
+        query_autorizacion.pop('answers.5f93173c1a0ae8341d543f67', None)
+        query_autorizacion.pop('answers.5f93173c1a0ae8341d543f68', None)
+        records_autorizacion = self.cr_admin.find(query_autorizacion, {'folio': 1, 'answers': 1})
+        for rec_autoriza in records_autorizacion:
+            answer_autoriza = rec_autoriza['answers']
+            folio_autorizacion = answer_autoriza['5f93173c1a0ae8341d543f65']
+            telefono_autorizacion = answer_autoriza['5f93173c1a0ae8341d543f66']
+            division_autorizacion = answer_autoriza['5f93173c1a0ae8341d543f67']
+            tecnologia_autorizacion = answer_autoriza['5f93173c1a0ae8341d543f68']
+            full_name_autoriza = f'{folio_autorizacion}_{telefono_autorizacion}_{division_autorizacion}_{tecnologia_autorizacion}'
+            folios_autorizados[ full_name_autoriza ] = answer_autoriza.get('5fbbdac8a85f5b2ab8bb033e', [])
+        return folios_autorizados
+        
     def find_tipo_tarea_catalog(self, tipo_tarea, tecnologia_orden, jwt_settings_key=None):
         mango_query = { 
             "selector": { 
