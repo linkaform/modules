@@ -45,7 +45,23 @@ if __name__ == "__main__":
             "file_url":"https://f001.backblazeb2.com/file/app-linkaform/public-client-126/116852/660459dde2b2d414bce9cf8f/697a208dca2f8309b2306fce.jpeg"
             }],
             "comentario_entrega":"Comentario de la Entrega",
-        }],
+        },
+            {
+            "categoria_equipo_concesion":"Artiuclos de Oficina",
+            "nombre_equipo":"Relog",
+            "costo_equipo_concesion":5000.00, # int or list [300,]
+            "imagen_equipo_concesion":[{
+                "file_name":"drangosito.jpg",
+                "file_url":"https://b2.linkaform.com/file/app-linkaform/public-client-126/116852/660459dde2b2d414bce9cf8f/69778aed80977437cf013a2b.jpeg", 
+            }],
+            "cantidad_equipo_concesion":1,
+            "evidencia_entrega":[{
+            "file_name":"Articulo.jpg",
+            "file_url":"https://b2.linkaform.com/file/app-linkaform/public-client-126/116852/660459dde2b2d414bce9cf8f/69778aed80977437cf013a2b.jpeg"
+            }],
+            "comentario_entrega":"Comentario de la Entrega",
+        }
+        ],
         "observacion_concesion":"observacion",
         "evidencia":[],
         "firma":
@@ -89,16 +105,23 @@ if __name__ == "__main__":
     folio = data.get("folio",['553-10'])
     tipo = data.get("tipo","")
 
+
+
     dateFrom = data.get("dateFrom", "")
     dateTo = data.get("dateTo", "")
     filterDate = data.get("filterDate", "")
    
     if option == 'new_article':
+        data_article = mock_crea_consecion 
         response = acceso_obj.create_article_concessioned(data_article)
     elif option == 'get_articles':
         response = acceso_obj.get_list_articulos_concesionados(location, area, status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate)
     elif option == 'update_article':
-        response = acceso_obj.update_article_concessioned(data_article_update, folio)
+        record_id = data.get("record_id","")
+        status = data.get("status","")
+        state = data.get("state","")
+        equipos = data.get("equipos","")
+        response = acceso_obj.update_article_concessioned(record_id, status, state, equipos)
     elif option == 'delete_article':
         response = acceso_obj.delete_article_concessioned(folio)
     elif option == 'catalogo_tipo_concesion':
