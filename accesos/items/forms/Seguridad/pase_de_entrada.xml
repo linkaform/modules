@@ -11,7 +11,7 @@
             <padding_zeros>3</padding_zeros>
             <prefix>PE/%y%m/</prefix>
             <required>False</required>
-            <suffix />
+            <suffix>None</suffix>
         </folio>
     </advanced_options>
     <allow_page_navigation>True</allow_page_navigation>
@@ -3432,7 +3432,7 @@
                         <catalog_field_id>{{ catalog.ubicaciones.obj_id }}</catalog_field_id>
                         <catalog_id>{{ catalog.ubicaciones.id }}</catalog_id>
                         <field_type>text</field_type>
-                        <filters />
+                        <filters>None</filters>
                         <geofence>None</geofence>
                         <last>True</last>
                         <related_catalog>{}</related_catalog>
@@ -6922,8 +6922,7 @@
         <item>
             <_type>single_record</_type>
             <default>True</default>
-            <description>Template de gafete de visita para Lito Process
-</description>
+            <description>Template de gafete de visita para Lito Process</description>
             <id>618</id>
             <name>Lito Process - Gafete de VIsita</name>
             <owner>/api/infosync/user/29572/</owner>
@@ -6942,5 +6941,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1768578581.0</updated_at>
+    <updated_at>1769008940.0</updated_at>
 </lkf>

@@ -501,13 +501,14 @@
                         <fields_attached>[]</fields_attached>
                         <pdf_template>
                             <_type>single_record</_type>
-                            <description>Plantilla para Pase de Entrada en Soter</description>
-                            <id>584</id>
-                            <name>Soter - Pase de Entrada</name>
-                            <owner>/api/infosync/user/10/</owner>
-                            <paginate>False</paginate>
+                            <description>Template de gafete de visita para Lito Process
+</description>
+                            <id>618</id>
+                            <name>Lito Process - Gafete de VIsita</name>
+                            <owner>/api/infosync/user/29572/</owner>
+                            <paginate>True</paginate>
                             <properties>{}</properties>
-                            <resource_uri>/api/infosync/templates/584/</resource_uri>
+                            <resource_uri>/api/infosync/templates/618/</resource_uri>
                         </pdf_template>
                         <resend>RESEND</resend>
                         <send_attachments>False</send_attachments>
