@@ -6,7 +6,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>66d76124f5e362c454417e13</_id>
                     <action_id>7</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -56,7 +55,6 @@
                     <name>None</name>
                 </item>
             </actions>
-            <id>66d76124f5e362c454417e14</id>
             <name>None</name>
             <rules>
                 <metadata>
@@ -117,7 +115,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -196,7 +193,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada Culiacan</name>
             <rules>
                 <metadata>
@@ -271,7 +267,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -350,7 +345,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada Monterrey</name>
             <rules>
                 <metadata>
@@ -425,7 +419,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -504,7 +497,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada Pachuca</name>
             <rules>
                 <metadata>
@@ -579,7 +571,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -658,7 +649,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada Puebla</name>
             <rules>
                 <metadata>
@@ -733,7 +723,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -812,7 +801,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada Chilpancingo</name>
             <rules>
                 <metadata>
@@ -887,7 +875,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -966,7 +953,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada Merida</name>
             <rules>
                 <metadata>
@@ -1041,7 +1027,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -1120,7 +1105,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada Tuxtla</name>
             <rules>
                 <metadata>
@@ -1195,7 +1179,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -1274,7 +1257,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada Villahermosa</name>
             <rules>
                 <metadata>
@@ -1349,7 +1331,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -1428,7 +1409,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada Tláhuac</name>
             <rules>
                 <metadata>
@@ -1503,7 +1483,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -1582,7 +1561,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada GFC DELTA Levic León</name>
             <rules>
                 <metadata>
@@ -1657,161 +1635,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
-                    <action_id>5</action_id>
-                    <action_settings>{}</action_settings>
-                    <configuration>
-                        <body>
-                            {% raw %} &lt;!DOCTYPE html&gt;
-                            &lt;html lang="es"&gt;
-
-                            &lt;head&gt;
-                                &lt;meta charset="UTF-8"&gt;
-                                &lt;title&gt;Pase de Entrada&lt;/title&gt;
-                            &lt;/head&gt;
-
-                            &lt;body style="margin:0; padding:0; font-family: Arial, sans-serif; background-color:#f7f9fb; color:#333;"&gt;
-
-                                &lt;!-- Contenedor principal --&gt;
-                                &lt;div
-                                    style="max-width:600px; margin:0 auto; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.08);"&gt;
-
-                                    &lt;!-- Header con logo --&gt;
-                                    &lt;div style="text-align:center; padding:25px 20px; background:#f1f4f8;"&gt;
-                                        &lt;img src="https://f001.backblazeb2.com/file/app-linkaform/public-client-126/71202/60b81349bde5588acca320e1/68c20ac3f18d9c0c5ca1b1e4.png"
-                                            alt="Logo" style="max-height:120px;"&gt;
-                                    &lt;/div&gt;
-
-                                    &lt;!-- Mensaje principal --&gt;
-                                    &lt;div style="padding:30px 25px; text-align:center;"&gt;
-                                        &lt;h2 style="margin:0; font-size:22px; color:#021d49;"&gt;Acceso de:
-                                            {{record.answers.68ac710d978095fbcab62b2a.5ea0693a0c12d5a8e43d37df}},&lt;/h2&gt;
-                                        &lt;p style="margin:20px 0; font-size:16px; line-height:1.5; color:#555;"&gt;
-                                            Ubicacion: {{record.answers.68ac704bcfb04b307d7d1024.663e5c57f5b8a7ce8211ed0b}}
-                                        &lt;/p&gt;
-                                        &lt;p style="margin:20px 0; font-size:16px; line-height:1.5; color:#555;"&gt;
-                                            Area de Acceso: {{record.answers.68ac704bcfb04b307d7d1024.663e5d44f5b8a7ce8211ed0f}}
-                                        &lt;/p&gt;
-                                        {% for item in record.answers.663d4ba61b14fab90559ebb0 %}
-                                        &lt;p style="margin:20px 0; font-size:16px; line-height:1.5; color:#555;"&gt;
-                                            Vista a : {{item.68ac70632fd88aae41b62ae5.62c5ff407febce07043024dd}}
-                                        &lt;/p&gt;
-                                        {% endfor %}
-                                    &lt;/div&gt;
-
-
-                                    &lt;!-- Footer --&gt;
-                                    &lt;div style="text-align:center; padding:20px; font-size:12px; color:#777; background:#f1f4f8;"&gt;
-                                        &lt;p style="margin:0;"&gt;&amp;copy; 2024 &lt;a href="https://soter-app.webflow.io/" target="_blank"
-                                                style="color:#021d49; text-decoration:none;"&gt;Clave10&lt;/a&gt;. Todos los derechos reservados.&lt;/p&gt;
-                                        &lt;div style="margin-top:10px;"&gt;
-                                            &lt;a href="https://www.linkaform.com/" target="_blank"&gt;
-                                                &lt;img src="https://f001.backblazeb2.com/file/app-linkaform/public-client-126/107023/64dd1bd4fd200a3308ec2141/663517c3caae08b8adf27472.png"
-                                                    width="120px" alt="Linkaform"&gt;
-                                            &lt;/a&gt;
-                                        &lt;/div&gt;
-                                    &lt;/div&gt;
-
-                                &lt;/div&gt;
-                            &lt;/body&gt;
-
-                            &lt;/html&gt; {% endraw %}
-                        </body>
-                        <email_fields>[]</email_fields>
-                        <emails>
-                            <item>gerente.administrativo@cgf.mx</item>
-                        </emails>
-                        <embed_company_picture>True</embed_company_picture>
-                        <fields_attached>[]</fields_attached>
-                        <pdf_template>{}</pdf_template>
-                        <resend>RESEND</resend>
-                        <send_attachments>False</send_attachments>
-                        <send_pdf>True</send_pdf>
-                        <sender>RECORD_USER</sender>
-                        <subject>{% raw %} Resgistro de Acceso de: {{record.answers.68ac710d978095fbcab62b2a.5ea0693a0c12d5a8e43d37df}} {% endraw %}</subject>
-                        <timer_config>
-                            <seconds_to_expire>None</seconds_to_expire>
-                        </timer_config>
-                    </configuration>
-                    <name>Aviso de Entrada</name>
-                </item>
-            </actions>
-            <id>6973bfc28b739e4787fa5904</id>
-            <name>Aviso de Entrada GFC DELTA Levic León</name>
-            <rules>
-                <metadata>
-                    <connection>[]</connection>
-                    <date>
-                        <period>
-                            <month>1</month>
-                            <selected>False</selected>
-                            <year>2014</year>
-                        </period>
-                        <range>
-                            <end>2026-01-24T06:00:00.000Z</end>
-                            <selected>False</selected>
-                            <start>2026-01-23T17:34:09.420Z</start>
-                        </range>
-                    </date>
-                    <grading>{}</grading>
-                    <user>[]</user>
-                </metadata>
-                <record>
-                    <created>True</created>
-                    <deleted>False</deleted>
-                    <edited>True</edited>
-                    <run_multiple_times>False</run_multiple_times>
-                    <runtime>after</runtime>
-                </record>
-                <wf_fields>
-                    <operator>all</operator>
-                    <triggers>
-                        <item>
-                            <condition>in=</condition>
-                            <form_id>None</form_id>
-                            <other_value>None</other_value>
-                            <prefix>answer</prefix>
-                            <trigger_field>
-                                <catalog>{}</catalog>
-                                <field_id>66358a5e50e5c61267832f90</field_id>
-                                <group>{}</group>
-                                <label>Estatus</label>
-                                <type>radio</type>
-                            </trigger_field>
-                            <value>entrada</value>
-                        </item>
-                        <item>
-                            <condition>in=</condition>
-                            <form_id>None</form_id>
-                            <other_value>None</other_value>
-                            <prefix>answer</prefix>
-                            <trigger_field>
-                                <catalog>
-                                    <catalog_field_id>{{ catalog.areas_de_las_ubicaciones.obj_id }}</catalog_field_id>
-                                    <catalog_id>{{ catalog.areas_de_las_ubicaciones.id }}</catalog_id>
-                                    <field_type>text</field_type>
-                                    <filters>None</filters>
-                                    <geofence>None</geofence>
-                                    <last>False</last>
-                                    <related_catalog>{}</related_catalog>
-                                    <view_fields>[]</view_fields>
-                                    <view_index>1</view_index>
-                                </catalog>
-                                <field_id>663e5c57f5b8a7ce8211ed0b</field_id>
-                                <group>{}</group>
-                                <label>Ubicación</label>
-                                <type>catalog-select</type>
-                            </trigger_field>
-                            <value>GFC DELTA Levic León</value>
-                        </item>
-                    </triggers>
-                </wf_fields>
-            </rules>
-        </item>
-        <item>
-            <actions>
-                <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -1890,7 +1713,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada Leon</name>
             <rules>
                 <metadata>
@@ -1965,7 +1787,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -2044,7 +1865,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada San Luis</name>
             <rules>
                 <metadata>
@@ -2119,7 +1939,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -2198,7 +2017,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada Queretaro</name>
             <rules>
                 <metadata>
@@ -2273,7 +2091,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -2352,7 +2169,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada Michoacan</name>
             <rules>
                 <metadata>
@@ -2427,7 +2243,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -2506,7 +2321,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada Guadalajara Levic</name>
             <rules>
                 <metadata>
@@ -2581,7 +2395,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -2660,7 +2473,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada Tijuana Levic</name>
             <rules>
                 <metadata>
@@ -2735,7 +2547,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -2814,7 +2625,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada Tultitlán Levic</name>
             <rules>
                 <metadata>
@@ -2889,7 +2699,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -2968,7 +2777,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada Veracruz Levic</name>
             <rules>
                 <metadata>
@@ -3043,7 +2851,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -3122,7 +2929,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada Oaxaca Levic</name>
             <rules>
                 <metadata>
@@ -3197,7 +3003,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -3276,7 +3081,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada Poza Rica Veracruz</name>
             <rules>
                 <metadata>
@@ -3351,7 +3155,6 @@
         <item>
             <actions>
                 <item>
-                    <_id>6973bfc28b739e4787fa5900</_id>
                     <action_id>5</action_id>
                     <action_settings>{}</action_settings>
                     <configuration>
@@ -3430,7 +3233,6 @@
                     <name>Aviso de Entrada</name>
                 </item>
             </actions>
-            <id>6973bfc28b739e4787fa5904</id>
             <name>Aviso de Entrada Toluca Levic</name>
             <rules>
                 <metadata>
