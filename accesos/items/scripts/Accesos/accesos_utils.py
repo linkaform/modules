@@ -79,7 +79,7 @@ class Accesos( Accesos):
         #     "gafete_catalog": "66a83ace56d1e741159ce114"
         # })
 
-        # self.consecionados_fields.update({
+        # self.cons_f.update({
         #     "catalogo_ubicacion_concesion": "66a83a74de752e12018fbc3c",
         # })
 
@@ -769,7 +769,7 @@ class Accesos( Accesos):
                     "deleted_at": {"$exists": False},
                     "form_id": self.CONCESSIONED_ARTICULOS,
                     f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}": location,
-                    f"answers.{self.consecionados_fields['status_concesion']}": "abierto",
+                    f"answers.{self.cons_f['status_concesion']}": "abierto",
                 }},
                 {'$project': {
                     '_id': 1,
@@ -1523,9 +1523,9 @@ class Accesos( Accesos):
         answers = {}
         for key, value in data_paquete.items():
             if  key == 'ubicacion_perdido':
-                answers[self.consecionados_fields['ubicacion_catalog_concesion']] = { self.mf['ubicacion']: value}
+                answers[self.cons_f['ubicacion_catalog_concesion']] = { self.mf['ubicacion']: value}
             elif  key == 'area_paqueteria':
-                 answers[self.consecionados_fields['area_catalog_concesion']] = { self.mf['nombre_area_salida']: value}
+                 answers[self.cons_f['area_catalog_concesion']] = { self.mf['nombre_area_salida']: value}
             elif  key == 'guardado_en_paqueteria':
                 answers[self.LOCKERS_CAT_OBJ_ID] ={self.mf['locker_id']:value} 
             elif key == 'proveedor':
@@ -1538,8 +1538,6 @@ class Accesos( Accesos):
             return self.lkf_api.patch_multi_record( answers = answers, form_id=self.PAQUETERIA, folios=[folio])
         else:
             self.LKFException('No se mandarón parametros para actualizar')
-
-   
 
     def get_list_bitacora2(self, location=None, area=None, prioridades=[], dateFrom='', dateTo='', filterDate=""):
         match_query = {
@@ -1864,7 +1862,7 @@ class Accesos( Accesos):
     #         match_query_concesionados = {
     #             "deleted_at": {"$exists": False},
     #             "form_id": self.CONCESSIONED_ARTICULOS,
-    #             f"answers.{self.consecionados_fields['catalogo_ubicacion_concesion']}.{self.mf['ubicacion']}": location,
+    #             f"answers.{self.cons_f['catalogo_ubicacion_concesion']}.{self.mf['ubicacion']}": location,
     #         }
 
     #         proyect_fields_concesionados = {
@@ -2029,8 +2027,8 @@ class Accesos( Accesos):
     #         match_query_concesionados = {
     #             "deleted_at": {"$exists": False},
     #             "form_id": self.CONCESSIONED_ARTICULOS,
-    #             f"answers.{self.consecionados_fields['catalogo_ubicacion_concesion']}.{self.mf['ubicacion']}": location,
-    #             f"answers.{self.consecionados_fields['status_concesion']}": "abierto",
+    #             f"answers.{self.cons_f['catalogo_ubicacion_concesion']}.{self.mf['ubicacion']}": location,
+    #             f"answers.{self.cons_f['status_concesion']}": "abierto",
     #         }
 
     #         proyect_fields_concesionados = {
