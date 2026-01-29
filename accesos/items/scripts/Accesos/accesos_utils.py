@@ -79,7 +79,7 @@ class Accesos( Accesos):
         #     "gafete_catalog": "66a83ace56d1e741159ce114"
         # })
 
-        # self.consecionados_fields.update({
+        # self.cons_f.update({
         #     "catalogo_ubicacion_concesion": "66a83a74de752e12018fbc3c",
         # })
 
@@ -225,7 +225,7 @@ class Accesos( Accesos):
             booth_status['status'] = 'Abierta'
             booth_status['guard_on_dutty'] = last_chekin.get('employee') 
             booth_status['stated_at'] = last_chekin.get('boot_checkin_date')
-            booth_status['checkin_id'] = last_chekin['_id']
+            booth_status['checkin_id'] = last_chekin.get('_id', last_chekin.get('id', ''))
             booth_status['fotografia_inicio_turno'] = last_chekin.get('fotografia_inicio_turno',[]) 
             booth_status['fotografia_cierre_turno'] = last_chekin.get('fotografia_cierre_turno',[]) 
         return booth_status
@@ -773,7 +773,7 @@ class Accesos( Accesos):
                     "deleted_at": {"$exists": False},
                     "form_id": self.CONCESSIONED_ARTICULOS,
                     f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}": location,
-                    f"answers.{self.consecionados_fields['status_concesion']}": "abierto",
+                    f"answers.{self.cons_f['status_concesion']}": "abierto",
                 }},
                 {'$project': {
                     '_id': 1,
@@ -1032,6 +1032,11 @@ class Accesos( Accesos):
                 unwind_query.update({f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": user_ids })
         query += [ {'$match': unwind_query }]
         query += [
+            {'$addFields': {
+                'priority': {
+                    '$cond': [{'$eq': [f"$answers.{self.f['guard_group']}.{self.f['checkin_status']}", 'entrada']}, 1, 0]
+                }
+            }},
             {'$project':
                 {'_id': 1,
                     'folio': "$folio",
@@ -1045,23 +1050,24 @@ class Accesos( Accesos):
                     'checkin_status': f"$answers.{self.f['guard_group']}.{self.f['checkin_status']}",
                     'checkin_position': f"$answers.{self.f['guard_group']}.{self.f['checkin_position']}",
                     'nombre_suplente': f"$answers.{self.f['guard_group']}.{self.checkin_fields['nombre_suplente']}",
+                    'priority': '$priority'
                     }
             },
-            {'$sort':{'updated_at':-1}},
+            {'$sort':{'priority':-1, 'created_at':-1}},
             {'$group':{
                 '_id':{
                     'user_id':'$user_id',
                     },
-                'name':{'$last':'$name'},
-                'location':{'$last':'$location'},
-                'area':{'$last':'$area'},
-                'checkin_date':{'$last':'$checkin_date'},
-                'checkout_date':{'$last':'$checkout_date'},
-                'checkin_status':{'$last':'$checkin_status'},
-                'checkin_position':{'$last':'$checkin_position'},
-                'folio':{'$last':'$folio'},
-                'id_register':{'$last':'$_id'},
-                'nombre_suplente':{'$last':'$nombre_suplente'}
+                'name':{'$first':'$name'},
+                'location':{'$first':'$location'},
+                'area':{'$first':'$area'},
+                'checkin_date':{'$first':'$checkin_date'},
+                'checkout_date':{'$first':'$checkout_date'},
+                'checkin_status':{'$first':'$checkin_status'},
+                'checkin_position':{'$first':'$checkin_position'},
+                'folio':{'$first':'$folio'},
+                'id_register':{'$first':'$_id'},
+                'nombre_suplente':{'$first':'$nombre_suplente'}
             }},
             {'$project':{
                 '_id':0,
@@ -1521,9 +1527,9 @@ class Accesos( Accesos):
         answers = {}
         for key, value in data_paquete.items():
             if  key == 'ubicacion_perdido':
-                answers[self.consecionados_fields['ubicacion_catalog_concesion']] = { self.mf['ubicacion']: value}
+                answers[self.cons_f['ubicacion_catalog_concesion']] = { self.mf['ubicacion']: value}
             elif  key == 'area_paqueteria':
-                 answers[self.consecionados_fields['area_catalog_concesion']] = { self.mf['nombre_area_salida']: value}
+                 answers[self.cons_f['area_catalog_concesion']] = { self.mf['nombre_area_salida']: value}
             elif  key == 'guardado_en_paqueteria':
                 answers[self.LOCKERS_CAT_OBJ_ID] ={self.mf['locker_id']:value} 
             elif key == 'proveedor':
@@ -1536,8 +1542,6 @@ class Accesos( Accesos):
             return self.lkf_api.patch_multi_record( answers = answers, form_id=self.PAQUETERIA, folios=[folio])
         else:
             self.LKFException('No se mandarón parametros para actualizar')
-
-   
 
     def get_list_bitacora2(self, location=None, area=None, prioridades=[], dateFrom='', dateTo='', filterDate=""):
         match_query = {
@@ -1862,7 +1866,7 @@ class Accesos( Accesos):
     #         match_query_concesionados = {
     #             "deleted_at": {"$exists": False},
     #             "form_id": self.CONCESSIONED_ARTICULOS,
-    #             f"answers.{self.consecionados_fields['catalogo_ubicacion_concesion']}.{self.mf['ubicacion']}": location,
+    #             f"answers.{self.cons_f['catalogo_ubicacion_concesion']}.{self.mf['ubicacion']}": location,
     #         }
 
     #         proyect_fields_concesionados = {
@@ -2027,8 +2031,8 @@ class Accesos( Accesos):
     #         match_query_concesionados = {
     #             "deleted_at": {"$exists": False},
     #             "form_id": self.CONCESSIONED_ARTICULOS,
-    #             f"answers.{self.consecionados_fields['catalogo_ubicacion_concesion']}.{self.mf['ubicacion']}": location,
-    #             f"answers.{self.consecionados_fields['status_concesion']}": "abierto",
+    #             f"answers.{self.cons_f['catalogo_ubicacion_concesion']}.{self.mf['ubicacion']}": location,
+    #             f"answers.{self.cons_f['status_concesion']}": "abierto",
     #         }
 
     #         proyect_fields_concesionados = {
@@ -3319,24 +3323,19 @@ class Accesos( Accesos):
             "form_id": self.CHECKIN_CASETAS,
         }
 
-        if location:
-            match_query.update({
-                f"answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['ubicacion']}": location,
-            })
-        if area:
-            match_query.update({
-                f"answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_area']}": area,
-            })
-        
         query = [
             {'$match': match_query},
             {'$unwind': f"$answers.{self.f['guard_group']}"},
             {'$match': {
                 f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": {"$exists":True},
                 f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": {"$in": [user_id]},
-                # f"answers.{self.f['guard_group']}.{self.f['checkout_date']}": {"$in": [None, ""]}
             }},
-            {'$sort': {'created_at': -1}},
+            {'$addFields': {
+                'priority': {
+                    '$cond': [{'$eq': [f"$answers.{self.f['guard_group']}.{self.f['checkin_status']}", 'entrada']}, 1, 0]
+                }
+            }},
+            {'$sort': {'priority': -1, 'created_at': -1}},
             {'$limit': 1},
             {'$project': {
                 '_id': 1,
@@ -3352,7 +3351,6 @@ class Accesos( Accesos):
                 'checkin_position': f"$answers.{self.f['guard_group']}.{self.f['checkin_position']}",
                 'nombre_suplente': f"$answers.{self.f['guard_group']}.{self.checkin_fields['nombre_suplente']}",
             }},
-            {'$sort': {'updated_at': -1}},
             {'$group':{
                 '_id': {
                     'user_id':'$user_id',
@@ -3402,3 +3400,24 @@ class Accesos( Accesos):
                 'nombre_suplente':record.get('nombre_suplente',"")
             }
         return format_data
+
+    def search_guard_asistance(self, location, area, guard):
+        query = [
+            {"$match": {
+                "deleted_at":{"$exists":False},
+                "form_id": self.REGISTRO_ASISTENCIA,
+                f"answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.f['location']}": location,
+                f"answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.f['area']}": area,
+                f"answers.{self.f['fecha_cierre_turno']}": {"$exists": False},
+                "created_by_id": guard,
+            }},
+            {"$sort": {"created_at": -1}},
+            {"$project": {
+                "_id": 1,
+            }}
+        ]
+        resp = self.format_cr(self.cr.aggregate(query))
+        format_resp = []
+        if resp:
+            format_resp = [r.get('_id', r.get('id', '')) for r in resp]
+        return format_resp
