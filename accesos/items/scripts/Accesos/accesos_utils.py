@@ -1139,6 +1139,27 @@ class Accesos( Accesos):
                 checkin[self.f['guard_group']] += [guard_data,]
         return checkin
 
+    def do_attendance(self, asistencia_answers):
+        metadata = self.lkf_api.get_metadata(form_id=self.REGISTRO_ASISTENCIA)
+        metadata.update({
+            "properties": {
+                "device_properties":{
+                    "System": "Script",
+                    "Module": 'Accesos',
+                    "Process": 'Inicio de turno',
+                    "Action": 'asistencia',
+                    "File": 'accesos/app.py',
+                }
+            },
+        })
+        metadata.update({'answers':asistencia_answers})
+        #! Se registra la asistencia.
+        response = self.lkf_api.post_forms_answers(metadata)
+        if response.get('status_code') in [200, 201, 202]:
+            return True
+        else:
+            return self.LKFException({'title': 'Error en registro de asistencia', 'msg': {'response': response}})
+
     def do_checkin(self, location, area, employee_list=[], fotografia=[], check_in_manual={}, nombre_suplente="", checkin_id=""):
         """
         Se encarga de hacer el check in de un guardia.
@@ -1246,45 +1267,28 @@ class Accesos( Accesos):
                 self.checkin_fields['fotografia_inicio_turno']: fotografia
             })
 
-        #! Se crea el check in.
+        asistencia_answers = {
+            self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID: {
+                self.Location.f['location']: location,
+                self.Location.f['area']: area
+            },
+            self.f['tipo_guardia']: 'guardia_regular',
+            self.checkin_fields['checkin_type']: 'iniciar_turno',
+            self.f['image_checkin']: fotografia
+        }
+
+        if nombre_suplente:
+            asistencia_answers.update({
+                self.f['tipo_guardia']: 'guardia_suplente',
+                self.f['nombre_guardia_suplente']: nombre_suplente
+            })
+
+        registro_de_asistencia = self.do_attendance(asistencia_answers)
+        
         resp_create = self.lkf_api.post_forms_answers(data)
         if resp_create.get('status_code') == 201:
             resp_create['json'].update({'boot_status':{'guard_on_duty':user_data['name']}})
-            asistencia_answers = {
-                self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID: {
-                    self.Location.f['location']: location,
-                    self.Location.f['area']: area
-                },
-                self.f['tipo_guardia']: 'guardia_regular',
-                self.checkin_fields['checkin_type']: 'iniciar_turno',
-                self.f['image_checkin']: fotografia
-            }
-
-            if nombre_suplente:
-                asistencia_answers.update({
-                    self.f['tipo_guardia']: 'guardia_suplente',
-                    self.f['nombre_guardia_suplente']: nombre_suplente
-                })
-
-            metadata = self.lkf_api.get_metadata(form_id=self.REGISTRO_ASISTENCIA)
-            metadata.update({
-                "properties": {
-                    "device_properties":{
-                        "System": "Script",
-                        "Module": 'Accesos',
-                        "Process": 'Inicio de turno',
-                        "Action": 'asistencia',
-                        "File": 'accesos/app.py',
-                    }
-                },
-            })
-            metadata.update({'answers':asistencia_answers})
-            #! Se registra la asistencia.
-            response = self.lkf_api.post_forms_answers(metadata)
-            if response.get('status_code') in [200, 201, 202]:
-                resp_create.update({'registro_de_asistencia': 'Correcto'})
-            else:
-                resp_create.update({'registro_de_asistencia': 'Error'})
+            resp_create.update({'registro_de_asistencia': 'Correcto'})
         return resp_create
 
     def do_checkout(self, checkin_id=None, location=None, area=None, guards=[], forzar=False, comments=False, fotografia=[], guard_id=None):
@@ -1367,13 +1371,21 @@ class Accesos( Accesos):
 
         response = self.lkf_api.patch_record( data=data, record_id=checkin_id)
         if response.get('status_code') in [200, 201, 202]:
+            print('entra aquiiiiiiii')
+            print('employee', employee)
             if employee:
+                print('employee', employee)
+                print('location', location)
+                print('area', area)
                 record_id = self.search_guard_asistance(location, area, self.unlist(employee.get('usuario_id')))
+                print('record_id', record_id)
                 asistencia_answers = {
                     self.f['foto_cierre_turno']: fotografia,
                     self.checkin_fields['checkin_type']: 'cerrar_turno',
                 }
+                print('asistencia_answers', asistencia_answers)
                 res = self.lkf_api.patch_multi_record(answers=asistencia_answers, form_id=self.REGISTRO_ASISTENCIA, record_id=record_id)
+                print('res', res)
                 if res.get('status_code') in [200, 201, 202]:
                     response.update({'registro_de_asistencia': 'Correcto'})
                 else:
@@ -3204,43 +3216,27 @@ class Accesos( Accesos):
 
             answers = {}
             answers[self.mf['guard_group']] = {'-1': employee}
-            data = self.lkf_api.patch_multi_record( answers = answers, form_id=self.CHECKIN_CASETAS, record_id=[record_id])
-            if data.get('status_code') in [200, 201, 202]:
-                asistencia_answers = {
-                    self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID: {
-                        self.Location.f['location']: location,
-                        self.Location.f['area']: area
-                    },
-                    self.f['tipo_guardia']: 'guardia_regular',
-                    self.checkin_fields['checkin_type']: 'iniciar_turno',
-                    self.f['image_checkin']: foto_checkin
-                }
 
-                if nombre_suplente:
-                    asistencia_answers.update({
-                        self.f['tipo_guardia']: 'guardia_suplente',
-                        self.f['nombre_guardia_suplente']: nombre_suplente
-                    })
+            asistencia_answers = {
+                self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID: {
+                    self.Location.f['location']: location,
+                    self.Location.f['area']: area
+                },
+                self.f['tipo_guardia']: 'guardia_regular',
+                self.checkin_fields['checkin_type']: 'iniciar_turno',
+                self.f['image_checkin']: foto_checkin
+            }
 
-                metadata = self.lkf_api.get_metadata(form_id=self.REGISTRO_ASISTENCIA)
-                metadata.update({
-                    "properties": {
-                        "device_properties":{
-                            "System": "Script",
-                            "Module": 'Accesos',
-                            "Process": 'Inicio de turno',
-                            "Action": 'asistencia',
-                            "File": 'accesos/app.py',
-                        }
-                    },
+            if nombre_suplente:
+                asistencia_answers.update({
+                    self.f['tipo_guardia']: 'guardia_suplente',
+                    self.f['nombre_guardia_suplente']: nombre_suplente
                 })
-                metadata.update({'answers':asistencia_answers})
-                #! Se registra la asistencia.
-                response_asistencia = self.lkf_api.post_forms_answers(metadata)
-                if response_asistencia.get('status_code') in [200, 201, 202]:
-                    data.update({'registro_de_asistencia': 'Correcto'})
-                else:
-                    data.update({'registro_de_asistencia': 'Error'})
+
+            registro_de_asistencia = self.do_attendance(asistencia_answers)
+
+            data = self.lkf_api.patch_multi_record( answers = answers, form_id=self.CHECKIN_CASETAS, record_id=[record_id])
+            data.update({'registro_de_asistencia': 'Correcto'})
             response.append(data)
         return response
 
@@ -3274,13 +3270,20 @@ class Accesos( Accesos):
         data['answers'] = checkin_answers
         response = self.lkf_api.patch_record(data=data, record_id=checkin_id)
         if response.get('status_code') in [200, 201, 202]:
+            print('entra aquiiiiiiii')
             if employee:
+                print('employee', employee)
+                print('location', location)
+                print('area', area)
                 record_id = self.search_guard_asistance(location, area, self.unlist(employee.get('usuario_id')))
+                print('record_id', record_id)
                 asistencia_answers = {
                     self.f['foto_cierre_turno']: fotografia,
                     self.checkin_fields['checkin_type']: 'cerrar_turno',
                 }
+                print('asistencia_answers', asistencia_answers)
                 res = self.lkf_api.patch_multi_record(answers=asistencia_answers, form_id=self.REGISTRO_ASISTENCIA, record_id=record_id)
+                print('res', res)
                 if res.get('status_code') in [200, 201, 202]:
                     response.update({'registro_de_asistencia': 'Correcto'})
                 else:
