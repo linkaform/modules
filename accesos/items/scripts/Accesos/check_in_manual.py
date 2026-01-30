@@ -161,13 +161,9 @@ class Accesos(Accesos):
             answers[self.f['comment_checkout']] = 'Cierre de turno automatico.'
             answers[self.f['end_shift']] = fecha_cierre
             if answers:
-                update_fields = {f"answers.{k}": v for k, v in answers.items()}
-                res = self.cr.update_one({
-                    'form_id': self.REGISTRO_ASISTENCIA,
-                    'deleted_at': {'$exists': False},
-                    '_id': ObjectId(record['_id']),
-                }, {"$set": update_fields})
-                print('======log:', res.modified_count, ' registros cerrados automaticamente.')
+                record_id = record.get('_id', record.get('id'))
+                res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.REGISTRO_ASISTENCIA, record_id=[record_id,])
+                print('======log:', res)
 
     def get_guard_data(self, guard_id, location, hora_inicio):
         dt_inicio = datetime.strptime(hora_inicio, "%Y-%m-%d %H:%M:%S")
