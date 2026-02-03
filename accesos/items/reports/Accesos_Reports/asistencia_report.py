@@ -108,7 +108,7 @@ class Accesos(Accesos):
         response = {item["user_id"]: item["registros"] for item in response}
         format_response = {}
         if group_by == "employees":
-            format_response = self.format_employees_attendance(response, employees_list)
+            format_response = self.format_employees_attendance(response, employees_list, locations)
         elif group_by == "locations":
             format_response = self.format_locations_attendance(response, employees_list)
         return format_response
@@ -184,7 +184,7 @@ class Accesos(Accesos):
 
         return result
     
-    def format_employees_attendance(self, data, employees_list):
+    def format_employees_attendance(self, data, employees_list, locations=[]):
         now = datetime.now(timezone('America/Mexico_City'))
         days_in_month = monthrange(now.year, now.month)[1]
 
@@ -285,7 +285,7 @@ class Accesos(Accesos):
             emp_id = emp['employee_id']
             if not emp_id or emp_id == 0:
                 continue
-            if emp_id not in empleados_con_registro:
+            if emp_id not in empleados_con_registro and not locations:
                 asistencia_mes = []
                 resumen = {"asistencias": 0, "retardos": 0, "faltas": 0}
                 for day in range(1, days_in_month + 1):

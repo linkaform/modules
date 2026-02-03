@@ -365,7 +365,7 @@ class Accesos( Accesos):
         # print(simplejson.dumps(load_shift_json, indent=4))
         return load_shift_json
 
-    def get_page_stats(self, booth_area, location, page=''):
+    def get_page_stats(self, booth_area, location, page='', month=None, year=None):
         timezone = pytz.timezone('America/Mexico_City')
         today = datetime.now(timezone).strftime("%Y-%m-%d")        
         res={}
@@ -914,6 +914,50 @@ class Accesos( Accesos):
                         res['pases_activos'] = item.get('total')
                     if item.get('_id') == 'proceso':
                         res['pases_proceso'] = item.get('total')
+        elif page == 'Asistencias':
+            year_str = str(year).zfill(4)
+            month_str = str(month).zfill(2)
+            query_asistencias = [
+                {'$match': {
+                    "deleted_at": {"$exists": False},
+                    "form_id": self.REGISTRO_ASISTENCIA,
+                    f"answers.{self.f['status_turn']}": {"$exists": True},
+                    f"answers.{self.f['fecha_inicio_turno']}": {
+                        "$gte": f"{year_str}-{month_str}-01 00:00:00",
+                        "$lte": f"{year_str}-{month_str}-31 23:59:59"
+                    }
+                }},
+                {'$project': {
+                    '_id': 1,
+                    'status_turn': f"$answers.{self.f['status_turn']}",
+                }},
+                {'$group': {
+                    '_id': None,
+                    'total_asistencias': {
+                        '$sum': {
+                            '$cond': {
+                                'if': {'$eq': ['$status_turn', 'presente']},
+                                'then': 1,
+                                'else': 0
+                            }
+                        }
+                    },
+                    'total_retardos': {
+                        '$sum': {
+                            '$cond': {
+                                'if': {'$in': ['$status_turn', ['retardo', 'falta_por_retardo']]},
+                                'then': 1,
+                                'else': 0
+                            }
+                        }
+                    },
+                }}
+            ]
+            data = self.format_cr(self.cr.aggregate(query_asistencias))
+            if data:
+                data = self.unlist(data)
+                res['total_asistencias'] = data.get('total_asistencias', 0)
+                res['total_retardos'] = data.get('total_retardos', 0)
         return res
 
     def get_employee_data(self, name=None, user_id=None, username=None, email=None,  get_one=False):
