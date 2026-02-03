@@ -144,7 +144,7 @@ class Produccion_PCI( Produccion_PCI ):
             # 'folio': {'$in': [ '29077197', '29064786', '29075681', '40148737', '40160900', '40141770' ]},
 
             'created_at': {
-                '$gte': datetime.strptime('2020-10-26 00:00:00', "%Y-%m-%d %H:%M:%S")
+                '$gte': datetime.strptime('2026-01-26 00:00:00', "%Y-%m-%d %H:%M:%S")
             },
             'connection_id': {'$exists': True},
             'answers.f1054000a030000000000002':'liquidada',
