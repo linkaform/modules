@@ -62,17 +62,23 @@ class Accesos(Accesos):
         format_response = list({'nombre': i.get('nombre_usuario'), 'employee_id': self.unlist(i.get('employee_id', 0))} for i in response)
         return format_response
 
-    def get_employees_attendance(self, group_by="locations", locations=[]):
+    def get_employees_attendance(self, group_by="locations", locations=[], month=1, year=2026):
         employees_list = self.get_employees_list()
         employees_ids = list(i.get('employee_id', '') for i in employees_list)
-        now = datetime.now(timezone('America/Mexico_City'))
-        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
+        
+        # Usar los parámetros month y year para crear el rango de fechas
+        days_in_month = monthrange(year, month)[1]
+        start_of_month = datetime(year, month, 1, 0, 0, 0)
+        end_of_month = datetime(year, month, days_in_month, 23, 59, 59)
         
         match = {
             "deleted_at": {"$exists": False},
             "form_id": self.REGISTRO_ASISTENCIA,
             "created_by_id": {"$in": employees_ids},
-            "created_at": {"$gte": start_of_month},
+            "created_at": {
+                "$gte": start_of_month,
+                "$lte": end_of_month
+            },
             f"answers.{self.f['start_shift']}": {"$exists": True},
         }
         
@@ -108,14 +114,14 @@ class Accesos(Accesos):
         response = {item["user_id"]: item["registros"] for item in response}
         format_response = {}
         if group_by == "employees":
-            format_response = self.format_employees_attendance(response, employees_list, locations)
+            format_response = self.format_employees_attendance(response, employees_list, locations, month, year)
         elif group_by == "locations":
-            format_response = self.format_locations_attendance(response, employees_list)
+            format_response = self.format_locations_attendance(response, employees_list, month, year)
         return format_response
     
-    def format_locations_attendance(self, data, employees_list):
+    def format_locations_attendance(self, data, employees_list, month, year):
         now = datetime.now(timezone('America/Mexico_City'))
-        days_in_month = monthrange(now.year, now.month)[1]
+        days_in_month = monthrange(year, month)[1]
         id_to_name = {emp['employee_id']: emp['nombre'] for emp in employees_list}
 
         # Estructura: {ubicacion: {turno_ref: {dia: [empleado-status, ...]}}}
@@ -155,7 +161,7 @@ class Accesos(Accesos):
                 if fecha_inicio:
                     dia = int(fecha_inicio[8:10])
                     # Si es día libre, status = "dia_libre"
-                    dia_semana = datetime(now.year, now.month, dia).strftime("%A").lower()
+                    dia_semana = datetime(year, month, dia).strftime("%A").lower()
                     dia_map = {
                         "monday": "lunes", "tuesday": "martes", "wednesday": "miercoles",
                         "thursday": "jueves", "friday": "viernes", "saturday": "sabado", "sunday": "domingo"
@@ -184,9 +190,9 @@ class Accesos(Accesos):
 
         return result
     
-    def format_employees_attendance(self, data, employees_list, locations=[]):
+    def format_employees_attendance(self, data, employees_list, locations=[], month=1, year=2026):
         now = datetime.now(timezone('America/Mexico_City'))
-        days_in_month = monthrange(now.year, now.month)[1]
+        days_in_month = monthrange(year, month)[1]
 
         # Mapeo rápido de id a nombre
         id_to_name = {emp['employee_id']: emp['nombre'] for emp in employees_list}
@@ -228,7 +234,7 @@ class Accesos(Accesos):
                 resumen = {"asistencias": 0, "retardos": 0, "faltas": 0}
                 for day in range(1, days_in_month + 1):
                     # Verifica si es día libre
-                    dia_semana = datetime(now.year, now.month, day).strftime("%A").lower()
+                    dia_semana = datetime(year, month, day).strftime("%A").lower()
                     dia_map = {
                         "monday": "lunes", "tuesday": "martes", "wednesday": "miercoles",
                         "thursday": "jueves", "friday": "viernes", "saturday": "sabado", "sunday": "domingo"
@@ -437,10 +443,12 @@ if __name__ == "__main__":
     user_ids = data.get('user_ids', [])
     selected_day = data.get('selected_day', 1)
     location = data.get('location', '')
+    month = data.get('month', 1)
+    year = data.get('year', 2026)
 
     response = {}
     if option == 'get_report':
-        response = script_obj.get_employees_attendance(group_by=group_by, locations=locations)
+        response = script_obj.get_employees_attendance(group_by=group_by, locations=locations, month=month, year=year)
     elif option == 'get_locations':
         response = script_obj.get_locations()
     elif option == 'get_guard_turn_details':
