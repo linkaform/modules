@@ -108,7 +108,6 @@ class Accesos(Accesos):
     def get_employees_attendance(self, group_by="locations", locations=[], month=1, year=2026):
         employees_list = self.get_employees_list()
         employees_ids = list(i.get('employee_id', '') for i in employees_list)
-        employees_ids = [10]
         
         # Usar los parámetros month y year para crear el rango de fechas
         days_in_month = monthrange(year, month)[1]
