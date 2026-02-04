@@ -62,9 +62,53 @@ class Accesos(Accesos):
         format_response = list({'nombre': i.get('nombre_usuario'), 'employee_id': self.unlist(i.get('employee_id', 0))} for i in response)
         return format_response
 
+    def get_free_days(self, month, year):
+        days_in_month = monthrange(year, month)[1]
+        start_of_month = datetime(year, month, 1, 0, 0, 0)
+        end_of_month = datetime(year, month, days_in_month, 23, 59, 59)
+        
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.FORMATO_VACACIONES,
+                "created_at": {
+                    "$gte": start_of_month,
+                    "$lte": end_of_month
+                },
+                f"answers.{self.f['free_day_autorization']}": "autorizado"
+            }},
+            {"$project": {
+                "_id": 0,
+                "fecha_inicio_dia_libre": f"$answers.{self.f['free_day_start']}",
+                "fecha_fin_dia_libre": f"$answers.{self.f['free_day_end']}",
+                "tipo_dia_libre": f"$answers.{self.f['free_day_type']}",
+                "id_usuario": {"$arrayElemAt": [f"$answers.{self.EMPLOYEE_OBJ_ID}.{self.mf['id_usuario']}", 0]}
+            }},
+            {"$group": {
+                "_id": "$id_usuario",
+                "dias_libres": {
+                    "$push": {
+                        "fecha_inicio": "$fecha_inicio_dia_libre",
+                        "fecha_fin": "$fecha_fin_dia_libre",
+                        "tipo": "$tipo_dia_libre"
+                    }
+                }
+            }},
+            {"$project": {
+                "_id": 0,
+                "id_usuario": "$_id",
+                "dias_libres": 1
+            }}
+        ]
+        
+        response = self.format_cr(self.cr.aggregate(query))
+        dias_por_usuario = {item['id_usuario']: item['dias_libres'] for item in response}
+        return dias_por_usuario
+
     def get_employees_attendance(self, group_by="locations", locations=[], month=1, year=2026):
         employees_list = self.get_employees_list()
         employees_ids = list(i.get('employee_id', '') for i in employees_list)
+        employees_ids = [10]
         
         # Usar los parámetros month y year para crear el rango de fechas
         days_in_month = monthrange(year, month)[1]
@@ -113,8 +157,9 @@ class Accesos(Accesos):
         response = self.format_cr(self.cr.aggregate(query))
         response = {item["user_id"]: item["registros"] for item in response}
         format_response = {}
+        free_days = self.get_free_days(month, year)
         if group_by == "employees":
-            format_response = self.format_employees_attendance(response, employees_list, locations, month, year)
+            format_response = self.format_employees_attendance(response, employees_list, locations, month, year, free_days)
         elif group_by == "locations":
             format_response = self.format_locations_attendance(response, employees_list, month, year)
         return format_response
@@ -190,7 +235,7 @@ class Accesos(Accesos):
 
         return result
     
-    def format_employees_attendance(self, data, employees_list, locations=[], month=1, year=2026):
+    def format_employees_attendance(self, data, employees_list, locations=[], month=1, year=2026, free_days={}):
         now = datetime.now(timezone('America/Mexico_City'))
         days_in_month = monthrange(year, month)[1]
 
@@ -230,6 +275,27 @@ class Accesos(Accesos):
                         #! POSIBLE CAMBIO: Como considerariamos un cambio en los dias libres a mitad de mes?
                         dias_libres = reg['dias_libres_empleado']
 
+                # Procesar días libres solicitados (vacaciones, permisos, etc.)
+                dias_solicitados_info = {}
+                if emp_id in free_days:
+                    for solicitud in free_days[emp_id]:
+                        fecha_inicio_str = solicitud['fecha_inicio']
+                        fecha_fin_str = solicitud['fecha_fin']
+                        tipo = solicitud['tipo']
+                        
+                        # Convertir strings a datetime
+                        fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d')
+                        fecha_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d')
+                        
+                        # Iterar sobre el rango de fechas
+                        current_date = fecha_inicio
+                        while current_date <= fecha_fin:
+                            # Solo considerar días del mes actual
+                            if current_date.year == year and current_date.month == month:
+                                dia = current_date.day
+                                dias_solicitados_info[dia] = tipo
+                            current_date += timedelta(days=1)
+
                 asistencia_mes = []
                 resumen = {"asistencias": 0, "retardos": 0, "faltas": 0}
                 for day in range(1, days_in_month + 1):
@@ -245,7 +311,10 @@ class Accesos(Accesos):
                     fecha_cierre = None
                     closed = False
                     
-                    if dias_libres and dia_es in dias_libres:
+                    # Primero verificar si hay un día libre solicitado
+                    if day in dias_solicitados_info:
+                        status = dias_solicitados_info[day]
+                    elif dias_libres and dia_es in dias_libres:
                         status = "dia_libre"
                     elif day in dias_info:
                         info = dias_info[day]

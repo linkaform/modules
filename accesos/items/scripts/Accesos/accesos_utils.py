@@ -73,6 +73,7 @@ class Accesos( Accesos):
         self.CONFIGURACION_RECORRIDOS_ID = self.CONFIGURACION_RECORRIDOS.get('id')
         self.CONFIGURACION_RECORRIDOS_OBJ_ID = self.CONFIGURACION_RECORRIDOS.get('obj_id')
         self.REGISTRO_ASISTENCIA = self.lkm.form_id('registro_de_asistencia','id')
+        self.FORMATO_VACACIONES = self.lkm.form_id('formato_vacaciones_aviso','id')
 
         # self.bitacora_fields.update({
         #     "catalogo_pase_entrada": "66a83ad652d2643c97489d31",
@@ -118,7 +119,11 @@ class Accesos( Accesos):
             'nombre_alerta': '695d36605f78faab793f497b',
             'accion_alerta': '695d36605f78faab793f497c',
             'llamar_num_alerta': '695d36605f78faab793f497d',
-            'email_alerta': '695d36605f78faab793f497e'
+            'email_alerta': '695d36605f78faab793f497e',
+            'free_day_start': '55887b7e01a4de2ea71c5ab4',
+            'free_day_end': '55887b7e01a4de2ea71c5ab5',
+            'free_day_type': '55887b7e01a4de2ea71c5ab2',
+            'free_day_autorization': '55887b7e01a4de2ea71c5ab8',
         })
         
         self.checkin_fields.update({
