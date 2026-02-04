@@ -34,6 +34,7 @@ class Accesos(Accesos):
             'hora_salida': '68b6427cc8f94827ebfed697',
             'tolerancia_retardo': '68b6427cc8f94827ebfed698',
             'retardo_maximo': '68b642e2bc17e2713cabe019',
+            'ingreso_maximo': '69824e4bfdead27b0009739e',
             'grupo_turnos': '68b6427cc8f94827ebfed699',
             'horas_trabajadas': '68d6b0d5f7865907a86c37d7',
             'status_turn': '68d5bbb57691dec5a7640358'
@@ -167,8 +168,6 @@ class Accesos(Accesos):
 
     def get_guard_data(self, guard_id, location, hora_inicio):
         dt_inicio = datetime.strptime(hora_inicio, "%Y-%m-%d %H:%M:%S")
-        hora_minuto_segundo_minus10 = (dt_inicio - timedelta(minutes=60)).strftime("%H:%M:%S")
-        hora_minuto_segundo_plus10 = (dt_inicio + timedelta(minutes=60)).strftime("%H:%M:%S")
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
@@ -185,12 +184,6 @@ class Accesos(Accesos):
                     {"$match": {
                         "deleted_at": {"$exists": False},
                         "form_id": self.HORARIOS,
-                        "$expr": {
-                            "$and": [
-                                {"$lte": [f"$answers.{self.f['hora_entrada']}", hora_minuto_segundo_plus10]},
-                                {"$gt":  [f"$answers.{self.f['hora_salida']}", hora_minuto_segundo_minus10]}
-                            ]
-                        }
                     }},
                     {"$unwind": f"$answers.{self.f['grupo_turnos']}"},
                     {"$match": {
@@ -205,69 +198,111 @@ class Accesos(Accesos):
                         "nombre_horario": f"$answers.{self.f['nombre_horario']}",
                         "tolerancia_retardo": f"$answers.{self.f['tolerancia_retardo']}",
                         "retardo_maximo": f"$answers.{self.f['retardo_maximo']}",
+                        "ingreso_maximo": f"$answers.{self.f['ingreso_maximo']}",
                         "areas": f"$answers.{self.f['grupo_turnos']}",
                     }}
                 ],
-                "as": "turno"
+                "as": "turnos"
             }},
             {"$project": {
                 "dias_libres": 1,
-                "turno": {
-                    "$ifNull": [
-                        {"$arrayElemAt": ["$turno", 0]},
-                        "sin_registro"
-                    ]
-                }
+                "turnos": 1
             }}
         ]
+        
         response = self.format_cr(self.cr.aggregate(query))
         response = self.unlist(response)
+        
+        turnos_db = response.get('turnos', [])
+        turno_seleccionado = None
+        min_diff_seconds = None
+        
+        if not turnos_db:
+             turnos_db = []
+        
+        candidates_list = []
+        for turno in turnos_db:
+            candidates_list.append(turno)
+            
+        dt_inicio = dt_inicio.replace(microsecond=0)
+        all_candidates_processed = []
 
-        if response.get('turno') and response.get('turno') != 'sin_registro':
-            turno_data = response.pop('turno')
-            response.update(turno_data)
+        for turno in candidates_list:
+            start_str = turno.get('hora_inicio')
+            if not start_str: continue
+            
+            if len(start_str.split(':')) == 2:
+                start_str += ":00"
+            
+            try:
+                t_start = datetime.strptime(start_str, "%H:%M:%S").time()
+            except ValueError:
+                continue
 
-        if response.get('turno') == 'sin_registro':
-            dt_inicio = datetime.strptime(hora_inicio, "%Y-%m-%d %H:%M:%S")
-            dt_inicio = dt_inicio.replace(microsecond=0)
-            hora_inicio_time = dt_inicio.time()
-            turno_seleccionado = None
-            min_diff_seconds = None
-
-            for nombre_turno, datos_turno in self.default_shifts.items():
-                start_str = datos_turno["start"]
-                if len(start_str.split(':')) == 2:
-                    start_str += ":00"
+            date_candidates = [
+                datetime.combine(dt_inicio.date() - timedelta(days=1), t_start),
+                datetime.combine(dt_inicio.date(), t_start),
+                datetime.combine(dt_inicio.date() + timedelta(days=1), t_start)
+            ]
+            
+            ingreso_maximo_min = int(turno.get('ingreso_maximo', 0) or 0)
+            
+            for start_dt in date_candidates:
+                delta = dt_inicio - start_dt
+                delta_seconds = delta.total_seconds()
                 
+                is_valid = False
+                
+                if delta_seconds < 0:
+                    if abs(delta_seconds) <= (ingreso_maximo_min * 60):
+                        is_valid = True
+                else:
+                    if delta_seconds <= 12 * 3600:
+                         is_valid = True
+
+                if is_valid:
+                    all_candidates_processed.append({
+                        "turno": turno,
+                        "diff": abs(delta_seconds),
+                        "start_dt": start_dt
+                    })
+
+        if all_candidates_processed:
+            best = min(all_candidates_processed, key=lambda x: x['diff'])
+            turno_seleccionado = best['turno']
+        
+        if not turno_seleccionado:
+            for nome, datos in self.default_shifts.items():
+                start_str = datos["start"]
+                if len(start_str.split(':')) == 2: start_str += ":00"
                 t_start = datetime.strptime(start_str, "%H:%M:%S").time()
                 
-                candidates = [
-                    datetime.combine(dt_inicio.date() - timedelta(days=1), t_start),
-                    datetime.combine(dt_inicio.date(), t_start),
-                    datetime.combine(dt_inicio.date() + timedelta(days=1), t_start)
+                dcs = [
+                   datetime.combine(dt_inicio.date() - timedelta(days=1), t_start),
+                   datetime.combine(dt_inicio.date(), t_start),
+                   datetime.combine(dt_inicio.date() + timedelta(days=1), t_start)
                 ]
                 
-                closest_start = min(candidates, key=lambda d: abs((d - dt_inicio).total_seconds()))
-                delta_seconds = (dt_inicio - closest_start).total_seconds()
-                abs_diff = abs(delta_seconds)
+                closest = min(dcs, key=lambda d: abs((d - dt_inicio).total_seconds()))
+                diff = abs((dt_inicio - closest).total_seconds())
+                
+                if min_diff_seconds is None or diff < min_diff_seconds:
+                    min_diff_seconds = diff
+                    turno_seleccionado = {**datos, "nombre_horario": nome}
 
-                # Si llega muy temprano (mas de 60 min antes), ignorar este turno como candidato
-                if delta_seconds < 0 and abs_diff > 3600:
-                    continue
-
-                if min_diff_seconds is None or abs_diff < min_diff_seconds:
-                    min_diff_seconds = abs_diff
-                    turno_seleccionado = {**datos_turno, "nombre_horario": nombre_turno}
-
-            if turno_seleccionado:
-                response.update({
-                    'hora_inicio': turno_seleccionado['start'],
-                    'hora_fin': turno_seleccionado['end'],
-                    'nombre_horario': turno_seleccionado['nombre_horario'],
-                    'turno': turno_seleccionado['nombre_horario'],
-                    'tolerancia_retardo': turno_seleccionado['tolerance'],
-                    'retardo_maximo': turno_seleccionado['max_delay'],
-                })
+        if turno_seleccionado:
+            response.update({
+                'hora_inicio': turno_seleccionado.get('hora_inicio') or turno_seleccionado.get('start'),
+                'hora_fin': turno_seleccionado.get('hora_fin') or turno_seleccionado.get('end'),
+                'nombre_horario': turno_seleccionado.get('nombre_horario'),
+                'tolerancia_retardo': turno_seleccionado.get('tolerancia_retardo') or turno_seleccionado.get('tolerance', 0),
+                'retardo_maximo': turno_seleccionado.get('retardo_maximo') or turno_seleccionado.get('max_delay', 0),
+                'turno': turno_seleccionado.get('nombre_horario'),
+            })
+            if 'turnos' in response:
+                del response['turnos']
+        else:
+             response['turno'] = 'sin_registro'
         return response
 
     def calculate_status(self, hora_inicio, guard_data):
