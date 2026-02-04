@@ -298,8 +298,10 @@ class Accesos(Accesos):
                 asistencia_mes = []
                 resumen = {"asistencias": 0, "retardos": 0, "faltas": 0}
                 for day in range(1, days_in_month + 1):
+                    fecha_dia = datetime(year, month, day, tzinfo=timezone('America/Mexico_City'))
+                    
                     # Verifica si es día libre
-                    dia_semana = datetime(year, month, day).strftime("%A").lower()
+                    dia_semana = fecha_dia.strftime("%A").lower()
                     dia_map = {
                         "monday": "lunes", "tuesday": "martes", "wednesday": "miercoles",
                         "thursday": "jueves", "friday": "viernes", "saturday": "sabado", "sunday": "domingo"
@@ -321,7 +323,7 @@ class Accesos(Accesos):
                         fecha_inicio = info.get("fecha_inicio")
                         fecha_cierre = info.get("fecha_cierre")
                         closed = info.get("closed", False)
-                    elif day < now.day:
+                    elif fecha_dia.date() < now.date():
                         status = "falta"
                     else:
                         status = "sin_registro"
@@ -363,7 +365,9 @@ class Accesos(Accesos):
                 asistencia_mes = []
                 resumen = {"asistencias": 0, "retardos": 0, "faltas": 0}
                 for day in range(1, days_in_month + 1):
-                    if day < now.day:
+                    fecha_dia = datetime(year, month, day, tzinfo=timezone('America/Mexico_City'))
+                    
+                    if fecha_dia.date() < now.date():
                         status = "falta"
                         resumen["faltas"] += 1
                     else:
