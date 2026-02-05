@@ -3204,6 +3204,26 @@ class Accesos( Accesos):
         else:
             self.LKFException('No se mandarón parametros para actualizar')
 
+    def catalogo_tipo_concesion(self,location="", tipo=""):
+        catalog_id = self.ACTIVOS_FIJOS_CAT_ID
+        form_id= self.CONCESSIONED_ARTICULOS
+        options={}
+        response=[]
+        if location and not tipo:
+            response= self.catalogo_view(catalog_id, form_id)
+        else:
+            if location and tipo:
+                options = {
+                    "group_level": 2,
+                    "startkey": [tipo],
+                    "endkey": [f"{tipo}\n"]
+                }
+                response= self.catalogo_view(catalog_id, form_id, options)
+
+            elif tipo and not location:
+                self.LKFException('Location es requerido')
+        return response
+
     def assets_access_pass(self, location):
         """
         Regresa diccionario con las areas, personas que puede visitar en esa ubicacion y los perfiles
