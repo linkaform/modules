@@ -3204,6 +3204,30 @@ class Accesos( Accesos):
         else:
             self.LKFException('No se mandarón parametros para actualizar')
 
+    def get_more_info_conscessioned_articles(self, articles=[]):
+        """
+        Obtiene informacion adicional de los articulos de concesion
+        Args:
+            articles (list): Lista de articulos
+        Returns:
+            list: Lista de articulos con informacion adicional
+        """
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.ACTIVOS_FIJOS,
+                f"answers.{self.cons_f['_nombre_equipo']}": {"$in": articles}
+            }},
+            {"$project": {
+                "_id": 0,
+                "article_name": f"$answers.{self.cons_f['_nombre_equipo']}",
+                "article_image": f"$answers.{self.cons_f['_imagen_equipo_concesion']}",
+                "article_cost": f"$answers.{self.cons_f['_costo_equipo_concesion']}"
+            }}
+        ]
+        data = self.format_cr(self.cr.aggregate(query))
+        return data
+
     def catalogo_tipo_concesion(self,location="", tipo=""):
         catalog_id = self.ACTIVOS_FIJOS_CAT_ID
         form_id= self.CONCESSIONED_ARTICULOS
@@ -3222,7 +3246,13 @@ class Accesos( Accesos):
 
             elif tipo and not location:
                 self.LKFException('Location es requerido')
-        return response
+        
+        format_data = []
+        if response:
+            # Se obtienen datos extras de los articulos
+            # Nombre, imagen y costo.
+            format_data = self.get_more_info_conscessioned_articles(response)
+        return format_data
 
     def assets_access_pass(self, location):
         """
