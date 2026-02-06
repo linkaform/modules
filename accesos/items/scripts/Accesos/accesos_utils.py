@@ -3524,8 +3524,6 @@ class Accesos( Accesos):
         if resp:
             format_resp = [r.get('_id', r.get('id', '')) for r in resp]
         return format_resp
-<<<<<<< HEAD
-=======
 
     def checkout_all(self, record_id=None):
         """
@@ -3624,4 +3622,3 @@ class Accesos( Accesos):
                 print('========== Log:', simplejson.dumps(response, indent=2, default=str))
                 self.LKFException({'title': 'Error', 'msg': 'Hubo un error al actualizar los registros.'})
         return format_data
->>>>>>> master
