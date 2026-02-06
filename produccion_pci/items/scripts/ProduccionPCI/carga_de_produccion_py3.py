@@ -977,8 +977,8 @@ class Produccion_PCI( Produccion_PCI ):
                             error.append('Terminal Optica debe de contener 2 caracteres')
                         elif not regex.findall(terminal_optica[0]):
                             error.append('EL primer digito de la terminal optica debe de ser un caracter A-Z')
-                        elif terminal_optica[1] not in '1234567890':
-                            error.append('EL segundo digito de la terminal optica debe de ser un numero 0-9')
+                        elif terminal_optica[1].lower() not in '1234567890a':
+                            error.append('EL segundo digito de la terminal optica debe de ser un numero 0-9 ó el caracter A')
                     except Exception as e:
                         print(e)
                         print('pass sin terminal optica')
