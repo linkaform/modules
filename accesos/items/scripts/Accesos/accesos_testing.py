@@ -38,6 +38,17 @@ def do_checkin(acceso_obj, data):
         checkin_id=data.get("checkin_id")
     )
 
+def create_article_concessioned(acceso_obj, data):
+    print('Entra a Create articule concesionadados')
+    response =  acceso_obj.create_article_concessioned(data)
+    return response
+
+def get_list_articulos_concesionados(acceso_obj, data):
+    return acceo_obj.get_list_articulos_concesionados(
+        location=data.get('location'), 
+        area=data.get('area'), 
+        status=data.get('data'), dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate)
+
 def do_checkout(acceso_obj, data):
     return acceso_obj.do_checkout(
         checkin_id=data.get("checkin_id"),
