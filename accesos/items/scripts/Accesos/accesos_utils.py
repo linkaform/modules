@@ -3236,23 +3236,25 @@ class Accesos( Accesos):
         if location and not tipo:
             response= self.catalogo_view(catalog_id, form_id)
         else:
+
             if location and tipo:
                 options = {
                     "group_level": 2,
                     "startkey": [tipo],
                     "endkey": [f"{tipo}\n"]
                 }
-                response= self.catalogo_view(catalog_id, form_id, options)
+                res= self.catalogo_view(catalog_id, form_id, options)
+                format_data = []
+                if res:
+                    # Se obtienen datos extras de los articulos
+                    # Nombre, imagen y costo.
+                    format_data = self.get_more_info_conscessioned_articles(res)
+                    response=format_data
 
             elif tipo and not location:
                 self.LKFException('Location es requerido')
-        
-        format_data = []
-        if response:
-            # Se obtienen datos extras de los articulos
-            # Nombre, imagen y costo.
-            format_data = self.get_more_info_conscessioned_articles(response)
-        return format_data
+        print(response)
+        return response
 
     def assets_access_pass(self, location):
         """
