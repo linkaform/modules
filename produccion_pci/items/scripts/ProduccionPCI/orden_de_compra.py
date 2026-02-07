@@ -9,6 +9,7 @@ Uso: Se ejecuta en la forma Generar Liberaciones Fibra Cobre cuando estatus == "
 
 import sys, simplejson
 from datetime import datetime, timedelta
+from pytz import timezone
 from produccion_pci_utils import Produccion_PCI
 
 from account_settings import *
@@ -196,6 +197,11 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             } 
             for r in records_contratistas_catalog 
         }
+
+    def get_periodo_bono(self):
+        fecha_ayer = (datetime.now(tz=timezone('America/Monterrey')) - timedelta(days=1)).date()
+        fecha_semana_pasada = fecha_ayer - timedelta(days=7)
+        return p_utils.str_to_date(fecha_semana_pasada.strftime("%Y-%m-%d")), p_utils.str_to_date(fecha_ayer.strftime("%Y-%m-%d"))
 
     def get_price_list(self):
         """
@@ -1146,7 +1152,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             errors_to_create.append( f'Ocurrió un error al crear la OC: {response_oc}' )
         return errors_to_create
 
-    def ordenar_por_expediente(self, lista_folios):
+    def ordenar_por_expediente(self, lista_folios, fecha_inicio_bono, fecha_fin_bono):
         # Ordenar la lista_folios por el campo 'expediente'
         lista_ordenada = sorted(lista_folios, key=lambda x: x['68f6a337764a6c7697770f8b'])
         
@@ -1154,7 +1160,9 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         conteo = {}
         for item in lista_ordenada:
             exp = item['68f6a337764a6c7697770f8b']
-            conteo[exp] = conteo.get(exp, 0) + 1
+            fec_liq = item['62deccbcf1cac3245da9314d']
+            if fecha_inicio_bono <= p_utils.str_to_date(fec_liq) <= fecha_fin_bono:
+                conteo[exp] = conteo.get(exp, 0) + 1
         
         # Retornar ambos resultados
         return lista_ordenada, conteo
@@ -1167,6 +1175,10 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         dict_count = {}
         dict_metadatas = {}
         ocs_creadas = 0
+        fecha_inicio_bono, fecha_fin_bono = self.get_periodo_bono()
+
+        # print(f'{fecha_inicio_bono} - {fecha_fin_bono}')
+
         for connection_id, info_connection in folios_by_connection.items():
             print("+++++++++++++++++ connection_id:",connection_id)
             for form_id_oc_contratista, dict_types_oc in info_connection.items():
@@ -1189,7 +1201,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                     
                     email_of_connection = map_email_connections.get(connection_id)
                     
-                    folios_sorted, expedientes_count = self.ordenar_por_expediente(folios)
+                    folios_sorted, expedientes_count = self.ordenar_por_expediente(folios, fecha_inicio_bono, fecha_fin_bono)
                     
                     totalDescuento20porc = 0
                     list_areas = []
@@ -1198,8 +1210,11 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                         # Si aplica bono por expediente se agrega al set
                         exp_fol = detail.get('68f6a337764a6c7697770f8b')
                         if exp_fol and expedientes_count.get(exp_fol, 0) >= self.bono_produccion_cant_fols_min:
-                            detail['68f6a337764a6c7697770f8d'] = self.bono_produccion_monto
-                            detail['f1962000000000000001fc10'] += self.bono_produccion_monto
+                            # Expediente aplica bono, pero hay que validar en que folios se va a pegar
+                            fec_liq = detail['62deccbcf1cac3245da9314d']
+                            if fecha_inicio_bono <= p_utils.str_to_date(fec_liq) <= fecha_fin_bono:
+                                detail['68f6a337764a6c7697770f8d'] = self.bono_produccion_monto
+                                detail['f1962000000000000001fc10'] += self.bono_produccion_monto
 
                         total_oc += detail['f1962000000000000001fc10']
                         answers['f1962000000000000000fc10'].append(detail)
@@ -1368,9 +1383,10 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                         folio_payment = {
                             'f19620000000000000001fc1' : folio_oc_rec,
                             'f19620000000000000001fc2' : telefono_oc_rec,
-                            '68f6a337764a6c7697770f8b': record_os_answer.get('f1054000a0100000000000d6', 0), # Expediente
-                            '68f6a337764a6c7697770f8c': record_os_answer.get('f1054000a010000000000021'), # Tipo de Tarea
+                            '68f6a337764a6c7697770f8b' : record_os_answer.get('f1054000a0100000000000d6', 0), # Expediente
+                            '68f6a337764a6c7697770f8c' : record_os_answer.get('f1054000a010000000000021'), # Tipo de Tarea
                             '62deccbcf1cac3245da9314d' : fecha_liquidacion,
+                            '5f0e23eaca2ca23aa12f21a9' : record_os_answer.get('5f0e23eaca2ca23aa12f21a9'), # Fecha de Carga Contratista
                             '666798abf2ea5ac6c31cc955' : area_os,
                             'f19620000000000000001fc3' : paco_oc_rec,
                             'f19620000000000000001fc4' : trabajo_oc_rec,
@@ -1465,7 +1481,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
 
 
     def make_estimacion_row_cobre(self, fields_liberacion, folio_lib, price_list, map_campos, conn_carso, conn_id, order_psr, conceptos_cobrados_psr_ids):
-        print(f'\n=== price_list: {price_list}\n')
+        # print(f'\n=== price_list: {price_list}\n')
         """
         make estimacion row recibe el registro de liberacion y hace el calculo del pago
         fields_liberacion es la lista del grupo repetitivo con n folios a liberar
@@ -1667,6 +1683,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
 
             os_fecha_liq = os_answers.get('5a1eecfbb43fdd65914505a1', '')
             response['62deccbcf1cac3245da9314d'] = os_fecha_liq
+            response['5f0e23eaca2ca23aa12f21a9'] = os_answers.get('5f0e23eaca2ca23aa12f21a9') # Fecha de Carga Contratista
             response['666798abf2ea5ac6c31cc955'] = os_answers.get('f1054000a0100000000000a2', '').upper().replace('_', ' ')
             anio_liq = os_fecha_liq.split('-')[0]
             date_fecha_liquidacion = p_utils.str_to_date( os_fecha_liq )
@@ -1763,7 +1780,8 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             
             # Si aplica bono por expediente se agrega al set
             exp_fol = detail.get('68f6a337764a6c7697770f8b')
-            if exp_fol and expedientes_count.get(exp_fol, 0) >= self.bono_produccion_cant_fols_min:
+            list_fols_bono_exp = expedientes_count.get(exp_fol, [])
+            if exp_fol and len( list_fols_bono_exp ) >= self.bono_produccion_cant_fols_min and detail['f19620000000000000001fc1'] in list_fols_bono_exp:
                 detail['68f6a337764a6c7697770f8d'] = self.bono_produccion_monto
                 detail['f1962000000000000001fc10'] += self.bono_produccion_monto
 
@@ -2026,6 +2044,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
 
         folios_en_oc = self.get_payed_order(folios_carga_liberados, OC_CONTRATISTA)
         
+        fecha_inicio_bono, fecha_fin_bono = self.get_periodo_bono()
         dict_dates_by_connection = {}
         for os_liberada in registros_liberacion:
             order = os_consultadas.get( os_liberada['folio'], None )
@@ -2095,8 +2114,11 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             connection_data['folios'][ folio_telefono ] = fila_dict
             
             expediente_os = fila_dict.get('68f6a337764a6c7697770f8b')
-            if expediente_os:
-                connection_data['expedientes_count'][ expediente_os ] = connection_data['expedientes_count'].get( expediente_os, 0 ) + 1
+            fecha_liq_os = fila_dict.get('62deccbcf1cac3245da9314d')
+            apply_for_bono = fecha_inicio_bono <= p_utils.str_to_date(fecha_liq_os) <= fecha_fin_bono
+            if expediente_os and apply_for_bono:
+                # connection_data['expedientes_count'][ expediente_os ] = connection_data['expedientes_count'].get( expediente_os, 0 ) + 1
+                connection_data['expedientes_count'].setdefault(expediente_os, []).append( fila_dict['f19620000000000000001fc1'] )
         
         # print('-- ++ -- ++ -- ++ group_ocs_cobre =',group_ocs_cobre)
         # stop
