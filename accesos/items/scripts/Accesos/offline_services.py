@@ -194,6 +194,7 @@ class Accesos(Accesos):
             self.LOCKERS_CAT_ID,
             self.TIPO_ARTICULOS_PERDIDOS_CAT_ID,
             self.PASE_ENTRADA_ID,
+            self.ACTIVOS_FIJOS_CAT_ID,
         ]
         dbs = {}
         try:
