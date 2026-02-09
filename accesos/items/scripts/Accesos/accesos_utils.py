@@ -2732,7 +2732,7 @@ class Accesos( Accesos):
             location = location_name
         address = self.get_location_address(location_name=location_name)
         access_pass['direccion'] = [address.get('address', '')]
-        user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
+        user_data = self.lkf_api.get_user_by_id(self.user.get('user_id', self.user.get('id')))
         timezone = user_data.get('timezone','America/Monterrey')
         now_datetime =self.today_str(timezone, date_format='datetime')
         employee = self.get_employee_data(email=self.user.get('email'), get_one=True)
