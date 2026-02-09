@@ -2,8 +2,7 @@
 from datetime import datetime, timedelta, time, date
 from linkaform_api import base
 from lkf_addons.addons.accesos.app import Accesos
-import sys, simplejson, json, pytz
-import pytz
+import sys, simplejson, json, pytz, base64, requests
 from math import ceil
 from bson import ObjectId
 
@@ -3578,6 +3577,86 @@ class Accesos( Accesos):
             # response_checkout_all = self.lkf_api.patch_multi_record(answers=answers, form_id=self.CHECKIN_CASETAS, record_id=[record_id])
             # print('response', simplejson.dumps(response_checkout_all, indent=4))
             print('employees_ids', list(set(employees_ids)))
+
+    def send_sms_masiv(self, para, texto):
+        sms_creds = self.lkf_api.get_sms_creds(use_api_key=True, jwt_settings_key=False)
+        masiv_user = sms_creds.get('json', {}).get('masiv_user', '')
+        masiv_token = sms_creds.get('json', {}).get('masiv_token', '')
+        API_URL = "https://api-sms.masivapp.com/send-message"
+
+        token = base64.b64encode(f"{masiv_user}:{masiv_token}".encode()).decode()
+
+        headers = {
+            'Authorization': f'Basic {token}',
+            'Content-Type': 'application/json'
+        }
+        
+        data = {
+            'to': para,
+            'text': texto,
+            "customdata": "CUS_ID_0125",
+            "isLongmessage": True,
+        }
+
+        try:
+            response = requests.post(API_URL, json=data, headers=headers)
+
+            if response.status_code == 200:
+                print(response.json())
+            else:
+                print('Error al enviar SMS', response.status_code, response.text)
+
+        except Exception as e:
+            print('Error al enviar SMS', e)
+
+    def send_email_and_sms(self, data):
+        answers = {}
+        phone_to = data['phone_to']
+        mensaje = data['mensaje']
+        titulo = 'Aviso desde Soter - Accesos'
+
+        metadata = self.lkf_api.get_metadata(form_id=self.ENVIO_DE_CORREOS)
+        metadata.update({
+            "properties": {
+                "device_properties":{
+                    "System": "Addons",
+                    "Process": "Creación de envio de correo",
+                    "Action": "send_email_and_sms",
+                }
+            },
+        })
+
+        #---Define Answers
+        answers.update({
+            f"{self.envio_correo_fields['email_from']}": data['email_from'],
+            f"{self.envio_correo_fields['titulo']}": titulo,
+            f"{self.envio_correo_fields['nombre']}": data['nombre'],
+            f"{self.envio_correo_fields['email_to']}": data['email_to'],
+            f"{self.envio_correo_fields['msj']}": mensaje,
+            f"{self.envio_correo_fields['enviado_desde']}": 'Accesos Aviso',
+        })
+
+        metadata.update({'answers': answers})
+
+        email_status = 'Correo: No se realizo la peticion.'
+        email_response = self.lkf_api.post_forms_answers(metadata)
+        if email_response.get('status_code') == 201:
+            email_status = 'Correo: Enviado correctamente'
+        else:
+            email_status = 'Correo: Hubo un error...'
+
+        message_status = 'Mensaje: No se realizo la peticion.'
+        if phone_to:
+            sms_response = self.send_sms_masiv(phone_to, mensaje)
+            if hasattr(sms_response, "status") and sms_response.status in ["queued", "sent", "delivered"]:
+                message_status = 'Mensaje: Enviado correctamente'
+            else:
+                message_status = 'Mensaje: Hubo un error...'
+        
+        return {
+            "email_status": email_status,
+            "message_status": message_status
+        }
 
     def force_quit_all_persons(self, location: str):
         match = {
