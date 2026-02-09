@@ -2863,7 +2863,7 @@ class Accesos( Accesos):
             }
 
             row_catalog = self.lkf_api.search_catalog(self.CONF_AREA_EMPLEADOS_CAT_ID, mango_query)
-            if row_catalog:
+            if row_catalog and type(row_catalog) == list:
                 visita_set[self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID].update({
                     self.mf['nombre_empleado']: nombre_visita_a,
                     self.mf['email_visita_a']: [row_catalog[0].get(self.mf['email_visita_a'], "")],
