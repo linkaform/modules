@@ -118,6 +118,8 @@ if __name__ == "__main__":
         response = acceso_obj.send_email_and_sms(data=data_msj)
     elif option == 'update_delete_suplente':
         response = acceso_obj.update_delete_suplente(nombre_suplente=nombre_suplente)
+    elif option == 'force_quit_all_persons':
+        response = acceso_obj.force_quit_all_persons(location=location)
     else :
         response = {"msg": "Empty"}
     # print('================ END RETURN =================')

@@ -5,6 +5,7 @@ from lkf_addons.addons.accesos.app import Accesos
 import sys, simplejson, json, pytz
 import pytz
 from math import ceil
+from bson import ObjectId
 
 
 class Accesos( Accesos):
@@ -3236,23 +3237,25 @@ class Accesos( Accesos):
         if location and not tipo:
             response= self.catalogo_view(catalog_id, form_id)
         else:
+
             if location and tipo:
                 options = {
                     "group_level": 2,
                     "startkey": [tipo],
                     "endkey": [f"{tipo}\n"]
                 }
-                response= self.catalogo_view(catalog_id, form_id, options)
+                res= self.catalogo_view(catalog_id, form_id, options)
+                format_data = []
+                if res:
+                    # Se obtienen datos extras de los articulos
+                    # Nombre, imagen y costo.
+                    format_data = self.get_more_info_conscessioned_articles(res)
+                    response=format_data
 
             elif tipo and not location:
                 self.LKFException('Location es requerido')
-        
-        format_data = []
-        if response:
-            # Se obtienen datos extras de los articulos
-            # Nombre, imagen y costo.
-            format_data = self.get_more_info_conscessioned_articles(response)
-        return format_data
+        print(response)
+        return response
 
     def assets_access_pass(self, location):
         """
@@ -3519,3 +3522,101 @@ class Accesos( Accesos):
         if resp:
             format_resp = [r.get('_id', r.get('id', '')) for r in resp]
         return format_resp
+
+    def checkout_all(self, record_id=None):
+        """
+        WORK IN PROGRESS
+        """
+        if not record_id:
+            self.LKFException({'title': 'Error', 'msg': 'No se proporciono el record_id'})
+
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.CHECKIN_CASETAS,
+                "_id": ObjectId(record_id),
+            }},
+            {"$limit": 1},
+            {"$project": {
+                "_id": 0,
+                "empleados_dentro": f"$answers.{self.mf['guard_group']}"
+            }}
+        ]
+        data = self.format_cr(self.cr.aggregate(query))
+        format_data = {}
+        if data:
+            format_data = self.unlist(data)
+            empleados_dentro = format_data.get('empleados_dentro', [])
+            now_datetime = self.today_str('America/Monterrey', date_format='datetime')
+            answers = {}
+            format_empleados_dentro = {}
+            employees_ids = []
+
+            for index, empleado in enumerate(empleados_dentro):
+                employees_ids.append(self.unlist(empleado.get('id_usuario', [])))
+
+                if empleado.get('checkin_status') == 'entrada':
+                    empleado['checkin_status'] = 'salida'
+                    empleado['checkout_date'] = now_datetime
+                
+                item = {
+                    self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID: {
+                        self.mf['nombre_guardia_apoyo']: empleado.get('note_guard_close', ''),
+                        self.mf['id_usuario']: empleado.get('id_usuario', [])
+                    },
+                    self.checkin_fields['nombre_suplente']: empleado.get('nombre_suplente', ''),
+                    self.checkin_fields['checkin_position']: empleado.get('checkin_position', ''),
+                    self.checkin_fields['checkin_status']: empleado.get('checkin_status', ''),
+                    self.checkin_fields['checkin_date']: empleado.get('checkin_date', ''),
+                    self.checkin_fields['checkout_date']: empleado.get('checkout_date', ''),
+                }
+                format_empleados_dentro[str(index)] = item
+
+            answers[self.mf['guard_group']] = format_empleados_dentro
+            answers[self.checkin_fields['checkin_type']] = 'cerrada'
+            answers[self.checkin_fields['boot_checkout_date']] = now_datetime
+            # response_checkout_all = self.lkf_api.patch_multi_record(answers=answers, form_id=self.CHECKIN_CASETAS, record_id=[record_id])
+            # print('response', simplejson.dumps(response_checkout_all, indent=4))
+            print('employees_ids', list(set(employees_ids)))
+
+    def force_quit_all_persons(self, location: str):
+        match = {
+            "deleted_at": {"$exists": False},
+            "form_id": self.BITACORA_ACCESOS,
+            f"answers.{self.PASE_ENTRADA_OBJ_ID}.{self.pase_entrada_fields['status_pase']}": {"$in": ["Activo"]},
+            f"answers.{self.mf['tipo_registro']}": "entrada",
+        }
+
+        if location:
+            match[f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}"] = location
+
+        query = [
+            {'$match': match},
+            {'$project': {
+                '_id': 1,
+            }},
+        ]
+        data = self.format_cr(self.cr.aggregate(query))
+        format_data = {"data": data,
+            "status_code": 200,
+            "json": {   
+                "msg": "No hay personas dentro por registrar salida."
+            }
+        }
+        if data:
+            record_ids = [record.get('_id') for record in data]
+            tz_mexico = pytz.timezone('America/Mexico_City')
+            now = datetime.now(tz_mexico)
+            fecha_hora_str = now.strftime("%Y-%m-%d %H:%M:%S")
+            replace_answers = {
+                self.mf['fecha_salida']: fecha_hora_str,
+                self.mf['tipo_registro']: 'salida',
+            }
+            response = self.lkf_api.patch_multi_record(answers=replace_answers, form_id=self.BITACORA_ACCESOS, record_id=record_ids)
+            if response.get('status_code') in [200, 201, 202]:
+                response['json']['msg'] = f'Salida masiva en {location} ejecutada correctamente.'
+                format_data = response
+            else:
+                print('========== Log:', simplejson.dumps(response, indent=2, default=str))
+                self.LKFException({'title': 'Error', 'msg': 'Hubo un error al actualizar los registros.'})
+        return format_data
