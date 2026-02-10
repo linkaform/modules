@@ -3098,7 +3098,8 @@ class Accesos( Accesos):
                key == "grupo_equipos" or \
                key == "grupo_vehiculos" or \
                key == "google_wallet_pass_url" or \
-               key == "limite_de_acceso":
+               key == "limite_de_acceso" or \
+               key == "empresa":
                 answers[key] = value
         answers['folio']= pass_selected.get("folio")
         return answers
