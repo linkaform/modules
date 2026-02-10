@@ -12,10 +12,20 @@ from accesos_utils import Accesos
 
 class Accesos(Accesos):
     
-    def create_class_google_wallet(self, data={}, qr_code='6810f4026d0667ebf41d9a11'):
-        google_wallet_creds = self.lkf_api.get_user_google_wallet(use_api_key=True, jwt_settings_key=False)
+    def format_list_to_google_pass(self, list_data):
+        if not list_data:
+            return ''
+        if len(list_data) == 1:
+            return self.unlist(list_data)
+        if len(list_data) == 2:
+            return f"{list_data[0]} y {list_data[1]}"
+        return ', '.join(list_data[:-1]) + ' y ' + list_data[-1]
+
+    def create_class_google_wallet(self, data, qr_code):
         ISSUER_ID = '3388000000022924601'
-        CLASS_ID = f'{ISSUER_ID}.passClass-08'
+        CLASS_ID = f'{ISSUER_ID}.ProdPassClass'
+
+        google_wallet_creds = self.lkf_api.get_user_google_wallet(use_api_key=True, jwt_settings_key=False)
         QR_CODE_VALUE = qr_code
         OBJECT_ID = f'{ISSUER_ID}.pase-entrada-{QR_CODE_VALUE}-{uuid.uuid4()}'
 
@@ -52,78 +62,185 @@ class Accesos(Accesos):
             print("Status code:", response.status_code)
             print("Response text:", response.text)
 
-        self.create_pass_google_wallet(OBJECT_ID, CLASS_ID, QR_CODE_VALUE, data, headers, client_email, private_key)
+        response = self.create_pass_google_wallet(OBJECT_ID, CLASS_ID, QR_CODE_VALUE, data, headers, client_email, private_key)
+        return response
 
     def create_pass_google_wallet(self, object_id, class_id, qr_code, data, headers, client_email, private_key):
-        nombre = data.get('nombre', 'Alejandro Fernandez')
-        ubicacion = data.get('ubicacion', 'Planta Monterrey')
-        address = data.get('address', 'Av. Revolución 123, Zapata, MX')
-        visita_a = data.get('visita_a', 'Emiliano Zapata')
+        ubicaciones_list = data.get('ubicaciones', [])
+        format_ubicacion = self.format_list_to_google_pass(ubicaciones_list)
+        visita_a_list = data.get('visita_a', [])
+        format_visita_a = self.format_list_to_google_pass(visita_a_list)
+        empresa = data.get('empresa', 'Sin especificar')
+        num_accesos = data.get('num_accesos', 1)
+        fecha_desde = data.get('fecha_desde', '')
+        fecha_hasta = data.get('fecha_hasta', '')
+        if not fecha_hasta:
+            fecha_hasta = fecha_desde
 
         object_body = {
-            "genericType": "GENERIC_ENTRY_TICKET",
             "id": object_id,
             "classId": class_id,
             "state": "ACTIVE",
-            "barcode": {
-                "type": "QR_CODE",
-                "value": qr_code,
-            },
-            'cardTitle': {
-                'defaultValue': {
-                    'language': 'en-US',
-                    'value': 'Pase de Entrada'
+            "genericType": "GENERIC_TYPE_UNSPECIFIED",
+            "cardTitle": {
+                "defaultValue": {
+                    "language": "es-MX",
+                    "value": empresa
                 }
             },
             "subheader": {
-                'defaultValue': {
-                    'language': 'en-US',
-                    'value': f"Visita a: {visita_a}"
+                "defaultValue": {
+                    "language": "es-MX",
+                    "value": 'Pase de Entrada'
                 }
             },
-            'header': {
-                'defaultValue': {
-                    'language': 'en-US',
-                    'value': nombre
+            "header": {
+                "defaultValue": {
+                    "language": "es-MX",
+                    "value": f'Visita a: {format_visita_a}'
                 }
             },
-            'logo': {
-                'sourceUri': {
-                    'uri':
-                        'https://f001.backblazeb2.com/file/app-linkaform/public-client-126/68600/6076166dfd84fa7ea446b917/2025-04-28T11:11:42.png'
-                },
-                'contentDescription': {
-                    'defaultValue': {
-                        'language': 'en-US',
-                        'value': 'Generic card logo'
-                    }
+            "logo": {
+                "sourceUri": {
+                    "uri": "https://f001.backblazeb2.com/file/app-linkaform/public-client-126/68600/6076166dfd84fa7ea446b917/2025-04-28T11:11:42.png"
                 }
             },
-            'hexBackgroundColor': '#ffffff',
+            "hexBackgroundColor": "#FFFFFF",
+            "groupingInfo": {
+                "sortIndex": 1,
+                "groupingId": "pase_de_entrada",
+            },
             "textModulesData": [
                 {
-                    "header": "Ubicación",
-                    "body": ubicacion,
-                    "id": "123"
+                    "id": "ubicacion",
+                    "header": "UBICACION",
+                    "body": format_ubicacion
                 },
                 {
-                    "header": "Dirección",
-                    "body": address,
-                    "id": "124"
+                    "id": "fecha_entrada",
+                    "header": "FECHA DESDE",
+                    "body": fecha_desde
                 },
                 {
-                    "header": "Visita a",
-                    "body": visita_a,
-                    "id": "125"
+                    "id": "fecha_salida",
+                    "header": "FECHA HASTA",
+                    "body": fecha_hasta
+                },
+                {
+                    "id": "accesos",
+                    "header": "ACCESOS",
+                    "body": num_accesos
+                },
+                {
+                    "id": "vehiculos",
+                    "header": "",
+                    "body": ""
+                },
+                {
+                    "id": "equipos",
+                    "header": "",
+                    "body": ""
                 }
             ],
-            "validTimeInterval": {
-                "start": {
-                    "date": data.get("start_time", "2025-05-09T17:00:00Z")
-                },
-                "end": {
-                    "date": data.get("end_time", "2025-05-09T17:40:00Z")
+            "barcode": {
+                "type": "QR_CODE",
+                "value": qr_code,
+                "alternateText": "Muestra tu QR para ingresar"
+            },
+        }
+
+        object_body_2 = {
+            "id": object_id,
+            "classId": class_id,
+            "state": "ACTIVE",
+            "genericType": "GENERIC_TYPE_UNSPECIFIED",
+            "cardTitle": {
+                "defaultValue": {
+                    "language": "es-MX",
+                    "value": empresa
                 }
+            },
+            "subheader": {
+                "defaultValue": {
+                    "language": "es-MX",
+                    "value": 'Pase de Entrada'
+                }
+            },
+            "header": {
+                "defaultValue": {
+                    "language": "es-MX",
+                    "value": f'Visita a: {format_visita_a}'
+                }
+            },
+            "logo": {
+                "sourceUri": {
+                    "uri": "https://f001.backblazeb2.com/file/app-linkaform/public-client-126/71202/60b81349bde5588acca320e1/698b8b36e216075bd8f4597a.png"
+                }
+            },
+            "hexBackgroundColor": "#FFFFFF",
+            "groupingInfo": {
+                "sortIndex": 1,
+                "groupingId": "pase_de_entrada",
+            },
+            "textModulesData": [
+                {
+                    "id": "ubicacion",
+                    "header": "UBICACION",
+                    "body": format_ubicacion
+                },
+                {
+                    "id": "fecha_entrada",
+                    "header": "FECHA DESDE",
+                    "body": fecha_desde
+                },
+                {
+                    "id": "fecha_salida",
+                    "header": "FECHA HASTA",
+                    "body": fecha_hasta
+                },
+                {
+                    "id": "accesos",
+                    "header": "ACCESOS",
+                    "body": str(num_accesos)
+                },
+                {
+                    "id": "vehiculos",
+                    "header": "VEHICULOS",
+                    "body": "Toyota Corolla - ABC123"
+                },
+                {
+                    "id": "equipos",
+                    "header": "EQUIPOS",
+                    "body": "Laptop Dell, Cámara Canon"
+                }
+            ],
+            "barcode": {
+                "type": "QR_CODE",
+                "value": qr_code,
+                "alternateText": "Muestra tu QR para ingresar"
+            },
+            "locations": [
+                {
+                    "kind": "walletobjects#latLongPoint",
+                    "latitude": 23.7369,
+                    "longitude": -99.1411
+                }
+            ],
+            "linksModuleData": {
+                "uris": [
+                    {
+                        "kind": "walletobjects#uri",
+                        "uri": "https://www.google.com/maps/dir/?api=1&destination=23.7369,-99.1411",
+                        "description": "Cómo llegar",
+                        "id": "direcciones"
+                    },
+                    {
+                        "kind": "walletobjects#uri",
+                        "uri": "https://maps.google.com/?q=23.7369,-99.1411",
+                        "description": "Ver en mapa",
+                        "id": "ver_mapa"
+                    }
+                ]
             }
         }
 
@@ -139,26 +256,42 @@ class Accesos(Accesos):
             "origins": [],
             "typ": "savetowallet",
             "payload": {
-                "eventTicketObjects": [
+                "genericObjects": [
                     {"id": object_id}
                 ]
             }
         }
-
         signed_jwt = jwt.encode(jwt_payload, private_key, algorithm='RS256')
         save_url = f'https://pay.google.com/gp/v/save/{signed_jwt}'
-
         print('Agrega tu pase con este link:', save_url)
-
+        return save_url
 
 if __name__ == "__main__":
-    print('Entra en create_pass_google_wallet')
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
+    data = acceso_obj.data.get('data', {})
+    qr_code = data.get('qr_code', '')
+    access_pass = data.get('access_pass', {})
 
-    acceso_obj.create_class_google_wallet()
+    data = {
+        "nombre": access_pass.get("nombre"),
+        "visita_a": access_pass.get("visita_a"),
+        "empresa": access_pass.get("empresa"),
+        "ubicaciones": access_pass.get("ubicaciones"),
+        "num_accesos": access_pass.get("num_accesos"),
+        "fecha_desde": access_pass.get("fecha_desde"),
+        "fecha_hasta": access_pass.get("fecha_hasta"),
+    }
 
-    # sys.stdout.write(simplejson.dumps({
-    #     'status': 101,
-    #     'response_sms': response
-    # }))
+    google_wallet_pass_url = acceso_obj.create_class_google_wallet(data=data, qr_code=qr_code)
+
+    if not google_wallet_pass_url:
+        self.LKFException({'title': 'Error al crear el pase de Google Wallet', 'msg': 'No se pudo crear el pase de Google Wallet'})
+
+    sys.stdout.write(simplejson.dumps({
+        "data": {"google_wallet_url": google_wallet_pass_url},
+        "status_code": 200,
+        "json": {   
+            "msg": "Pase de Google Wallet creado exitosamente."
+        }
+    }))
