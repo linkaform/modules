@@ -149,6 +149,101 @@ class Accesos(Accesos):
             },
         }
 
+        object_body_2 = {
+            "id": object_id,
+            "classId": class_id,
+            "state": "ACTIVE",
+            "genericType": "GENERIC_TYPE_UNSPECIFIED",
+            "cardTitle": {
+                "defaultValue": {
+                    "language": "es-MX",
+                    "value": empresa
+                }
+            },
+            "subheader": {
+                "defaultValue": {
+                    "language": "es-MX",
+                    "value": 'Pase de Entrada'
+                }
+            },
+            "header": {
+                "defaultValue": {
+                    "language": "es-MX",
+                    "value": f'Visita a: {format_visita_a}'
+                }
+            },
+            "logo": {
+                "sourceUri": {
+                    "uri": "https://f001.backblazeb2.com/file/app-linkaform/public-client-126/71202/60b81349bde5588acca320e1/698b8b36e216075bd8f4597a.png"
+                }
+            },
+            "hexBackgroundColor": "#FFFFFF",
+            "groupingInfo": {
+                "sortIndex": 1,
+                "groupingId": "pase_de_entrada",
+            },
+            "textModulesData": [
+                {
+                    "id": "ubicacion",
+                    "header": "UBICACION",
+                    "body": format_ubicacion
+                },
+                {
+                    "id": "fecha_entrada",
+                    "header": "FECHA DESDE",
+                    "body": fecha_desde
+                },
+                {
+                    "id": "fecha_salida",
+                    "header": "FECHA HASTA",
+                    "body": fecha_hasta
+                },
+                {
+                    "id": "accesos",
+                    "header": "ACCESOS",
+                    "body": str(num_accesos)
+                },
+                {
+                    "id": "vehiculos",
+                    "header": "VEHICULOS",
+                    "body": "Toyota Corolla - ABC123"
+                },
+                {
+                    "id": "equipos",
+                    "header": "EQUIPOS",
+                    "body": "Laptop Dell, Cámara Canon"
+                }
+            ],
+            "barcode": {
+                "type": "QR_CODE",
+                "value": qr_code,
+                "alternateText": "Muestra tu QR para ingresar"
+            },
+            "locations": [
+                {
+                    "kind": "walletobjects#latLongPoint",
+                    "latitude": 23.7369,
+                    "longitude": -99.1411
+                }
+            ],
+            "linksModuleData": {
+                "uris": [
+                    {
+                        "kind": "walletobjects#uri",
+                        "uri": "https://www.google.com/maps/dir/?api=1&destination=23.7369,-99.1411",
+                        "description": "Cómo llegar",
+                        "id": "direcciones"
+                    },
+                    {
+                        "kind": "walletobjects#uri",
+                        "uri": "https://maps.google.com/?q=23.7369,-99.1411",
+                        "description": "Ver en mapa",
+                        "id": "ver_mapa"
+                    }
+                ]
+            }
+        }
+
         requests.post(
             'https://walletobjects.googleapis.com/walletobjects/v1/genericObject',
             headers=headers,
@@ -174,8 +269,8 @@ class Accesos(Accesos):
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
-    data = acceso_obj.data.get('data',{})
-    qr_code = acceso_obj.data.get('qr_code', '')
+    data = acceso_obj.data.get('data', {})
+    qr_code = data.get('qr_code', '')
     access_pass = data.get('access_pass', {})
 
     data = {
