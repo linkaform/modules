@@ -3078,6 +3078,31 @@ class Accesos( Accesos):
         data = self.format_cr(self.cr.aggregate(query))
         return data
 
+    def get_pass_custom(self,qr_code):
+        pass_selected= self.get_detail_access_pass(qr_code=qr_code)
+        answers={}
+        for key, value in pass_selected.items():
+            if key == 'nombre' or \
+               key == 'email' or \
+               key == 'telefono' or \
+               key == 'visita_a' or \
+               key == 'ubicacion' or \
+               key == 'fecha_de_expedicion' or \
+               key == 'fecha_de_caducidad' or \
+               key == "qr_pase" or \
+               key == "pdf_to_img" or \
+               key == "_id" or \
+               key == "estatus" or \
+               key == "foto" or \
+               key == "identificacion" or \
+               key == "grupo_equipos" or \
+               key == "grupo_vehiculos" or \
+               key == "google_wallet_pass_url" or \
+               key == "limite_de_acceso":
+                answers[key] = value
+        answers['folio']= pass_selected.get("folio")
+        return answers
+
     def catalogo_tipo_concesion(self,location="", tipo=""):
         catalog_id = self.ACTIVOS_FIJOS_CAT_ID
         form_id= self.CONCESSIONED_ARTICULOS
