@@ -3537,7 +3537,6 @@ class Accesos( Accesos):
         match = {
             "deleted_at": {"$exists": False},
             "form_id": self.BITACORA_ACCESOS,
-            f"answers.{self.PASE_ENTRADA_OBJ_ID}.{self.pase_entrada_fields['status_pase']}": {"$in": ["Activo"]},
             f"answers.{self.mf['tipo_registro']}": "entrada",
         }
 
