@@ -3818,6 +3818,3 @@ class Accesos( Accesos):
                 print('========== Log:', simplejson.dumps(response, indent=2, default=str))
                 self.LKFException({'title': 'Error', 'msg': 'Hubo un error al actualizar los registros.'})
         return format_data
-
-    def get_pdf(self, qr_code, template_id=620, name_pdf='Pase de Entrada'):
-        return self.lkf_api.get_pdf_record(qr_code, template_id = template_id, name_pdf =name_pdf, send_url=True)
