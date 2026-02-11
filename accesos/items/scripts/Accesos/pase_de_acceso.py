@@ -36,7 +36,7 @@ if __name__ == "__main__":
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
     elif option == 'create_access_pass' or option == 'crear_pase':
-        response = acceso_obj.create_access_pass(access_pass)
+        response = acceso_obj.create_access_pass(location, access_pass)
         folio_msj = response.get('json', {}).get('id', '')
     elif option == 'update_pass':
         response = acceso_obj.update_pass(access_pass,folio)
