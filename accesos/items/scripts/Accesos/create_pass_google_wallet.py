@@ -74,82 +74,11 @@ class Accesos(Accesos):
         num_accesos = data.get('num_accesos', 1)
         fecha_desde = data.get('fecha_desde', '')
         fecha_hasta = data.get('fecha_hasta', '')
+        geolocations = data.get('geolocations', [])
         if not fecha_hasta:
             fecha_hasta = fecha_desde
 
         object_body = {
-            "id": object_id,
-            "classId": class_id,
-            "state": "ACTIVE",
-            "genericType": "GENERIC_TYPE_UNSPECIFIED",
-            "cardTitle": {
-                "defaultValue": {
-                    "language": "es-MX",
-                    "value": empresa
-                }
-            },
-            "subheader": {
-                "defaultValue": {
-                    "language": "es-MX",
-                    "value": 'Pase de Entrada'
-                }
-            },
-            "header": {
-                "defaultValue": {
-                    "language": "es-MX",
-                    "value": f'Visita a: {format_visita_a}'
-                }
-            },
-            "logo": {
-                "sourceUri": {
-                    "uri": "https://f001.backblazeb2.com/file/app-linkaform/public-client-126/68600/6076166dfd84fa7ea446b917/2025-04-28T11:11:42.png"
-                }
-            },
-            "hexBackgroundColor": "#FFFFFF",
-            "groupingInfo": {
-                "sortIndex": 1,
-                "groupingId": "pase_de_entrada",
-            },
-            "textModulesData": [
-                {
-                    "id": "ubicacion",
-                    "header": "UBICACION",
-                    "body": format_ubicacion
-                },
-                {
-                    "id": "fecha_entrada",
-                    "header": "FECHA DESDE",
-                    "body": fecha_desde
-                },
-                {
-                    "id": "fecha_salida",
-                    "header": "FECHA HASTA",
-                    "body": fecha_hasta
-                },
-                {
-                    "id": "accesos",
-                    "header": "ACCESOS",
-                    "body": num_accesos
-                },
-                {
-                    "id": "vehiculos",
-                    "header": "",
-                    "body": ""
-                },
-                {
-                    "id": "equipos",
-                    "header": "",
-                    "body": ""
-                }
-            ],
-            "barcode": {
-                "type": "QR_CODE",
-                "value": qr_code,
-                "alternateText": "Muestra tu QR para ingresar"
-            },
-        }
-
-        object_body_2 = {
             "id": object_id,
             "classId": class_id,
             "state": "ACTIVE",
@@ -201,17 +130,17 @@ class Accesos(Accesos):
                 {
                     "id": "accesos",
                     "header": "ACCESOS",
-                    "body": str(num_accesos)
+                    "body": num_accesos
                 },
                 {
                     "id": "vehiculos",
-                    "header": "VEHICULOS",
-                    "body": "Toyota Corolla - ABC123"
+                    "header": "",
+                    "body": ""
                 },
                 {
                     "id": "equipos",
-                    "header": "EQUIPOS",
-                    "body": "Laptop Dell, Cámara Canon"
+                    "header": "",
+                    "body": ""
                 }
             ],
             "barcode": {
@@ -219,30 +148,20 @@ class Accesos(Accesos):
                 "value": qr_code,
                 "alternateText": "Muestra tu QR para ingresar"
             },
-            "locations": [
-                {
-                    "kind": "walletobjects#latLongPoint",
-                    "latitude": 23.7369,
-                    "longitude": -99.1411
-                }
-            ],
-            "linksModuleData": {
+        }
+
+        if geolocations:
+            object_body['linksModuleData'] = {
                 "uris": [
                     {
                         "kind": "walletobjects#uri",
-                        "uri": "https://www.google.com/maps/dir/?api=1&destination=23.7369,-99.1411",
-                        "description": "Cómo llegar",
-                        "id": "direcciones"
-                    },
-                    {
-                        "kind": "walletobjects#uri",
-                        "uri": "https://maps.google.com/?q=23.7369,-99.1411",
-                        "description": "Ver en mapa",
-                        "id": "ver_mapa"
+                        "uri": f"https://www.google.com/maps/dir/?api=1&destination={value['latitude']},{value['longitude']}",
+                        "description": f"Cómo llegar a {key}",
+                        "id": f"direcciones_{key}"
                     }
+                    for key, value in geolocations.items()
                 ]
             }
-        }
 
         requests.post(
             'https://walletobjects.googleapis.com/walletobjects/v1/genericObject',
@@ -273,6 +192,9 @@ if __name__ == "__main__":
     qr_code = data.get('qr_code', '')
     access_pass = data.get('access_pass', {})
 
+    if not qr_code:
+        acceso_obj.LKFException({'title': 'Error', 'msg': 'No se proporciono el codigo QR'})
+
     data = {
         "nombre": access_pass.get("nombre"),
         "visita_a": access_pass.get("visita_a"),
@@ -281,17 +203,18 @@ if __name__ == "__main__":
         "num_accesos": access_pass.get("num_accesos"),
         "fecha_desde": access_pass.get("fecha_desde"),
         "fecha_hasta": access_pass.get("fecha_hasta"),
+        "geolocations": access_pass.get("geolocations"),
     }
 
     google_wallet_pass_url = acceso_obj.create_class_google_wallet(data=data, qr_code=qr_code)
 
     if not google_wallet_pass_url:
-        self.LKFException({'title': 'Error al crear el pase de Google Wallet', 'msg': 'No se pudo crear el pase de Google Wallet'})
+        acceso_obj.LKFException({'title': 'Error al crear el pase de Google Wallet', 'msg': 'No se pudo crear el pase de Google Wallet'})
 
-    sys.stdout.write(simplejson.dumps({
+    acceso_obj.HttpResponse({
         "data": {"google_wallet_url": google_wallet_pass_url},
         "status_code": 200,
         "json": {   
             "msg": "Pase de Google Wallet creado exitosamente."
         }
-    }))
+    })

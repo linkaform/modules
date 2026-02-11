@@ -3207,10 +3207,10 @@ class Accesos( Accesos):
             for ubicacion in ubicaciones:
                 ubicaciones_format.append(ubicacion.get(self.UBICACIONES_CAT_OBJ_ID, {}).get(self.mf['ubicacion'], ''))
             x['ubicaciones'] = ubicaciones_format
-            x['ubicaciones_geolocation'] = [
-                {x.get(self.UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['location']): self.unlist(x.get(self.UBICACIONES_CAT_OBJ_ID, {}).get(self.f['address_geolocation']))}
+            x['ubicaciones_geolocation'] = {
+                x.get(self.UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['location']): self.unlist(x.get(self.UBICACIONES_CAT_OBJ_ID, {}).get(self.f['address_geolocation']))
                 for x in ubicaciones_full_info
-            ]
+            }
         if not x:
             self.LKFException({'title':'Advertencia', 'msg':'Este pase fue eliminado o no pertenece a esta organizacion.'})
         return x
@@ -3237,7 +3237,8 @@ class Accesos( Accesos):
                key == "grupo_vehiculos" or \
                key == "google_wallet_pass_url" or \
                key == "limite_de_acceso" or \
-               key == "empresa":
+               key == "empresa" or \
+               key == "ubicaciones_geolocation":
                 answers[key] = value
         answers['folio']= pass_selected.get("folio")
         return answers
