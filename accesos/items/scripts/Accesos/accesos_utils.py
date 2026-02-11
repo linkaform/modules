@@ -3179,6 +3179,171 @@ class Accesos( Accesos):
         data = self.format_cr(self.cr.aggregate(query))
         return data
 
+    def get_detail_access_pass(self, qr_code):
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id": self.PASE_ENTRADA,
+            "_id":ObjectId(qr_code),
+        }
+        print("QR", qr_code)
+        query = [
+            {'$match': match_query },
+            {'$project': 
+                {'_id':1,
+                'folio': f"$folio",
+                'ubicacion': f"$answers.{self.mf['grupo_ubicaciones_pase']}.{self.UBICACIONES_CAT_OBJ_ID}",
+                'nombre': {"$ifNull":[
+                    f"$answers.{self.VISITA_AUTORIZADA_CAT_OBJ_ID}.{self.mf['nombre_visita']}",
+                    f"$answers.{self.mf['nombre_pase']}"]},
+                'estatus': f"$answers.{self.pase_entrada_fields['status_pase']}",
+                'empresa': {"$ifNull":[
+                     f"$answers.{self.VISITA_AUTORIZADA_CAT_OBJ_ID}.{self.mf['empresa']}",
+                     f"$answers.{self.mf['empresa_pase']}"]},
+                'email':  {"$ifNull":[
+                    f"$answers.{self.VISITA_AUTORIZADA_CAT_OBJ_ID}.{self.mf['email_vista']}",
+                    f"$answers.{self.mf['email_pase']}"]},
+                'telefono': {"$ifNull":[
+                    f"$answers.{self.VISITA_AUTORIZADA_CAT_OBJ_ID}.{self.mf['telefono']}",
+                    f"$answers.{self.mf['telefono_pase']}"]},
+                'curp': f"$answers.{self.VISITA_AUTORIZADA_CAT_OBJ_ID}.{self.mf['curp']}",
+                'fecha_de_expedicion': f"$answers.{self.mf['fecha_desde_visita']}",
+                'fecha_de_caducidad':{'$ifNull':[
+                    f"$answers.{self.mf['fecha_desde_hasta']}",
+                    f"$answers.{self.mf['fecha_desde_visita']}",
+                    ]
+                    },
+                'foto': {'$ifNull':[
+                    f"$answers.{self.VISITA_AUTORIZADA_CAT_OBJ_ID}.{self.mf['foto']}",
+                    f"$answers.{self.pase_entrada_fields['walkin_fotografia']}"]},
+                'limite_de_acceso': f"$answers.{self.mf['config_limitar_acceso']}",
+                'config_dia_de_acceso': f"$answers.{self.mf['config_dia_de_acceso']}",
+                'identificacion': {'$ifNull':[
+                    f"$answers.{self.VISITA_AUTORIZADA_CAT_OBJ_ID}.{self.mf['identificacion']}",
+                    f"$answers.{self.pase_entrada_fields['walkin_identificacion']}"]},
+                'limitado_a_dias':f"$answers.{self.mf['config_dias_acceso']}",
+                'motivo_visita':f"$answers.{self.CONFIG_PERFILES_OBJ_ID}.{self.mf['motivo']}",
+                'perfil_pase':f"$answers.{self.CONFIG_PERFILES_OBJ_ID}",
+                'tipo_de_pase':f"$answers.{self.pase_entrada_fields['perfil_pase']}",
+                'tipo_de_comentario': f"$answers.{self.mf['tipo_de_comentario']}",
+                'visita_a_nombre':
+                     f"$answers.{self.mf['grupo_visitados']}.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_empleado']}",
+                'visita_a_puesto': 
+                    f"$answers.{self.mf['grupo_visitados']}.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['puesto_empleado']}",
+                'visita_a_departamento':
+                    f"$answers.{self.mf['grupo_visitados']}.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['departamento_empleado']}",
+                'visita_a_user_id':
+                    f"$answers.{self.mf['grupo_visitados']}.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['user_id_empleado']}",
+                'visita_a_email':
+                    f"$answers.{self.mf['grupo_visitados']}.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['email_visita_a']}",
+                'visita_a_telefono':
+                    f"$answers.{self.mf['grupo_visitados']}.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['telefono_visita_a']}",
+                'grupo_areas_acceso': f"$answers.{self.mf['grupo_areas_acceso']}",
+                # 'grupo_commentario_area': f"$answers.{self.mf['grupo_commentario_area']}",
+                'grupo_equipos': f"$answers.{self.mf['grupo_equipos']}",
+                'grupo_vehiculos': f"$answers.{self.mf['grupo_vehiculos']}",
+                'grupo_instrucciones_pase': f"$answers.{self.mf['grupo_instrucciones_pase']}",
+                'comentario': f"$answers.{self.mf['grupo_instrucciones_pase']}",
+                'codigo_qr': f"$answers.{self.mf['codigo_qr']}",
+                'qr_pase': f"$answers.{self.mf['qr_pase']}",
+                'tema_cita': f"$answers.{self.pase_entrada_fields['tema_cita']}",
+                'descripcion': f"$answers.{self.pase_entrada_fields['descripcion']}",
+                'link': f"$answers.{self.pase_entrada_fields['link']}",
+                'google_wallet_pass_url': f"$answers.{self.pase_entrada_fields['google_wallet_pass_url']}",
+                'apple_wallet_pass': f"$answers.{self.pase_entrada_fields['apple_wallet_pass']}",
+                'pdf_to_img': f"$answers.{self.pase_entrada_fields['pdf_to_img']}",
+                'acepto_aviso_privacidad': f"$answers.{self.pase_entrada_fields['acepto_aviso_privacidad']}",
+                'acepto_aviso_datos_personales': f"$answers.{self.pase_entrada_fields['acepto_aviso_datos_personales']}",
+                'conservar_datos_por': f"$answers.{self.pase_entrada_fields['conservar_datos_por']}",
+                'ubicaciones': f"$answers.{self.pase_entrada_fields['ubicaciones']}"                
+                },
+            },
+            {'$sort':{'folio':-1}},
+        ]
+        res = self.cr.aggregate(query)
+        x = {}
+        for x in res:
+            visita_a =[]
+            x['_id'] = str(x.pop('_id'))
+            v = x.pop('visita_a_nombre') if x.get('visita_a_nombre') else []
+            d = x.get('visita_a_departamento',[])
+            p = x.get('visita_a_puesto',[])
+            e =  x.get('visita_a_user_id',[])
+            u =  x.get('visita_a_email',[])
+            f =  x.get('visita_a_telefono',[])
+            x['empresa'] = self.unlist(x.get('empresa',''))
+            x['email'] =self.unlist(x.get('email',''))
+            x['telefono'] = self.unlist(x.get('telefono',''))
+            x['curp'] = self.unlist(x.get('curp',''))
+            x['motivo_visita'] = self.unlist(x.get('motivo_visita',''))
+            for idx, nombre in enumerate(v):
+                emp = {'nombre':nombre}
+                if d:
+                    emp.update({'departamento':d[idx].pop(0) if d[idx] else ""})
+                if p:
+                    emp.update({'puesto':p[idx].pop(0) if p[idx] else ""})
+                if e:
+                    emp.update({'user_id':e[idx].pop(0) if e[idx] else ""})
+                if u:
+                    emp.update({'email': u[idx].pop(0) if u[idx] else ""})
+                if f:
+                    emp.update({'telefono': f[idx].pop(0) if f[idx] else ""})
+                visita_a.append(emp)
+            x['visita_a'] = visita_a
+            perfil_pase = x.pop('perfil_pase') if x.get('perfil_pase') else []
+            perfil_pase = self._labels(perfil_pase, self.mf)
+            if x.get('fecha_de_caducidad') == "":
+                x['fecha_de_caducidad'] = x.get('fecha_de_expedicion')
+            if perfil_pase:
+                x['tipo_de_pase'] = perfil_pase.pop('nombre_perfil')
+                empresa = x.get('empresa')
+                x['certificaciones'] = self.format_perfil_pase(perfil_pase, x['curp'], empresa)
+            x['grupo_areas_acceso'] = self._labels_list(x.pop('grupo_areas_acceso',[]), self.mf)
+            x['grupo_instrucciones_pase'] = self._labels_list(x.pop('grupo_instrucciones_pase',[]), self.mf)
+            x['grupo_equipos'] = self._labels_list(x.pop('grupo_equipos',[]), self.mf)
+            x['grupo_vehiculos'] = self._labels_list(x.pop('grupo_vehiculos',[]), self.mf)
+            ubicaciones_full_info = x.get('ubicaciones', [])
+            x['ubicacion'] = [x.get(self.UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['location']) for x in ubicaciones_full_info]
+            ubicaciones = x.get('ubicaciones', [])
+            ubicaciones_format = []
+            for ubicacion in ubicaciones:
+                ubicaciones_format.append(ubicacion.get(self.UBICACIONES_CAT_OBJ_ID, {}).get(self.mf['ubicacion'], ''))
+            x['ubicaciones'] = ubicaciones_format
+            x['ubicaciones_geolocation'] = {
+                x.get(self.UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['location']): self.unlist(x.get(self.UBICACIONES_CAT_OBJ_ID, {}).get(self.f['address_geolocation']))
+                for x in ubicaciones_full_info
+            }
+        if not x:
+            self.LKFException({'title':'Advertencia', 'msg':'Este pase fue eliminado o no pertenece a esta organizacion.'})
+        return x
+
+    def get_pass_custom(self,qr_code):
+        pass_selected= self.get_detail_access_pass(qr_code=qr_code)
+        print('pass_selected', simplejson.dumps(pass_selected, indent=4))
+        answers={}
+        for key, value in pass_selected.items():
+            if key == 'nombre' or \
+               key == 'email' or \
+               key == 'telefono' or \
+               key == 'visita_a' or \
+               key == 'ubicacion' or \
+               key == 'fecha_de_expedicion' or \
+               key == 'fecha_de_caducidad' or \
+               key == "qr_pase" or \
+               key == "pdf_to_img" or \
+               key == "_id" or \
+               key == "estatus" or \
+               key == "foto" or \
+               key == "identificacion" or \
+               key == "grupo_equipos" or \
+               key == "grupo_vehiculos" or \
+               key == "google_wallet_pass_url" or \
+               key == "limite_de_acceso" or \
+               key == "empresa" or \
+               key == "ubicaciones_geolocation":
+                answers[key] = value
+        answers['folio']= pass_selected.get("folio")
+        return answers
+
     def catalogo_tipo_concesion(self,location="", tipo=""):
         catalog_id = self.ACTIVOS_FIJOS_CAT_ID
         form_id= self.CONCESSIONED_ARTICULOS
@@ -3613,7 +3778,6 @@ class Accesos( Accesos):
         match = {
             "deleted_at": {"$exists": False},
             "form_id": self.BITACORA_ACCESOS,
-            f"answers.{self.PASE_ENTRADA_OBJ_ID}.{self.pase_entrada_fields['status_pase']}": {"$in": ["Activo"]},
             f"answers.{self.mf['tipo_registro']}": "entrada",
         }
 
