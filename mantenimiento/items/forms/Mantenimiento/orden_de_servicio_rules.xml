@@ -651,9 +651,41 @@
                     <label>Firma Técnico</label>
                     <type>signature</type>
                 </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>6977ef6dc413ca2ae7cba1fd</field_id>
+                    <group_id>None</group_id>
+                    <id>6977ef6dc413ca2ae7cba1fd</id>
+                    <label>Video del tablero, Después</label>
+                    <type>files</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>6977ef6dc413ca2ae7cba1fc</field_id>
+                    <group_id>None</group_id>
+                    <id>6977ef6dc413ca2ae7cba1fc</id>
+                    <label>Video del tablero, Antes</label>
+                    <type>files</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>68b5f941ea7040f92ce0e4f0</field_id>
+                    <group_id>None</group_id>
+                    <id>68b5f941ea7040f92ce0e4f0</id>
+                    <label>Video de la posición de los sensores Instalados</label>
+                    <type>files</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>67d25bd7a21e5779d3a7d8d2</field_id>
+                    <group_id>None</group_id>
+                    <id>67d25bd7a21e5779d3a7d8d2</id>
+                    <label>Video del interior del tanque</label>
+                    <type>files</type>
+                </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>
-            <name>Requerir firmas</name>
+            <name>Requerir firmas y los 4 videos: tablero y tanques</name>
             <operator>and</operator>
             <rule_id>17e0ee21828653</rule_id>
             <rule_type>required</rule_type>
@@ -707,6 +739,74 @@
             <operator>and</operator>
             <rule_id>229418bfa1c1ece</rule_id>
             <rule_type>required</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>in=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                        <group_id>None</group_id>
+                        <id>67d9f8efbfe21e488f4f5262</id>
+                        <label>Estatus</label>
+                        <type>select</type>
+                    </field>
+                    <value>reprogramado</value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>698b6217bb57f623bc5a9cdf</field_id>
+                    <group_id>None</group_id>
+                    <id>698b6217bb57f623bc5a9cdf</id>
+                    <label>Motivo de la reprogramación</label>
+                    <type>text</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Mostrat motivo de reprogramación</name>
+            <operator>and</operator>
+            <rule_id>1c5b1aa2bde1379</rule_id>
+            <rule_type>show</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>in=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                        <group_id>None</group_id>
+                        <id>67d9f8efbfe21e488f4f5262</id>
+                        <label>Estatus</label>
+                        <type>select</type>
+                    </field>
+                    <value>cancelado</value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>698b6217bb57f623bc5a9cde</field_id>
+                    <group_id>None</group_id>
+                    <id>698b6217bb57f623bc5a9cde</id>
+                    <label>Motivo de la cancelación</label>
+                    <type>text</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Mostrar motivo de cancelación</name>
+            <operator>and</operator>
+            <rule_id>824ab113632130</rule_id>
+            <rule_type>show</rule_type>
             <user_conditions>{}</user_conditions>
         </item>
     </rules>

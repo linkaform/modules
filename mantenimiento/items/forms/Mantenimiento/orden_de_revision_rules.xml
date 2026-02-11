@@ -655,6 +655,22 @@
             <fields_ruled>
                 <item>
                     <catalog_id>None</catalog_id>
+                    <field_id>6977f0f053891c2a443ac970</field_id>
+                    <group_id>None</group_id>
+                    <id>6977f0f053891c2a443ac970</id>
+                    <label>Video del tablero, Antes</label>
+                    <type>files</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>6977f0f053891c2a443ac971</field_id>
+                    <group_id>None</group_id>
+                    <id>6977f0f053891c2a443ac971</id>
+                    <label>Video del tablero, Después</label>
+                    <type>files</type>
+                </item>
+                <item>
+                    <catalog_id>None</catalog_id>
                     <field_id>67d25c53891392185401b3fb</field_id>
                     <group_id>None</group_id>
                     <id>67d25c53891392185401b3fb</id>
@@ -663,7 +679,7 @@
                 </item>
             </fields_ruled>
             <group_conditions>{}</group_conditions>
-            <name>Requerir firmas</name>
+            <name>Requerir firmas y  videos de tablero</name>
             <operator>and</operator>
             <rule_id>ab2426a741460</rule_id>
             <rule_type>required</rule_type>
@@ -746,6 +762,74 @@
             <name>Regla 15</name>
             <operator>and</operator>
             <rule_id>17d0170e1cb8112a</rule_id>
+            <rule_type>show</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>in=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                        <group_id>None</group_id>
+                        <id>67d9f8efbfe21e488f4f5262</id>
+                        <label>Estatus</label>
+                        <type>select</type>
+                    </field>
+                    <value>reprogramado</value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>698b666d4e28520f58d4f326</field_id>
+                    <group_id>None</group_id>
+                    <id>698b666d4e28520f58d4f326</id>
+                    <label>Motivo de la reprogramación</label>
+                    <type>text</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Mostrar motivo de reprogramación</name>
+            <operator>and</operator>
+            <rule_id>46421b812512119</rule_id>
+            <rule_type>show</rule_type>
+            <user_conditions>{}</user_conditions>
+        </item>
+        <item>
+            <conditions>
+                <item>
+                    <condition>in=</condition>
+                    <field>
+                        <catalog_id>None</catalog_id>
+                        <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                        <group_id>None</group_id>
+                        <id>67d9f8efbfe21e488f4f5262</id>
+                        <label>Estatus</label>
+                        <type>select</type>
+                    </field>
+                    <value>cancelado</value>
+                </item>
+            </conditions>
+            <element_ids>[]</element_ids>
+            <empty>False</empty>
+            <fields_ruled>
+                <item>
+                    <catalog_id>None</catalog_id>
+                    <field_id>698b666d4e28520f58d4f325</field_id>
+                    <group_id>None</group_id>
+                    <id>698b666d4e28520f58d4f325</id>
+                    <label>Motivo de la cancelación</label>
+                    <type>text</type>
+                </item>
+            </fields_ruled>
+            <group_conditions>{}</group_conditions>
+            <name>Mostrar motivo de cancelación</name>
+            <operator>and</operator>
+            <rule_id>2587104b3ecb19</rule_id>
             <rule_type>show</rule_type>
             <user_conditions>{}</user_conditions>
         </item>

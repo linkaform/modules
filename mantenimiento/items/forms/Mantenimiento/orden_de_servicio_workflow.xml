@@ -595,6 +595,30 @@
                             </trigger_field>
                             <value>asignado</value>
                         </item>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>
+                                    <catalog_field_id>{{ catalog.compaia.obj_id }}</catalog_field_id>
+                                    <catalog_id>{{ catalog.compaia.id }}</catalog_id>
+                                    <field_type>text</field_type>
+                                    <filters />
+                                    <geofence>None</geofence>
+                                    <last>False</last>
+                                    <related_catalog>{}</related_catalog>
+                                    <view_fields>[]</view_fields>
+                                    <view_index>1</view_index>
+                                </catalog>
+                                <field_id>663a8153e48382c5b1230918</field_id>
+                                <group>{}</group>
+                                <label>Compañia</label>
+                                <type>catalog-select</type>
+                            </trigger_field>
+                            <value>Boson TI</value>
+                        </item>
                     </triggers>
                 </wf_fields>
             </rules>
@@ -832,6 +856,30 @@
                             </trigger_field>
                             <value>cita_confirmada</value>
                         </item>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>
+                                    <catalog_field_id>{{ catalog.compaia.obj_id }}</catalog_field_id>
+                                    <catalog_id>{{ catalog.compaia.id }}</catalog_id>
+                                    <field_type>text</field_type>
+                                    <filters />
+                                    <geofence>None</geofence>
+                                    <last>False</last>
+                                    <related_catalog>{}</related_catalog>
+                                    <view_fields>[]</view_fields>
+                                    <view_index>1</view_index>
+                                </catalog>
+                                <field_id>663a8153e48382c5b1230918</field_id>
+                                <group>{}</group>
+                                <label>Compañia</label>
+                                <type>catalog-select</type>
+                            </trigger_field>
+                            <value>Boson TI</value>
+                        </item>
                     </triggers>
                 </wf_fields>
             </rules>
@@ -1056,6 +1104,30 @@
                                 <type>select</type>
                             </trigger_field>
                             <value>en_proceso</value>
+                        </item>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>
+                                    <catalog_field_id>{{ catalog.compaia.obj_id }}</catalog_field_id>
+                                    <catalog_id>{{ catalog.compaia.id }}</catalog_id>
+                                    <field_type>text</field_type>
+                                    <filters />
+                                    <geofence>None</geofence>
+                                    <last>False</last>
+                                    <related_catalog>{}</related_catalog>
+                                    <view_fields>[]</view_fields>
+                                    <view_index>1</view_index>
+                                </catalog>
+                                <field_id>663a8153e48382c5b1230918</field_id>
+                                <group>{}</group>
+                                <label>Compañia</label>
+                                <type>catalog-select</type>
+                            </trigger_field>
+                            <value>Boson TI</value>
                         </item>
                     </triggers>
                 </wf_fields>
@@ -1291,6 +1363,30 @@
                                 <type>select</type>
                             </trigger_field>
                             <value>finalizado</value>
+                        </item>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>
+                                    <catalog_field_id>{{ catalog.compaia.obj_id }}</catalog_field_id>
+                                    <catalog_id>{{ catalog.compaia.id }}</catalog_id>
+                                    <field_type>text</field_type>
+                                    <filters />
+                                    <geofence>None</geofence>
+                                    <last>False</last>
+                                    <related_catalog>{}</related_catalog>
+                                    <view_fields>[]</view_fields>
+                                    <view_index>1</view_index>
+                                </catalog>
+                                <field_id>663a8153e48382c5b1230918</field_id>
+                                <group>{}</group>
+                                <label>Compañia</label>
+                                <type>catalog-select</type>
+                            </trigger_field>
+                            <value>Boson TI</value>
                         </item>
                     </triggers>
                 </wf_fields>
@@ -1538,6 +1634,30 @@
                                 <type>select</type>
                             </trigger_field>
                             <value>validado</value>
+                        </item>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>
+                                    <catalog_field_id>{{ catalog.compaia.obj_id }}</catalog_field_id>
+                                    <catalog_id>{{ catalog.compaia.id }}</catalog_id>
+                                    <field_type>text</field_type>
+                                    <filters />
+                                    <geofence>None</geofence>
+                                    <last>False</last>
+                                    <related_catalog>{}</related_catalog>
+                                    <view_fields>[]</view_fields>
+                                    <view_index>1</view_index>
+                                </catalog>
+                                <field_id>663a8153e48382c5b1230918</field_id>
+                                <group>{}</group>
+                                <label>Compañia</label>
+                                <type>catalog-select</type>
+                            </trigger_field>
+                            <value>Boson TI</value>
                         </item>
                     </triggers>
                 </wf_fields>
@@ -2116,7 +2236,7 @@
                     <runtime>after</runtime>
                 </record>
                 <wf_fields>
-                    <operator>all</operator>
+                    <operator>any</operator>
                     <triggers>
                         <item>
                             <condition>in=</condition>
@@ -2529,9 +2649,9 @@
                     <user>[]</user>
                 </metadata>
                 <record>
-                    <created>True</created>
+                    <created>False</created>
                     <deleted>False</deleted>
-                    <edited>True</edited>
+                    <edited>False</edited>
                     <run_multiple_times>True</run_multiple_times>
                     <runtime>after</runtime>
                 </record>
@@ -2628,10 +2748,10 @@
                         <assignTo>
                             <item>
                                 <customUser>
-                                    <email>jahaziel.ornelas.mtz@outlook.com</email>
-                                    <first_name>Jahaziel Ornelas</first_name>
-                                    <id>29330</id>
-                                    <username>jahaziel.ornelas.mtz@outlook.com</username>
+                                    <email>gotrack.net@gmail.com</email>
+                                    <first_name>José Fernando Jiménez</first_name>
+                                    <id>29867</id>
+                                    <username>gotrack.net@gmail.com</username>
                                 </customUser>
                                 <field_id>CUSTOM_USER</field_id>
                                 <label>Conexión</label>
@@ -2644,7 +2764,7 @@
                 </item>
             </actions>
             <id>6941d5ae30e194569c71cfc4</id>
-            <name>Asignación Ditran Jahaziel</name>
+            <name>Asignación Ditran José</name>
             <rules>
                 <metadata>
                     <connection>[]</connection>
@@ -2664,9 +2784,9 @@
                     <user>[]</user>
                 </metadata>
                 <record>
-                    <created>True</created>
+                    <created>False</created>
                     <deleted>False</deleted>
-                    <edited>True</edited>
+                    <edited>False</edited>
                     <run_multiple_times>True</run_multiple_times>
                     <runtime>after</runtime>
                 </record>
@@ -2719,7 +2839,7 @@
                                 <label>Nombre completo del Técnico</label>
                                 <type>catalog-select</type>
                             </trigger_field>
-                            <value>Jahaziel Omar Ornelas</value>
+                            <value>José Fernando Jiménez</value>
                         </item>
                         <item>
                             <condition>nin=</condition>
@@ -2799,9 +2919,9 @@
                     <user>[]</user>
                 </metadata>
                 <record>
-                    <created>True</created>
+                    <created>False</created>
                     <deleted>False</deleted>
-                    <edited>True</edited>
+                    <edited>False</edited>
                     <run_multiple_times>True</run_multiple_times>
                     <runtime>after</runtime>
                 </record>
@@ -4176,18 +4296,20 @@
                                 <label>Email del tecnico</label>
                             </item>
                         </email_fields>
-                        <emails>[]</emails>
+                        <emails>
+                            <item>edith.castro@bosonti.com</item>
+                        </emails>
                         <embed_company_picture>True</embed_company_picture>
                         <fields_attached>[]</fields_attached>
                         <pdf_template>
                             <_type>single_record</_type>
-                            <description>Template de Orden de Servicio para Boson Ti</description>
-                            <id>564</id>
-                            <name>Boson Ti - Orden de Servicio</name>
+                            <description>Template Orden De Servicio Para Ditran</description>
+                            <id>615</id>
+                            <name>Ditran - Orden de Servicio</name>
                             <owner>/api/infosync/user/17213/</owner>
                             <paginate>True</paginate>
                             <properties>{}</properties>
-                            <resource_uri>/api/infosync/templates/564/</resource_uri>
+                            <resource_uri>/api/infosync/templates/615/</resource_uri>
                         </pdf_template>
                         <resend>RESEND</resend>
                         <send_attachments>False</send_attachments>
@@ -4257,6 +4379,143 @@
                         </item>
                         <item>
                             <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>validado</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>695f04f50b52fcc500b15764</_id>
+                    <action_id>7</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <arguments>{}</arguments>
+                        <integration>None</integration>
+                        <script>
+                            <created_at>2026-01-07T19:13:47.664143</created_at>
+                            <deleted_at>None</deleted_at>
+                            <end_date>None</end_date>
+                            <id>{{ script.assign_record_created.id }}</id>
+                            <is_fileShared>False</is_fileShared>
+                            <itype>script</itype>
+                            <name>{{ script.assign_record_created.name }}</name>
+                            <start_date>2026-01-07T19:13:47.660723</start_date>
+                            <updated_at>2026-01-07T19:13:47.683476</updated_at>
+                        </script>
+                        <scriptArguments>
+                            <item>
+                                <label>None</label>
+                                <value>None</value>
+                            </item>
+                        </scriptArguments>
+                        <scriptQuery>None</scriptQuery>
+                        <selectedUser>None</selectedUser>
+                        <user>RECORD_USER</user>
+                        <userOptions>
+                            <item>
+                                <id>SCRIPT_OWNER</id>
+                                <name>Dueño del script</name>
+                            </item>
+                            <item>
+                                <id>FORM_OWNER</id>
+                                <name>Dueño de la forma</name>
+                            </item>
+                            <item>
+                                <id>OWNER_ACCOUNT_EMAIL</id>
+                                <name>Dueño de la cuenta</name>
+                            </item>
+                            <item>
+                                <id>RECORD_USER</id>
+                                <name>Usuario que contesta</name>
+                            </item>
+                        </userOptions>
+                    </configuration>
+                    <name>None</name>
+                </item>
+            </actions>
+            <id>695f04f60b52fcc500b157b6</id>
+            <name>Script Asignar a Tecnico Ditran</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2026-01-08T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2026-01-07T19:14:25.347Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>True</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>True</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>
+                                    <catalog_field_id>{{ catalog.compaia.obj_id }}</catalog_field_id>
+                                    <catalog_id>{{ catalog.compaia.id }}</catalog_id>
+                                    <field_type>text</field_type>
+                                    <filters />
+                                    <geofence>None</geofence>
+                                    <last>False</last>
+                                    <related_catalog>{}</related_catalog>
+                                    <view_fields>[]</view_fields>
+                                    <view_index>1</view_index>
+                                </catalog>
+                                <field_id>663a8153e48382c5b1230918</field_id>
+                                <group>{}</group>
+                                <label>Compañia</label>
+                                <type>catalog-select</type>
+                            </trigger_field>
+                            <value>Ditran</value>
+                        </item>
+                        <item>
+                            <condition>nin=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>67d9f8efbfe21e488f4f5262</field_id>
+                                <group>{}</group>
+                                <label>Estatus</label>
+                                <type>select</type>
+                            </trigger_field>
+                            <value>finalizado</value>
+                        </item>
+                        <item>
+                            <condition>nin=</condition>
                             <form_id>None</form_id>
                             <other_value>None</other_value>
                             <prefix>answer</prefix>
