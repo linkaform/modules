@@ -101,7 +101,6 @@ class Accesos(Accesos):
                     "value": f'Visita a: {format_visita_a}'
                 }
             },
-<<<<<<< HEAD
             'logo': {
                 'sourceUri': {
                     'uri':
@@ -112,11 +111,6 @@ class Accesos(Accesos):
                         'language': 'en-US',
                         'value': 'Generic card logo'
                     }
-=======
-            "logo": {
-                "sourceUri": {
-                    "uri": "https://f001.backblazeb2.com/file/app-linkaform/public-client-126/71202/60b81349bde5588acca320e1/698b8b36e216075bd8f4597a.png"
->>>>>>> b4c0318d173816eda352211b9eabad79a8a7e5dc
                 }
             },
             "hexBackgroundColor": "#FFFFFF",
