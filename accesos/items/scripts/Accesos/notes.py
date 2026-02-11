@@ -13,18 +13,22 @@ if __name__ == "__main__":
     #-FILTROS
     data = acceso_obj.data.get('data',{})
     option = data.get("option",'')
+    limit = data.get("limit", 10)
+    offset = data.get("offset", 0)
+    dateFrom = data.get("dateFrom", "")
+    dateTo = data.get("dateTo", "")
 
     data_notes = data.get("data_notes",{})
     data_update = data.get("data_update",{})
-    location = data.get("location",'Planta Monterrey')
-    area = data.get("area",'Caseta Principal')
+    location = data.get("location", '')
+    area = data.get("area", '')
     status = data.get("status",'abierto')
     folio = data.get("folio",'588-10')
     #-FUNCTIONS
     if option == 'new_notes':
         response = acceso_obj.create_note(location, area, data_notes)
     elif option == 'get_notes':
-        response = acceso_obj.get_list_notes(location, area, status=status)
+        response = acceso_obj.get_list_notes(location, area, status=status, limit=limit, offset=offset, dateFrom=dateFrom, dateTo=dateTo)
     elif option == 'update_note':
         response = acceso_obj.update_notes(data_update, folio)
     elif option == 'delete_note':

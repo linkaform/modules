@@ -17,7 +17,7 @@ if __name__ == "__main__":
 
     area = data.get("area")
     comments = data.get('comments',"")
-    checkin_id = data.get("checkin_id","")
+    checkin_id = data.get("checkin_id", "")
     employee_list = data.get("employee_list",[])
     equipo = data.get('equipo',"")
     forzar = data.get('forzar')
@@ -40,6 +40,14 @@ if __name__ == "__main__":
     id_bitacora = data.get("id_bitacora",[])
     data_gafete = data.get("data_gafete",{})
     tipo_movimiento = data.get("tipo_movimiento",{})
+    dateFrom = data.get("dateFrom", "")
+    dateTo = data.get("dateTo", "")
+    filterDate = data.get("filterDate", "")
+    limit = data.get("limit", 10)
+    offset = data.get("offset", 0)
+    fotografia=data.get("fotografia",[])
+    nombre_suplente=data.get("nombre_suplente","")
+    guard_id=data.get("guard_id","")
     #-FUNCTIONS
     print('option', option)
     if option == 'load_shift':
@@ -50,7 +58,9 @@ if __name__ == "__main__":
     elif option == 'assing_gafete':
         response = acceso_obj.assing_gafete(data_gafete, id_bitacora, tipo_movimiento)
     elif option == 'list_bitacora':
-        response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades)
+        response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, limit=limit, offset=offset,  filterDate=filterDate)
+    elif option == 'list_bitacora2':
+        response = acceso_obj.get_list_bitacora2(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate)
     elif option == 'get_user_booths':
         response = acceso_obj.get_user_booths_availability(turn_areas=turn_areas)
     elif option == 'get_boot_guards' or option == 'guardias_de_apoyo':
@@ -60,12 +70,11 @@ if __name__ == "__main__":
     elif option == 'catalog_location':
         response = acceso_obj.get_catalog_locations(location)
     elif option == 'checkin':
-        # used
-        response = acceso_obj.do_checkin(location, area, employee_list)
+        response = acceso_obj.do_checkin(location, area, employee_list, fotografia=fotografia ,nombre_suplente=nombre_suplente, checkin_id=checkin_id)
     elif option == 'checkout':
         # used
         response = acceso_obj.do_checkout(checkin_id=checkin_id, \
-            location=location, area= area, guards=guards, forzar=forzar, comments=comments)
+            location=location, area= area, guards=guards, forzar=forzar, comments=comments, fotografia=fotografia, guard_id=guard_id)
     elif option == 'get_user_menu':
         response = acceso_obj.get_config_accesos()
     elif option == 'search_access_pass':
@@ -105,10 +114,15 @@ if __name__ == "__main__":
         response = acceso_obj.visita_a_detail(location, visita_a)
     elif option == 'enviar_msj':
         response = acceso_obj.create_enviar_msj(data_msj=data_msj, data_cel_msj=data_cel_msj)
-
+    elif option == 'send_msj_by_access':
+        response = acceso_obj.send_email_and_sms(data=data_msj)
+    elif option == 'update_delete_suplente':
+        response = acceso_obj.update_delete_suplente(nombre_suplente=nombre_suplente)
+    elif option == 'force_quit_all_persons':
+        response = acceso_obj.force_quit_all_persons(location=location)
     else :
         response = {"msg": "Empty"}
-    print('================ END RETURN =================')
-    print(simplejson.dumps(response, indent=3))
+    # print('================ END RETURN =================')
+    # print(simplejson.dumps(response, indent=3))
     acceso_obj.HttpResponse({"data":response})
 

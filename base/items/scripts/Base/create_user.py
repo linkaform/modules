@@ -4,10 +4,10 @@
 # Forma: Usuarios
 #####
 import sys, simplejson, json
-from linkaform_api import settings
-from account_settings import *
 
 from base_utils import Base
+from account_settings import *
+
 
 class Base(Base):
 

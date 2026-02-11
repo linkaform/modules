@@ -50,7 +50,23 @@ if __name__ == "__main__":
                 nombre_visita_a += ', '
             nombre_visita_a += nombre
 
-    ubicacion = acceso_obj.answers.get(acceso_obj.Location.UBICACIONES_CAT_OBJ_ID,{}).get(acceso_obj.Location.f['location'], '')
+    ubicaciones_list = []
+    ubicaciones_group = acceso_obj.answers.get(acceso_obj.mf['grupo_ubicaciones_pase'], '')
+    for item in ubicaciones_group:
+        ubicacion = item.get(acceso_obj.Location.UBICACIONES_CAT_OBJ_ID,{}).get(acceso_obj.Location.f['location'], '')
+        ubicaciones_list.append(ubicacion)
+    
+    if len(ubicaciones_list) == 1:
+        ubicaciones_str = ubicaciones_list[0]
+    elif len(ubicaciones_list) == 2:
+        ubicaciones_str = f"{ubicaciones_list[0]} y {ubicaciones_list[1]}"
+    elif len(ubicaciones_list) > 2:
+        ubicaciones_str = f"{ubicaciones_list[0]}, {ubicaciones_list[1]} y {len(ubicaciones_list) - 2} más"
+    else:
+        ubicaciones_str = ''
+        
+    ubicacion = ubicaciones_str
+
     fecha_desde = acceso_obj.answers.get(acceso_obj.mf['fecha_desde_visita'], '')
     fecha_hasta = acceso_obj.answers.get(acceso_obj.mf['fecha_desde_hasta'], '')
 
