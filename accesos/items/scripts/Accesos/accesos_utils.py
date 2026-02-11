@@ -281,7 +281,7 @@ class Accesos( Accesos):
         return:
             res (json): reponse, con archivo de ics
         """
-        fecha_desde_hasta = access_pass.get('fecha_desde_hasta',"")
+        fecha_desde_hasta = access_pass.get('fecha_desde_hasta')
         res = {}
         if not fecha_desde_hasta:
             id_forma = self.PASE_ENTRADA
@@ -430,7 +430,36 @@ class Accesos( Accesos):
             
             res = self.update_pass(access_pass=access_pass_custom, folio=res.get("json")["id"])
         return res
-       
+    
+    def visita_a_set_format(self, employee):
+        """
+        Crea formato de set para pase de acceso
+        args:
+            employee (json): objeto de self.get_employee_data
+        return:
+            res (json) : fromato de vista_a pase de acceso
+        """
+        res = {}
+        nombre_visita_a = employee.get('worker_name')
+        phone = self.unlist(employee.get('new_user_phone', employee.get('telefono2', employee.get('telefono1',""))))
+        email = self.unlist(employee.get('new_user_email', employee.get('usuario_email', "")))
+        user_id_id = self.unlist(employee.get('user_id_id',employee.get('usuario_id',"")))
+        username = self.unlist(employee.get('new_user_username',""))
+        departamento = self.unlist(employee.get('worker_department',""))
+        puesto = self.unlist(employee.get('worker_position',""))
+        #Lo seteamo en una lista porque es campo catlog detail
+        res = {self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID: {
+                self.mf['nombre_empleado'] : nombre_visita_a,
+                self.mf['telefono_visita_a']: [phone, ],
+                self.mf['email_visita_a']: [email, ],
+                self.mf['id_usuario']: [user_id_id, ],
+                self.mf['username']: [username, ],
+                self.mf['departamento_empleado']: [departamento, ],
+                self.mf['puesto_empleado']: [puesto, ],
+                }
+            }
+        return res
+
     def access_pass_vista_a(self, visita_a):
         """
         Crea grupo repetitivo de personas que son vistadas para pase de entrada
@@ -443,11 +472,29 @@ class Accesos( Accesos):
         """
 
         res = []
+        employee = {}
         if isinstance(visita_a, str):
             visita_a = [visita_a,]
 
+        if isinstance(visita_a, dict):
+            name = visita_a.get('nombre')
+            email = visita_a.get('email')
+            phone = visita_a.get('telefono')
+            visita_set = {}
+            if not employee and self.valid_email(email):
+                employee = self.Employee.get_employee_data(email=email, get_one=True)
+    
+            if not employee and name:
+                employee = self.Employee.get_employee_data(name=name, get_one=True)
+    
+            if not employee and phone:
+                employee = self.Employee.get_employee_data(phone=phone, get_one=True)
+
+            if employee:
+                visita_set = self.visita_a_set_format(employee)
+            return [visita_set,]
+
         set_autorizado_por = False
-        company = getattr(self, 'company', None)
         if not visita_a:
             #Si no trae dato utiliza el dato del usuario que esta creando el pase
             visita_a = [self.user.get('email'),]
@@ -457,32 +504,14 @@ class Accesos( Accesos):
             visita_set = {}
             if self.valid_email(visita):
                 employee = self.Employee.get_employee_data(email=visita, get_one=True)
+                # TODO REVISAR ESTOOOOOO
                 if set_autorizado_por:
                     self.autorizado_por = employee.get('worker_name')
             else:
                 employee = self.Employee.get_employee_data(name = visita, get_one=True)
 
-            if not company:
-                self.company = employee.get('company', 'Clave10')
-            nombre_visita_a = employee.get('worker_name')
-            phone = self.unlist(employee.get('new_user_phone', employee.get('telefono2', employee.get('telefono1',""))))
-            email = self.unlist(employee.get('new_user_email', employee.get('usuario_email', "")))
-            user_id_id = self.unlist(employee.get('user_id_id',employee.get('usuario_id',"")))
-            username = self.unlist(employee.get('new_user_username',""))
-            departamento = self.unlist(employee.get('worker_department',""))
-            puesto = self.unlist(employee.get('worker_position',""))
-            #Lo seteamo en una lista porque es campo catlog detail
-            visita_set.update({
-                self.mf['nombre_empleado'] : nombre_visita_a,
-                self.mf['telefono_visita_a']: [phone, ],
-                self.mf['email_visita_a']: [email, ],
-                self.mf['id_usuario']: [user_id_id, ],
-                self.mf['username']: [username, ],
-                self.mf['departamento_empleado']: [departamento, ],
-                self.mf['puesto_empleado']: [puesto, ],
-            })
-            
-            res.append({self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID:visita_set})
+            visita_set.update(self.visita_a_set_format(employee))
+            res.append(visita_set)
 
         return res
 
@@ -2615,7 +2644,7 @@ class Accesos( Accesos):
 
         return data
 
-    def create_access_pass(self, location, access_pass):
+    def create_access_pass(self, access_pass):
         """
         Crea pase de acceso 
 
@@ -2627,9 +2656,8 @@ class Accesos( Accesos):
 
         """
         #---Define Metadata
-        print('access_pass=', simplejson.dumps(access_pass, indent=3))
-        self.company = getattr(self, 'company', None)
         metadata = self.lkf_api.get_metadata(form_id=self.PASE_ENTRADA)
+        self.autorizado_por = ""
         metadata.update({
             "id":self.object_id(),
             "properties": {
@@ -2644,10 +2672,9 @@ class Accesos( Accesos):
         })
         answers = {}
 
-
         record_id = metadata['id']
 
-        link_info=access_pass.get('link', "")
+        link_info = access_pass.get('link', "")
         docs=""
         
         if link_info:
@@ -2671,14 +2698,8 @@ class Accesos( Accesos):
         answers[self.pase_entrada_fields['qr_pase']] = qr_generado
         # 
         #---Define Answers
-        perfil_pase = access_pass.get('perfil_pase')
+        perfil_pase = access_pass.get('perfil_pase', 'Visita General')
 
-        # location_name = access_pass.get('ubicacion')
-        # if not location:
-        #     location = location_name
-        # address = self.get_location_address(location_name=location_name)
-        # #TODO esta dirreccion se debe de usar para poder dar al usuario la dirreccion de su pase de entrada
-        # access_pass['direccion'] = [address.get('address', '')]
 
         user_data = self.lkf_api.get_user_by_id(self.user.get('user_id', self.user.get('id')))
         
@@ -2686,39 +2707,41 @@ class Accesos( Accesos):
         #creo que se debe de poner una opcion advanzada para ajustar el tiemzone
         timezone = user_data.get('timezone','America/Monterrey')
         now_datetime =self.today_str(timezone, date_format='datetime')
+        now_datetime_out = self.get_date_str(self.date_operation(now_datetime, '+', 12, 'hours'))
 
-        
-        ####
+        # Setea personas vistadas
         answers[self.mf['grupo_visitados']] = []
-        #TODO ajustar a varias visitas 
-        self.autorizado_por = ""
+
         answers[self.mf['grupo_visitados']] = self.access_pass_vista_a(access_pass.get('visita_a',[]))
-       
         ####
-        if not self.autorizado_por:
-            self.autorizado_por = self.user.get('first_name')
 
         if(access_pass.get('site', '') == 'accesos'):
             nombre_visita_a = access_pass.get('visita_a')
-            access_pass['ubicaciones'] = [location]
+            # access_pass['ubicaciones'] = [location]
 
         answers[self.UBICACIONES_CAT_OBJ_ID] = {}
-        # answers[self.UBICACIONES_CAT_OBJ_ID][self.f['location']] = location
-        # if access_pass.get('selected_visita_a'):
-        #     nombre_visita_a = access_pass.get('selected_visita_a')
 
-        answers[self.pase_entrada_fields['tipo_visita_pase']] = access_pass.get('tipo_visita_pase',"")
+        ### Setting defaults
+        if not access_pass.get('tipo_visita_pase'):
+            access_pass['tipo_visita_pase'] = access_pass.get('tipo_visita_pase','fecha_fija')
+        if not  access_pass.get('fecha_desde_visita'):
+            access_pass['fecha_desde_visita'] =  access_pass.get('fecha_desde_visita',now_datetime)
+        if not  access_pass.get('fecha_desde_hasta'):
+            access_pass['fecha_desde_hasta'] =  access_pass.get('fecha_desde_hasta',now_datetime_out)
+        if not  access_pass.get('config_limitar_acceso'):
+            access_pass['config_limitar_acceso'] =  access_pass.get('config_limitar_acceso',1)
+
+        answers[self.pase_entrada_fields['tipo_visita_pase']] = access_pass.get('tipo_visita_pase','fecha_fija')
         answers[self.pase_entrada_fields['fecha_desde_visita']] = access_pass.get('fecha_desde_visita',now_datetime)
-        answers[self.pase_entrada_fields['fecha_desde_hasta']] = access_pass.get('fecha_desde_hasta',"")
+        answers[self.pase_entrada_fields['fecha_desde_hasta']] = access_pass.get('fecha_desde_hasta',now_datetime_out)
         answers[self.pase_entrada_fields['config_dia_de_acceso']] = access_pass.get('config_dia_de_acceso',"")
         answers[self.pase_entrada_fields['config_dias_acceso']] = access_pass.get('config_dias_acceso',"")
-        answers[self.pase_entrada_fields['catalago_autorizado_por']] =  {self.pase_entrada_fields['autorizado_por']:self.autorizado_por}
         answers[self.pase_entrada_fields['status_pase']] = access_pass.get('status_pase',"").lower()
         answers[self.pase_entrada_fields['empresa_pase']] = access_pass.get('empresa',"")
         # answers[self.pase_entrada_fields['ubicacion_cat']] = {self.mf['ubicacion']:access_pass['ubicacion'], self.mf['direccion']:access_pass.get('direccion',"")}
         answers[self.pase_entrada_fields['tema_cita']] = access_pass.get('tema_cita',"") 
         answers[self.pase_entrada_fields['descripcion']] = access_pass.get('descripcion',"") 
-        answers[self.pase_entrada_fields['config_limitar_acceso']] = access_pass.get('config_limitar_acceso',"") 
+        answers[self.pase_entrada_fields['config_limitar_acceso']] = access_pass.get('config_limitar_acceso',1) 
         answers[self.pase_entrada_fields['tipo_visita']] = 'alta_de_nuevo_visitante'
         answers[self.pase_entrada_fields['walkin_nombre']] = access_pass.get('nombre')
         answers[self.pase_entrada_fields['walkin_email']] = access_pass.get('email', '')
@@ -2726,9 +2749,9 @@ class Accesos( Accesos):
         answers[self.pase_entrada_fields['walkin_fotografia']] = access_pass.get('foto')
         answers[self.pase_entrada_fields['walkin_identificacion']] = access_pass.get('identificacion')
         answers[self.pase_entrada_fields['walkin_telefono']] = access_pass.get('telefono', '')
-        answers[self.pase_entrada_fields['status_pase']] = access_pass.get('status_pase',"").lower()
         answers[self.pase_entrada_fields['enviar_correo_pre_registro']] = access_pass.get("enviar_correo_pre_registro",[])
-        
+
+
         created_from = access_pass.get('created_from')
         if created_from == 'app':
             created_from = 'pase_de_entrada_app'
@@ -2739,13 +2762,15 @@ class Accesos( Accesos):
         elif created_from == 'auto_registro':
             created_from = 'auto_registro'
         else:
-            created_from = None
+            created_from = 'nueva_visita'
 
         if created_from:
             answers[self.pase_entrada_fields['creado_desde']] = created_from
 
         if access_pass.get('ubicaciones'):
             ubicaciones = access_pass.get('ubicaciones',[])
+            if isinstance(ubicaciones, str):
+                ubicaciones = [ubicaciones, ]
             address_list = self.get_locations_address(list_locations=ubicaciones)
             if ubicaciones:
                 ubicaciones_list = []
@@ -2805,7 +2830,7 @@ class Accesos( Accesos):
 
         # Perfil de Pase
         answers[self.CONFIG_PERFILES_OBJ_ID] = {
-            self.mf['nombre_perfil'] : perfil_pase,
+            self.mf['nombre_perfil'] : perfil_pase
         }
         if answers[self.CONFIG_PERFILES_OBJ_ID].get(self.mf['nombre_permiso']) and \
            type(answers[self.CONFIG_PERFILES_OBJ_ID][self.mf['nombre_permiso']]) == str:
@@ -2814,9 +2839,13 @@ class Accesos( Accesos):
         #---Valor
 
         # Crea invitacion de calendario
-        if created_from in ('pase_de_entrada_app', 'pase_de_entrada_web'):
+        if created_from in ('pase_de_entrada_app', 'pase_de_entrada_web') or True:
+            #TODO FLUJO DE AUTORIZACION DE PASES
             answers.update(self.access_pass_create_ics(access_pass, answers))
+            answers[self.pase_entrada_fields['catalago_autorizado_por']] = self.autorizar_pase_acceso(answers)
 
+
+        answers[self.pase_entrada_fields['status_pase']] = self.access_pass_set_status(answers)
         metadata.update({'answers':answers})
         res = self.lkf_api.post_forms_answers(metadata)
         
@@ -2825,7 +2854,79 @@ class Accesos( Accesos):
         # if res.get("status_code") ==200 or res.get("status_code")==201:
         #     res = self.access_pass_google_pass(res, access_pass)
         return res
-     
+    
+    def access_pass_set_status(self, answers):
+        """
+        Evalua criterios del pase y regresa el status del pase
+        Proceso
+        Activo
+        Vencido
+        args:
+            answers (json): Objeto de answers
+        return:
+            status (str): String con status
+        """
+
+        foto_ok = False
+        id_vista = False
+        fecha_ok = False
+        vista_a_ok = False
+        autorizado_ok = False
+        status = 'proceso'
+        foto  = answers[self.pase_entrada_fields['walkin_fotografia']]
+        if isinstance(foto, list) and len(foto) > 0:
+            foto = foto[0]
+
+        if isinstance(foto, dict):
+            if 'file_url' in foto.keys() and foto['file_url']:
+                foto_ok = self.valid_url(foto['file_url'])
+        #TODO revisar configuracion
+        id_vista  = answers[self.pase_entrada_fields['walkin_identificacion']]
+        if isinstance(id_vista, list) and len(id_vista) > 0:
+            id_vista = id_vista[0]
+
+        if isinstance(id_vista, dict):
+            if 'file_url' in id_vista.keys() and id_vista['file_url']:
+                id_vista = self.valid_url(id_vista['file_url'])
+        id_vista = True
+        today = self.get_today_format()
+        try:
+            fecha_desde_visita = self.valid_date(answers[self.pase_entrada_fields['fecha_desde_visita']]) 
+        except:
+            fecha_desde_visita = None
+        try:
+            fecha_desde_hasta = self.valid_date(answers[self.pase_entrada_fields['fecha_desde_hasta']])
+        except:
+            fecha_desde_hasta = None
+        if fecha_desde_visita >= today and fecha_desde_hasta >= today: 
+            fecha_ok = True
+        
+        grupo_visitados = answers[self.mf['grupo_visitados']]
+        for vista_a in grupo_visitados:
+            if vista_a.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID,{}).get(self.mf['nombre_empleado']):
+                vista_a_ok = True
+
+        if answers.get(self.pase_entrada_fields['catalago_autorizado_por'],{}).get(self.pase_entrada_fields['autorizado_por']):
+            autorizado_ok = True
+
+        if foto_ok and id_vista and fecha_ok and vista_a_ok and autorizado_ok:
+            status = 'activo'
+        elif foto_ok and id_vista and fecha_ok and vista_a_ok and not autorizado_ok:
+            status = 'por_autorizar'
+        elif not fecha_ok:
+            status = 'vencido'
+        return status
+
+    def autorizar_pase_acceso(self, answers):
+        autorizado_por = {}
+        #TODO FLUJO DE AUTORIZACION
+        if not self.use_api or True:
+            first_name = self.user.get('first_name')
+            if not first_name:
+                first_name = self.settings.config['USER']['name']
+            autorizado_por = {self.pase_entrada_fields['autorizado_por']:first_name}
+        return autorizado_por 
+
     def update_full_pass(self, access_pass,folio=None, qr_code=None, location=None):
         answers = {}
         perfil_pase = access_pass.get('perfil_pase', 'Visita General')
