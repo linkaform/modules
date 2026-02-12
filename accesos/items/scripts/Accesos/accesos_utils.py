@@ -535,6 +535,212 @@ class Accesos( Accesos):
         last_status = True if self.last_check_in.get('checkin_type') == 'abierta' else False
         return last_status
 
+    def get_my_pases(self, tab_status, limit=10, skip=0, search_name=None):
+        employee = self.get_employee_data(user_id=self.user.get('user_id'), get_one=True)
+        user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
+        employee['timezone'] = user_data.get('timezone','America/Monterrey')
+        fecha_hoy = datetime.now(pytz.timezone(employee.get('timezone'))).replace(microsecond=0).astimezone(pytz.utc).replace(tzinfo=None)
+        fecha_hoy_formateada = fecha_hoy.strftime('%Y-%m-%d %H:%M:%S')
+        match_query = {
+            'form_id':self.PASE_ENTRADA,
+            'deleted_at':{'$exists':False},
+            f"answers.{self.pase_entrada_fields['visita_a']}.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_empleado']}": employee.get('worker_name') or '',
+        }
+        if tab_status == "Favoritos":
+            match_query.update({f"answers.{self.pase_entrada_fields['favoritos']}":'si'})
+        elif tab_status == "Activos":
+            match_query.update({f"answers.{self.pase_entrada_fields['status_pase']}":'activo'})
+        elif tab_status == "Vencidos":
+            match_query.update({f"answers.{self.pase_entrada_fields['status_pase']}":'vencido'})
+
+        if search_name:
+            match_query.update({
+                f"$or": [
+                    {f"answers.{self.VISITA_AUTORIZADA_CAT_OBJ_ID}.{self.mf['nombre_visita']}": {"$regex": search_name, "$options": "i"}},
+                    {f"answers.{self.mf['nombre_pase']}": {"$regex": search_name, "$options": "i"}}
+                ]
+            })
+        # Conteo total de registros
+        count_query = [
+            {"$match": match_query},
+            {"$count": "total"}
+        ]
+        count_result = self.format_cr(self.cr.aggregate(count_query))
+        total_count = count_result[0]['total'] if count_result else 0
+        current_page = (skip // limit) + 1
+        total_pages = ceil(total_count / limit) if limit else 1
+
+        query = [ 
+            {"$match":match_query},
+            {'$project':
+                {
+                    '_id': 1,
+                    'folio': "$folio",
+                    'favoritos':f"$answers.{self.pase_entrada_fields['favoritos']}",
+                    'ubicacion': f"$answers.{self.mf['grupo_ubicaciones_pase']}.{self.UBICACIONES_CAT_OBJ_ID}.{self.f['location']}",
+                    # 'ubicacion': f"$answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}",
+                    'nombre': {"$ifNull":[
+                        f"$answers.{self.VISITA_AUTORIZADA_CAT_OBJ_ID}.{self.mf['nombre_visita']}",
+                        f"$answers.{self.mf['nombre_pase']}"]},
+                    'estatus': f"$answers.{self.pase_entrada_fields['status_pase']}",
+                    'empresa': {"$ifNull":[
+                         f"$answers.{self.VISITA_AUTORIZADA_CAT_OBJ_ID}.{self.mf['empresa']}",
+                         f"$answers.{self.mf['empresa_pase']}"]},
+                    'email':  {"$ifNull":[
+                        f"$answers.{self.VISITA_AUTORIZADA_CAT_OBJ_ID}.{self.mf['email_vista']}",
+                        f"$answers.{self.mf['email_pase']}"]},
+                    'telefono': {"$ifNull":[
+                        f"$answers.{self.VISITA_AUTORIZADA_CAT_OBJ_ID}.{self.mf['telefono']}",
+                        f"$answers.{self.mf['telefono_pase']}"]},
+                    'fecha_desde_visita': f"$answers.{self.mf['fecha_desde_visita']}",
+                    'fecha_desde_hasta':{'$ifNull':[
+                        f"$answers.{self.mf['fecha_desde_hasta']}",
+                        f"$answers.{self.mf['fecha_desde_visita']}"]
+                        },
+                    'identificacion': {'$ifNull':[
+                        f"$answers.{self.VISITA_AUTORIZADA_CAT_OBJ_ID}.{self.mf['identificacion']}",
+                        f"$answers.{self.pase_entrada_fields['walkin_identificacion']}"]},
+                    'foto': {'$ifNull':[
+                        f"$answers.{self.VISITA_AUTORIZADA_CAT_OBJ_ID}.{self.mf['foto']}",
+                        f"$answers.{self.pase_entrada_fields['walkin_fotografia']}"]},
+                    'visita_a_nombre':
+                        f"$answers.{self.mf['grupo_visitados']}.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_empleado']}",
+                    'visita_a_puesto': 
+                        f"$answers.{self.mf['grupo_visitados']}.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['puesto_empleado']}",
+                    'visita_a_departamento':
+                        f"$answers.{self.mf['grupo_visitados']}.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['departamento_empleado']}",
+                    'visita_a_user_id':
+                        f"$answers.{self.mf['grupo_visitados']}.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['user_id_empleado']}",
+                    'visita_a_email':
+                        f"$answers.{self.mf['grupo_visitados']}.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.f['email']}",
+                    'motivo_visita':f"$answers.{self.CONFIG_PERFILES_OBJ_ID}.{self.mf['motivo']}",
+                    'tipo_de_pase':f"$answers.{self.pase_entrada_fields['perfil_pase']}",
+                    'tema_cita':f"$answers.{self.pase_entrada_fields['tema_cita']}",
+                    'descripcion':f"$answers.{self.pase_entrada_fields['descripcion']}",
+                    'tipo_visita': f"$answers.{self.pase_entrada_fields['tipo_visita']}",
+                    'limite_de_acceso': f"$answers.{self.mf['config_limitar_acceso']}",
+                    'config_dia_de_acceso': f"$answers.{self.mf['config_dia_de_acceso']}",
+                    'identificacion': {'$ifNull':[
+                        f"$answers.{self.VISITA_AUTORIZADA_CAT_OBJ_ID}.{self.mf['identificacion']}",
+                        f"$answers.{self.pase_entrada_fields['walkin_identificacion']}"]},
+                    'limitado_a_dias':f"$answers.{self.mf['config_dias_acceso']}",
+                    'perfil_pase':f"$answers.{self.CONFIG_PERFILES_OBJ_ID}",
+                    'tipo_de_comentario': f"$answers.{self.mf['tipo_de_comentario']}",
+                    'tipo_fechas_pase': f"$answers.{self.mf['tipo_visita_pase']}",
+                    'enviar_correo_pre_registro': f"$answers.{self.pase_entrada_fields['enviar_correo_pre_registro']}",
+                    'enviar_correo': f"$answers.{self.pase_entrada_fields['enviar_correo']}",
+                    'grupo_areas_acceso': f"$answers.{self.mf['grupo_areas_acceso']}",
+                    'grupo_equipos': f"$answers.{self.mf['grupo_equipos']}",
+                    'grupo_vehiculos': f"$answers.{self.mf['grupo_vehiculos']}",
+                    'grupo_instrucciones_pase': f"$answers.{self.mf['grupo_instrucciones_pase']}",
+                    'comentario_area_pase':f"$answers.{self.mf['grupo_areas_acceso']}.{self.pase_entrada_fields['commentario_area']}",
+                    'archivo_invitacion': f"$answers.{self.mf['archivo_invitacion']}",
+                    'codigo_qr': f"$answers.{self.mf['codigo_qr']}",
+                    'qr_pase': f"$answers.{self.mf['qr_pase']}",
+                    'link':f"$answers.{self.pase_entrada_fields['link']}",
+                    'perfil_pase': f"$answers.{self.mf['nombre_perfil']}",
+                    'status_pase': f"$answers.{self.pase_entrada_fields['status_pase']}",
+                    'pdf_to_img': f"$answers.{self.pase_entrada_fields['pdf_to_img']}",
+                    'autorizado_por':f"$answers.{self.pase_entrada_fields['autorizado_por']}"
+                }
+            },
+            {'$sort':{'_id':-1}},
+        ]
+        query.append({'$skip': skip})
+        query.append({'$limit': limit})
+        records = self.format_cr(self.cr.aggregate(query))
+        # print("RECORDS",  simplejson.dumps(records, indent=4))
+        for x in records:
+            qr_code = x.get('_id')
+            total_entradas = self.get_count_ingresos(qr_code)
+            if total_entradas:
+                x['total_entradas'] = total_entradas.get('total_records')
+            else:
+                x['total_entradas'] = 0
+            visita_a =[]
+            v = x.pop('visita_a_nombre') if x.get('visita_a_nombre') else []
+            d = x.get('visita_a_departamento',[])
+            p = x.get('visita_a_puesto',[])
+            e =  x.get('visita_a_user_id',[])
+            u =  x.get('visita_a_email',[])
+
+            for idx, nombre in enumerate(v):
+                emp = {'nombre':nombre}
+                if d:
+                    emp.update({'departamento':d[idx].pop(0) if d[idx] else ""})
+                if p:
+                    emp.update({'puesto':p[idx].pop(0) if p[idx] else ""})
+                if e:
+                    emp.update({'user_id':e[idx].pop(0) if e[idx] else ""})
+                if u:
+                    emp.update({'email': u[idx].pop(0) if u[idx] else ""})
+                visita_a.append(emp)
+            if x['tipo_de_pase'] == 'Visita General' or x['tipo_de_pase'] == 'visita general':
+                x['visita_a'] = visita_a
+                x['favoritos'] = x.get('favoritos', [""]) if x.get('favoritos') else ""
+                x['motivo_visita'] = x.get('motivo_visita', [""]) if x.get('motivo_visita') else ""
+                x['email'] = x.get('email', [""]) if x.get('email') else ""
+                x['empresa'] = x.get('empresa', [""]) if x.get('empresa') else ""
+                x['telefono'] = x.get('telefono', [""]) if x.get('telefono') else ""
+                # x['pdf'] = self.lkf_api.get_pdf_record(x['_id'], template_id = 447, name_pdf='Pase de Entrada', send_url=True)
+            else:
+                
+                x['visita_a'] = visita_a
+                x['favoritos'] = x.get('favoritos') or ""
+                x['motivo_visita'] =x.get('motivo_visita') or ""
+                x['email']= x.get('email') or ""
+                x['empresa']= x.get('empresa') or ""
+                x['telefono']= x.get('telefono') or ""
+                # x['pdf'] = self.lkf_api.get_pdf_record(x[' # for idx, dic in enumerate(x['grupo_areas_acceso']):
+            # x['comentario_area_pase']=x.pop('comentario_area_pase',[])
+           
+
+                # for key in list(item.keys()):
+                #     if key in id_to_name_mapping:
+                #         # Reemplaza el id hexadecimal por su nombre en el diccionario
+                #         item[self.pase_entrada_fields['commentario_area']] = item.pop(key)
+
+            for visita in x.get('visita_a', []):
+                visita['departamento'] = visita['departamento'][0] if isinstance(visita.get('departamento'), list) and visita.get('departamento') else visita.get('departamento', "")
+                visita['puesto'] = visita['puesto'][0] if isinstance(visita.get('puesto'), list) and visita.get('puesto') else visita.get('puesto', "")
+                visita['user_id'] = visita['user_id'][0] if isinstance(visita.get('user_id'), list) and visita.get('user_id') else visita.get('user_id', "")
+                visita['email'] = visita['email'][0] if isinstance(visita.get('email'), list) and visita.get('email') else visita.get('email', "")
+
+            visitas = x.get('visita_a', [])
+            x['status_pase'] = x.get('estatus', "")
+            x['autorizado_por'] = x.get('autorizado_por', "")
+            x['grupo_areas_acceso'] = self._labels_list(x.pop('grupo_areas_acceso',[]), self.mf)
+            x['grupo_instrucciones_pase'] = self._labels_list(x.pop('grupo_instrucciones_pase',[]), self.mf)
+
+            
+            x['grupo_vehiculos'] = self.format_vehiculos_simple(x.pop('grupo_vehiculos',[]))
+            x['grupo_equipos'] = self.format_equipos_simple(x.pop('grupo_equipos',[]))
+            x['comentarios'] = x['grupo_instrucciones_pase']
+
+            comentarios = []
+            for item in x.pop('comentarios', []):
+                comentario_pase = item.get('comentario_pase', '') 
+                tipo_comentario = item.get('tipo_de_comentario', '')
+                comentarios.append({
+                    'comentario_pase': comentario_pase,
+                    'tipo_comentario': tipo_comentario
+                })
+            x['comentarios'] = comentarios
+
+            x.pop('visita_a_nombre', None)
+            x.pop('visita_a_departamento', None)
+            x.pop('visita_a_puesto', None)
+            x.pop('visita_a_user_id', None)
+            x.pop('visita_a_email', None)
+        # print("data", simplejson.dumps(records, indent=4))
+        return  {
+            "records": records,
+            "total_records": total_count,
+            "total_pages": total_pages,
+            "actual_page": current_page,
+            "records_on_page": len(records)
+        }
+
     def get_guard_last_checkin(self, user_ids):
         '''
             Se realiza busqued del ulisto registro de checkin de un usuario
