@@ -3524,7 +3524,6 @@ class Accesos( Accesos):
 
     def get_pass_custom(self,qr_code):
         pass_selected= self.get_detail_access_pass(qr_code=qr_code)
-        print('pass_selected', simplejson.dumps(pass_selected, indent=4))
         answers={}
         for key, value in pass_selected.items():
             if key == 'nombre' or \

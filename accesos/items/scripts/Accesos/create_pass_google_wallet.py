@@ -202,18 +202,19 @@ if __name__ == "__main__":
     if not qr_code:
         acceso_obj.LKFException({'title': 'Error', 'msg': 'No se proporciono el codigo QR'})
 
-    data = {
-        "nombre": access_pass.get("nombre"),
-        "visita_a": access_pass.get("visita_a"),
-        "empresa": access_pass.get("empresa"),
-        "ubicaciones": access_pass.get("ubicaciones"),
-        "num_accesos": access_pass.get("num_accesos"),
-        "fecha_desde": access_pass.get("fecha_desde"),
-        "fecha_hasta": access_pass.get("fecha_hasta"),
-        "geolocations": access_pass.get("geolocations"),
+    data = acceso_obj.get_pass_custom(qr_code=qr_code)
+    visita_a = [i.get('nombre') for i in data.get('visita_a', [])]
+    data_to_google_pass = {
+        "nombre": data.get("nombre"),
+        "visita_a": visita_a,
+        "empresa": data.get("empresa"),
+        "ubicaciones": data.get("ubicacion"),
+        "num_accesos": data.get("limite_de_acceso"),
+        "fecha_desde": data.get("fecha_de_expedicion"),
+        "fecha_hasta": data.get("fecha_de_caducidad"),
+        "geolocations": data.get("ubicaciones_geolocation"),
     }
-
-    google_wallet_pass_url = acceso_obj.create_class_google_wallet(data=data, qr_code=qr_code)
+    google_wallet_pass_url = acceso_obj.create_class_google_wallet(data=data_to_google_pass, qr_code=qr_code)
 
     if not google_wallet_pass_url:
         acceso_obj.LKFException({'title': 'Error al crear el pase de Google Wallet', 'msg': 'No se pudo crear el pase de Google Wallet'})
