@@ -104,7 +104,7 @@ class Accesos(Accesos):
             'logo': {
                 'sourceUri': {
                     'uri':
-                        'https://f001.backblazeb2.com/file/app-linkaform/public-client-126/71202/60b81349bde5588acca320e1/698ac1135d6fad2b3d15bf84.png'
+                        'https://f001.backblazeb2.com/file/app-linkaform/public-client-126/71202/60b81349bde5588acca320e1/698b8b36e216075bd8f4597a.png'
                 },
                 'contentDescription': {
                     'defaultValue': {
