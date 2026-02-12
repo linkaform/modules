@@ -257,7 +257,6 @@ class Stock(Stock):
                     }
                 sync_ids.append(str(rec_idx))
             if self.sync_catalogs:
-                print(stop)
                 print('syncing catalogs.... =', len(sync_ids))
                 self.lkf_api.sync_catalogs_records({"catalogs_ids":  [self.CATALOG_INVENTORY_ID],"form_answers_ids":  sync_ids, "status": "created"})
             else:
