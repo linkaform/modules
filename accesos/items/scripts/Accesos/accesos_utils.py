@@ -3241,7 +3241,9 @@ class Accesos( Accesos):
             elif key == 'favoritos':
                 answers.update({f"{self.pase_entrada_fields[key]}": [value]})  
             elif key == 'conservar_datos_por':
-                answers.update({f"{self.pase_entrada_fields[key]}": value.replace(" ", "_")})      
+                answers.update({f"{self.pase_entrada_fields[key]}": value.replace(" ", "_")})     
+            elif key == 'folio' or key == "account_id":
+                continue      
             else:
                 answers.update({f"{self.pase_entrada_fields[key]}":value})
 
