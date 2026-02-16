@@ -2326,7 +2326,7 @@ class Accesos( Accesos):
             r['pase_id']=str(pase_id)
         return  records
 
-    def get_pdf_seg(self, qr_code, template_id=491, name_pdf='Pase de Entrada'):
+    def get_pdf_seg(self, qr_code, template_id=None, name_pdf=None):
         return self.lkf_api.get_pdf_record(qr_code, template_id = template_id, name_pdf =name_pdf, send_url=True)
 
     def get_list_rondines(self, prioridades=[], dateFrom='', dateTo='', filterDate=""):
@@ -3257,10 +3257,7 @@ class Accesos( Accesos):
             if answers.get(self.pase_entrada_fields['status_pase'], '') == 'activo':
                 pdf_to_img = self.update_pass_img(qr_code)
             if res.get('status_code') == 201 or res.get('status_code') == 202 and folio:
-                if self.user.get('parent_id') == 7742:
-                    pdf = self.lkf_api.get_pdf_record(qr_code, template_id = 553, name_pdf='Pase de Entrada', send_url=True)
-                else:
-                    pdf = self.lkf_api.get_pdf_record(qr_code, template_id = 584, name_pdf='Pase de Entrada', send_url=True)
+                pdf = self.lkf_api.get_pdf_record(qr_code, template_id=None, name_pdf=None, send_url=True)
                 res['json'].update({'qr_pase':pass_selected.get("qr_pase")})
                 res['json'].update({'telefono':pass_selected.get("telefono")})
                 res['json'].update({'enviar_a':pass_selected.get("nombre")})
