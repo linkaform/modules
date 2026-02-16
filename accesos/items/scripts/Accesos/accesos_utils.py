@@ -3965,7 +3965,8 @@ class Accesos( Accesos):
                key == "google_wallet_pass_url" or \
                key == "limite_de_acceso" or \
                key == "empresa" or \
-               key == "ubicaciones_geolocation":
+               key == "ubicaciones_geolocation" or \
+               key == "google_wallet_pass_url":
                 answers[key] = value
         answers['folio']= pass_selected.get("folio")
         return answers
