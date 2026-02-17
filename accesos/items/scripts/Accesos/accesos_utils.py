@@ -279,7 +279,7 @@ class Accesos( Accesos):
         response_create = self.lkf_api.post_forms_answers(metadata)
         return response_create
 
-    def access_pass_create_ics(self, access_pass, answers):
+    def access_pass_create_ics(self, access_pass, answers, ics_invitation=False):
         """
         Crea archivo para envio de invitacion a google calenar
         args:
@@ -288,9 +288,8 @@ class Accesos( Accesos):
         return:
             res (json): reponse, con archivo de ics
         """
-        fecha_desde_hasta = access_pass.get('fecha_desde_hasta')
         res = {}
-        if not fecha_desde_hasta:
+        if ics_invitation:
             id_forma = self.PASE_ENTRADA
             id_campo = self.pase_entrada_fields['archivo_invitacion']
 
@@ -299,6 +298,8 @@ class Accesos( Accesos):
             descripcion = access_pass.get("descripcion")
             ubicacion = self.unlist(access_pass.get("ubicaciones"))
             visita_a = access_pass.get("visita_a")
+            if "Usuario Actual" in visita_a:
+                visita_a = self.employee.get('worker_name')
             creado_por_email = access_pass.get("link", {}).get("creado_por_email")
             nombre = access_pass.get("nombre")
             email = access_pass.get("email")
@@ -306,6 +307,7 @@ class Accesos( Accesos):
             #answers...
             attendee_ids = [{"email": email, "nombre": nombre}, {"email": creado_por_email, "nombre": visita_a}]
             address = access_pass.get("address")
+            geolocation = self.unlist(address.get('geolocation', [])).get('search_txt', '')
             fecha_desde_hasta = access_pass.get("fecha_desde_hasta")
             start_datetime = datetime.strptime(fecha_desde_visita, "%Y-%m-%d %H:%M:%S")
             stop_datetime = start_datetime + timedelta(hours=1)
@@ -317,7 +319,7 @@ class Accesos( Accesos):
                     "stop": stop_datetime,
                     "name": tema_cita,
                     "description": descripcion,
-                    "location": ubicacion,
+                    "location": geolocation,
                     "allday": False,
                     "rrule": None,
                     "alarm_ids": [{"interval": "minutes", "duration": 10, "name": "Reminder"}],
@@ -2923,6 +2925,7 @@ class Accesos( Accesos):
             },
         })
         answers = {}
+        ics_invitation = False
 
         record_id = metadata['id']
 
@@ -2981,6 +2984,7 @@ class Accesos( Accesos):
             access_pass['fecha_desde_visita'] =  now_datetime
         
         if not access_pass.get('fecha_desde_hasta') or access_pass['fecha_desde_hasta'] == "":
+            ics_invitation = True
             access_pass['fecha_desde_hasta'] = now_datetime_out
         
         if not  access_pass.get('config_limitar_acceso') or access_pass['config_dia_de_acceso'] == "":
@@ -3095,7 +3099,7 @@ class Accesos( Accesos):
         # Crea invitacion de calendario
         if created_from in ('pase_de_entrada_app', 'pase_de_entrada_web') or True:
             #TODO FLUJO DE AUTORIZACION DE PASES
-            answers.update(self.access_pass_create_ics(access_pass, answers))
+            answers.update(self.access_pass_create_ics(access_pass, answers, ics_invitation))
             answers[self.pase_entrada_fields['catalago_autorizado_por']] = self.autorizar_pase_acceso(answers)
 
 
