@@ -691,14 +691,10 @@ class Accesos( Accesos):
 
             for idx, nombre in enumerate(v):
                 emp = {'nombre':nombre}
-                if d:
-                    emp.update({'departamento':d[idx].pop(0) if d[idx] else ""})
-                if p:
-                    emp.update({'puesto':p[idx].pop(0) if p[idx] else ""})
-                if e:
-                    emp.update({'user_id':e[idx].pop(0) if e[idx] else ""})
-                if u:
-                    emp.update({'email': u[idx].pop(0) if u[idx] else ""})
+                emp['departamento'] = d[idx] if idx < len(d) and d[idx] else [""]
+                emp['puesto'] = p[idx] if idx < len(p) and p[idx] else [""]
+                emp['user_id'] = e[idx] if idx < len(e) and e[idx] else [""]
+                emp['email'] = u[idx] if idx < len(u) and u[idx] else [""]
                 visita_a.append(emp)
             if x['tipo_de_pase'] == 'Visita General' or x['tipo_de_pase'] == 'visita general':
                 x['visita_a'] = visita_a
