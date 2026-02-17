@@ -71,6 +71,7 @@ class PCI_Utils():
             'Num. Serie': ['Num. Serie', 'Num Serie', 'ALFANUMERICO'],
             'cambio_tecnologia': ['cambio_tecnologia', 'cambio_tecnología', 'cambio_de_tecnologia', 'cambio_de_tecnología'],
         }
+        self.equivalcens_map['Alfanumérico Contratista'] = self.equivalcens_map['Numero de Serie Contratista']
 
     def add_coma(self, snum):
         return "{:,.2f}".format( float(snum) )

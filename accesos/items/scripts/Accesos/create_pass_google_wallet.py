@@ -7,6 +7,7 @@ import jwt
 from google.oauth2 import service_account
 from google.auth.transport.requests import Request
 import uuid
+from bson import ObjectId
 
 from accesos_utils import Accesos
 
@@ -192,6 +193,12 @@ class Accesos(Accesos):
         print('Agrega tu pase con este link:', save_url)
         return save_url
 
+    def assign_google_pass_url(self, qr_code, google_wallet_pass_url):
+        answers = {}
+        answers[self.pase_entrada_fields['google_wallet_pass_url']] = google_wallet_pass_url
+        response = self.lkf_api.patch_multi_record(answers=answers, form_id=self.PASE_ENTRADA, record_id=[qr_code,])
+        print(response)
+
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
@@ -218,6 +225,8 @@ if __name__ == "__main__":
 
     if not google_wallet_pass_url:
         acceso_obj.LKFException({'title': 'Error al crear el pase de Google Wallet', 'msg': 'No se pudo crear el pase de Google Wallet'})
+
+    acceso_obj.assign_google_pass_url(qr_code, google_wallet_pass_url)
 
     acceso_obj.HttpResponse({
         "data": {"google_wallet_url": google_wallet_pass_url},
