@@ -7,7 +7,7 @@
             <config>True</config>
             <inc_by>1</inc_by>
             <manual>False</manual>
-            <next>3</next>
+            <next>30</next>
             <padding_zeros>5</padding_zeros>
             <prefix />
             <required>False</required>
@@ -3615,7 +3615,7 @@
                     <number_type>None</number_type>
                     <options>
                         <item>
-                            <label>Sí</label>
+                            <label>SÍ</label>
                             <option>None</option>
                             <selected>False</selected>
                             <value>sí</value>
@@ -6035,7 +6035,7 @@
                     <default>False</default>
                     <default_value />
                     <descriptor>None</descriptor>
-                    <fav>False</fav>
+                    <fav>True</fav>
                     <field_id>67329875978e6460083c5648</field_id>
                     <field_type>text</field_type>
                     <grading_criteria>{}</grading_criteria>
@@ -6628,7 +6628,7 @@
                     <number_type>None</number_type>
                     <options>
                         <item>
-                            <label>Sí</label>
+                            <label>SÍ</label>
                             <option>None</option>
                             <selected>False</selected>
                             <value>sí</value>
@@ -6708,7 +6708,7 @@
                     <number_type>None</number_type>
                     <options>
                         <item>
-                            <label>Sí</label>
+                            <label>SÍ</label>
                             <option>None</option>
                             <selected>False</selected>
                             <value>sí</value>
@@ -7069,19 +7069,6 @@
         <item>
             <_type>single_record</_type>
             <default>False</default>
-            <description>Clave10 - Pase de Entrada</description>
-            <id>584</id>
-            <name>Clave10 - Pase de Entrada</name>
-            <owner>/api/infosync/user/10/</owner>
-            <paginate>True</paginate>
-            <pdfName>{% raw %} Pase_de_Entrada_{{record.folio}} {% endraw %} </pdfName>
-            <properties>{}</properties>
-            <resource_uri>/api/infosync/templates/584/</resource_uri>
-            <script>{}</script>
-        </item>
-        <item>
-            <_type>single_record</_type>
-            <default>False</default>
             <description>Etiqueta4x2.5 - Moderno1 / Pase de Entrada</description>
             <id>619</id>
             <name>Etiqueta4x2.5 - Moderno1</name>
@@ -7105,6 +7092,18 @@
             <resource_uri>/api/infosync/templates/622/</resource_uri>
             <script>{}</script>
         </item>
+        <item>
+            <_type>single_record</_type>
+            <description>Plantilla para Pase de Entrada</description>
+            <id>626</id>
+            <name>Tiendas3B - Pase de Entrada</name>
+            <owner>/api/infosync/user/29909/</owner>
+            <paginate>False</paginate>
+            <pdfName>{% raw %} Pase_de_Entrada_{{record.folio}} {% endraw %} </pdfName>
+            <properties>{}</properties>
+            <resource_uri>/api/infosync/templates/626/</resource_uri>
+            <script>{}</script>
+        </item>
     </templates>
     <timer_config>
         <active>False</active>
@@ -7114,5 +7113,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1770917158.0</updated_at>
+    <updated_at>1771267182.0</updated_at>
 </lkf>

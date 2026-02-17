@@ -175,20 +175,29 @@
 
     &lt;!-- Header con logo --&gt;
     &lt;div style="text-align:center; padding:25px 20px; background:#f1f4f8;"&gt;
-        &lt;img src="https://f001.backblazeb2.com/file/lkf-media/profile_pictures/profile_pic_29909.thumbnail" alt="Logo" style="max-height:80px;"&gt;
+        &lt;img src="https://f001.backblazeb2.com/file/lkf-media/profile_pictures/profile_pic_29909.thumbnail" alt="Logo" style="max-height:120px;"&gt;
     &lt;/div&gt;
 
     &lt;!-- Mensaje principal --&gt;
     &lt;div style="padding:30px 25px; text-align:center;"&gt;
-      &lt;h2 style="margin:0; font-size:22px; color:#021d49;"&gt;Hola {{record.answers.662c2937108836dec6d92580}},&lt;/h2&gt;
-      {% for item in record.answers.663d4ba61b14fab90559ebb0 %}
-        &lt;p style="margin:20px 0; font-size:16px; line-height:1.5; color:#555;"&gt;
-          {{item.6984cd80be40dab9369988f2.62c5ff407febce07043024dd}} te ha invitado a visitarlo(a).
+      &lt;h2 style="margin:0; font-size:22px; color:#021d49;"&gt;
+        Hola {{record.answers.662c2937108836dec6d92580}},
+      &lt;/h2&gt;
+      &lt;p style="margin:20px 0; font-size:16px; line-height:1.5; color:#555;"&gt;
+        {% for item in record.answers.663d4ba61b14fab90559ebb0 %}
+          {{item.6984cd80be40dab9369988f2.62c5ff407febce07043024dd}}
+          {% if not forloop.last%}, {% endif %}
+        {% endfor %}
 
-          Se ha creado un pre-registro y está pendiente de asignación.  
-          Por favor, completa tu pase dando clic en el botón:
-        &lt;/p&gt;
-      {% endfor %}
+        {% if record.answers.663d4ba61b14fab90559ebb0|length &gt; 1 %}
+          te han invitado a visitarlo(a).
+        {% else %}
+          te ha invitado a visitarlo(a).
+        {% endif %}
+
+        Se ha creado un pre-registro y está pendiente de asignación.  
+        Por favor, completa tu pase dando clic en el botón:
+      &lt;/p&gt;
     &lt;/div&gt;
 
     &lt;!-- Detalles de la visita --&gt;
@@ -312,20 +321,6 @@
                                 <type>radio</type>
                             </trigger_field>
                             <value>proceso</value>
-                        </item>
-                        <item>
-                            <condition>not__empty=</condition>
-                            <form_id>None</form_id>
-                            <other_value>None</other_value>
-                            <prefix>answer</prefix>
-                            <trigger_field>
-                                <catalog>{}</catalog>
-                                <field_id>6732aa1189fc6b0ae27e3824</field_id>
-                                <group>{}</group>
-                                <label>Link</label>
-                                <type>text</type>
-                            </trigger_field>
-                            <value>null</value>
                         </item>
                         <item>
                             <condition>in=</condition>
@@ -955,6 +950,169 @@
                                 <type>checkbox</type>
                             </trigger_field>
                             <value>enviar_sms_pre_registro</value>
+                        </item>
+                    </triggers>
+                </wf_fields>
+            </rules>
+        </item>
+        <item>
+            <actions>
+                <item>
+                    <_id>698e7114c432436e6c8de25a</_id>
+                    <action_id>5</action_id>
+                    <action_settings>{}</action_settings>
+                    <configuration>
+                        <body>{% raw %} &lt;!DOCTYPE html&gt;
+&lt;html lang="es"&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8"&gt;
+  &lt;title&gt;Pase de Entrada&lt;/title&gt;
+&lt;/head&gt;
+&lt;body style="margin:0; padding:0; font-family: Arial, sans-serif; background-color:#f7f9fb; color:#333;"&gt;
+
+  &lt;!-- Contenedor principal --&gt;
+  &lt;div style="max-width:600px; margin:0 auto; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.08);"&gt;
+
+    &lt;!-- Header con logo --&gt;
+    &lt;div style="text-align:center; padding:25px 20px; background:#f1f4f8;"&gt;
+        &lt;img src="https://f001.backblazeb2.com/file/lkf-media/profile_pictures/profile_pic_29909.thumbnail" alt="Logo" style="max-height:120px;"&gt;
+    &lt;/div&gt;
+
+    &lt;!-- Mensaje principal --&gt;
+    &lt;div style="padding:30px 25px; text-align:center;"&gt;
+      &lt;h2 style="margin:0; font-size:22px; color:#021d49;"&gt;
+        Hola {{record.answers.662c2937108836dec6d92580}},
+      &lt;/h2&gt;
+      &lt;p style="margin:20px 0; font-size:16px; line-height:1.5; color:#555;"&gt;
+        Tu autoacceso ha sido registrado correctamente.
+      &lt;/p&gt;
+      &lt;p style="margin:20px 0; font-size:16px; line-height:1.5; color:#555;"&gt;
+        Presenta el código QR al personal de seguridad y sigue sus indicaciones para ingresar.
+      &lt;/p&gt;
+
+      &lt;!-- QR centrado --&gt;
+      {% if record.answers.64ef5b5fff1bec97d2ca27b6 %}
+        {% for qr in record.answers.64ef5b5fff1bec97d2ca27b6 %}
+          &lt;table width="100%" cellpadding="0" cellspacing="0"&gt;
+              &lt;tr&gt;
+                &lt;td align="center" style="padding:20px 0;"&gt;
+                  &lt;img 
+                  src="{{ qr.file_url }}" 
+                  alt="Código QR"
+                  style="max-width:220px; width:100%; height:auto; display:block;"&gt;
+                &lt;/td&gt;
+              &lt;/tr&gt;
+          &lt;/table&gt;
+        {% endfor %}
+      {% endif %}
+
+    &lt;!-- Footer --&gt;
+    &lt;div style="text-align:center; padding:20px; font-size:12px; color:#777; background:#f1f4f8;"&gt;
+      &lt;p style="margin:0;"&gt;&amp;copy; 2024 &lt;a href="https://soter-app.webflow.io/" target="_blank" style="color:#021d49; text-decoration:none;"&gt;Clave 10&lt;/a&gt;. Todos los derechos reservados.&lt;/p&gt;
+      &lt;div style="margin-top:10px;"&gt;
+        &lt;a href="https://www.linkaform.com/" target="_blank"&gt;
+          &lt;img src="https://f001.backblazeb2.com/file/app-linkaform/public-client-126/107023/64dd1bd4fd200a3308ec2141/663517c3caae08b8adf27472.png" width="120px" alt="Linkaform"&gt;
+        &lt;/a&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt; {% endraw %}</body>
+                        <email_fields>
+                            <item>
+                                <field_id>662c2937108836dec6d92581</field_id>
+                                <group_id>None</group_id>
+                                <label>Email</label>
+                            </item>
+                            <item>
+                                <catalog_field_id>6984cd80be40dab9369988f2</catalog_field_id>
+                                <field_id>638a9a7767c332f5d459fc82</field_id>
+                                <group_id>663d4ba61b14fab90559ebb0</group_id>
+                                <label>Email</label>
+                            </item>
+                        </email_fields>
+                        <emails>[]</emails>
+                        <embed_company_picture>True</embed_company_picture>
+                        <fields_attached>[]</fields_attached>
+                        <pdf_template>
+                            <_type>single_record</_type>
+                            <description>Etiqueta4x2.5 - Simple / Pase de Entrada</description>
+                            <id>622</id>
+                            <name>Etiqueta4x2.5 - Simple</name>
+                            <owner>/api/infosync/user/10/</owner>
+                            <paginate>True</paginate>
+                            <properties>{}</properties>
+                            <resource_uri>/api/infosync/templates/622/</resource_uri>
+                        </pdf_template>
+                        <resend>RESEND</resend>
+                        <send_attachments>False</send_attachments>
+                        <send_pdf>True</send_pdf>
+                        <sender>OWNER_EMAIL</sender>
+                        <subject>{% raw %} Autoacceso registrado {% endraw %}</subject>
+                        <timer_config>
+                            <seconds_to_expire>None</seconds_to_expire>
+                        </timer_config>
+                    </configuration>
+                    <name>None</name>
+                </item>
+            </actions>
+            <id>698e7114c432436e6c8de270</id>
+            <name>Envío de correo autoacceso</name>
+            <rules>
+                <metadata>
+                    <connection>[]</connection>
+                    <date>
+                        <period>
+                            <month>1</month>
+                            <selected>False</selected>
+                            <year>2014</year>
+                        </period>
+                        <range>
+                            <end>2026-02-13T06:00:00.000Z</end>
+                            <selected>False</selected>
+                            <start>2026-02-13T00:27:51.418Z</start>
+                        </range>
+                    </date>
+                    <grading>{}</grading>
+                    <user>[]</user>
+                </metadata>
+                <record>
+                    <created>True</created>
+                    <deleted>False</deleted>
+                    <edited>True</edited>
+                    <run_multiple_times>False</run_multiple_times>
+                    <runtime>after</runtime>
+                </record>
+                <wf_fields>
+                    <operator>all</operator>
+                    <triggers>
+                        <item>
+                            <condition>in=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>698b6f3d13a551df2b2ecfcb</field_id>
+                                <group>{}</group>
+                                <label>Creado desde</label>
+                                <type>radio</type>
+                            </trigger_field>
+                            <value>auto_registro</value>
+                        </item>
+                        <item>
+                            <condition>not__empty=</condition>
+                            <form_id>None</form_id>
+                            <other_value>None</other_value>
+                            <prefix>answer</prefix>
+                            <trigger_field>
+                                <catalog>{}</catalog>
+                                <field_id>64ef5b5fff1bec97d2ca27b6</field_id>
+                                <group>{}</group>
+                                <label>QR</label>
+                                <type>images</type>
+                            </trigger_field>
+                            <value>null</value>
                         </item>
                     </triggers>
                 </wf_fields>
