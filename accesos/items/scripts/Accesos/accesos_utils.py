@@ -3254,6 +3254,9 @@ class Accesos( Accesos):
         timezone = user_data.get('timezone','America/Monterrey')
         now_datetime =self.today_str(timezone, date_format='datetime')
         answers[self.mf['grupo_visitados']] = []
+        employee = self.get_employee_data(email=self.user.get('email'), get_one=True)
+        nombre_visita_a = employee.get('worker_name')
+
         # answers[self.UBICACIONES_CAT_OBJ_ID] = {}
         # answers[self.UBICACIONES_CAT_OBJ_ID][self.f['location']] = location
         answers[self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID] = {}
@@ -3361,25 +3364,25 @@ class Accesos( Accesos):
                             }
                         )
                     answers.update({self.pase_entrada_fields['ubicaciones']:ubicaciones_list})
+            elif key == 'created_from':     
+                created_from = access_pass.get('created_from')
+                if created_from == 'app':
+                    created_from = 'pase_de_entrada_app'
+                elif created_from == 'web':
+                    created_from = 'pase_de_entrada_web'
+                elif created_from == 'nueva_visita':
+                    created_from = 'nueva_visita'
+                elif created_from == 'auto_registro':
+                    created_from = 'auto_registro'
+                else:
+                    created_from = 'nueva_visita'
+
+                if created_from:
+                    answers[self.pase_entrada_fields['creado_desde']] = created_from
+
             elif key == 'visita_a': 
-                #Visita A
-                answers[self.mf['grupo_visitados']] = []
-                visita_a = access_pass.get('visita_a')
-                visita_set = {
-                    self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID:{
-                        self.mf['nombre_empleado'] : visita_a,
-                        }
-                    }
-                options_vistia = {
-                      "group_level": 3,
-                      "startkey": [location, visita_a],
-                      "endkey": [location, f"{visita_a}\n",{}],
-                    }
-                cat_visita = self.catalogo_view(self.CONF_AREA_EMPLEADOS_CAT_ID, self.PASE_ENTRADA, options_vistia)
-                if len(cat_visita) > 0:
-                    cat_visita =  {key: [value,] for key, value in cat_visita[0].items() if value}
-                visita_set[self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID].update(cat_visita)
-                answers[self.mf['grupo_visitados']].append(visita_set)
+                answers[self.mf['grupo_visitados']] = self.access_pass_vista_a(access_pass.get('visita_a',[]))
+    
             elif key == 'perfil_pase':
                 # Perfil de Pase
                 answers[self.CONFIG_PERFILES_OBJ_ID] = {}
