@@ -492,7 +492,10 @@ class Accesos( Accesos):
 
             if employee:
                 visita_set = self.visita_a_set_format(employee)
-            return [visita_set,]
+            if visita_set:
+                return [visita_set,]
+            else:
+                return []
 
         set_autorizado_por = False
         if not visita_a:
@@ -511,7 +514,8 @@ class Accesos( Accesos):
                 employee = self.Employee.get_employee_data(name = visita, get_one=True)
 
             visita_set.update(self.visita_a_set_format(employee))
-            res.append(visita_set)
+            if visita_set:
+                res.append(visita_set)
 
         return res
 
@@ -2945,7 +2949,7 @@ class Accesos( Accesos):
         answers[self.pase_entrada_fields['status_pase']] = access_pass.get('status_pase',"").lower()
         answers[self.pase_entrada_fields['empresa_pase']] = access_pass.get('empresa',"")
         # answers[self.pase_entrada_fields['ubicacion_cat']] = {self.mf['ubicacion']:access_pass['ubicacion'], self.mf['direccion']:access_pass.get('direccion',"")}
-        answers[self.pase_entrada_fields['tema_cita']] = access_pass.get('tema_cita',"") 
+        answers[self.pase_entrada_fields['tema_cita']] = access_pass.get('tema_cita',access_pass.get('motivo',"") ) 
         answers[self.pase_entrada_fields['descripcion']] = access_pass.get('descripcion',"") 
         answers[self.pase_entrada_fields['config_limitar_acceso']] = access_pass.get('config_limitar_acceso',1) 
         answers[self.pase_entrada_fields['tipo_visita']] = 'alta_de_nuevo_visitante'
@@ -3060,7 +3064,8 @@ class Accesos( Accesos):
         # if res.get("status_code") ==200 or res.get("status_code")==201:
         #     res = self.access_pass_google_pass(res, access_pass)
         return res
-    
+
+
     def access_pass_set_status(self, answers):
         """
         Evalua criterios del pase y regresa el status del pase
@@ -3072,7 +3077,6 @@ class Accesos( Accesos):
         return:
             status (str): String con status
         """
-
         foto_ok = False
         id_vista = False
         fecha_ok = False
@@ -3108,7 +3112,11 @@ class Accesos( Accesos):
             fecha_ok = True
         
         grupo_visitados = answers[self.mf['grupo_visitados']]
-        for vista_a in grupo_visitados:
+        for vista in grupo_visitados:
+            if isinstance(vista, int):
+                vista_a = grupo_visitados[vista]
+            else:
+                vista_a = vista
             if vista_a.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID,{}).get(self.mf['nombre_empleado']):
                 vista_a_ok = True
 
@@ -3658,7 +3666,7 @@ class Accesos( Accesos):
         data = self.format_cr(self.cr.aggregate(query))
         return data
 
-    def get_detail_access_pass(self, qr_code):
+    def get_detail_access_pass(self, qr_code, get_answers=False):
         match_query = {
             "deleted_at":{"$exists":False},
             "form_id": self.PASE_ENTRADA,
@@ -3670,6 +3678,7 @@ class Accesos( Accesos):
             {'$project': 
                 {'_id':1,
                 'folio': f"$folio",
+                'answers':'$answers',
                 'ubicacion': f"$answers.{self.mf['grupo_ubicaciones_pase']}.{self.UBICACIONES_CAT_OBJ_ID}",
                 'nombre': {"$ifNull":[
                     f"$answers.{self.VISITA_AUTORIZADA_CAT_OBJ_ID}.{self.mf['nombre_visita']}",
@@ -3741,6 +3750,8 @@ class Accesos( Accesos):
         res = self.cr.aggregate(query)
         x = {}
         for x in res:
+            if get_answers:
+                x['answers'] = x.get('answers',{})
             visita_a =[]
             x['_id'] = str(x.pop('_id'))
             v = x.pop('visita_a_nombre') if x.get('visita_a_nombre') else []
