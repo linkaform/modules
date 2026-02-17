@@ -132,6 +132,10 @@ class Accesos( Accesos):
             'nombre_suplente':'6927a1176c60848998a157a2'
         })
 
+        self.pase_entrada_fields.update({
+            'grupo_vehiculos':'663e446cadf967542759ebba',
+        })
+
     def _do_access(self, access_pass, location, area, data):
         '''
         Registra el acceso del pase de entrada a ubicación.
