@@ -2300,11 +2300,11 @@ class Accesos( Accesos):
         #     )
         if dateFrom:
             query.append(
-                {'$sort':{'folio':-1}},
+                {'$sort':{'created_at':-1}},
             )
         else:
             query.append(
-                {'$sort':{'folio':-1}},
+                {'$sort':{'created_at':-1}},
             )
            
         records = self.format_cr(self.cr.aggregate(query))
@@ -2437,11 +2437,11 @@ class Accesos( Accesos):
         #     )
         if dateFrom:
             query.append(
-                {'$sort':{'folio':-1}},
+                {'$sort':{'created_at':-1}},
             )
         else:
             query.append(
-                {'$sort':{'folio':-1}},
+                {'$sort':{'created_at':-1}},
             )
            
         records = self.format_cr(self.cr.aggregate(query))
@@ -3702,7 +3702,7 @@ class Accesos( Accesos):
                 'ubicaciones': f"$answers.{self.pase_entrada_fields['ubicaciones']}"                
                 },
             },
-            {'$sort':{'folio':-1}},
+            {'$sort':{'created_at':-1}},
         ]
         res = self.cr.aggregate(query)
         x = {}
