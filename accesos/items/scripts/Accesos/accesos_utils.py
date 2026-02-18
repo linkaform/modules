@@ -279,7 +279,7 @@ class Accesos( Accesos):
         response_create = self.lkf_api.post_forms_answers(metadata)
         return response_create
 
-    def access_pass_create_ics(self, access_pass, answers):
+    def access_pass_create_ics(self, access_pass, answers, ics_invitation=False):
         """
         Crea archivo para envio de invitacion a google calenar
         args:
@@ -288,9 +288,8 @@ class Accesos( Accesos):
         return:
             res (json): reponse, con archivo de ics
         """
-        fecha_desde_hasta = access_pass.get('fecha_desde_hasta')
         res = {}
-        if not fecha_desde_hasta:
+        if ics_invitation:
             id_forma = self.PASE_ENTRADA
             id_campo = self.pase_entrada_fields['archivo_invitacion']
 
@@ -299,6 +298,8 @@ class Accesos( Accesos):
             descripcion = access_pass.get("descripcion")
             ubicacion = self.unlist(access_pass.get("ubicaciones"))
             visita_a = access_pass.get("visita_a")
+            if "Usuario Actual" in visita_a:
+                visita_a = self.employee.get('worker_name')
             creado_por_email = access_pass.get("link", {}).get("creado_por_email")
             nombre = access_pass.get("nombre")
             email = access_pass.get("email")
@@ -306,6 +307,7 @@ class Accesos( Accesos):
             #answers...
             attendee_ids = [{"email": email, "nombre": nombre}, {"email": creado_por_email, "nombre": visita_a}]
             address = access_pass.get("address")
+            geolocation = self.unlist(address.get('geolocation', [])).get('search_txt', '')
             fecha_desde_hasta = access_pass.get("fecha_desde_hasta")
             start_datetime = datetime.strptime(fecha_desde_visita, "%Y-%m-%d %H:%M:%S")
             stop_datetime = start_datetime + timedelta(hours=1)
@@ -317,7 +319,7 @@ class Accesos( Accesos):
                     "stop": stop_datetime,
                     "name": tema_cita,
                     "description": descripcion,
-                    "location": ubicacion,
+                    "location": geolocation,
                     "allday": False,
                     "rrule": None,
                     "alarm_ids": [{"interval": "minutes", "duration": 10, "name": "Reminder"}],
@@ -2923,6 +2925,7 @@ class Accesos( Accesos):
             },
         })
         answers = {}
+        ics_invitation = False
 
         record_id = metadata['id']
 
@@ -2981,6 +2984,7 @@ class Accesos( Accesos):
             access_pass['fecha_desde_visita'] =  now_datetime
         
         if not access_pass.get('fecha_desde_hasta') or access_pass['fecha_desde_hasta'] == "":
+            ics_invitation = True
             access_pass['fecha_desde_hasta'] = now_datetime_out
         
         if not  access_pass.get('config_limitar_acceso') or access_pass['config_dia_de_acceso'] == "":
@@ -3095,7 +3099,7 @@ class Accesos( Accesos):
         # Crea invitacion de calendario
         if created_from in ('pase_de_entrada_app', 'pase_de_entrada_web') or True:
             #TODO FLUJO DE AUTORIZACION DE PASES
-            answers.update(self.access_pass_create_ics(access_pass, answers))
+            answers.update(self.access_pass_create_ics(access_pass, answers, ics_invitation))
             answers[self.pase_entrada_fields['catalago_autorizado_por']] = self.autorizar_pase_acceso(answers)
 
 
@@ -3128,6 +3132,9 @@ class Accesos( Accesos):
         timezone = user_data.get('timezone','America/Monterrey')
         now_datetime =self.today_str(timezone, date_format='datetime')
         answers[self.mf['grupo_visitados']] = []
+        employee = self.get_employee_data(email=self.user.get('email'), get_one=True)
+        nombre_visita_a = employee.get('worker_name')
+
         # answers[self.UBICACIONES_CAT_OBJ_ID] = {}
         # answers[self.UBICACIONES_CAT_OBJ_ID][self.f['location']] = location
         answers[self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID] = {}
@@ -3235,25 +3242,25 @@ class Accesos( Accesos):
                             }
                         )
                     answers.update({self.pase_entrada_fields['ubicaciones']:ubicaciones_list})
+            elif key == 'created_from':     
+                created_from = access_pass.get('created_from')
+                if created_from == 'app':
+                    created_from = 'pase_de_entrada_app'
+                elif created_from == 'web':
+                    created_from = 'pase_de_entrada_web'
+                elif created_from == 'nueva_visita':
+                    created_from = 'nueva_visita'
+                elif created_from == 'auto_registro':
+                    created_from = 'auto_registro'
+                else:
+                    created_from = 'nueva_visita'
+
+                if created_from:
+                    answers[self.pase_entrada_fields['creado_desde']] = created_from
+
             elif key == 'visita_a': 
-                #Visita A
-                answers[self.mf['grupo_visitados']] = []
-                visita_a = access_pass.get('visita_a')
-                visita_set = {
-                    self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID:{
-                        self.mf['nombre_empleado'] : visita_a,
-                        }
-                    }
-                options_vistia = {
-                      "group_level": 3,
-                      "startkey": [location, visita_a],
-                      "endkey": [location, f"{visita_a}\n",{}],
-                    }
-                cat_visita = self.catalogo_view(self.CONF_AREA_EMPLEADOS_CAT_ID, self.PASE_ENTRADA, options_vistia)
-                if len(cat_visita) > 0:
-                    cat_visita =  {key: [value,] for key, value in cat_visita[0].items() if value}
-                visita_set[self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID].update(cat_visita)
-                answers[self.mf['grupo_visitados']].append(visita_set)
+                answers[self.mf['grupo_visitados']] = self.access_pass_vista_a(access_pass.get('visita_a',[]))
+    
             elif key == 'perfil_pase':
                 # Perfil de Pase
                 answers[self.CONFIG_PERFILES_OBJ_ID] = {}
