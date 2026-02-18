@@ -294,10 +294,10 @@ class Accesos( Accesos):
             id_campo = self.pase_entrada_fields['archivo_invitacion']
 
             fecha_desde_visita = access_pass.get("fecha_desde_visita")
-            tema_cita = access_pass.get("tema_cita")
-            descripcion = access_pass.get("descripcion")
+            descripcion = access_pass.get("descripcion", "")
             ubicacion = self.unlist(access_pass.get("ubicaciones"))
             visita_a = access_pass.get("visita_a")
+            tema_cita = access_pass.get("tema_cita", f"Cita en {ubicacion}")
             if "Usuario Actual" in visita_a:
                 visita_a = self.employee.get('worker_name')
             creado_por_email = access_pass.get("link", {}).get("creado_por_email")
@@ -307,7 +307,11 @@ class Accesos( Accesos):
             #answers...
             attendee_ids = [{"email": email, "nombre": nombre}, {"email": creado_por_email, "nombre": visita_a}]
             address = access_pass.get("address")
-            geolocation = self.unlist(address.get('geolocation', [])).get('search_txt', '')
+            geolocation = address.get('geolocation', [])
+            if geolocation:
+                geolocation = self.unlist(address.get('geolocation', [])).get('search_txt', '')
+            else:
+                geolocation = ubicacion
             fecha_desde_hasta = access_pass.get("fecha_desde_hasta")
             start_datetime = datetime.strptime(fecha_desde_visita, "%Y-%m-%d %H:%M:%S")
             stop_datetime = start_datetime + timedelta(hours=1)
@@ -3123,128 +3127,6 @@ class Accesos( Accesos):
             autorizado_por = {self.pase_entrada_fields['autorizado_por']:first_name}
         return autorizado_por 
 
-    def update_pass(self, access_pass,folio=None):
-        pass_selected= self.get_detail_access_pass(qr_code=folio)
-        qr_code= folio
-        _folio= pass_selected.get("folio")
-        answers={}
-        for key, value in access_pass.items():
-            if key == 'grupo_vehiculos':
-                answers[self.mf['grupo_vehiculos']]={}
-                for index, item in enumerate(access_pass.get('grupo_vehiculos',[])):
-                    tipo = item.get('tipo',item.get('tipo_vehiculo',''))
-                    marca = item.get('marca',item.get('marca_vehiculo',''))
-                    modelo = item.get('modelo',item.get('modelo_vehiculo',''))
-                    estado = item.get('estado',item.get('nombre_estado',''))
-                    placas = item.get('placas',item.get('placas_vehiculo',''))
-                    color = item.get('color',item.get('color_vehiculo',''))
-                    obj={
-                        self.TIPO_DE_VEHICULO_OBJ_ID:{
-                            self.mf['tipo_vehiculo']:tipo,
-                            self.mf['marca_vehiculo']:marca,
-                            self.mf['modelo_vehiculo']:modelo,
-                        },
-                        self.ESTADO_OBJ_ID:{
-                            self.mf['nombre_estado']:estado,
-                        },
-                        self.mf['placas_vehiculo']:placas,
-                        self.mf['color_vehiculo']:color,
-                    }
-                    answers[self.mf['grupo_vehiculos']][(index+1)*-1]=obj
-            elif key == 'grupo_equipos':
-                answers[self.mf['grupo_equipos']]={}
-                for index, item in enumerate(value):
-                    nombre = item.get('nombre',item.get('nombre_articulo',''))
-                    marca = item.get('marca',item.get('marca_articulo',''))
-                    color = item.get('color',item.get('color_articulo',''))
-                    tipo = item.get('tipo',item.get('tipo_equipo',''))
-                    serie = item.get('serie',item.get('numero_serie',''))
-                    modelo = item.get('modelo',item.get('modelo_articulo',''))
-                    obj={
-                        self.mf['tipo_equipo']:tipo.lower(),
-                        self.mf['nombre_articulo']:nombre,
-                        self.mf['marca_articulo']:marca,
-                        self.mf['numero_serie']:serie,
-                        self.mf['color_articulo']:color,
-                        self.mf['modelo_articulo']:modelo,
-                    }
-                    answers[self.mf['grupo_equipos']][(index+1)*-1]=obj
-            elif key == 'visita_a':
-                visita_a_info = self.get_employees_data(names=value)
-                format_visita_a_info = {}
-                for i in visita_a_info:
-                    format_visita_a_info[i.get('worker_name')] = {
-                        'email': self.unlist(i.get('new_user_email', '')),
-                        'id_usuario': self.unlist(i.get('id_usuario', '')),
-                        'puesto': i.get('worker_position', ''),
-                        'departamento': i.get('worker_department', ''),
-                        'username': self.unlist(i.get('new_user_username', '')),
-                        'telefono': self.unlist(i.get('new_user_phone', ''))
-                    }
-                format_empleados_dentro = {}
-                for index, empleado in enumerate(value):
-                    item = {
-                        self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID: {
-                            self.mf['nombre_empleado']: empleado,
-                            self.mf['telefono_visita_a']: [format_visita_a_info.get(empleado, {}).get('telefono', '')],
-                            self.mf['id_usuario']: [format_visita_a_info.get(empleado, {}).get('id_usuario', '')],
-                            self.mf['username']: [format_visita_a_info.get(empleado, {}).get('username', '')],
-                            self.mf['departamento_empleado']: [format_visita_a_info.get(empleado, {}).get('departamento', '')],
-                            self.mf['puesto_empleado']: [format_visita_a_info.get(empleado, {}).get('puesto', '')],
-                            self.mf['email_visita_a']: [format_visita_a_info.get(empleado, {}).get('email', '')],
-                        }
-                    }
-                    format_empleados_dentro[str(index)] = item
-
-                answers[self.mf['grupo_visitados']] = format_empleados_dentro
-            elif key == 'status_pase':
-                answers.update({f"{self.pase_entrada_fields[key]}":value.lower()})
-            elif key == 'archivo_invitacion':
-                answers.update({f"{self.pase_entrada_fields[key]}": value})
-            elif key == "google_wallet_pass_url":
-                answers.update({f"{self.pase_entrada_fields[key]}": value})
-            elif key == "apple_wallet_pass":
-                answers.update({f"{self.pase_entrada_fields[key]}": value})
-            elif key == "pdf_to_img":
-                answers.update({f"{self.pase_entrada_fields[key]}": value})
-            elif key == 'favoritos':
-                answers.update({f"{self.pase_entrada_fields[key]}": [value]})  
-            elif key == 'conservar_datos_por':
-                answers.update({f"{self.pase_entrada_fields[key]}": value.replace(" ", "_")})     
-            elif key == 'folio' or key == "account_id":
-                continue      
-            else:
-                answers.update({f"{self.pase_entrada_fields[key]}":value})
-
-        # print(ans)
-        employee = self.get_employee_data(email=self.user.get('email'), get_one=True)
-        if answers:
-            res= self.lkf_api.patch_multi_record( answers = answers, form_id=self.PASE_ENTRADA, record_id=[qr_code])
-            pdf_to_img = None
-            if answers.get(self.pase_entrada_fields['status_pase'], '') == 'activo':
-                pdf_to_img = self.update_pass_img(qr_code)
-            if res.get('status_code') == 201 or res.get('status_code') == 202 and folio:
-                pdf = self.lkf_api.get_pdf_record(qr_code, template_id=None, name_pdf=None, send_url=True)
-                res['json'].update({'qr_pase':pass_selected.get("qr_pase")})
-                res['json'].update({'telefono':pass_selected.get("telefono")})
-                res['json'].update({'enviar_a':pass_selected.get("nombre")})
-                #TODO pregutnar a Paco porque aqui usa el nombre del empeado con el user.get('email')
-                #en vez de la persona seleccionada como vista....
-                res['json'].update({'enviar_de':employee.get('worker_name')})
-                res['json'].update({'enviar_de_correo':employee.get('email')})
-                res['json'].update({'ubicacion':pass_selected.get('ubicacion')})
-                res['json'].update({'fecha_desde':pass_selected.get('fecha_de_expedicion')})
-                res['json'].update({'fecha_hasta':pass_selected.get('fecha_de_caducidad')})
-                res['json'].update({'asunto':pass_selected.get('tema_cita')})
-                res['json'].update({'descripcion':pass_selected.get('descripcion')})
-                res['json'].update({'pdf_to_img': pdf_to_img if pdf_to_img else pass_selected.get('pdf_to_img')})
-                res['json'].update({'pdf': pdf})
-                return res
-            else: 
-                return res
-        else:
-            self.LKFException('No se mandarón parametros para actualizar')
-
     def update_full_pass(self, access_pass,folio=None, qr_code=None, location=None):
         answers = {}
         perfil_pase = access_pass.get('perfil_pase', 'Visita General')
@@ -3779,7 +3661,6 @@ class Accesos( Accesos):
             "form_id": self.PASE_ENTRADA,
             "_id":ObjectId(qr_code),
         }
-        print("QR", qr_code)
         query = [
             {'$match': match_query },
             {'$project': 
@@ -4212,7 +4093,6 @@ class Accesos( Accesos):
                 if value:
                     answers.update({f"{self.pase_entrada_fields[key]}":value})
 
-  
         employee = getattr(self,'employee',self.get_employee_data(email=self.user.get('email'), get_one=True))
         if answers:
             pdf_to_img = self.update_pass_img(qr_code)
