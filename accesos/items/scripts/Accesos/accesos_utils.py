@@ -294,10 +294,10 @@ class Accesos( Accesos):
             id_campo = self.pase_entrada_fields['archivo_invitacion']
 
             fecha_desde_visita = access_pass.get("fecha_desde_visita")
-            tema_cita = access_pass.get("tema_cita")
-            descripcion = access_pass.get("descripcion")
+            descripcion = access_pass.get("descripcion", "")
             ubicacion = self.unlist(access_pass.get("ubicaciones"))
             visita_a = access_pass.get("visita_a")
+            tema_cita = access_pass.get("tema_cita", f"Cita en {ubicacion}")
             if "Usuario Actual" in visita_a:
                 visita_a = self.employee.get('worker_name')
             creado_por_email = access_pass.get("link", {}).get("creado_por_email")
@@ -307,7 +307,11 @@ class Accesos( Accesos):
             #answers...
             attendee_ids = [{"email": email, "nombre": nombre}, {"email": creado_por_email, "nombre": visita_a}]
             address = access_pass.get("address")
-            geolocation = self.unlist(address.get('geolocation', [])).get('search_txt', '')
+            geolocation = address.get('geolocation', [])
+            if geolocation:
+                geolocation = self.unlist(address.get('geolocation', [])).get('search_txt', '')
+            else:
+                geolocation = ubicacion
             fecha_desde_hasta = access_pass.get("fecha_desde_hasta")
             start_datetime = datetime.strptime(fecha_desde_visita, "%Y-%m-%d %H:%M:%S")
             stop_datetime = start_datetime + timedelta(hours=1)
