@@ -3062,6 +3062,7 @@ class Accesos( Accesos):
         answers[self.pase_entrada_fields['walkin_identificacion']] = access_pass.get('identificacion')
         answers[self.pase_entrada_fields['walkin_telefono']] = access_pass.get('telefono', '')
         answers[self.pase_entrada_fields['enviar_correo_pre_registro']] = access_pass.get("enviar_correo_pre_registro",[])
+        answers[self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID] = {self.mf['nombre_area_salida']: access_pass.get('sala', '')}
 
         created_from = access_pass.get('created_from')
         if created_from == 'app':
