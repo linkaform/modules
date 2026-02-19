@@ -129,6 +129,8 @@ class Accesos( Accesos):
             'free_day_end': '55887b7e01a4de2ea71c5ab5',
             'free_day_type': '55887b7e01a4de2ea71c5ab2',
             'free_day_autorization': '55887b7e01a4de2ea71c5ab8',
+            'grupo_incluir': '69974d3806cc6d6a17f8b1fa',
+            'pases_incluir': '69974d55879296015c1cd8d2'
         })
         
         self.checkin_fields.update({
@@ -2861,6 +2863,7 @@ class Accesos( Accesos):
                     {'$project': {
                         "_id": 0,
                         "excluir": f"$answers.{self.f['personalizacion_pases']}",
+                        "incluir": f"$answers.{self.f['grupo_incluir']}",
                         "alertas": f"$answers.{self.f['grupo_alertas']}",
                     }}
                 ],
@@ -2872,6 +2875,7 @@ class Accesos( Accesos):
                 "grupos":1,
                 "menus":1,
                 "exclude_inputs": "$personalizaciones.excluir",
+                "include_inputs": "$personalizaciones.incluir",
                 "alertas": "$personalizaciones.alertas",
             }}
         ]
@@ -2881,6 +2885,9 @@ class Accesos( Accesos):
         if data:
             exclude_inputs = data.get('exclude_inputs', [])
             format_exclude_inputs = self.unlist([i for i in exclude_inputs])
+
+            include_inputs = data.get('include_inputs', [])
+            format_include_inputs = self.unlist([i for i in include_inputs])
 
             alertas = data.get('alertas', [])
             format_alerts = []
@@ -2897,6 +2904,7 @@ class Accesos( Accesos):
 
             data.update({
                 'exclude_inputs': format_exclude_inputs,
+                'include_inputs': format_include_inputs,
                 'alertas': format_alerts,
             })
 
