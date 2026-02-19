@@ -566,6 +566,27 @@ class Accesos( Accesos):
         last_status = True if self.last_check_in.get('checkin_type') == 'abierta' else False
         return last_status
 
+    def get_areas_by_location(self, location_name):
+        match_query = {
+            "deleted_at": {"$exists": False},
+            "form_id": self.AREAS_DE_LAS_UBICACIONES,
+            # ACCOUNT_29909
+            f"answers.{self.TIPO_AREA_OBJ_ID}.{self.f['tipo_de_area']}": {"$ne": "Salas de juntas"}
+        }
+        if type(location_name) == str:
+            match_query[f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.f['location']}"] = location_name
+        elif type(location_name) == list:
+            match_query[f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.f['location']}"] = {"$in": location_name}
+
+        area_path = f"answers.{self.f['area']}"
+
+        cursor = (
+            self.cr.find(match_query, {area_path: 1})
+            .sort(area_path, 1)
+        )
+        data = self.format_cr(cursor)
+        return [x.get('incidente_area') for x in data if x.get('incidente_area')]
+
     def get_employees_data(self, names=None, user_id=None, username=None, email=None,  get_one=False):
         match_query = {
             "deleted_at":{"$exists":False},
