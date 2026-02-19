@@ -566,26 +566,46 @@ class Accesos( Accesos):
         last_status = True if self.last_check_in.get('checkin_type') == 'abierta' else False
         return last_status
 
-    def get_areas_by_location(self, location_name):
+    def catalogos_pase_area(self, location_name):
+        areas, salas = self.get_areas_by_location(location_name, divide_salas=True)
+        res = {
+            "areas_by_location" : areas,
+            "salas_by_location" : salas
+        }
+        return res
+
+    def get_areas_by_location(self, location_name, divide_salas=False):
         match_query = {
             "deleted_at": {"$exists": False},
             "form_id": self.AREAS_DE_LAS_UBICACIONES,
-            # ACCOUNT_29909
-            f"answers.{self.TIPO_AREA_OBJ_ID}.{self.f['tipo_de_area']}": {"$ne": "Salas de juntas"}
         }
         if type(location_name) == str:
             match_query[f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.f['location']}"] = location_name
         elif type(location_name) == list:
             match_query[f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.f['location']}"] = {"$in": location_name}
 
-        area_path = f"answers.{self.f['area']}"
-
-        cursor = (
-            self.cr.find(match_query, {area_path: 1})
-            .sort(area_path, 1)
-        )
-        data = self.format_cr(cursor)
-        return [x.get('incidente_area') for x in data if x.get('incidente_area')]
+        query = [
+            {"$match": match_query},
+            {"$project": {
+                "_id": 0,
+                "area": f"$answers.{self.Location.f['area']}",
+                "tipo_de_area": f"$answers.{self.TIPO_AREA_OBJ_ID}.{self.f['tipo_de_area']}",
+            }}
+        ]
+        data = self.format_cr(self.cr.aggregate(query))
+        areas = []
+        salas = []
+        for item in data:
+            if divide_salas:
+                if item.get('tipo_de_area') == 'Salas de juntas':
+                    salas.append(item.get('area'))
+                else:
+                    areas.append(item.get('area'))
+            else:
+                areas.append(item.get('area'))
+        if divide_salas:
+            return sorted(areas), sorted(salas)
+        return sorted(areas)
 
     def get_employees_data(self, names=None, user_id=None, username=None, email=None,  get_one=False):
         match_query = {
