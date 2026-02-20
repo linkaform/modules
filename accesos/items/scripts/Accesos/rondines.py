@@ -8,6 +8,11 @@ from account_settings import *
 from datetime import datetime
 import calendar
 
+import sys, os
+print("CWD:", os.getcwd())
+print("PATH0:", sys.path)
+
+
 from accesos_utils import Accesos
 
 class Accesos(Accesos):
@@ -171,7 +176,7 @@ class Accesos(Accesos):
             process='Creacion de un rondin',
             action='rondines',
             file='accesos/app.py',
-            form_id=121742, #TODO Modularizar este ID
+            form_id=self.CONFIGURACION_RECORRIDOS_FORM, 
             answers=answers
         )
         return response
@@ -1011,7 +1016,7 @@ class Accesos(Accesos):
             }
 
             catalog_id = self.AREAS_DE_LAS_UBICACIONES_CAT_ID
-            form_id = 121742
+            form_id = self.CONFIGURACION_RECORRIDOS_FORM
             return self.catalogo_view(catalog_id, form_id, options)
         else:
             raise Exception("Ubicacion is required.")
@@ -1026,7 +1031,7 @@ class Accesos(Accesos):
             }
 
             catalog_id = self.AREAS_DE_LAS_UBICACIONES_CAT_ID
-            form_id = 121742
+            form_id = self.CONFIGURACION_RECORRIDOS_FORM
             areas = self.catalogo_view(catalog_id, form_id, options)
             response = self.get_areas_details(areas)
             areas_formateadas = []
@@ -1673,7 +1678,8 @@ class Accesos(Accesos):
                 pass
             else:
                 answers[self.rondin_keys[key]] = value
-        response = self.lkf_api.patch_multi_record( answers = answers, form_id=121742, folios=[folio])
+        response = self.lkf_api.patch_multi_record( answers=answers, 
+            form_id=self.CONFIGURACION_RECORRIDOS_FORM, folios=[folio])
         return response
 
     def _verificar_bitacora_programada(self, dia, year, month, hora_valida, bitacora_rondines):
