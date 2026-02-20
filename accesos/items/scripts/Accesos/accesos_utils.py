@@ -70,7 +70,9 @@ class Accesos( Accesos):
             'documento_check': '692a1b4e005c84ce5cd5167f',
             'datos_requeridos': '6769756fc728a0b63b8431ea',
             'envio_por': '6810180169eeaca9517baa5b',
-            'configuracion_de_accesos': '696e6dda9517e760679e71eb'
+            'configuracion_de_accesos': '696e6dda9517e760679e71eb',
+
+            'bitacora_sala': '6998931ce4b114620fd4724d'
         })
 
         #BORRAR
@@ -185,6 +187,7 @@ class Accesos( Accesos):
             f"{self.PASE_ENTRADA_OBJ_ID}":pase,
             f"{self.mf['codigo_qr']}": str(access_pass['_id']),
             f"{self.mf['fecha_entrada']}":self.today_str(employee.get('timezone', 'America/Monterrey'), date_format='datetime'),
+            self.f['bitacora_sala']: access_pass.get('sala', '')
         }
         vehiculos = data.get('vehiculo',[])
         if vehiculos:
@@ -2337,7 +2340,8 @@ class Accesos( Accesos):
             'status_visita':f"$answers.{self.mf['tipo_registro']}",
             'ubicacion':f"$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}",
             'vehiculos':f"$answers.{self.mf['grupo_vehiculos']}",
-            'visita_a': f"$answers.{self.mf['grupo_visitados']}"
+            'visita_a': f"$answers.{self.mf['grupo_visitados']}",
+            'sala': f"$answers.{self.f['bitacora_sala']}"
             }
         lookup = {
          'from': 'form_answer',
