@@ -77,6 +77,8 @@ if __name__ == "__main__":
         response = acceso_obj.get_user_contacts()
     elif option == 'get_config_modulo_seguridad':
         response = acceso_obj.get_config_modulo_seguridad(ubicaciones=locations)
+    elif option == 'get_pass_img':
+        response = acceso_obj.get_pass_img(qr_code)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
