@@ -4095,7 +4095,7 @@ class Accesos( Accesos):
 
     def pregenerate_pdf(self):
         qr_code = self.answers.get(self.mf['codigo_qr'])
-        if qr_code
+        if qr_code:
             try:
                 self.get_pdf(qr_code, template_id=622)
                 return True
