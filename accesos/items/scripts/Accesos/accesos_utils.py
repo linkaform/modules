@@ -3780,12 +3780,14 @@ class Accesos( Accesos):
                 'acepto_aviso_privacidad': f"$answers.{self.pase_entrada_fields['acepto_aviso_privacidad']}",
                 'acepto_aviso_datos_personales': f"$answers.{self.pase_entrada_fields['acepto_aviso_datos_personales']}",
                 'conservar_datos_por': f"$answers.{self.pase_entrada_fields['conservar_datos_por']}",
-                'ubicaciones': f"$answers.{self.pase_entrada_fields['ubicaciones']}"                
+                'ubicaciones': f"$answers.{self.pase_entrada_fields['ubicaciones']}",
+                'sala': f"$answers.{self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.mf['nombre_area_salida']}"
                 },
             },
             {'$sort':{'created_at':-1}},
         ]
         res = self.cr.aggregate(query)
+        res = list(res)
         x = {}
         for x in res:
             if get_answers:
