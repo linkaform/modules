@@ -129,6 +129,8 @@ class Accesos( Accesos):
             'free_day_end': '55887b7e01a4de2ea71c5ab5',
             'free_day_type': '55887b7e01a4de2ea71c5ab2',
             'free_day_autorization': '55887b7e01a4de2ea71c5ab8',
+            'grupo_incluir': '69974d3806cc6d6a17f8b1fa',
+            'pases_incluir': '69974d55879296015c1cd8d2'
         })
         
         self.checkin_fields.update({
@@ -294,10 +296,10 @@ class Accesos( Accesos):
             id_campo = self.pase_entrada_fields['archivo_invitacion']
 
             fecha_desde_visita = access_pass.get("fecha_desde_visita")
-            tema_cita = access_pass.get("tema_cita")
-            descripcion = access_pass.get("descripcion")
+            descripcion = access_pass.get("descripcion", "")
             ubicacion = self.unlist(access_pass.get("ubicaciones"))
             visita_a = access_pass.get("visita_a")
+            tema_cita = access_pass.get("tema_cita", f"Cita en {ubicacion}")
             if "Usuario Actual" in visita_a:
                 visita_a = self.employee.get('worker_name')
             creado_por_email = access_pass.get("link", {}).get("creado_por_email")
@@ -307,7 +309,11 @@ class Accesos( Accesos):
             #answers...
             attendee_ids = [{"email": email, "nombre": nombre}, {"email": creado_por_email, "nombre": visita_a}]
             address = access_pass.get("address")
-            geolocation = self.unlist(address.get('geolocation', [])).get('search_txt', '')
+            geolocation = address.get('geolocation', [])
+            if geolocation:
+                geolocation = self.unlist(address.get('geolocation', [])).get('search_txt', '')
+            else:
+                geolocation = ubicacion
             fecha_desde_hasta = access_pass.get("fecha_desde_hasta")
             start_datetime = datetime.strptime(fecha_desde_visita, "%Y-%m-%d %H:%M:%S")
             stop_datetime = start_datetime + timedelta(hours=1)
@@ -596,7 +602,7 @@ class Accesos( Accesos):
         match_query = {
             'form_id':self.PASE_ENTRADA,
             'deleted_at':{'$exists':False},
-            # f"answers.{self.pase_entrada_fields['visita_a']}.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_empleado']}": employee.get('worker_name') or '',
+            f"answers.{self.pase_entrada_fields['visita_a']}.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_empleado']}": employee.get('worker_name') or '',
         }
         if tab_status == "Favoritos":
             match_query.update({f"answers.{self.pase_entrada_fields['favoritos']}":'si'})
@@ -2857,6 +2863,7 @@ class Accesos( Accesos):
                     {'$project': {
                         "_id": 0,
                         "excluir": f"$answers.{self.f['personalizacion_pases']}",
+                        "incluir": f"$answers.{self.f['grupo_incluir']}",
                         "alertas": f"$answers.{self.f['grupo_alertas']}",
                     }}
                 ],
@@ -2868,6 +2875,7 @@ class Accesos( Accesos):
                 "grupos":1,
                 "menus":1,
                 "exclude_inputs": "$personalizaciones.excluir",
+                "include_inputs": "$personalizaciones.incluir",
                 "alertas": "$personalizaciones.alertas",
             }}
         ]
@@ -2877,6 +2885,9 @@ class Accesos( Accesos):
         if data:
             exclude_inputs = data.get('exclude_inputs', [])
             format_exclude_inputs = self.unlist([i for i in exclude_inputs])
+
+            include_inputs = data.get('include_inputs', [])
+            format_include_inputs = self.unlist([i for i in include_inputs])
 
             alertas = data.get('alertas', [])
             format_alerts = []
@@ -2893,6 +2904,7 @@ class Accesos( Accesos):
 
             data.update({
                 'exclude_inputs': format_exclude_inputs,
+                'include_inputs': format_include_inputs,
                 'alertas': format_alerts,
             })
 
