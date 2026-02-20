@@ -4093,6 +4093,15 @@ class Accesos( Accesos):
                 self.LKFException({'title': 'Error', 'msg': 'Hubo un error al actualizar los registros.'})
         return False
 
+    def pregenerate_pdf(self):
+        qr_code = self.record_id
+        try:
+            self.get_pdf(qr_code)
+            return True
+        except Exception as e:
+            print('========== Log:', simplejson.dumps(e, indent=2, default=str))
+            return False
+
     def update_pass(self, access_pass,folio=None):
         pass_selected= self.get_detail_access_pass(qr_code=folio, get_answers=True)
         qr_code= folio
