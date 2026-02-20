@@ -415,7 +415,7 @@ class Accesos(Accesos):
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
-                "form_id": 121677, #TODO: Modularizar id
+                "form_id": self.AREAS_DE_LAS_UBICACIONES,
                 f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": location,
                 f"answers.{self.Location.f['area']}": {"$in": format_areas}
             }},
