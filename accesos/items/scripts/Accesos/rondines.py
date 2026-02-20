@@ -254,7 +254,7 @@ class Accesos(Accesos):
             raise Exception("Folio is required to delete a rondin.")
         
         response = self.cr.delete_one({
-            'form_id': 121742, # TODO Modularizar este ID
+            'form_id': self.CONFIGURACION_DE_RECORRIDOS_FORM, # TODO Modularizar este ID
             'folio': folio
         })
         
