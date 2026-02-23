@@ -466,16 +466,17 @@ class Accesos( Accesos):
         departamento = self.unlist(employee.get('worker_department',""))
         puesto = self.unlist(employee.get('worker_position',""))
         #Lo seteamo en una lista porque es campo catlog detail
-        res = {self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID: {
-                self.mf['nombre_empleado'] : nombre_visita_a,
-                self.mf['telefono_visita_a']: [phone, ],
-                self.mf['email_visita_a']: [email, ],
-                self.mf['id_usuario']: [user_id_id, ],
-                self.mf['username']: [username, ],
-                self.mf['departamento_empleado']: [departamento, ],
-                self.mf['puesto_empleado']: [puesto, ],
+        if nombre_visita_a:
+            res = {self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID: {
+                    self.mf['nombre_empleado'] : nombre_visita_a,
+                    self.mf['telefono_visita_a']: [phone, ],
+                    self.mf['email_visita_a']: [email, ],
+                    self.mf['id_usuario']: [user_id_id, ],
+                    self.mf['username']: [username, ],
+                    self.mf['departamento_empleado']: [departamento, ],
+                    self.mf['puesto_empleado']: [puesto, ],
+                    }
                 }
-            }
         return res
 
     def access_pass_vista_a(self, visita_a):
@@ -3002,7 +3003,7 @@ class Accesos( Accesos):
                 if index==0 :
                     docs+="-"
             link_pass= f"{link_info['link']}?id={record_id}&user={self.user.get('parent_id')}&docs={docs}"
-            answers[self.pase_entrada_fields['link']] = link_pass
+            answers[self.pase_entrada_fields['link']] = link_pass.replace('web.clave10.com', '3b.clave10.com')
         lkf_qr = generar_qr.LKF_QR(self.settings)
        
         qr_generado = lkf_qr.procesa_qr( 
