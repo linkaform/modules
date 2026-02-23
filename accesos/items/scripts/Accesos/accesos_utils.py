@@ -2861,7 +2861,7 @@ class Accesos( Accesos):
             fecha_obj_visita = datetime.strptime(fecha_visita, "%Y-%m-%d %H:%M:%S")
             fecha_visita_tz = timezone.localize(fecha_obj_visita)
             
-            if fecha_actual < fecha_visita_tz - timedelta(minutes=30):
+            if fecha_actual < fecha_visita_tz - timedelta(minutes=60):
                 self.LKFException({'msg': f"Aún no es hora de entrada. Tu acceso comienza a las {fecha_visita}", "title": 'Aviso'})
         
         if location not in access_pass.get("ubicacion",[]):
