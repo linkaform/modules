@@ -253,11 +253,8 @@ class Accesos(Accesos):
         if not folio:
             raise Exception("Folio is required to delete a rondin.")
         
-        response = self.cr.delete_one({
-            'form_id': self.CONFIGURACION_DE_RECORRIDOS_FORM, # TODO Modularizar este ID
-            'folio': folio
-        })
-        
+        response = 404
+        print('TODO, ELIMINAR REVISAR CONFIGURACION DE RONDINES, primero eliminar de airflow...')
         if response.deleted_count > 0:
             response = self.detail_response(202)
         else:
