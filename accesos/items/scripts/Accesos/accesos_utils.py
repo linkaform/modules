@@ -3001,7 +3001,7 @@ class Accesos( Accesos):
                     docs+="foto"
                 if index==0 :
                     docs+="-"
-            link_pass= f"{link_info['link']}?id={record_id}&user={link_info['creado_por_id']}&docs={docs}"
+            link_pass= f"{link_info['link']}?id={record_id}&user={self.user.get('parent_id')}&docs={docs}"
             answers[self.pase_entrada_fields['link']] = link_pass
         lkf_qr = generar_qr.LKF_QR(self.settings)
        
