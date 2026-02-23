@@ -936,7 +936,7 @@ class Accesos( Accesos):
         #! Se obtiene la informacion del usuario, si esta dentro o fuera de turno.
         this_user = self.get_employee_checkin_status_by_id(user_id, booth_location, booth_area)
         if not this_user:
-            this_user = self.get_employee_data(email=email, get_one=True)
+            this_user = self.get_employee_data(user_id=user_id, get_one=True)
             this_user['name'] = this_user.get('worker_name','')
         
         #! Se obtienen los puestos de guardia configurados.
@@ -989,6 +989,10 @@ class Accesos( Accesos):
                     "name": this_user.get('name'),
                     "location": booth_location,
                     "area": booth_area,
+                    "config_exception": {
+                        "title": "Configuracion",
+                        "msg": "El usuario no esta configurado correctamente, faltan configuraciones para Turnos."
+                    }
                 }
                 load_shift_json["guard"] = common_user
                 return load_shift_json
