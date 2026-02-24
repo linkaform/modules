@@ -15,6 +15,7 @@ if __name__ == "__main__":
     data = acceso_obj.data.get('data',{})
     option = data.get("option",'')
     location = data.get("location",'')
+    locations = data.get("locations", [])
     folio = data.get("folio",'')
     access_pass = data.get("access_pass",{})
     data_msj=data.get("data_msj", {})
@@ -35,7 +36,7 @@ if __name__ == "__main__":
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
     elif option == 'create_access_pass' or option == 'crear_pase':
-        response = acceso_obj.create_access_pass(location, access_pass)
+        response = acceso_obj.create_access_pass(access_pass)
         folio_msj = response.get('json', {}).get('id', '')
     elif option == 'update_pass':
         response = acceso_obj.update_pass(access_pass,folio)
@@ -72,6 +73,10 @@ if __name__ == "__main__":
         response = acceso_obj.get_user_contacts()
     elif option == 'get_config_modulo_seguridad':
         response = acceso_obj.get_config_modulo_seguridad(location)
+    elif option == 'get_areas_by_locations':
+        response = acceso_obj.get_areas_by_locations(locations)
+    elif option == 'extends_date_of_pass':
+        response = acceso_obj.extends_date_of_pass(qr_code, update_obj)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})

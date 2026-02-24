@@ -671,7 +671,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                 if payment_connection_id == self.ID_CONTRATISTA_TIPO_MAQTEL:
                     nivel_de_pago = 'maqtel'
                 elif payment_connection_id in conn_carso:
-                    nivel_de_pago = 'migracion'
+                    nivel_de_pago = 'migrado'
 
                 campos_a4[ 0 ] = price_list_cobre[ nivel_de_pago ][ 'a4' ]
                 name = 'A4'
@@ -1108,6 +1108,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                     
                     for payment_folio in dict_payment_folios[type_folio]:
                         info_record_os = folios_ids[payment_folio]
+                        record_os_answer = info_record_os.get('answers', {})
                         folio_is_psr = info_record_os.get('answers', {}).get('633d9f63eb936fb6ec9bf580', '') == 'psr'
                         record_lib = info_registros_liberacion.get( payment_folio.replace('_', '') )
                         if not record_lib:
@@ -1152,6 +1153,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                             'f19620000000000000001fc1' : folio_oc_rec,
                             'f19620000000000000001fc2' : telefono_oc_rec,
                             '62deccbcf1cac3245da9314d' : fecha_liquidacion,
+                            '5f0e23eaca2ca23aa12f21a9' : record_os_answer.get('5f0e23eaca2ca23aa12f21a9'), # Fecha de Carga Contratista
                             '666798abf2ea5ac6c31cc955' : area_os,
                             'f19620000000000000001fc3' : paco_oc_rec,
                             'f19620000000000000001fc4' : trabajo_oc_rec,
@@ -1253,7 +1255,8 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             
             tipo_trabajo = group_field.pop('f2361400a0100000000000b6', '')
 
-            if tipo_trabajo != 'a4':
+            # if tipo_trabajo != 'a4':
+            if tipo_trabajo not in ['a4', 'a2']:
                 tipo_trabajo = 'psr' if order_psr else 'a0'
 
             for idx, map_field in enumerate(map_campos):
@@ -1320,6 +1323,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
 
             os_fecha_liq = os_answers.get('5a1eecfbb43fdd65914505a1', '')
             response['62deccbcf1cac3245da9314d'] = os_fecha_liq
+            response['5f0e23eaca2ca23aa12f21a9'] = os_answers.get('5f0e23eaca2ca23aa12f21a9') # Fecha de Carga Contratista
             response['666798abf2ea5ac6c31cc955'] = os_answers.get('f1054000a0100000000000a2', '').upper().replace('_', ' ')
             anio_liq = os_fecha_liq.split('-')[0]
             date_fecha_liquidacion = p_utils.str_to_date( os_fecha_liq )
@@ -1503,6 +1507,10 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             'field_id': '681c0e22e3d9bc611e3a5189',
             'name': 'A0',
             'oc_field_id': '682bc981733bc1ca31734d9e'
+        },{
+            'field_id': '6916c12d5ab0bd965da971b3',
+            'name': 'A2',
+            'oc_field_id': '6916c0d1e6bbebbebfa971b6'
         }]
         desc_20_porc_as_row = True
 

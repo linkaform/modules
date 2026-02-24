@@ -148,7 +148,7 @@ class Produccion_PCI( Produccion_PCI ):
             'answers.f1054000a030000000000002':'liquidada',
             'answers.f1054000a030000000000013': 'en_proceso',
             # 'answers.f1054000a030000000000012':{'$in':['estimacion','paco']},
-            'answers.f1054000a030000000000012': 'pendiente',
+            'answers.f1054000a030000000000012': {'$in': ['pendiente', 'estimacion']},
             f'answers.{field_id_cliente}': {'$exists': True},
             'answers.633d9f63eb936fb6ec9bf580': {'$nin': ['cfe']},
 
@@ -539,6 +539,8 @@ class Produccion_PCI( Produccion_PCI ):
             registro_detalle['681c0e22e3d9bc611e3a5187'] = 1
         elif tipo_trabajo.lower() == 'a4':
             registro_detalle['681c0e22e3d9bc611e3a5188'] = 1
+        elif tipo_trabajo.lower() == 'a2':
+            registro_detalle['6916c12d5ab0bd965da971b3'] = 1
         else:
             registro_detalle['681c0e22e3d9bc611e3a5189'] = 1
 

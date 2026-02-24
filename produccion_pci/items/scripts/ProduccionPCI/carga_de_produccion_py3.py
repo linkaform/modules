@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import re, sys, datetime, simplejson
+import re, sys, datetime, simplejson, time
 import random, os, shutil, wget, zipfile, collections
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from copy import deepcopy
@@ -25,38 +25,69 @@ class Produccion_PCI( Produccion_PCI ):
 
         self.equivalcens_map_observa = { 'observaciones': ['OBSERVACIONES CLARO VIDEO', 'observaciones claro video', 'obs. claro video', 'observaciones cv']}
 
+    def read_txt_from_img(self, image_path, name_img):
+        error_msg_disto = []
+        # try:
+        if True:
+            metraje, fol = img_distos.get_metraje_folio(name_img, image_path, by_path=True)
+        # except Exception as e:
+        #     print('[ERROR al leer Disto] =', e)
+        #     metraje, fol = None, None
+        #     error_msg_disto.append( str(e) )
+        
+        if isinstance(metraje, dict) and metraje.get('error'):
+            error_msg_disto.append( metraje['error'] )
 
+        if not img_distos.valid_folio_mts( fol, metraje, name_img ):
+            # Se validan con las funciones de PacoGod
+            try:
+                folio_first_eval = fol if fol == name_img else None
+                metraje, fol = img_distos.get_data_info_distometro(name_img, image_path, name_img, by_path=True, folio_found=folio_first_eval)
+            except Exception as e:
+                print('[ERROR al leer Disto] =', e)
+                metraje, fol = None, None
+                error_msg_disto.append( str(e) )
+            
+            if isinstance(metraje, dict) and metraje.get('error'):
+                error_msg_disto.append( metraje['error'] )
+        
+        if not img_distos.valid_folio_mts( fol, metraje, name_img ):
+            print(f"+++++++++++[ERROR img] metraje = {metraje} folio = {fol} Imagen = {image_path.split('/')[-1]}")
+            return {'error': self.list_to_str(error_msg_disto)}
 
+        return {
+            'mts_img': metraje or "0",
+            'folio_img': fol or ""
+        }
     
-    def make_copy_os(self,  answers_iasa, form_id_os_iasa, current_folio, os_folio, connection_id ):
-        metadata_os_iasa = lkf_api.get_metadata( form_id_os_iasa )
-        metadata_os_iasa.update({
-            'folio': os_folio,
-            'properties': self.get_metadata_properties('carga_de_produccion.py', 'ACTUALIZACION', process='PROCESO CARGA DE PRODUCCION HIBRIDO', folio_carga=current_folio),
-            # 'properties': {
-            #     "device_properties":{
-            #         "system": "SCRIPT",
-            #         "process":"PROCESO CARGA DE PRODUCCION HIBRIDO", 
-            #         "accion":'ACTUALIZACION', 
-            #         "folio carga":current_folio, 
-            #         "archive": "carga_de_produccion.py"
-            #     }
-            # },
-            'answers': answers_iasa
-        })
-        try:
+    def make_copy_os(self,  answers_iasa, form_id_os_iasa, current_folio, os_folio, connection_id, data_os_copy=None ):
+        metadata_to_copy_os = self.get_metadata_properties('carga_de_produccion.py', 'ACTUALIZACION', process='PROCESO CARGA DE PRODUCCION HIBRIDO', folio_carga=current_folio)
+        if data_os_copy:
+            data_os_copy['answers'].update(answers_iasa)
+            data_os_copy['properties'] = metadata_to_copy_os
+            res_create_os_iasa = lkf_api.patch_record(data_os_copy, jwt_settings_key='USER_JWT_KEY')
+        else:
+            metadata_os_iasa = lkf_api.get_metadata( form_id_os_iasa )
+            metadata_os_iasa.update({
+                'folio': os_folio,
+                'properties': metadata_to_copy_os,
+                'answers': answers_iasa
+            })
             res_create_os_iasa = lkf_api.post_forms_answers(metadata_os_iasa, jwt_settings_key='USER_JWT_KEY')
-            print('res_create_os_iasa=',res_create_os_iasa)
-        except Exception as e:
-            print(e)
-            print('error al crear la copia de la OS = ',metadata_os_iasa)
-            return False
+        
+        print('res_create_os_iasa=',res_create_os_iasa)
+        
         if res_create_os_iasa.get('status_code') == 201:
             new_record = '/api/infosync/form_answer/' + str(res_create_os_iasa.get('json', {}).get('id')) +'/'
             print('*** asignando a:',connection_id)
             response_assign = lkf_api.assigne_connection_records( connection_id, [new_record,], jwt_settings_key='JWT_KEY')
             print('----->response assigne for update:',response_assign)
-        return True
+            return {}
+        if res_create_os_iasa.get('status_code') == 202:
+            return {}
+        return { 
+            'error': p_utils.arregla_msg_error_sistema( res_create_os_iasa ) 
+        }
 
     """
     # Cambiar estatus del proceso
@@ -70,23 +101,40 @@ class Produccion_PCI( Produccion_PCI ):
     """
     # Descomprimir archivos zip para obtener los pdfs y Distómetros
     """
-    def get_files_names(self, nueva_ruta, namefile):
+    def get_files_names(self, nueva_ruta, namefile, read_distometros=False):
         files_dir = os.listdir(nueva_ruta)
         error_por_extension = []
         folios_in_zip = {}
-        arr_extenciones = [".pdf",".jpg",".jpeg",".png",".PDF", ".JPG", '.JPEG']
+        extensiones_img = [".jpg",".jpeg",".png", ".JPG", '.JPEG']
+        arr_extenciones = extensiones_img + [".pdf", ".PDF"]
+        data_img_distos = {}
         for file_barrido in files_dir:
             ruta_pdf, archivo_pdf = os.path.split(file_barrido)
             namefile_pdf = os.path.splitext(archivo_pdf)[0]
             extension_pdf = os.path.splitext(archivo_pdf)[1]
+            
             if namefile_pdf == namefile:
                 # Esto para que no tome en cuenta el archivo zip que contiene todos los documentos
                 continue
+            
             if extension_pdf not in arr_extenciones:
                 error_por_extension.append( namefile_pdf )
                 continue
-            folios_in_zip.update( { namefile_pdf: nueva_ruta+archivo_pdf } )
-        return folios_in_zip, error_por_extension
+            path_file_extract = nueva_ruta+archivo_pdf
+
+            if read_distometros and extension_pdf not in extensiones_img:
+                error_por_extension.append( archivo_pdf )
+                continue
+
+            if read_distometros:
+                data_img_distos[ namefile_pdf ] = {'path_disto': path_file_extract}
+
+            folios_in_zip.update( { namefile_pdf: path_file_extract } )
+        
+        if error_por_extension:
+            return 'error', error_por_extension, data_img_distos
+
+        return folios_in_zip, error_por_extension, data_img_distos
 
     def descomprimeZips(self,  zip_field, current_folio, rutaSave ):
         ruta_destino = "/tmp/"
@@ -108,23 +156,43 @@ class Produccion_PCI( Produccion_PCI ):
                 archivo_zip = zipfile.ZipFile(nueva_ruta+file)
             except Exception as e:
                 print("++++++++++++++++++++++ Error:",e)
-                return 'error', 'El archivo zip está dañado o no es de tipo .zip', nueva_ruta
+                return 'error', 'El archivo zip está dañado o no es de tipo .zip', nueva_ruta, None
 
             for i, f in enumerate(archivo_zip.filelist):
                 f.filename = p_utils.rename_file_extract(f.filename).replace(' ', '_')
                 archivo_zip.extract(f, nueva_ruta)
             
-            folios_in_zip, error_por_extension = self.get_files_names( nueva_ruta, namefile )
-            return folios_in_zip, error_por_extension, nueva_ruta
-            archivo_zip.close()
-            try:
-                os.remove(nueva_ruta+file)
-            except Exception as e:
-                print ("************ error al borrar=",e)
+            read_distos = rutaSave == "cargaPorduccionDistometros"
+            folios_in_zip, error_por_extension, data_img_distos = self.get_files_names( nueva_ruta, namefile, read_distometros=read_distos )
+            return folios_in_zip, error_por_extension, nueva_ruta, data_img_distos
+            # archivo_zip.close()
+            # try:
+            #     os.remove(nueva_ruta+file)
+            # except Exception as e:
+            #     print ("************ error al borrar=",e)
         else:
-            return 'error', 'Error al crear el directorio temporal', nueva_ruta
+            return 'error', 'Error al crear el directorio temporal', nueva_ruta, None
 
-    def desasignar_registro(self, id_connection_assigned, user_id_old, form_id, folio, telefono, area):
+    def have_permiso(self, val_permiso):
+        if not val_permiso or val_permiso.lower() == "no":
+            return False
+        return True
+
+    def rmv_psr_created(self, id_connection_assigned, form_id, folio, telefono, area):
+        print(f'+++++++++++ Borrando registro de PSR Admin y cuenta padre form_id {form_id} folio {folio}')
+        colection_connection = CollectionConnection(id_connection_assigned, settings)
+        cr_contratista = colection_connection.get_collections_connection()
+
+        query_to_restore, select_columns = p_utils.query_folio_preorder(form_id, folio, telefono, area)
+        rmv_contratista = cr_contratista.delete_one(query_to_restore)
+        print("++ Eliminado contratista =", rmv_contratista.deleted_count)
+
+        rmv_admin = cr_admin.delete_one(query_to_restore)
+        print("++ Eliminado admin =", rmv_admin.deleted_count)
+
+    def desasignar_registro(self, id_connection_assigned, user_id_old, form_id, folio, telefono, area, answers_before_assign, is_updating_record=False):
+        if is_updating_record:
+            return
         print('+++++++++++ desasignando el registro original')
         print('------ error en el update desasignando registro form_id {} folio {}'.format(form_id, folio))
         
@@ -136,7 +204,12 @@ class Produccion_PCI( Produccion_PCI ):
         print('+++ rmv_contratista',rmv_contratista)
         unset_conn = cr_admin.update_one(query_to_restore,{"$unset":{'connection_id':''}})
         print('+++ unset_conn:',unset_conn)
-        reset_pci = cr_admin.update_one(query_to_restore,{"$set":{'user_id':user_id_old}})
+
+        data_set = { 'user_id': user_id_old }
+        if answers_before_assign:
+            data_set['answers'] = answers_before_assign
+
+        reset_pci = cr_admin.update_one(query_to_restore,{"$set": data_set})
         print('+++ reset_pci',reset_pci)
 
     def check_os_cobre(self, folio, telefono):
@@ -150,7 +223,7 @@ class Produccion_PCI( Produccion_PCI ):
         }, {'answers': 1, 'folio': 1, 'form_id': 1})
         return record_cobre
 
-    def create_record_cambio_tec(self,  os_cobre, alfanumerico, puerto, terminal_optica, current_folio, email_conexion ):
+    def create_record_cambio_tec(self,  os_cobre, alfanumerico, alfanumerico_pic, puerto, terminal_optica, current_folio, email_conexion ):
         metadata_cambio = lkf_api.get_metadata(p_utils.FORM_ID_CAMBIO_TECNOLOGIA)
         metadata_cambio['answers'] = {
             '667091a65afe99d4ceba0392': os_cobre['folio'], # Folio
@@ -160,7 +233,8 @@ class Produccion_PCI( Produccion_PCI ):
             'f1054000a010000000000021': os_cobre['answers']['f1054000a0100000000000a4'], # Tipo de tarea
             'f1054000a0100000000000d5': os_cobre['answers']['f1054000a010000000000003'], # Distrito
             'f1054000a010000000000002': os_cobre['answers']['f1054000a010000000000002'].upper().replace('_', ' '), # Cope
-            'f1054000a0200000000000a3': alfanumerico,
+            'f1054000a0200000000000a3': alfanumerico_pic,
+            self.f['field_no_serie_contratista']: alfanumerico,
             'f1054000a020000000000aa2': puerto, # Puerto
             'f1054000a020000000000aa1': terminal_optica,
             '6670a0a6fe5560837d1cc9bc': 'pendiente',
@@ -168,29 +242,84 @@ class Produccion_PCI( Produccion_PCI ):
         }
         if os_cobre['answers'].get('633d9f63eb936fb6ec9bf580'):
             metadata_cambio['answers']['633d9f63eb936fb6ec9bf580'] = os_cobre['answers']['633d9f63eb936fb6ec9bf580'] # Proyecto
-        metadata_agregar_script = {"device_properties":{"system": "SCRIPT","process":"Cambio de Tecnologia", "accion":'Crear registro', "folio carga":current_folio, "archive":"carga_produccion_hibrido.py"}}
+        metadata_agregar_script = {"device_properties":{"system": "SCRIPT","process":"Cambio de Tecnologia", "accion":'Crear registro', "folio carga":current_folio, "archive":"carga_de_produccion_py3.py"}}
         metadata_cambio["properties"] = metadata_agregar_script
         resp_create = lkf_api.post_forms_answers(metadata_cambio, jwt_settings_key='JWT_KEY_ADMIN')
         return resp_create
 
-    def prepare_record(self, record, metadata, pos_field_id, folio, connection_id, RECORDS_PASSED, tecnologia_orden='fibra', hibrida=False, form_id_turno='', current_record = {}, copes_consultados={}, cambio_tecnologia='', records_for_cambio_tec=[], info_cope={}, \
-        pos_tipo=0, pos_telefono=0, datos_tecnico={}, permisos_contratista={}, dict_info_connections={}, header_dict={}):
+
+
+
+
+    """ Se valida que no exista otro registro con folio - telefono cargados en una tecnologia diferente """
+    def eval_folio_in_other_tec(self, val_form, val_folio, val_telefono):
+        map_other_tecs_admin = {
+            11044: 10540, 16343: 25927, 21954: 25928, 21953: 25929,
+            10540: 11044, 25927: 16343, 25928: 21954, 25929: 21953,
+        }
+        id_form_other_tec = map_other_tecs_admin[ val_form ]
+        query_rec_other_tec = {
+            'form_id': id_form_other_tec, 
+            'deleted_at': {'$exists': False}, 
+            'folio': val_folio,
+            'answers.f1054000a010000000000005': val_telefono
+        }
+        print(f'     +++ Buscando registro en otra Tecnologia. Forma original: {val_form} Query: {query_rec_other_tec}')
+        record_found = cr_admin.find_one(query_rec_other_tec, {'folio': 1})
+        
+        if record_found:
+            msg_error = "El folio ya fue cargado en una Tecnología diferente"
+            print(f'        --- {msg_error}')
+            return msg_error
+        return False
+
+    def validate_correct_folio(self, val_folio):
+        if not val_folio:
+            return "El folio es obligatorio"
+
+        if not re.match(r"^[0-9]*$", val_folio):
+            return "El folio debe ser solo numeros y sin espacios en blanco"
+        
+        try:
+            int( val_folio )
+        except Exception as e:
+            return "El folio solo debe ser numerico"
+        
+        if len( str( val_folio ).strip() ) != 8:
+            return "El folio debe tener la logitud de 8 caracteres"
+        
+        return False
+
+    def get_autorizaciones(self, folios_autorizados, folio_autorizacion, telefono_autorizacion, division_autorizacion, tecnologia_autorizacion):
+        if folios_autorizados is None:
+                autorizaciones_carga_folio = p_utils.find_folio_autorizado(folio_autorizacion, telefono_autorizacion, division_autorizacion, tecnologia_autorizacion)
+        else:
+            full_name_record = f"{folio_autorizacion}_{telefono_autorizacion}_{division_autorizacion}_{tecnologia_autorizacion}"
+            autorizaciones_carga_folio = folios_autorizados.get(full_name_record, [])
+        print('autorizaciones_carga_folio=',autorizaciones_carga_folio)
+        return autorizaciones_carga_folio
+
+    def prepare_record(self, record, metadata, pos_field_id, folio, connection_id, RECORDS_PASSED, tecnologia_orden, hibrida, form_id_turno, current_record, copes_consultados, cambio_tecnologia, records_for_cambio_tec, \
+        folios_autorizados, info_cope, pos_tipo=0, pos_telefono=0, datos_tecnico={}, permisos_contratista={}, dict_info_connections={}, header_dict={}):
         ###
         ### returns a dict with the instruccions of create or update
         ###
         result = {'create': {}, 'update':{}}
-        try:
-            telefono_registro = int(record[pos_telefono])
-        except Exception as e:
-            print(e)
-            result['create']['error'] = 'Error en el telefono, favor de revisar'
-            return result
+        telefono_registro = int(record[pos_telefono])
+        # try:
+        # except Exception as e:
+        #     print(e)
+        #     result['create']['error'] = 'Error en el telefono, favor de revisar'
+        #     return result
+        
+        puerto = record[ header_dict['puerto'] ] if header_dict.get('puerto') else None
         actual_record = False
         descuento15dias = False
         metadata['form_id'] = form_id_turno
         print("*********************** metadata form id: {} folio:{} telefono:{}************".format(metadata['form_id'], folio, telefono_registro))
+        form_id_admin = self.dict_equivalences_forms_id[ metadata['form_id'] ]
         if tecnologia_orden in ('cobre', 'hibrida', 'fibra', 'migracion'):
-            actual_record = p_utils.check_folio(self.dict_equivalences_forms_id[ metadata['form_id'] ], folio, telefono_registro, info_cope['area'])
+            actual_record = p_utils.check_folio(form_id_admin, folio, telefono_registro, info_cope['area'])
         
         if tecnologia_orden == 'fibra' and cambio_tecnologia in ('si', 'sí'):
             print("... ... Folio para Cambio de tecnologia... revisando si existe registro en Cobre y no esta en proceso de cobranza")
@@ -208,14 +337,14 @@ class Produccion_PCI( Produccion_PCI ):
             if os_cobre_found:
                 print("Registro encontrado en la forma {} creando registro de Cambio de tecnologia".format(os_cobre_found['form_id']))
 
-                pos_alfanumerico = self.position_field_in_xls( pos_field_id, None, by_field_id=['f1054000a0200000000000a3'] )
+                pos_alfanumerico = self.position_field_in_xls( pos_field_id, None, by_field_id=[self.f['field_no_serie_contratista']] )
                 alfanumerico = record[pos_alfanumerico] if pos_alfanumerico else ''
+                alfanumerico_pic = os_cobre_found['answers'].get('f1054000a020000000000003', '')
                 
-                puerto = record[ header_dict['puerto'] ] if header_dict.get('puerto') else None
                 
                 terminal_optica = record[ header_dict['terminal_optica'] ] if header_dict.get('terminal_optica') else ''
                 
-                resp_create_cambio = self.create_record_cambio_tec( os_cobre_found, alfanumerico, puerto, terminal_optica, current_record['folio'], dict_info_connections.get(connection_id, {}).get('username', '') )
+                resp_create_cambio = self.create_record_cambio_tec( os_cobre_found, alfanumerico, alfanumerico_pic, puerto, terminal_optica, current_record['folio'], dict_info_connections.get(connection_id, {}).get('username', '') )
                 print('resp_create_cambio =',resp_create_cambio)
                 if resp_create_cambio.get('status_code') != 201:
                     result['create']['error'] = 'Ocurrió un error al crear el registro de cambio de tecnologia'
@@ -232,7 +361,11 @@ class Produccion_PCI( Produccion_PCI ):
         can_create_records = False
         autorizaciones_carga_folio = []
         
-        tipo_tarea_is_queja = str( record[ pos_tipo ] ).upper()[0:2] in ('QI','RI','EI')
+        # esto por los cambios de Degradados
+        if not pos_tipo:
+            tipo_tarea_is_queja = False
+        else:
+            tipo_tarea_is_queja = str( record[ pos_tipo ] ).upper()[0:2] in ('QI','RI','EI')
         
         if not actual_record:
 
@@ -244,6 +377,22 @@ class Produccion_PCI( Produccion_PCI ):
 
             if not os_in_psr:
                 result['create']['error'] = 'Verifica que tu folio sea el correcto y se encuentre liquidado completado en PIC Movil'
+                return result
+
+            # El registro no puede existir en otra tecnologia
+            record_other_tec = self.eval_folio_in_other_tec(form_id_admin, folio, telefono_registro)
+            if record_other_tec:
+                result['create']['error'] = record_other_tec
+                return result
+
+            # Validaciones requeridas para crear el registro
+            incorrect_folio = self.validate_correct_folio( folio )
+            if incorrect_folio:
+                result['create']['error'] = incorrect_folio
+                return result
+
+            if puerto and not ( len( str(puerto) ) == 1 and str(puerto).isdigit() ):
+                result['create']['error'] = "El Puerto debe ser solo un dígitos numérico"
                 return result
 
             # if os_in_psr:
@@ -268,8 +417,15 @@ class Produccion_PCI( Produccion_PCI ):
 
             if actual_record:
                 can_be_updated = p_utils.validate_record_status(actual_record)
-                other_conexion = p_utils.uploaded_by_other_connection(actual_record, connection_id)
+
+                # actual_record es el registro de OS en Admin, se valida con la cuenta padre
+                other_conexion = p_utils.uploaded_by_other_connection(actual_record, self.account_id)
                 #print('puede actualizar por otra conexion ? other_conexion : ',other_conexion,'**** ')
+            
+            # Bandera para permitir modificar el registro de Admin o no
+            continue_to_update = False
+            msg_error_folio_vencido = ''
+
             if  not can_be_updated:
                 #Si no se puede actualizar marcalrlo como bloqueado
                 self.RECORDS_PASSED += 1
@@ -284,12 +440,27 @@ class Produccion_PCI( Produccion_PCI ):
                 self.GLOBAL_COMMUNICATION += 'Folio duplicado: %s Cargado por otro Contratista. '%(folio)
             elif other_conexion == 'cuenta_padre':
                 self.RECORDS_PASSED += 1
-                result['update']['error'] = f'Folio: {folio} ya fue cargado por la cuenta padre.'
-                return result
+
+                # Hasta aqui se encuentra que el registro original ya lo tiene la Cuenta Padre
+                # Revisar si ya existe la copia, si no existe no lo dejo avanzar
+                record_copy_os = p_utils.check_folio(metadata['form_id'], folio, telefono_registro, info_cope['area'], in_this_account=True)
+                if not record_copy_os:
+                    result['update']['error'] = f'Folio: {folio} ya fue cargado por la cuenta padre.'
+                    return result
+                
+                # Existe el registro Copia, se entiende que se va a actualizar información
+                # Se revisa que la copia la tenga la conexion que hace la carga
+                other_conexion_copy = p_utils.uploaded_by_other_connection(record_copy_os, connection_id)
+                if other_conexion_copy == 'by_other':
+                    result['update']['error'] = f'Folio: {folio} Cargado por otro Contratista.'
+                    return result
+
+                record_copy_os['form_id'] = metadata['form_id']
+                continue_to_update = {'exists_copy': True, 'record_copy': record_copy_os}
+                # print('+++ +++ record_copy_os =',record_copy_os)
+                # stop
             else:
-                autorizaciones_carga_folio = p_utils.find_folio_autorizado(folio, actual_record['answers'].get('f1054000a010000000000005', 0), info_cope['division'], tecnologia_orden)
-                print('autorizaciones_carga_folio=',autorizaciones_carga_folio)
-                msg_error_folio_vencido = ''
+                autorizaciones_carga_folio = self.get_autorizaciones(folios_autorizados, folio, actual_record['answers'].get('f1054000a010000000000005', 0), info_cope['division'], tecnologia_orden)
                 if not actual_record.get('connection_id'):
                     field_id_fecha_liq = 'f1054000a02000000000fa02' if tecnologia_orden == 'fibra' else '5a1eecfbb43fdd65914505a1'
                     # fecha_liquidada = actual_record.get('answers',{}).get(field_id_fecha_liq,'')
@@ -328,6 +499,12 @@ class Produccion_PCI( Produccion_PCI ):
                     if 'Autorizado IASA' not in all_status_os:
                         result['update'] = {'error': 'Este folio no puede ser cargado ya que fue Asignado a IASA'}
                         return result
+                
+                continue_to_update = {'exists_copy': False}
+
+            
+            if continue_to_update:
+                answers_before_assign = deepcopy( actual_record['answers'] )
                 this_record = self.create_order_format(record, metadata, pos_field_id, folio, is_update=True, found_record=actual_record, tecnologia_orden=tecnologia_orden, hibrida=hibrida, form_id_turno=form_id_turno, current_record=current_record,\
                     info_cope=info_cope, pos_tipo=pos_tipo, can_create_records=can_create_records, connection_id_base=connection_id, pos_telefono=pos_telefono, autorizaciones_carga_folio=autorizaciones_carga_folio,\
                     tipo_tarea_is_queja=tipo_tarea_is_queja, descuentoXdesfase=descuento15dias, datos_tecnico=datos_tecnico, permisos_contratista=permisos_contratista)
@@ -345,6 +522,9 @@ class Produccion_PCI( Produccion_PCI ):
                     this_record.update({'assigned_to': connection_id, 'user_id_old': actual_record.get('user_id')})
                 this_record['answers']['_id'] = str(actual_record['_id'])
                 this_record['_id'] = str(actual_record['_id'])
+                this_record['folio_record_admin'] = actual_record['folio']
+                this_record['answers_before_assign'] = answers_before_assign
+                this_record.update( continue_to_update )
                 result['update'] = this_record
                 if msg_error_folio_vencido:
                     if result['update'].get('alerts', []):
@@ -366,7 +546,8 @@ class Produccion_PCI( Produccion_PCI ):
         can_create_records=False, connection_id_base=0, pos_telefono=None, autorizaciones_carga_folio=[], tipo_tarea_is_queja=False, descuentoXdesfase=False, datos_tecnico={}, permisos_contratista={}, answers_psr={}):
         print("----->info_cope",info_cope)
         answer = found_record.get('answers',{})
-        is_cfe = answer.get('633d9f63eb936fb6ec9bf580', '') == 'cfe'
+        proyecto_record = answer.get('633d9f63eb936fb6ec9bf580', '')
+        is_cfe = proyecto_record == 'cfe'
         cargado_desde_pic = answer.get('5eb0326a9e6fda7cb11163f1','')
         tecnico_pic = answer.get('5eb091915ae0d087df1163de','')
         is_cargado_desde_pic = (cargado_desde_pic == 'sí' or tecnico_pic != '')
@@ -374,8 +555,10 @@ class Produccion_PCI( Produccion_PCI ):
         ###
         ### Craete new record
         ###
-        this_record = {}
-        record_existente = 'si' if answer else ''
+        this_record = {
+            'folio': found_record.get('folio')
+        }
+        record_existente = True if answer else False
         error = []
         alerts = []
         aerea = subterranea = None
@@ -419,10 +602,14 @@ class Produccion_PCI( Produccion_PCI ):
         metraje_cargado = 0
 
         tipo_tarea_record = answer.get(id_field_tipo_tarea, '')
-        if not tipo_tarea_record:
-            tipo_tarea_record = record[pos_tipo]
-        clase_tipo_tarea = str(tipo_tarea_record)[2:4]
-        is_clase_10_20 = clase_tipo_tarea in ['10', '20']
+
+        if folio:
+            if not tipo_tarea_record:
+                tipo_tarea_record = record[pos_tipo]
+            clase_tipo_tarea = str(tipo_tarea_record)[2:4]
+            is_clase_10_20 = clase_tipo_tarea in ['10', '20']
+        else:
+            is_clase_10_20 = False
         if is_clase_10_20:
             answer['609bf813b3f4e5c00cf76ee0'] = 1
         mtts_before = {}
@@ -457,7 +644,7 @@ class Produccion_PCI( Produccion_PCI ):
                     continue
                 elif lbl == 'Distrito' and (answer.get('f1054000a0100000000000d5',False) or answer.get('f1054000a010000000000003',False)):
                     continue
-                elif lbl == 'Alfanumérico' and answer.get('f1054000a0200000000000a3',False) and len(str(answer.get('f1054000a0200000000000a3', ''))) == 12:
+                elif lbl in ['Alfanumérico', 'Modem - Numero de Serie']: # elif lbl == 'Alfanumérico' and answer.get('f1054000a0200000000000a3',False) and len(str(answer.get('f1054000a0200000000000a3', ''))) == 12:
                     continue
             if str(pos).find('-') > 0:
                 position = int(pos.split('-')[0])
@@ -694,13 +881,13 @@ class Produccion_PCI( Produccion_PCI ):
 
             elif element['scritp_type'] == 'num_serie' and type(position) == int:
                 if record[position]:
-                    answer['f1054000a0200000000000a3'] = record[position]
+                    answer[self.f['field_no_serie_contratista']] = record[position]
             if type(position) != int:
                 if position not in ['clase','tipo','tipo de tarea', 'etapa']:
                     answer.update(lkf_api.make_infosync_json(position, element, best_effort=True))
             else:
                 try:
-                    if record_existente == 'si':
+                    if record_existente:
                         if element.get('label') and element['label'] not in ['Telefono', 'Teléfono','Tecnico','Division','AREA','COPE','Cable Par','Modem - Numero de Serie','Tipo de Tarea','Fecha de Liquidacion','Expediente del Tecnico','Expediente del Técnico','Expediente Del Tecnico']:
                             if record[position] and isinstance(record[position], str):
                                 record[position] = record[position].encode('utf8')
@@ -712,7 +899,11 @@ class Produccion_PCI( Produccion_PCI ):
                                     record[position] = record[position].decode('utf8')
                                     answer.update(lkf_api.make_infosync_json(record[position], element, best_effort=True))
                             else:
-                                answer.update(lkf_api.make_infosync_json(record[position], element, best_effort=True))
+                                try:
+                                    answer.update(lkf_api.make_infosync_json(record[position], element, best_effort=True))
+                                except Exception as e:
+                                    print('[ERROR] al procesar el valor =',e)
+                                    error.append(f"Error al procesar el valor {record[position]} para el campo {element['label']}")
                     else:
                         if record[position] and isinstance(record[position], str):
                             if element.get('label') and element['label'] == 'Tipo de Tarea':
@@ -772,24 +963,25 @@ class Produccion_PCI( Produccion_PCI ):
                 else:
                     answer['f1054000a020000000000007'] = 0
                     answer['f1054000a020000000000004'] = 'aerea'
-                if tecnologia_orden == 'fibra':
-                    alfanumerico = str(answer.get('f1054000a0200000000000a3',''))
-                    if not is_cargado_desde_pic:
-                        if len(alfanumerico) != 12:
-                            error.append('Longitud de alfanumerico diferente de 12')
-                    terminal_optica = answer.get('f1054000a020000000000aa1','')
-                    if terminal_optica:
-                        try:
-                            regex = re.compile('[a-z]|[A-Z]')
-                            if len(terminal_optica) != 2:
-                                error.append('Terminal Optica debe de contener 2 caracteres')
-                            elif not regex.findall(terminal_optica[0]):
-                                error.append('EL primer digito de la terminal optica debe de ser un caracter A-Z')
-                            elif terminal_optica[1] not in '1234567890':
-                                error.append('EL segundo digito de la terminal optica debe de ser un numero 0-9')
-                        except Exception as e:
-                            print(e)
-                            print('pass sin terminal optica')
+            if tecnologia_orden == 'fibra':
+                alfanumerico = str(answer.get(self.f['field_no_serie_contratista'],''))
+                # if not is_cargado_desde_pic:
+                if not record_existente:
+                    if len(alfanumerico) != 12:
+                        error.append('Longitud de alfanumerico diferente de 12')
+                terminal_optica = answer.get('f1054000a020000000000aa1','')
+                if terminal_optica:
+                    try:
+                        regex = re.compile('[a-z]|[A-Z]')
+                        if len(terminal_optica) != 2:
+                            error.append('Terminal Optica debe de contener 2 caracteres')
+                        elif not regex.findall(terminal_optica[0]):
+                            error.append('EL primer digito de la terminal optica debe de ser un caracter A-Z')
+                        elif terminal_optica[1].lower() not in '1234567890a':
+                            error.append('EL segundo digito de la terminal optica debe de ser un numero 0-9 ó el caracter A')
+                    except Exception as e:
+                        print(e)
+                        print('pass sin terminal optica')
             if tecnologia_orden == 'fibra' and metraje_cargado > 300:
                 direccion = answer.get('5ff63afdde49fee5e218a474','').strip()
                 if not direccion:
@@ -805,7 +997,7 @@ class Produccion_PCI( Produccion_PCI ):
         num_expediente = answer.get(field_id_expediente,0)
 
         if not can_create_records:
-            if record_existente == 'si' or answers_psr:
+            if record_existente or answers_psr:
                 if 'expediente' not in autorizaciones_carga_folio:
                     permiso_expediente_contratista = 'si' if str(tecnico_pic).lower().strip() == 'pisaplex' else permisos_contratista.get('expediente', '')
                     if not permiso_expediente_contratista or permiso_expediente_contratista.lower() == 'no':
@@ -834,7 +1026,7 @@ class Produccion_PCI( Produccion_PCI ):
         if not is_cfe: 
             if answer.get('633d9f63eb936fb6ec9bf581'):
                 answer.pop('633d9f63eb936fb6ec9bf581')
-            if answer.get('633d9f63eb936fb6ec9bf580') and answer.get('633d9f63eb936fb6ec9bf580') != 'psr':
+            if proyecto_record and proyecto_record not in ['psr', 'degradado', 'contingencia', 'queja_especial']:
                 answer.pop('633d9f63eb936fb6ec9bf580')
         
         this_record.update(metadata)
@@ -857,10 +1049,10 @@ class Produccion_PCI( Produccion_PCI ):
                 'f1054000a010000000000002':cope_recu.lower().replace('\xa0',' ').strip().replace(' ', '_')
             })
         
-        accion_actualizacion = 'ACTUALIZACION' if record_existente == 'si' else 'CARGA INICIAL'
+        accion_actualizacion = 'ACTUALIZACION' if record_existente else 'CARGA INICIAL'
 
         metadata_extra = {}
-        metadata_agregar_script = {"device_properties":{"system": "SCRIPT","process":"PROCESO CARGA DE PRODUCCION HIBRIDO", "accion":accion_actualizacion, "folio carga":current_record['folio'], "archive":"carga_produccion_hibrido.py"}}
+        metadata_agregar_script = {"device_properties":{"system": "SCRIPT","process":"PROCESO CARGA DE PRODUCCION HIBRIDO", "accion":accion_actualizacion, "folio carga":current_record['folio'], "archive":"carga_de_produccion_py3.py"}}
         metadata_extra["properties"] = metadata_agregar_script
         this_record.update(metadata_extra)
 
@@ -869,17 +1061,28 @@ class Produccion_PCI( Produccion_PCI ):
             distrito_answer = self.quita_FO_de_distrito(distrito_answer)
             if len(str(distrito_answer)) != 7:
                 error.append('Longitud del Distrito es diferente de 7')
+            if distrito_answer == tipo_tarea_record:
+                error.append('El Tipo de Tarea no debe ser igual al Distrito')
             answer['f1054000a0100000000000d5'] = distrito_answer
 
+        # Los campos IDENTIFICACION DE NUMERO TELEFONICO EN RED PRINCIPAL, INCLUYE MARCACION *080, IDENTIFICACION DE NUMERO TELEFONICO EN RED SECUNDARIA, INCLUYE MARCACION *080
+        # solo se aceptan para los Cambios de Domicilio, es decir, para los tipos de tarea que empiezan por D
+        if tipo_tarea_record and str(tipo_tarea_record)[0] != 'D':
+            answer.pop('5f1721afa63c9a750b82048a', None)
+            #     answer.pop('5f1721afa63c9a750b82048a')
+            answer.pop('5f1721afa63c9a750b82048b', None)
+            #     answer.pop('5f1721afa63c9a750b82048b')
+        
         if error:
             this_record.update({'error':  error})
         if alerts:
             this_record.update({'alerts': alerts})
-        if record_existente == 'si':
+        if record_existente:
             found_record['answers'].update(answer)
             this_record["answers"] = found_record['answers']
         else:
             this_record["answers"] = answer
+        this_record["autoriza_folio_sin_disto"] = "sin_distometro" in autorizaciones_carga_folio
         return this_record
 
     def quita_FO_de_distrito(self, distrito):
@@ -946,7 +1149,18 @@ class Produccion_PCI( Produccion_PCI ):
             field_id_docto = def_field_id
         else:
             field_id_docto = self.dict_ids_os_pdf[ form_id_docto ]
-        upload_url = lkf_api.post_upload_file(data={'form_id': form_id_docto, 'field_id': field_id_docto}, up_file=pdf_file_dir, jwt_settings_key='JWT_KEY')
+        
+        try:
+            upload_url = lkf_api.post_upload_file(data={'form_id': form_id_docto, 'field_id': field_id_docto}, up_file=pdf_file_dir, jwt_settings_key='JWT_KEY')
+        except Exception as e:
+            print('     ... ... ... ... Error al subir el documento, descansa 10 segundos y reintenta')
+            time.sleep(10)
+            try:
+                upload_url = lkf_api.post_upload_file(data={'form_id': form_id_docto, 'field_id': field_id_docto}, up_file=pdf_file_dir, jwt_settings_key='JWT_KEY')
+            except:
+                return {'error': 'Ocurrió un error al subir el documento. Favor de intentar nuevamente.'}
+        
+
         print('-upload_url=',upload_url)
         try:
             file_url = upload_url['data']['file']
@@ -956,6 +1170,11 @@ class Produccion_PCI( Produccion_PCI ):
             upload_file = {'error': 'Ocurrió un error al subir el documento, favor de contactar a Soporte'}
             print('Ocurrió un error al subir el documento:',str(e))
         pdf_file.close()
+
+        # si no trae def_field_id entonces es la carga de PDF, hay que pegar también la fecha de carga
+        if not def_field_id:
+            upload_file['60882afbf33276990d3f8edf'] = p_utils.get_date_now()
+
         return upload_file
 
     def upload_pdf_disto(self, folio_record_os, form_id_record_os, files_found, def_field_id=''):
@@ -964,6 +1183,21 @@ class Produccion_PCI( Produccion_PCI ):
             file_uploaded = self.upload_docto(dir_docto, form_id_record_os, def_field_id=def_field_id)
             return file_uploaded
         return {}
+
+    def get_data_zip( self, id_field_zip, permiso_sin_docto, docto_process ):
+        val_field_zip = current_record.get('answers', {}).get(id_field_zip, {})
+        doctos_found, doctos_error, ruta_doctos = {}, '', ''
+        data_img_distos = {}
+        if not val_field_zip:
+            if not permiso_sin_docto:
+                return 'error', f'Se requiere documento zip de {docto_process}', None, None
+        else:
+            doctos_found, doctos_error, ruta_doctos, data_img_distos = self.descomprimeZips( val_field_zip, current_record['folio'], f'cargaPorduccion{docto_process}' )
+            if isinstance(doctos_found, str):
+                return 'error', f"Ocurrió un error con el zip de {docto_process}: {self.list_to_str(doctos_error) if isinstance(doctos_error, list) else doctos_error}", None, None
+        
+        print(f'Documentos encontrados en zip de {docto_process}: {list(doctos_found.keys())} No tienen una extensión válida: {doctos_error}')
+        return doctos_found, doctos_error, ruta_doctos, data_img_distos
 
     def get_form_id_turno(self, dif_type, area_cope_dir_inicial, tecnologia_orden):
         # Diccionario de mapeo para form_id_turno
@@ -1012,9 +1246,11 @@ class Produccion_PCI( Produccion_PCI ):
         record_orden.pop('aerea', None)
         record_orden.pop('user_id_old', None)
         record_orden.pop('assigned_to', None)
+        record_orden.pop('answers_before_assign', None)
         return record_orden
 
-    def create_record_fibra_cobre_hibrida(self, pos_field_id, records, header, current_record, parent_id, header_dict, pdfs_found, distometros_found, carga_sin_pdf, carga_sin_disto, dif_type='', permisos_contratista={}, dict_info_connections={}, records_for_cambio_tec=[]):
+    def create_record_fibra_cobre_hibrida(self, pos_field_id, records, header, current_record, parent_id, header_dict, pdfs_found, distometros_found, carga_sin_pdf, carga_sin_disto, dif_type, 
+        permisos_contratista, dict_info_connections, records_for_cambio_tec, data_img, folios_autorizados):
         # print("Una sola funcion para fibra y cobre ....")
         record_errors = []
         records_ok = []
@@ -1044,15 +1280,19 @@ class Produccion_PCI( Produccion_PCI ):
             
             # ==================== ToDo: Esta parte de la tecnologia se puede mejorar =====================
             tec = p_utils.get_order_tecnology(header, record)
-            if tec and tec == 'fibra' and dif_type == 'cobre':
+            if dif_type == 'cobre' and tec in ('fibra', 'migracion'):
                 continue
-            if tec and tec == 'cobre' and dif_type == 'fibra':
+            elif dif_type == 'fibra' and tec == 'cobre':
                 continue
-            if tec and tec == 'migracion' and dif_type == 'cobre':
-                continue
-            tecnologia_orden = str(record[header_dict['tecnologia_orden']]).strip().lower()
+            
             if header_dict.get('folio') and not str(record[header_dict['folio']]).strip():
                 continue
+            # Validacion adicional del telefono por el tema de Bajantes Degradados
+            if header_dict.get('telefono') and not record[ header_dict['telefono'] ]:
+                continue
+
+
+            tecnologia_orden = str(record[header_dict['tecnologia_orden']]).strip().lower()
             if not tecnologia_orden or tecnologia_orden not in ['cobre','hibrida','migracion','fibra']:
                 record_errors.append(record + ["Valores no validos en la columna TECNOLOGIA ORDEN o no esta en orden el formato que se intenta cargar.",])
                 continue
@@ -1143,25 +1383,63 @@ class Produccion_PCI( Produccion_PCI ):
                 connection_id =  connection_dir['connection_id']
                 user_of_connection = connection_dir['user_of_connection']
             if pos_field_id:
+
+                if not pos_telefono:
+                    pos_telefono = self.position_field_in_xls( pos_field_id, None, by_field_id=['f1054000a010000000000005'] )
+
                 if tec == 'hibrida':
                     hibrida = True
                 elif tec == 'migracion':
                     migracion = True
                 this_record = {}
+
+                # ------ Se obtiene el Folio del registro
                 pos_folio = p_utils.get_record_folio(header_dict)
-                folio = str( record[ pos_folio ] ).strip()
-                if folio:
+                if pos_folio is None:
+                    folio = None
+                else:
+                    folio = str( record[ pos_folio ] ).strip()
+                
+                # ------ Se obtiene el Teléfono del registro
+                try:
+                    telefono_registro = int(record[pos_telefono])
+                except Exception as e:
+                    print(e)
+                    record_errors.append(record + ["Error en el telefono, favor de revisar"])
+                    continue
+
+                if len( str(telefono_registro) ) != 10:
+                    record_errors.append(record + ["El teléfono debe tener 10 dígitos"])
+                    continue
+                
+                # if folio:
+                if True:
+
+                    nombre_docto_a_buscar = folio if folio else str(telefono_registro)
                     
                     # Se revisa que existan los documentos de pdf y distometro si el contratista no esta autorizado para carga sin estos documentos
-                    if folio not in pdfs_found.keys() and not carga_sin_pdf:
+                    if nombre_docto_a_buscar not in pdfs_found.keys() and not carga_sin_pdf:
                         record_errors.append( record + ["El folio no trae su documento PDF"] )
-                        print('El folio no trae su documento PDF {}'.format(folio))
+                        print('El folio no trae su documento PDF {}'.format(nombre_docto_a_buscar))
                         continue
-                    if folio not in distometros_found.keys() and not carga_sin_disto:
+                    
+
+                    autorizado_sin_disto = False
+                    if folios_autorizados:
+                        full_name_record = f"{folio}_{telefono_registro}_{area_cope_dir_inicial['division']}_{tecnologia_orden}"
+                        autorizado_sin_disto = 'sin_distometro' in folios_autorizados.get(full_name_record, [])
+
+                    if nombre_docto_a_buscar not in distometros_found.keys() and not carga_sin_disto and not autorizado_sin_disto:
                         record_errors.append( record + ["El folio no trae su documento de Distómetro"] )
-                        print('El folio no trae su documento Distómetro {}'.format(folio))
+                        print('El folio no trae su documento Distómetro {}'.format(nombre_docto_a_buscar))
                         continue
-                    print('Documento encontrado para el Folio {}'.format(folio))
+
+                    error_distom_extension = data_img.get(nombre_docto_a_buscar, {}).get('error')
+                    if error_distom_extension:
+                        record_errors.append( record + [error_distom_extension] )
+                        continue
+                    
+                    print('Documento encontrado para el Folio {}'.format(nombre_docto_a_buscar))
                     
                     dict_pos_record[ folio ] = pos_rec
                     datos_tecnico = {}
@@ -1182,7 +1460,11 @@ class Produccion_PCI( Produccion_PCI ):
                             record_errors.append(record + ["No se encontró la Conexión para este Técnico",])
                         connection_id = id_conexion_tec
                     this_record = self.prepare_record(record, metadata, pos_field_id, folio, connection_id, self.RECORDS_PASSED, dif_type, hibrida, form_id_turno, current_record, copes_consultados, cambio_tecnologia, records_for_cambio_tec, \
-                        info_cope=area_cope_dir_inicial, pos_tipo=pos_tipo, pos_telefono=pos_telefono, datos_tecnico=datos_tecnico, permisos_contratista=permisos_contratista, dict_info_connections=dict_info_connections, header_dict=header_dict )
+                        folios_autorizados, area_cope_dir_inicial, pos_tipo=pos_tipo, pos_telefono=pos_telefono, datos_tecnico=datos_tecnico, permisos_contratista=permisos_contratista, dict_info_connections=dict_info_connections, header_dict=header_dict )
+                    
+                    # fol_mts_distometro = data_img.get(str(nombre_docto_a_buscar))
+                    path_distom = data_img.get(nombre_docto_a_buscar, {}).get('path_disto')
+
                     if this_record['create']:
                         if this_record['create'].get('error'):
                             error_create = [this_record['create']['error'],] if type(this_record['create']['error']) == str else this_record['create']['error']
@@ -1198,13 +1480,28 @@ class Produccion_PCI( Produccion_PCI ):
                         print('Parece que todo va en orden con el folio, entonces cargo su documento pdf')
                         folio_to_create = this_record['create']['folio']
                         form_id_to_create = this_record['create']['form_id']
-                        pdf_uploaded = self.upload_pdf_disto( folio_to_create, form_id_to_create, pdfs_found )
+                        telefono_to_create = this_record['create'].get('answers',{}).get('f1054000a010000000000005','')
+                        area_to_create = this_record['create'].get('answers',{}).get('f1054000a0100000000000a2','')
+                        pdf_uploaded = self.upload_pdf_disto( nombre_docto_a_buscar, form_id_to_create, pdfs_found )
                         if pdf_uploaded.get('error', False):
                             record_errors.append(record + [pdf_uploaded.get('error'),])
                             continue
                         this_record['create']['answers'].update(pdf_uploaded)
                         # Cargando el Distómetro
-                        disto_uploaded = self.upload_pdf_disto( folio_to_create, form_id_to_create, distometros_found, def_field_id='5fff390f68b587d973f1958f' )
+                        folio_autorizado_sin_disto = this_record['create'].pop('autoriza_folio_sin_disto', False)
+                        if path_distom:
+                            resp_distom = self.read_txt_from_img(path_distom, nombre_docto_a_buscar)
+                            if 'error' in resp_distom:
+                                record_errors.append(record + [ resp_distom.get('error') or 'Ocurrió un error al leer la imagen de Distómetro' ])
+                                continue
+                            this_record['create']['answers']['68826735d9a13878537d7d3e'] = resp_distom.get('folio_img')
+                            this_record['create']['answers']['68826735d9a13878537d7d3f'] = resp_distom.get('mts_img')
+                        elif carga_sin_disto:
+                            this_record['create']['answers']['68f8714cc41b6aa3df1f8a53'] = 'Contratista habilitado para carga sin distometro'
+                        elif folio_autorizado_sin_disto:
+                            this_record['create']['answers']['68f8714cc41b6aa3df1f8a53'] = 'Folio autorizado para carga sin distometro'
+
+                        disto_uploaded = self.upload_pdf_disto( nombre_docto_a_buscar, form_id_to_create, distometros_found, def_field_id='5fff390f68b587d973f1958f' )
                         if disto_uploaded.get('error', False):
                             record_errors.append(record + [disto_uploaded.get('error'),])
                             continue
@@ -1223,15 +1520,16 @@ class Produccion_PCI( Produccion_PCI ):
                             record_errors.append(record + [ p_utils.arregla_msg_error_sistema(response_created_admin) ])
                             continue
 
-                        if folio_psr:
-                            # records_to_psr[ folio_to_create ] = folio_psr
-                            fols_psr_to_update.append( folio_psr )
-
                         # Ahora se crea en IASA
                         resp_copy = self.make_copy_os( this_record['create']['answers'], form_id_turno, current_record['folio'], folio, connection_id )
-                        if not resp_copy:
-                            record_errors.append(record + ["Ocurrió un error inesperado, favor de consultar a Soporte",])
+                        if resp_copy.get('error'):
+                            record_errors.append(record + [resp_copy['error'],])
+                            self.rmv_psr_created(settings.config['ACCOUNT_ID'], self.dict_equivalences_forms_id[form_id_to_create], folio_to_create, telefono_to_create, area_to_create)
+                            continue
 
+                        if folio_psr:
+                            fols_psr_to_update.append( folio_psr )
+                        
                         # Se actualizan los totales
                         create_json.update(p_utils.update_create_json(create_json, this_record))
 
@@ -1242,24 +1540,28 @@ class Produccion_PCI( Produccion_PCI ):
                         records_ok.append(record+[msg_exitoso,])
 
                     elif this_record['update']:
+                        is_updating_record_exists = this_record['update'].get('exists_copy', False)
+                        record_os_copy = this_record['update'].get('record_copy')
                         form_id_to_update = this_record['update'].get('form_id')
                         folio_to_update = this_record['update'].get('folio')
+                        folio_to_update = this_record['update'].pop('folio_record_admin', folio_to_update)
                         telefono_to_update = this_record['update'].get('answers',{}).get('f1054000a010000000000005','')
                         area_to_update = this_record['update'].get('answers',{}).get('f1054000a0100000000000a2','')
                         id_user_old = this_record['update'].get('user_id_old')
+                        answers_prev = this_record['update'].get('answers_before_assign')
 
                         if this_record['update'].get('error'):
                             if this_record['update'].get('assigned_to'):
                                 id_connection_assigned = this_record['update']['assigned_to']
-                                self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update )
+                                self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, answers_prev )
                             if type(this_record['update']['error']) == str:
                                 msg_error_record = this_record['update']['error']
                                 if this_record['update'].get('can_upload_pdf', False):
-                                    pdf_uploaded = self.upload_pdf_disto( folio, form_id_turno, pdfs_found )
+                                    pdf_uploaded = self.upload_pdf_disto( nombre_docto_a_buscar, form_id_turno, pdfs_found )
                                     if pdf_uploaded.get('error', False):
                                         msg_error_record += ' Error al cargar el PDF {}'.format(pdf_uploaded.get('error'))
                                     else:
-                                        res_upload_only_pdf = lkf_api.patch_multi_record(pdf_uploaded, self.dict_equivalences_forms_id[form_id_turno], folios=[folio,], jwt_settings_key='USER_JWT_KEY')
+                                        res_upload_only_pdf = lkf_api.patch_multi_record(pdf_uploaded, self.dict_equivalences_forms_id[form_id_turno], folios=[folio_to_update,], jwt_settings_key='USER_JWT_KEY')
                                         print('Error por folio en cobranza... pero si se deja cargar pdf ',res_upload_only_pdf)
                                         msg_error_record += ' pero se actualizó el PDF correctamente'
                                 record_errors.append(record + [msg_error_record,])
@@ -1278,23 +1580,37 @@ class Produccion_PCI( Produccion_PCI ):
                         # Empiezo a cargar el documento pdf del folio
                         """
                         print('Parece que todo va en orden con el folio, entonces cargo su documento pdf')
-                        pdf_uploaded = self.upload_pdf_disto( folio_to_update, form_id_to_update, pdfs_found )
+                        pdf_uploaded = self.upload_pdf_disto( nombre_docto_a_buscar, form_id_to_update, pdfs_found )
                         if pdf_uploaded.get('error', False):
                             record_errors.append(record + [pdf_uploaded.get('error'),])
-                            self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update )
+                            self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, answers_prev, is_updating_record_exists )
                             continue
                         this_record['update']['answers'].update(pdf_uploaded)
                         # Cargando el Distómetro
-                        disto_uploaded = self.upload_pdf_disto( folio_to_update, form_id_to_update, distometros_found, def_field_id='5fff390f68b587d973f1958f' )
+                        folio_autorizado_sin_disto = this_record['update'].pop('autoriza_folio_sin_disto', False)
+                        if path_distom:
+                            resp_distom = self.read_txt_from_img(path_distom, nombre_docto_a_buscar)
+                            if 'error' in resp_distom:
+                                record_errors.append(record + [ resp_distom.get('error') or 'Ocurrió un error al leer la imagen de Distómetro' ])
+                                self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, answers_prev, is_updating_record_exists )
+                                continue
+                            this_record['update']['answers']['68826735d9a13878537d7d3e'] = resp_distom.get('folio_img')
+                            this_record['update']['answers']['68826735d9a13878537d7d3f'] = resp_distom.get('mts_img')
+                        elif carga_sin_disto:
+                            this_record['update']['answers']['68f8714cc41b6aa3df1f8a53'] = 'Contratista habilitado para carga sin distometro'
+                        elif folio_autorizado_sin_disto:
+                            this_record['update']['answers']['68f8714cc41b6aa3df1f8a53'] = 'Folio autorizado para carga sin distometro'
+
+                        disto_uploaded = self.upload_pdf_disto( nombre_docto_a_buscar, form_id_to_update, distometros_found, def_field_id='5fff390f68b587d973f1958f' )
                         if disto_uploaded.get('error', False):
                             record_errors.append(record + [disto_uploaded.get('error'),])
-                            self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update )
+                            self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, answers_prev, is_updating_record_exists )
                             continue
                         this_record['update']['answers'].update(disto_uploaded)
 
                         record_admin = self.prepare_record_admin( deepcopy( this_record['update'] ) )
                         response = lkf_api.patch_record(record_admin,  jwt_settings_key='JWT_KEY')
-                        print("+++++ Actualizando folio:",folio)
+                        print("+++++ Actualizando folio:",folio_to_update)
                         print("++++++++++ response:",response)
                         try:
                             status_code = response['status_code']
@@ -1302,14 +1618,16 @@ class Produccion_PCI( Produccion_PCI ):
                             status_code = 500
                         if response['status_code'] in (200,201,202,204, 205):
                             if response['status_code'] != 205:
-                                create_json.update(p_utils.update_create_json(create_json, this_record))
                                 msg_exitoso = "Folio MODIFICADO con éxito"
                                 if this_record['update'].get('alerts', []):
                                     msg_exitoso = '{} :: {}'.format(msg_exitoso, self.list_to_str( this_record['update'].get('alerts', []) ))
+                                resp_copy = self.make_copy_os( this_record['update']['answers'], form_id_turno, current_record['folio'], folio_to_update, connection_id, data_os_copy=record_os_copy )
+                                if resp_copy.get('error'):
+                                    record_errors.append(record + [resp_copy['error'],])
+                                    self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, answers_prev, is_updating_record_exists )
+                                    continue
                                 records_ok.append(record+[msg_exitoso,])
-                                resp_copy = self.make_copy_os( this_record['update']['answers'], form_id_turno, current_record['folio'], folio, connection_id )
-                                if not resp_copy:
-                                    record_errors.append(record + ["Ocurrió un error inesperado, favor de consultar a Soporte",])
+                                create_json.update(p_utils.update_create_json(create_json, this_record))
                         else:
                             if status_code == 404:
                                 record_errors.append(record + ["No se pudo actualizar el registro ya que no se encontró",])
@@ -1317,7 +1635,7 @@ class Produccion_PCI( Produccion_PCI ):
                                 if this_record['update'].get('assigned_to'):
                                     id_connection_assigned = this_record['update']['assigned_to']
                                     id_user_old = this_record['update']['user_id_old']
-                                    self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update )
+                                    self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, answers_prev, is_updating_record_exists )
                                 msg_error_completo = p_utils.arregla_msg_error_sistema(response)
                                 record_errors.append(record + [msg_error_completo,])
                     elif this_record.get('cambio_tecnologia'):
@@ -1328,9 +1646,11 @@ class Produccion_PCI( Produccion_PCI ):
                         create_json['created']['duplicate'] += 1
                         if folio not in self.GLOBAL_COMMUNICATION:
                             self.GLOBAL_COMMUNICATION += 'Folio: %s cargado previamente. '%folio
-                else:
-                    print("Registro Vacio ************ ")
-                    continue
+                
+                # Esta validacion ya no aplica porque habrá casos donde no pongan el folio por Bajantes Degradados
+                # else:
+                #     print("Registro Vacio ************ ")
+                #     continue
             else:
                 record_errors.append(record + ["Forma de Orden de Servicio no compartida",])
         
@@ -1421,6 +1741,20 @@ class Produccion_PCI( Produccion_PCI ):
         connections_users = p_utils.get_all_connections()
         return { infCon['id']: {'nombre': infCon.get('first_name'), 'username': infCon.get('username')} for infCon in connections_users if infCon.get('id') }
 
+    def get_position_telefono(self, header_dict):
+        idxs_tel = ['Telefono', 'Teléfono']
+        for idx_tel in idxs_tel:
+            idx = idx_tel.lower().replace(' ', '_')
+            if header_dict.get( idx ) is not None:
+                return header_dict[idx]
+
+            for variant_tel in p_utils.equivalcens_map.get(idx_tel, []):
+                variant = variant_tel.lower().replace(' ', '_')
+                if header_dict.get( variant ) is not None:
+                    return header_dict[variant]
+
+        return None
+
     def upload_bolsa_hibrido(self, current_record, form_id, header, records, RECORDS_PASSED=0):
         bonificaciones_not_found = self.get_cols_bonificaciones(header)
         if bonificaciones_not_found:
@@ -1453,44 +1787,27 @@ class Produccion_PCI( Produccion_PCI ):
         permisos_contratista['info_iasa'] = data_admin_iasa
         print('permisos cuenta padre =',data_admin_iasa)
 
+
+        # PARA MIS PRUEBAS
+        # permisos_contratista['carga_sin_distometro'] = 'si'
+
+        
         """
         Obteniendo los folios de los pdfs y Distómetros
         """
-        permiso_carga_sin_pdf = permisos_contratista.get('carga_sin_pdf', '')
-        carga_sin_pdf = True
-        if not permiso_carga_sin_pdf or permiso_carga_sin_pdf.lower() == 'no':
-            carga_sin_pdf = False
-
-        permiso_carga_sin_disto = permisos_contratista.get('carga_sin_distometro', '')
-        carga_sin_disto = True
-        if not permiso_carga_sin_disto or permiso_carga_sin_disto.lower() == 'no':
-            carga_sin_disto = False
-        zip_field_pdf = current_record.get('answers', {}).get('5b99664fa53def000d9c6f94',{})
-        if not zip_field_pdf:
-            if carga_sin_pdf:
-                pdfs_found, pdfs_error, ruta_pdfs = {}, '', ''
-            else:
-                return self.set_status_proceso( current_record, record_id, 'error', msg='Se requiere documento zip de pdfs' )
-        else:
-            pdfs_found, pdfs_error, ruta_pdfs = self.descomprimeZips( zip_field_pdf, current_record['folio'], 'cargaPorduccionPDFS' )
-        if type(pdfs_found) == str:
-            # Ocurrió un error con el zip de pdfs
-            return self.set_status_proceso( current_record, record_id, 'error', msg='Ocurrió un error con el zip de pdfs: {}'.format(pdfs_error) )
-        print('Documentos encontrados en zip de pdfs: {} No tienen una extensión válida: {}'.format(list(pdfs_found.keys()), pdfs_error))
-
-        zip_field_distometro = current_record.get('answers', {}).get('60a81c43a57544220ca210a7',{})
-        if not zip_field_distometro:
-            if carga_sin_disto:
-                distometros_found, distometros_error, ruta_ditometros = {}, [], ''
-            else:
-                return self.set_status_proceso( current_record, record_id, 'error', msg='Se requiere documento zip de Distómetros' )
-        else:
-            distometros_found, distometros_error, ruta_ditometros = self.descomprimeZips( zip_field_distometro, current_record['folio'], 'cargaPorduccionDistometros' )
-        if type(distometros_found) == str:
-            # Ocurrió un error con el zip de pdfs
-            return self.set_status_proceso( current_record, record_id, 'error', msg='Ocurrió un error con el zip de Distómetros: {}'.format(distometros_error) )
-        print('Documentos encontrados en zip de Distometros: {} No tienen una extensión válida: {}'.format(list(distometros_found.keys()), distometros_error))
+        carga_sin_pdf = self.have_permiso( permisos_contratista.get('carga_sin_pdf') )
+        carga_sin_disto = self.have_permiso( permisos_contratista.get('carga_sin_distometro') )
         
+        pdfs_found, pdfs_error, ruta_pdfs, data_img_pdfs = self.get_data_zip( '5b99664fa53def000d9c6f94', carga_sin_pdf, 'PDFS' )
+        if pdfs_found == 'error':
+            return self.set_status_proceso(current_record, record_id, 'error', msg=pdfs_error)
+
+        distometros_found, distometros_error, ruta_ditometros, data_img_distometros = self.get_data_zip('60a81c43a57544220ca210a7', carga_sin_disto, 'Distometros')
+        if distometros_found == 'error':
+            return self.set_status_proceso(current_record, record_id, 'error', msg=distometros_error)
+
+        print(f'+-+-+-+-+ Imagenes leidas :: data_img_pdfs= {data_img_pdfs} data_img_distometros= {data_img_distometros}')
+
         create_json_fibra =  {'created':{ 'order':0, 'duplicate':0 ,'total':0, 'errores':0},
                               'uploaded':{'order':0, 'duplicate':0, 'total':0, 'errores':0},
                               'error_file_records' : []}
@@ -1504,20 +1821,45 @@ class Produccion_PCI( Produccion_PCI ):
 
         # Se revisa que no haya folios duplicados en la carga
         pos_folio = p_utils.get_record_folio(header_dict)
-        if pos_folio is None:
-            return self.set_status_proceso( current_record, record_id, 'error', msg='No se encontro la columna Folio en el documento de carga' )
+        folios_autorizados = None
+        # Validacion ya no es necesaria por tema de Bajantes Degradados
+        # if pos_folio is None:
+        #     return self.set_status_proceso( current_record, record_id, 'error', msg='No se encontro la columna Folio en el documento de carga' )
         
-        all_folios_in_file = [ record[ pos_folio ] for record in records if record[ pos_folio ] ]
-        duplicated_folios = [str(item) for item, count in collections.Counter(all_folios_in_file).items() if count > 1]
-        print("duplicated_folios=",duplicated_folios)
-        if duplicated_folios:
-            return self.set_status_proceso( current_record, record_id, 'error', msg='No se permiten folios duplicados en un mismo proceso {}'.format(self.list_to_str(duplicated_folios)) )
+        if pos_folio != None:
+            pos_telefono_xls = self.get_position_telefono(header_dict)
+            # Si lleva la columna Folio se revisa que no haya duplicados
+            all_folios_in_file, all_telefonos_in_file = [], []
+            # all_folios_in_file = [ record[ pos_folio ] for record in records if record[ pos_folio ] ]
+            for record in records:
+                if not record[pos_folio]:
+                    continue
+                all_folios_in_file.append( str(record[pos_folio]) )
+                
+                if pos_telefono_xls is None:
+                    continue
+
+                try:
+                    all_telefonos_in_file.append( int(record[pos_telefono_xls]) )
+                except:
+                    continue
+            
+            folios_autorizados = p_utils.find_folio_autorizado(all_folios_in_file, all_telefonos_in_file, '', '')
+            print('++++++ folios_autorizados =',folios_autorizados)
+
+            
+            duplicated_folios = [str(item) for item, count in collections.Counter(all_folios_in_file).items() if count > 1]
+            print("duplicated_folios=",duplicated_folios)
+            if duplicated_folios:
+                return self.set_status_proceso( current_record, record_id, 'error', msg='No se permiten folios duplicados en un mismo proceso {}'.format(self.list_to_str(duplicated_folios)) )
         
 
         records_for_cambio_tec = p_utils.get_cambios_tecnologia()
         print('+++ records_for_cambio_tec =',records_for_cambio_tec)
-        create_json_fibra.update(self.create_record_fibra_cobre_hibrida(pos_field_id, records, header, current_record, parent_id, header_dict, pdfs_found, distometros_found, carga_sin_pdf, carga_sin_disto, dif_type='fibra', permisos_contratista=permisos_contratista, dict_info_connections=dict_info_connections, records_for_cambio_tec=records_for_cambio_tec))
-        create_json_cobre.update(self.create_record_fibra_cobre_hibrida(pos_field_cobre_id, records, header, current_record, parent_id, header_dict, pdfs_found, distometros_found, carga_sin_pdf, carga_sin_disto, dif_type='cobre', permisos_contratista=permisos_contratista, dict_info_connections=dict_info_connections, records_for_cambio_tec=records_for_cambio_tec))
+        create_json_fibra.update(self.create_record_fibra_cobre_hibrida(pos_field_id, records, header, current_record, parent_id, header_dict, pdfs_found, distometros_found, carga_sin_pdf, carga_sin_disto, 
+            'fibra', permisos_contratista, dict_info_connections, records_for_cambio_tec, data_img_distometros, folios_autorizados))
+        create_json_cobre.update(self.create_record_fibra_cobre_hibrida(pos_field_cobre_id, records, header, current_record, parent_id, header_dict, pdfs_found, distometros_found, carga_sin_pdf, carga_sin_disto, 
+            'cobre', permisos_contratista, dict_info_connections, records_for_cambio_tec, data_img_distometros, folios_autorizados))
         total_errors = len( create_json_fibra.get('error_file_records', []) ) + len( create_json_cobre.get('error_file_records', []) )
         print('total_errors=',total_errors)
         
@@ -1588,6 +1930,13 @@ class Produccion_PCI( Produccion_PCI ):
         return permisions['answers'].get('5a0a8371b43fdd2f5f2ad7cb')
 
     def carga_de_produccion(self, current_record):
+
+        fields_clean = ['f1074100a010000000000002', 'f1074100a010000000000cc1', 'f1074100a010000000000003', '5f088b6d7df8cf7fe42f215c', 'f1074100a010000000000a12', \
+        'f1074100a01000000000ac12', 'f1074100a010000000000a11', 'f1074100a010000000000a13']
+
+        for field_clean in fields_clean:
+            current_record['answers'].pop(field_clean, None)
+
         a, b = self.set_status_proceso(current_record, record_id, 'procesando')
         url = current_record['answers'].get('f1074100a010000000000001', {}).get('file_url')
 
@@ -1674,6 +2023,9 @@ if __name__ == '__main__':
 
     from pci_base_utils import PCI_Utils
     p_utils = PCI_Utils(cr=lkf_obj.cr, cr_admin=cr_admin, lkf_api=lkf_api, net=lkf_obj.net, settings=settings, lkf_obj=lkf_obj)
+
+    from get_data_img_distometro import DataImgDistometro
+    img_distos = DataImgDistometro()
 
     # from validaciones_orden_servicio import ValidarOS
     # validar_os = ValidarOS(

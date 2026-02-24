@@ -33,7 +33,9 @@ class PCI_Utils():
 
         self.equivalcens_map = { 
             'Aerea': ['AEREA', 'M. AEREO'],
-            'Alfanumérico':['SERIE ONT ALFANUMÉRICO','ONT ALFANUMÉRICO','SERIE ONT ALFANUMERICO','Serie ONT Alfanumerico', 'Serie ONT Alfanumérico',
+            # 'Alfanumérico':['SERIE ONT ALFANUMÉRICO','ONT ALFANUMÉRICO','SERIE ONT ALFANUMERICO','Serie ONT Alfanumerico', 'Serie ONT Alfanumérico',
+            #     'Serie ONT alfanumerico','Serie ONT alfanumérico','serie ONT alfanumerico', 'serie ONT alfanumérico','serie ONT Alfanumerico', 'serie ONT Alfanumérico'],
+            'Numero de Serie Contratista':['SERIE ONT ALFANUMÉRICO','ONT ALFANUMÉRICO','SERIE ONT ALFANUMERICO','Serie ONT Alfanumerico', 'Serie ONT Alfanumérico',
                 'Serie ONT alfanumerico','Serie ONT alfanumérico','serie ONT alfanumerico', 'serie ONT alfanumérico','serie ONT Alfanumerico', 'serie ONT Alfanumérico'],
             'Clase de Servicio': ['CLASE_SERV', 'Clase', 'Clase Servicio', 'Clase de Servicio'],
             'Created At': ['Fecha Pendiente', 'Fecha de Pendiente', 'FECHA DE PENDIENTES'],
@@ -66,9 +68,10 @@ class PCI_Utils():
             'Cope': ['Cope','COPE','cope'],
             'Motivo de Objecion': ['DETALLE'],
             'usuario_reporta': ['usuario_reporta'],
-            'Num. Serie': ['Num. Serie', 'Num Serie'],
+            'Num. Serie': ['Num. Serie', 'Num Serie', 'ALFANUMERICO'],
             'cambio_tecnologia': ['cambio_tecnologia', 'cambio_tecnología', 'cambio_de_tecnologia', 'cambio_de_tecnología'],
         }
+        self.equivalcens_map['Alfanumérico Contratista'] = self.equivalcens_map['Numero de Serie Contratista']
 
     def add_coma(self, snum):
         return "{:,.2f}".format( float(snum) )
@@ -110,7 +113,7 @@ class PCI_Utils():
                             label_err = info_group['label']
                             msg_err_arr.append('SET {0}:: {1} - {2}'.format(i_err, msg_err, label_err))
             if msg_err_arr:
-                data_str_err = list_to_str(msg_err_arr)
+                data_str_err = self.lkf_obj.list_to_str(msg_err_arr)
         except Exception as e:
             print('response', response)
             print('Exception =  ', e)
@@ -118,6 +121,8 @@ class PCI_Utils():
             error_json = response.get('json',{}).get('error','')
             if error_json:
                 data_str_err = error_json
+        if not data_str_err:
+            data_str_err = 'Ocurrio un error desconocido favor de contactar a soporte'
         return data_str_err
 
     def asignar_registro_a_conexion(self, connection_id, record_assign):
@@ -260,7 +265,7 @@ class PCI_Utils():
                 return str(actual_key) + '-' + str(next_key)
         return actual_key
 
-    def check_folio(self, form_id_admin, folio, telefono, area):
+    def check_folio(self, form_id_admin, folio, telefono, area, in_this_account=False):
         # form_id_admin = self.dict_equivalences_forms_id[form_id]
         query_folio_os = {
             'form_id':  form_id_admin, 'deleted_at' : {'$exists':False}, 
@@ -268,8 +273,14 @@ class PCI_Utils():
             'answers.f1054000a010000000000005': telefono,
             'answers.f1054000a0100000000000a2': area
         }
+        if not folio:
+            query_folio_os.pop('folio')
+            query_folio_os['answers.633d9f63eb936fb6ec9bf580'] = 'degradado'
         print('query_folio_os =',query_folio_os)
-        record = self.cr_admin.find_one(query_folio_os, {'folio':1, 'answers':1, 'connection_id':1, 'user_id':1, 'created_at': 1})
+        if not in_this_account:
+            record = self.cr_admin.find_one(query_folio_os, {'folio':1, 'answers':1, 'connection_id':1, 'user_id':1, 'created_at': 1})
+        else:
+            record = self.cr.find_one(query_folio_os, {'folio':1, 'answers':1, 'connection_id':1, 'user_id':1, 'created_at': 1})
         return record
 
     def check_folio_pagado(self, folio):
@@ -328,18 +339,39 @@ class PCI_Utils():
         return status_code
 
     def find_folio_autorizado(self, folio, telefono, division, tecnologia):
-        record_autorizacion = self.cr_admin.find_one({
+        query_autorizacion = {
             'form_id': self.FORM_ID_AUTORIZA_CARGA_FOLIOS, 
             'deleted_at': {'$exists': False}, 
             'answers.5f93173c1a0ae8341d543f65': folio, 
-            'answers.5f93173c1a0ae8341d543f66': int(telefono), 
             'answers.5f93173c1a0ae8341d543f67': division, 
             'answers.5f93173c1a0ae8341d543f68': tecnologia
-        }, {'folio':1, 'answers.5fbbdac8a85f5b2ab8bb033e': 1})
-        if not record_autorizacion:
-            return []
-        return record_autorizacion.get('answers',{}).get('5fbbdac8a85f5b2ab8bb033e', [])
+        }
 
+        # Se valida si es un solo folio el que se consulta para devolver el campo de Autorizaciones
+        if not isinstance(folio, list):
+            query_autorizacion['answers.5f93173c1a0ae8341d543f66'] = int(telefono)
+            record_autorizacion = self.cr_admin.find_one(query_autorizacion, {'folio':1, 'answers.5fbbdac8a85f5b2ab8bb033e': 1})
+            if not record_autorizacion:
+                return []
+            return record_autorizacion.get('answers',{}).get('5fbbdac8a85f5b2ab8bb033e', [])
+
+        # Si llega aqui, es un grupo de folios a consultar
+        folios_autorizados = {}
+        query_autorizacion['answers.5f93173c1a0ae8341d543f65'] = { '$in': folio }
+        query_autorizacion['answers.5f93173c1a0ae8341d543f66'] = { '$in': telefono }
+        query_autorizacion.pop('answers.5f93173c1a0ae8341d543f67', None)
+        query_autorizacion.pop('answers.5f93173c1a0ae8341d543f68', None)
+        records_autorizacion = self.cr_admin.find(query_autorizacion, {'folio': 1, 'answers': 1})
+        for rec_autoriza in records_autorizacion:
+            answer_autoriza = rec_autoriza['answers']
+            folio_autorizacion = answer_autoriza['5f93173c1a0ae8341d543f65']
+            telefono_autorizacion = answer_autoriza['5f93173c1a0ae8341d543f66']
+            division_autorizacion = answer_autoriza['5f93173c1a0ae8341d543f67']
+            tecnologia_autorizacion = answer_autoriza['5f93173c1a0ae8341d543f68']
+            full_name_autoriza = f'{folio_autorizacion}_{telefono_autorizacion}_{division_autorizacion}_{tecnologia_autorizacion}'
+            folios_autorizados[ full_name_autoriza ] = answer_autoriza.get('5fbbdac8a85f5b2ab8bb033e', [])
+        return folios_autorizados
+        
     def find_tipo_tarea_catalog(self, tipo_tarea, tecnologia_orden, jwt_settings_key=None):
         mango_query = { 
             "selector": { 
@@ -781,6 +813,10 @@ class PCI_Utils():
                     if name_field_to_process == 'usuario_reporta':
                         pos_field_id[pos_key]['field_id'] = 'f1054000a030000000000111'
 
+                    # Forzar que si es num_serie apunte al campo del Contratista
+                    if name_field_to_process == 'Num. Serie':
+                        pos_field_id[pos_key]['field_id'] = lkf_obj.f['field_no_serie_contratista']
+
         for title_field in ['Folio', 'Etapa', 'Tipo', 'Clase de Servicio', 'Tipo de Tarea', 'Aerea', 'Subterranea', 'Created At', 'Contratista', 'Tecnico', \
         'Fecha de Liquidacion', 'Fecha de Asignacion', 'Cope', 'Num. Serie', 'cambio_tecnologia', 'usuario_reporta']:
             update_json_fields_id( title_field )
@@ -1014,7 +1050,9 @@ class PCI_Utils():
             all_records (list): Renglones del excel
         """
         max_row_accepted = 5000
-        if self.get_num_rows_in_xls(file_url) > max_row_accepted:
+        num_rows_found = self.get_num_rows_in_xls(file_url)
+        if num_rows_found > max_row_accepted:
+            print('[ERROR] numero de renglones =',num_rows_found)
             return {'error': f'El excel rebasa el límite de renglones permitidos {max_row_accepted}. Favor de revisar'}, None
         
         sheet = pyexcel.get_sheet(url = file_url)

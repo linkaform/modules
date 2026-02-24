@@ -362,6 +362,10 @@ class ValidarOS():
                 if incorrect_doctos:
                     return incorrect_doctos
 
+                # Si ya lleva el PDF pero no lleva la fecha de Carga, se debe integrar
+                if self.answers.get(self.id_field_os_pdf) and not self.answers.get('60882afbf33276990d3f8edf'):
+                    self.info_to_complete_record['60882afbf33276990d3f8edf'] = self.p_utils.get_date_now()
+
                 # Se valida la clave del tecnico, solo aplica para Admin
                 if self.lkf_obj.account_id == 1259:
                     invalid_clave = self.validate_clave_tecnico()

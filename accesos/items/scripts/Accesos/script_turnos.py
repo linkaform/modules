@@ -17,7 +17,7 @@ if __name__ == "__main__":
 
     area = data.get("area")
     comments = data.get('comments',"")
-    checkin_id = data.get("checkin_id","")
+    checkin_id = data.get("checkin_id", "")
     employee_list = data.get("employee_list",[])
     equipo = data.get('equipo',"")
     forzar = data.get('forzar')
@@ -45,6 +45,9 @@ if __name__ == "__main__":
     filterDate = data.get("filterDate", "")
     limit = data.get("limit", 10)
     offset = data.get("offset", 0)
+    fotografia=data.get("fotografia",[])
+    nombre_suplente=data.get("nombre_suplente","")
+    guard_id=data.get("guard_id","")
     #-FUNCTIONS
     print('option', option)
     if option == 'load_shift':
@@ -67,12 +70,11 @@ if __name__ == "__main__":
     elif option == 'catalog_location':
         response = acceso_obj.get_catalog_locations(location)
     elif option == 'checkin':
-        # used
-        response = acceso_obj.do_checkin(location, area, employee_list)
+        response = acceso_obj.do_checkin(location, area, employee_list, fotografia=fotografia ,nombre_suplente=nombre_suplente, checkin_id=checkin_id)
     elif option == 'checkout':
         # used
         response = acceso_obj.do_checkout(checkin_id=checkin_id, \
-            location=location, area= area, guards=guards, forzar=forzar, comments=comments)
+            location=location, area= area, guards=guards, forzar=forzar, comments=comments, fotografia=fotografia, guard_id=guard_id)
     elif option == 'get_user_menu':
         response = acceso_obj.get_config_accesos()
     elif option == 'search_access_pass':
@@ -114,7 +116,10 @@ if __name__ == "__main__":
         response = acceso_obj.create_enviar_msj(data_msj=data_msj, data_cel_msj=data_cel_msj)
     elif option == 'send_msj_by_access':
         response = acceso_obj.send_email_and_sms(data=data_msj)
-
+    elif option == 'update_delete_suplente':
+        response = acceso_obj.update_delete_suplente(nombre_suplente=nombre_suplente)
+    elif option == 'force_quit_all_persons':
+        response = acceso_obj.force_quit_all_persons(location=location)
     else :
         response = {"msg": "Empty"}
     # print('================ END RETURN =================')
