@@ -336,15 +336,14 @@ class Accesos(Accesos):
         return update_file
     
     def assign_user_inbox(self, data):
-        db_name = f'clave_{self.user_id}'
+        user_id_to_assign = self.unlist(data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['id_usuario'], ''))
+        db_name = f'clave_{user_id_to_assign}'
         self.cr_db = self.lkf_api.couch.set_db(db_name)
         record = self.cr_db.get(self.record_id)
         if record:
             return {'status_code': 202, 'type': 'success', 'msg': 'Ya existe el registro', 'data': {}}
 
         user_name_to_assign = data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['nombre_usuario'], '')
-        user_id_to_assign = self.unlist(data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['id_usuario'], ''))
-        self.cr_db = self.lkf_api.couch.set_db(f'clave_{user_id_to_assign}')
         nombre_recorrido = data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.mf['nombre_del_recorrido'], '')
         ubicacion_recorrido = data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], '')
         
@@ -415,7 +414,7 @@ class Accesos(Accesos):
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
-                "form_id": 121677, #TODO: Modularizar id
+                "form_id": self.AREAS_DE_LAS_UBICACIONES,
                 f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": location,
                 f"answers.{self.Location.f['area']}": {"$in": format_areas}
             }},
@@ -436,7 +435,7 @@ class Accesos(Accesos):
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
-                "form_id": 121742, #TODO: Modularizar id
+                "form_id": self.CONFIGURACION_DE_RECORRIDOS_FORM,
                 f"answers.{self.f['nombre_del_recorrido']}": nombre_recorrido,
                 f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": ubicacion_recorrido
             }},

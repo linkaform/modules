@@ -55,7 +55,7 @@ class Accesos(Accesos):
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
-                "form_id": 121742, #self.CONFIGURACION_RECORRIDOS_ID,
+                "form_id": self.CONFIGURACION_DE_RECORRIDOS_FORM,
                 f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": location,
                 f"answers.{self.mf['nombre_del_recorrido']}": name_rondin
             }},
