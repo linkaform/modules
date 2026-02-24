@@ -7,11 +7,11 @@
             <config>True</config>
             <inc_by>1</inc_by>
             <manual>False</manual>
-            <next>1521</next>
+            <next>1525</next>
             <padding_zeros>3</padding_zeros>
             <prefix>PE/%y%m/</prefix>
             <required>False</required>
-            <suffix>None</suffix>
+            <suffix />
         </folio>
     </advanced_options>
     <allow_page_navigation>True</allow_page_navigation>
@@ -6783,7 +6783,7 @@
     <templates>
         <item>
             <_type>single_record</_type>
-            <default>True</default>
+            <default>False</default>
             <description>Template para carnet de identidad para linkaform</description>
             <id>374</id>
             <name>Linkaform - Carnet Identidad</name>
@@ -6795,6 +6795,7 @@
         </item>
         <item>
             <_type>single_record</_type>
+            <default>False</default>
             <description>Plantilla para Gafete a Una Cara</description>
             <id>491</id>
             <name>Soter - Gafete a Una Cara</name>
@@ -6807,6 +6808,7 @@
         </item>
         <item>
             <_type>single_record</_type>
+            <default>True</default>
             <description>Plantilla para Pase de Entrada en Soter</description>
             <id>584</id>
             <name>Soter - Pase de Entrada</name>
@@ -6826,5 +6828,5 @@
         <seconds_to_expire>None</seconds_to_expire>
         <welcome_text>None</welcome_text>
     </timer_config>
-    <updated_at>1771954633.0</updated_at>
+    <updated_at>1771955125.0</updated_at>
 </lkf>
