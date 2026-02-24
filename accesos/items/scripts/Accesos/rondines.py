@@ -7,11 +7,7 @@ from linkaform_api import settings
 from account_settings import *
 from datetime import datetime
 import calendar
-
 import sys, os
-print("CWD:", os.getcwd())
-print("PATH0:", sys.path)
-
 
 from accesos_utils import Accesos
 
@@ -1006,15 +1002,21 @@ class Accesos(Accesos):
     def get_catalog_areas(self, ubicacion=""):
         #Obtener areas disponibles para rondin
         if ubicacion:
-            options = {
-                'startkey': [ubicacion],
-                'endkey': [f"{ubicacion}\n",{}],
-                'group_level':2
-            }
-
-            catalog_id = self.AREAS_DE_LAS_UBICACIONES_CAT_ID
-            form_id = self.CONFIGURACION_RECORRIDOS_FORM
-            return self.catalogo_view(catalog_id, form_id, options)
+            query = [
+                {"$match": {
+                    "form_id": self.AREAS_DE_LAS_UBICACIONES,
+                    "deleted_at": {"$exists": False},
+                    f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}": ubicacion,
+                    f"answers.{self.f['area_tag_id']}": {"$exists": True}
+                }},
+                {"$project": {
+                    "_id": f"$answers.{self.mf['nombre_area']}",
+                }}
+            ]
+            data = self.format_cr(self.cr.aggregate(query))
+            data = [item.get('_id') for item in data]
+            format_data = list(set(data))
+            return format_data
         else:
             raise Exception("Ubicacion is required.")
 
