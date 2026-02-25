@@ -9,37 +9,32 @@ class Custom(Custom):
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
 
-    def get_fields_ponderables(self):
-        """
-        Genera un diccionario de páginas y los campos que tienen configurada una ponderacion
-        """
-        form_fields = lkf_obj.lkf_api.get_form_id_fields(lkf_obj.form_id)
+    # def get_fields_ponderables(self):
+    #     """
+    #     Genera un diccionario de páginas y los campos que tienen configurada una ponderacion
+    #     """
+    #     form_fields = lkf_obj.lkf_api.get_form_id_fields(lkf_obj.form_id)
 
-        pages_fields_ponderables = {}
-        for page in form_fields[0].get('form_pages', []):
-            page_name = page['page_name']
-            for f in page.get('page_fields', []):
-                if f.get('field_type') == 'radio': # and f.get('grading_criteria'):
-                    options = {option['value'] for option in f.get('options', [])}
-                    if {"cumple", "no_cumple"}.issubset(options):
-                        pages_fields_ponderables.setdefault( page_name, [] ).append( f['field_id'] )
+    #     pages_fields_ponderables = {}
+    #     for page in form_fields[0].get('form_pages', []):
+    #         page_name = page['page_name']
+    #         for f in page.get('page_fields', []):
+    #             if f.get('field_type') == 'radio': # and f.get('grading_criteria'):
+    #                 options = {option['value'] for option in f.get('options', [])}
+    #                 if {"cumple", "no_cumple"}.issubset(options):
+    #                     pages_fields_ponderables.setdefault( page_name, [] ).append( f['field_id'] )
 
 
-        return pages_fields_ponderables
+    #     return pages_fields_ponderables
 
     def make_grading_2(self):
         print('... ... Calculando el grading 2 ... ...')
 
-        valor_porcentual_base = self.data.get('valor_porcentual_base')
-        if not valor_porcentual_base:
-            print('[ERROR] no se encontro el parametro valor_porcentual_base')
+        valor_porcentual_base = self.get_valor_porcentual_base_form()
+        if valor_porcentual_base is None:
             return
-
-        try:
-            valor_porcentual_base = int( valor_porcentual_base.strip() )
-        except:
-            print('[ERROR] el parametro valor_porcentual_base debe ser un entero')
-            return
+        
+        print('\n - valor_porcentual_base =',valor_porcentual_base)
         
         # Se obtienen las paginas y campos que son ponderables
         fields_ponderables_by_page = self.get_fields_ponderables()
