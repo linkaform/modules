@@ -7,6 +7,7 @@ from linkaform_api import settings
 from account_settings import *
 from datetime import datetime
 import calendar
+import sys, os
 
 from accesos_utils import Accesos
 
@@ -171,7 +172,7 @@ class Accesos(Accesos):
             process='Creacion de un rondin',
             action='rondines',
             file='accesos/app.py',
-            form_id=121742, #TODO Modularizar este ID
+            form_id=self.CONFIGURACION_RECORRIDOS_FORM, 
             answers=answers
         )
         return response
@@ -248,11 +249,8 @@ class Accesos(Accesos):
         if not folio:
             raise Exception("Folio is required to delete a rondin.")
         
-        response = self.cr.delete_one({
-            'form_id': 121742, # TODO Modularizar este ID
-            'folio': folio
-        })
-        
+        response = 404
+        print('TODO, ELIMINAR REVISAR CONFIGURACION DE RONDINES, primero eliminar de airflow...')
         if response.deleted_count > 0:
             response = self.detail_response(202)
         else:
@@ -1004,15 +1002,21 @@ class Accesos(Accesos):
     def get_catalog_areas(self, ubicacion=""):
         #Obtener areas disponibles para rondin
         if ubicacion:
-            options = {
-                'startkey': [ubicacion],
-                'endkey': [f"{ubicacion}\n",{}],
-                'group_level':2
-            }
-
-            catalog_id = self.AREAS_DE_LAS_UBICACIONES_CAT_ID
-            form_id = 121742
-            return self.catalogo_view(catalog_id, form_id, options)
+            query = [
+                {"$match": {
+                    "form_id": self.AREAS_DE_LAS_UBICACIONES,
+                    "deleted_at": {"$exists": False},
+                    f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}": ubicacion,
+                    f"answers.{self.f['area_tag_id']}": {"$exists": True}
+                }},
+                {"$project": {
+                    "_id": f"$answers.{self.mf['nombre_area']}",
+                }}
+            ]
+            data = self.format_cr(self.cr.aggregate(query))
+            data = [item.get('_id') for item in data]
+            format_data = list(set(data))
+            return format_data
         else:
             raise Exception("Ubicacion is required.")
 
@@ -1026,7 +1030,7 @@ class Accesos(Accesos):
             }
 
             catalog_id = self.AREAS_DE_LAS_UBICACIONES_CAT_ID
-            form_id = 121742
+            form_id = self.CONFIGURACION_RECORRIDOS_FORM
             areas = self.catalogo_view(catalog_id, form_id, options)
             response = self.get_areas_details(areas)
             areas_formateadas = []
@@ -1673,7 +1677,8 @@ class Accesos(Accesos):
                 pass
             else:
                 answers[self.rondin_keys[key]] = value
-        response = self.lkf_api.patch_multi_record( answers = answers, form_id=121742, folios=[folio])
+        response = self.lkf_api.patch_multi_record( answers=answers, 
+            form_id=self.CONFIGURACION_RECORRIDOS_FORM, folios=[folio])
         return response
 
     def _verificar_bitacora_programada(self, dia, year, month, hora_valida, bitacora_rondines):
