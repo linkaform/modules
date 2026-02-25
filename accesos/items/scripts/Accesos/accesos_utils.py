@@ -4091,7 +4091,6 @@ class Accesos( Accesos):
         response = {}
 
         if tipo_notificacion == 'email':
-            data['email_to'] = 'paco@linkaform.com'
             response = self.send_email_notification(data, 'Aviso de Acceso', 'Accesos')
         elif tipo_notificacion == 'sms':
             response = self.send_sms_notification(data, 'Accesos')
