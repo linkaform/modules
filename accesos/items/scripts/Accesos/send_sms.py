@@ -16,7 +16,7 @@ if __name__ == "__main__":
     
     #TODO: Revisar lo de los codigos de los paises
     para = f"52{script_obj.answers.get(script_obj.envio_correo_fields['phone_to'])}"
-    texto = script_obj.answers.get(script_obj.envio_correo_fields['msj'])
+    texto = script_obj.answers.get(script_obj.envio_correo_fields['msj']).strip()[:100]
     response = script_obj.send_sms_masiv(para, texto)
 
     if response.get('statusCode') not in {200, 201, 202}:
