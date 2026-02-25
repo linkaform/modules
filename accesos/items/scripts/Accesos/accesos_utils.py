@@ -81,6 +81,7 @@ class Accesos( Accesos):
         self.REGISTRO_ASISTENCIA = self.lkm.form_id('registro_de_asistencia','id')
         self.FORMATO_VACACIONES = self.lkm.form_id('formato_vacaciones_aviso','id')
         self.USUARIOS_FORM = self.lkm.form_id('usuarios', 'id')
+        self.ENVIO_DE_NOTIFICACIONES_FORM = self.lkm.form_id('envio_de_notificaciones', 'id')
 
         # self.bitacora_fields.update({
         #     "catalogo_pase_entrada": "66a83ad652d2643c97489d31",
@@ -4038,7 +4039,7 @@ class Accesos( Accesos):
 
     def send_email_notification(self, data, asunto_email, enviado_desde=''):
         answers = {}
-        metadata = self.lkf_api.get_metadata(form_id=self.ENVIO_DE_CORREOS)
+        metadata = self.lkf_api.get_metadata(form_id=self.ENVIO_DE_NOTIFICACIONES_FORM)
         metadata.update({
             "properties": {
                 "device_properties":{
@@ -4063,7 +4064,7 @@ class Accesos( Accesos):
 
     def send_sms_notification(self, data, enviado_desde=''):
         answers = {}
-        metadata = self.lkf_api.get_metadata(form_id=self.ENVIO_DE_CORREOS)
+        metadata = self.lkf_api.get_metadata(form_id=self.ENVIO_DE_NOTIFICACIONES_FORM)
         metadata.update({
             "properties": {
                 "device_properties":{
