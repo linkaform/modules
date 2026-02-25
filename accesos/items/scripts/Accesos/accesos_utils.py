@@ -3738,9 +3738,7 @@ class Accesos( Accesos):
             access_pass['config_dia_de_acceso']=access_pass.get('config_dia_de_acceso',"").replace("_", " ")
             total_entradas = self.get_count_ingresos(qr_code)
             access_pass['total_entradas'] = total_entradas.get('total_records') if total_entradas else "0"
-            anfitrion_id = access_pass.get('visita_a_ids', [])[0] if len(access_pass.get('visita_a_ids', [])) > 0 else None
-            if anfitrion_id:
-                access_pass['anfitrion_data'] = self.get_anfitrion_data(anfitrion_id)
+            access_pass['anfitrions_data'] = access_pass.get('visita_a_details', [])
             if access_pass.get('grupo_areas_acceso'):
                 for area in access_pass['grupo_areas_acceso']:
                     area['status'] = self.get_area_status(access_pass['ubicacion'], area['nombre_area'])
@@ -3885,7 +3883,17 @@ class Accesos( Accesos):
             }
             grupo_visita = x.get('answers', {}).get(self.mf['grupo_visitados'], [])
             if grupo_visita:
-                x['visita_a_ids'] = [self.unlist(x.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID, {}).get(self.mf['id_usuario'], '')) for x in grupo_visita]
+                visita_list = []
+                for idx, visita in enumerate(grupo_visita):
+                    item = {
+                        'id': self.unlist(visita.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID, {}).get(self.mf['id_usuario'], '')) or idx,
+                        'username': self.unlist(visita.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID, {}).get(self.mf['username'], '')) or '',
+                        'name': visita.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID, {}).get(self.mf['nombre_empleado'], '') or '',
+                        'telefono': self.unlist(visita.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID, {}).get(self.mf['telefono_visita_a'], '')) or '',
+                        'email': self.unlist(visita.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID, {}).get(self.mf['email_visita_a'], '')) or '',
+                    }
+                    visita_list.append(item)
+                x['visita_a_details'] = visita_list
         if not x:
             self.LKFException({'title':'Advertencia', 'msg':'Este pase fue eliminado o no pertenece a esta organizacion.'})
         return x
