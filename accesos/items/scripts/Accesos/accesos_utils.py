@@ -255,20 +255,23 @@ class Accesos( Accesos):
         if comment or comments_pase:
             comment_list = []
             for c in comment:
-                comment_list.append(
-                    {
-                        self.bitacora_fields['comentario']:c.get('comentario_pase'),
-                        self.bitacora_fields['tipo_comentario'] :c.get('tipo_de_comentario').lower().replace(' ', '_')
-                    }
-                )
+                if c.get('comentario_pase'):
+                    comment_list.append(
+                        {
+                            self.bitacora_fields['comentario']: c.get('comentario_pase'),
+                            self.bitacora_fields['tipo_comentario'] :c.get('tipo_de_comentario').lower().replace(' ', '_')
+                        }
+                    )
             for c in comments_pase:
-                comment_list.append(
-                    {
-                        self.bitacora_fields['comentario']:c.get('comentario_pase'),
-                        self.bitacora_fields['tipo_comentario'] :c.get('tipo_de_comentario').lower().replace(' ', '_')
-                    }
-                )
-            answers.update({self.bitacora_fields['grupo_comentario']:comment_list})
+                if c.get('comentario_pase'):
+                    comment_list.append(
+                        {
+                            self.bitacora_fields['comentario']:c.get('comentario_pase'),
+                            self.bitacora_fields['tipo_comentario'] :c.get('tipo_de_comentario').lower().replace(' ', '_')
+                        }
+                    )
+            if comment_list:
+                answers.update({self.bitacora_fields['grupo_comentario']:comment_list})
 
         visit_list = data.get('visita_a',[])
         if visit_list:
