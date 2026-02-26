@@ -70,7 +70,8 @@ class Accesos( Accesos):
             'documento_check': '692a1b4e005c84ce5cd5167f',
             'datos_requeridos': '6769756fc728a0b63b8431ea',
             'envio_por': '6810180169eeaca9517baa5b',
-            'configuracion_de_accesos': '696e6dda9517e760679e71eb'
+            'configuracion_de_accesos': '696e6dda9517e760679e71eb',
+            'tipo_de_notificacion': '699dfe3b82be0dbe0319d38c'
         })
 
         #BORRAR
@@ -79,6 +80,8 @@ class Accesos( Accesos):
         self.CONFIGURACION_RECORRIDOS_OBJ_ID = self.CONFIGURACION_RECORRIDOS.get('obj_id')
         self.REGISTRO_ASISTENCIA = self.lkm.form_id('registro_de_asistencia','id')
         self.FORMATO_VACACIONES = self.lkm.form_id('formato_vacaciones_aviso','id')
+        self.USUARIOS_FORM = self.lkm.form_id('usuarios', 'id')
+        self.ENVIO_DE_NOTIFICACIONES_FORM = self.lkm.form_id('envio_de_notificaciones', 'id')
 
         # self.bitacora_fields.update({
         #     "catalogo_pase_entrada": "66a83ad652d2643c97489d31",
@@ -139,6 +142,11 @@ class Accesos( Accesos):
 
         self.pase_entrada_fields.update({
             'grupo_vehiculos':'663e446cadf967542759ebba',
+        })
+
+        self.envio_correo_fields.update({
+            'phone_to': '699f302213e8f8740c465bfc',
+            'tipo_de_notificacion': '699dfe3b82be0dbe0319d38c'
         })
 
     def _do_access(self, access_pass, location, area, data):
@@ -3670,6 +3678,77 @@ class Accesos( Accesos):
         data = self.format_cr(self.cr.aggregate(query))
         return data
 
+    def get_anfitrion_data(self, anfitrion_id):
+        query = [
+            {"$match": {
+                "form_id": self.USUARIOS_FORM,
+                "deleted_at": {"$exists": False},
+                f"answers.{self.mf['id_usuario']}": anfitrion_id
+            }},
+            {"$sort": {"created_at": -1}},
+            {"$limit": 1},
+            {"$project": {
+                "_id": 0,
+                "answers": 1
+            }}
+        ]
+        data = self.format_cr(self.cr.aggregate(query))
+        format_data = []
+        if data:
+            format_data = self.unlist(data)
+        return format_data
+
+    def search_access_pass(self, qr_code=None, location=None):
+        """
+        Busca pases de acceso
+        Si se entega el puro qr_code, se entrega la info de QR code
+        Si se entrega el qr_code con location y area, te valida si el qr es valido para dicha area
+        Si NO entregas el qr_code, te regresa todos los qr de dicha area y ubicacion
+        Si no entregas nada, te regrea un warning...
+        """
+        last_move = {}
+        if self.validate_value_id(qr_code):
+            last_moves = self.get_list_last_user_move(qr_code, limit=10)
+            if len(last_moves) > 0:
+                last_move = last_moves[0]
+            # else:
+            #     self.LKFException({"msg":"No se econtro ninguan entrada con pase "+ qr_code})
+            # print('last_moves=',simplejson.dumps(last_moves, indent=3))
+            #last_move = self.get_last_user_move(qr_code, location)
+            gafete_info = {}
+            access_pass = self.get_detail_access_pass(qr_code)
+            if not last_move or last_move.get('status_visita') == 'salida':
+                tipo_movimiento = 'Entrada'
+                access_pass['grupo_vehiculos'] = self.format_vehiculos_simple(access_pass.get('grupo_vehiculos',[]))
+                access_pass['grupo_equipos'] = self.format_equipos_simple(access_pass.get('grupo_equipos',[]))
+                print("entrada",access_pass['grupo_vehiculos'])
+            else:
+                gafete_info['gafete_id'] = last_move.get('gafete_id')
+                gafete_info['locker_id'] = last_move.get('locker_id')
+                access_pass['grupo_vehiculos'] = self.format_vehiculos_simple(last_move.get('vehiculos',[]))
+                access_pass['grupo_equipos'] = self.format_equipos_simple(last_move.get('equipos',[]))
+                tipo_movimiento = 'Salida'
+                print("salida", access_pass['grupo_vehiculos'],access_pass['grupo_equipos'])
+                print("last_move", simplejson.dumps(last_move, indent=4))
+            #---Last Access
+            access_pass['ultimo_acceso'] = last_moves
+            access_pass['tipo_movimiento'] = tipo_movimiento
+            access_pass['gafete_id'] = gafete_info.get('gafete_id')
+            access_pass['locker_id'] = gafete_info.get("locker_id")
+            access_pass['status_pase']= self.unlist(access_pass.get('estatus',"")).title() or "" 
+            access_pass['limitado_a_dias']= access_pass.get('limitado_a_dias','')
+            access_pass['limitado_a_acceso']= access_pass.get('limite_de_acceso','')
+            access_pass['config_dia_de_acceso']=access_pass.get('config_dia_de_acceso',"").replace("_", " ")
+            total_entradas = self.get_count_ingresos(qr_code)
+            access_pass['total_entradas'] = total_entradas.get('total_records') if total_entradas else "0"
+            access_pass['anfitrions_data'] = access_pass.get('visita_a_details', [])
+            if access_pass.get('grupo_areas_acceso'):
+                for area in access_pass['grupo_areas_acceso']:
+                    area['status'] = self.get_area_status(access_pass['ubicacion'], area['nombre_area'])
+            return access_pass
+        else:
+            return self.LKFException({"status_code":400, "msg":'El parametro para QR, no es valido'})
+
     def get_detail_access_pass(self, qr_code, get_answers=False):
         match_query = {
             "deleted_at":{"$exists":False},
@@ -3805,6 +3884,19 @@ class Accesos( Accesos):
                 x.get(self.UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['location']): self.unlist(x.get(self.UBICACIONES_CAT_OBJ_ID, {}).get(self.f['address_geolocation']))
                 for x in ubicaciones_full_info
             }
+            grupo_visita = x.get('answers', {}).get(self.mf['grupo_visitados'], [])
+            if grupo_visita:
+                visita_list = []
+                for idx, visita in enumerate(grupo_visita):
+                    item = {
+                        'id': self.unlist(visita.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID, {}).get(self.mf['id_usuario'], '')) or idx,
+                        'username': self.unlist(visita.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID, {}).get(self.mf['username'], '')) or '',
+                        'name': visita.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID, {}).get(self.mf['nombre_empleado'], '') or '',
+                        'telefono': self.unlist(visita.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID, {}).get(self.mf['telefono_visita_a'], '')) or '',
+                        'email': self.unlist(visita.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID, {}).get(self.mf['email_visita_a'], '')) or '',
+                    }
+                    visita_list.append(item)
+                x['visita_a_details'] = visita_list
         if not x:
             self.LKFException({'title':'Advertencia', 'msg':'Este pase fue eliminado o no pertenece a esta organizacion.'})
         return x
@@ -3941,20 +4033,24 @@ class Accesos( Accesos):
             response = requests.post(API_URL, json=data, headers=headers)
 
             if response.status_code == 200:
-                print(response.json())
+                return response.json()
             else:
                 print('Error al enviar SMS', response.status_code, response.text)
+                return {
+                    'statusCode': response.status_code,
+                    'response': response.text
+                }
 
         except Exception as e:
             print('Error al enviar SMS', e)
+            return {
+                'statusCode': 400,
+                'response': str(e)
+            }
 
-    def send_email_and_sms(self, data):
+    def send_email_notification(self, data, asunto_email, enviado_desde=''):
         answers = {}
-        phone_to = data['phone_to']
-        mensaje = data['mensaje']
-        titulo = 'Aviso desde Soter - Accesos'
-
-        metadata = self.lkf_api.get_metadata(form_id=self.ENVIO_DE_CORREOS)
+        metadata = self.lkf_api.get_metadata(form_id=self.ENVIO_DE_NOTIFICACIONES_FORM)
         metadata.update({
             "properties": {
                 "device_properties":{
@@ -3964,38 +4060,56 @@ class Accesos( Accesos):
                 }
             },
         })
-
-        #---Define Answers
         answers.update({
-            f"{self.envio_correo_fields['email_from']}": data['email_from'],
-            f"{self.envio_correo_fields['titulo']}": titulo,
+            f"{self.envio_correo_fields['tipo_de_notificacion']}": data['tipo'],
+            f"{self.envio_correo_fields['titulo']}": asunto_email,
             f"{self.envio_correo_fields['nombre']}": data['nombre'],
+            f"{self.envio_correo_fields['email_from']}": data['email_from'],
             f"{self.envio_correo_fields['email_to']}": data['email_to'],
-            f"{self.envio_correo_fields['msj']}": mensaje,
-            f"{self.envio_correo_fields['enviado_desde']}": 'Accesos Aviso',
+            f"{self.envio_correo_fields['msj']}": data['mensaje'],
+            f"{self.envio_correo_fields['enviado_desde']}": enviado_desde,
         })
-
         metadata.update({'answers': answers})
-
-        email_status = 'Correo: No se realizo la peticion.'
         email_response = self.lkf_api.post_forms_answers(metadata)
-        if email_response.get('status_code') == 201:
-            email_status = 'Correo: Enviado correctamente'
-        else:
-            email_status = 'Correo: Hubo un error...'
+        return email_response
 
-        message_status = 'Mensaje: No se realizo la peticion.'
-        if phone_to:
-            sms_response = self.send_sms_masiv(phone_to, mensaje)
-            if hasattr(sms_response, "status") and sms_response.status in ["queued", "sent", "delivered"]:
-                message_status = 'Mensaje: Enviado correctamente'
-            else:
-                message_status = 'Mensaje: Hubo un error...'
+    def send_sms_notification(self, data, enviado_desde=''):
+        answers = {}
+        metadata = self.lkf_api.get_metadata(form_id=self.ENVIO_DE_NOTIFICACIONES_FORM)
+        metadata.update({
+            "properties": {
+                "device_properties":{
+                    "System": "Addons",
+                    "Process": "Creación de envio de sms",
+                    "Action": "send_email_and_sms",
+                }
+            },
+        })
+        answers.update({
+            f"{self.envio_correo_fields['tipo_de_notificacion']}": data['tipo'],
+            f"{self.envio_correo_fields['titulo']}": 'Aviso de Acceso',
+            f"{self.envio_correo_fields['nombre']}": data['nombre'],
+            f"{self.envio_correo_fields['phone_to']}": data['phone_to'],
+            f"{self.envio_correo_fields['msj']}": data['mensaje'],
+            f"{self.envio_correo_fields['enviado_desde']}": enviado_desde,
+        })
+        metadata.update({'answers': answers})
+        sms_response = self.lkf_api.post_forms_answers(metadata)
+        return sms_response
+
+    def send_email_and_sms(self, data):
+        tipo_notificacion = data.get('tipo', '')
+        response = {}
+
+        if tipo_notificacion == 'email':
+            response = self.send_email_notification(data, 'Aviso de Acceso', 'Accesos')
+        elif tipo_notificacion == 'sms':
+            response = self.send_sms_notification(data, 'Accesos')
+
+        if response.get('status_code') >= 400:
+            self.LKFException({'title': 'Error al enviar sms', 'msg': f'Response: {response}'})
         
-        return {
-            "email_status": email_status,
-            "message_status": message_status
-        }
+        return response
 
     def force_quit_all_persons(self, location: str):
         match = {
