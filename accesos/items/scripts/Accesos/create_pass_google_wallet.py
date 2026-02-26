@@ -200,7 +200,7 @@ class Accesos(Accesos):
         print(response)
 
 if __name__ == "__main__":
-    acceso_obj = Accesos(settings, sys_argv=sys.argv)
+    acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
     acceso_obj.console_run()
     data = acceso_obj.data.get('data', {})
     qr_code = data.get('qr_code', '')
