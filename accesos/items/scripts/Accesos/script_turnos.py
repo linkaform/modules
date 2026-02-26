@@ -57,10 +57,8 @@ if __name__ == "__main__":
         response = acceso_obj.assets_access_pass(location)
     elif option == 'assing_gafete':
         response = acceso_obj.assing_gafete(data_gafete, id_bitacora, tipo_movimiento)
-    elif option == 'list_bitacora':
-        response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, limit=limit, offset=offset,  filterDate=filterDate)
     elif option == 'list_bitacora2':
-        response = acceso_obj.get_list_bitacora2(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate)
+        response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, limit=limit, offset=offset)
     elif option == 'get_user_booths':
         response = acceso_obj.get_user_booths_availability(turn_areas=turn_areas)
     elif option == 'get_boot_guards' or option == 'guardias_de_apoyo':
