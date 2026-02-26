@@ -253,20 +253,23 @@ class Accesos( Accesos):
         if comment or comments_pase:
             comment_list = []
             for c in comment:
-                comment_list.append(
-                    {
-                        self.bitacora_fields['comentario']:c.get('comentario_pase'),
-                        self.bitacora_fields['tipo_comentario'] :c.get('tipo_de_comentario').lower().replace(' ', '_')
-                    }
-                )
+                if c.get('comentario_pase'):
+                    comment_list.append(
+                        {
+                            self.bitacora_fields['comentario']: c.get('comentario_pase'),
+                            self.bitacora_fields['tipo_comentario'] :c.get('tipo_de_comentario').lower().replace(' ', '_')
+                        }
+                    )
             for c in comments_pase:
-                comment_list.append(
-                    {
-                        self.bitacora_fields['comentario']:c.get('comentario_pase'),
-                        self.bitacora_fields['tipo_comentario'] :c.get('tipo_de_comentario').lower().replace(' ', '_')
-                    }
-                )
-            answers.update({self.bitacora_fields['grupo_comentario']:comment_list})
+                if c.get('comentario_pase'):
+                    comment_list.append(
+                        {
+                            self.bitacora_fields['comentario']:c.get('comentario_pase'),
+                            self.bitacora_fields['tipo_comentario'] :c.get('tipo_de_comentario').lower().replace(' ', '_')
+                        }
+                    )
+            if comment_list:
+                answers.update({self.bitacora_fields['grupo_comentario']:comment_list})
 
         visit_list = data.get('visita_a',[])
         if visit_list:
@@ -2284,11 +2287,12 @@ class Accesos( Accesos):
         else:
             self.LKFException('No se mandarón parametros para actualizar')
 
-    def get_list_bitacora2(self, location=None, area=None, prioridades=[], dateFrom='', dateTo='', filterDate=""):
+    def get_list_bitacora(self, location=None, area=None, prioridades=[], dateFrom='', dateTo='', filterDate="", limit=20, offset=0):
         match_query = {
             "deleted_at":{"$exists":False},
             "form_id": self.BITACORA_ACCESOS
         }
+
         if location:
             match_query.update({f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}":location})
         if area:
@@ -2296,12 +2300,9 @@ class Accesos( Accesos):
         if prioridades:
             match_query[f"answers.{self.bitacora_fields['status_visita']}"] = {"$in": prioridades}
   
-        user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
-        zona = user_data.get('timezone','America/Monterrey')
-
+        zona = self.user.get('timezone','America/Monterrey')
         if filterDate != "range":
-            dateFrom, dateTo = self.get_range_dates(filterDate,zona)
-
+            dateFrom, dateTo = self.get_range_dates(filterDate, zona)
             if dateFrom:
                 dateFrom = str(dateFrom)
             if dateTo:
@@ -2332,13 +2333,13 @@ class Accesos( Accesos):
             'comentarios':f"$answers.{self.bitacora_fields['grupo_comentario']}",
             'fecha_salida':f"$answers.{self.mf['fecha_salida']}",
             'fecha_entrada':f"$answers.{self.mf['fecha_entrada']}",
-            'foto_url': {"$arrayElemAt": [f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['foto']}.file_url", 0]},
+            'fotografia': f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['foto']}",
             'equipos':f"$answers.{self.mf['grupo_equipos']}",
             'grupo_areas_acceso': f"$answers.{self.mf['grupo_areas_acceso']}",
             'id_gafet': f"$answers.{self.GAFETES_CAT_OBJ_ID}.{self.gafetes_fields['gafete_id']}",
             'id_locker': f"$answers.{self.LOCKERS_CAT_OBJ_ID}.{self.lockers_fields['locker_id']}",
-            'identificacion':  {"$first":f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['identificacion']}"},
-            'pase_id':{"$toObjectId":f"$answers.{self.mf['codigo_qr']}"},
+            'identificacion':  f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['identificacion']}",
+            'pase_id': {"$toObjectId":f"$answers.{self.mf['codigo_qr']}"},
             'motivo_visita':f"$answers.{self.CONFIG_PERFILES_OBJ_ID}.{self.mf['motivo']}",
             'nombre_area_salida':f"$answers.{self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.mf['nombre_area_salida']}",
             'nombre_visitante':f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['nombre_visita']}",
@@ -2352,49 +2353,48 @@ class Accesos( Accesos):
             'sala': f"$answers.{self.f['bitacora_sala']}"
             }
         lookup = {
-         'from': 'form_answer',
-         'localField': 'pase_id',
-         'foreignField': '_id',
-         "pipeline": [
+            'from': 'form_answer',
+            'localField': 'pase_id',
+            'foreignField': '_id',
+            "pipeline": [
                 {'$match':{
                     "deleted_at":{"$exists":False},
                     "form_id": self.PASE_ENTRADA,
-                    }
-                },
+                }},
                 {'$project':{
-                    "_id":0, 
+                    "_id": 0, 
                     'motivo_visita':f"$answers.{self.CONFIG_PERFILES_OBJ_ID}.{self.mf['motivo']}",
                     'grupo_areas_acceso': f"$answers.{self.mf['grupo_areas_acceso']}",                    
-                    }
-                },
-                ],
-         'as': 'pase',
+                }},
+            ],
+            'as': 'pase',
         }
        
         query = [
             {'$match': match_query },
             {'$project': proyect_fields},
             {'$lookup': lookup},
+            {'$sort':{'created_at':-1}},
         ]
-        # if not filterDate:
-        #     query.append(
-        #         {"$limit":1}
-        #     )
-        if dateFrom:
-            query.append(
-                {'$sort':{'created_at':-1}},
-            )
-        else:
-            query.append(
-                {'$sort':{'created_at':-1}},
-            )
-           
+
+        count_query = [
+            {"$match": match_query},
+            {"$count": "total"}
+        ]
+        
+        count_result = self.format_cr(self.cr.aggregate(count_query))
+        total_count = count_result[0]['total'] if count_result else 0
+        current_page = (offset // limit) + 1 if limit else 1
+        total_pages = ceil(total_count / limit) if limit else 1
+
+        query.append({'$skip': offset})
+        query.append({'$limit': limit})
+
         records = self.format_cr(self.cr.aggregate(query))
-        # print( simplejson.dumps(records, indent=4))
+
         for r in records:
             pase = r.pop('pase')
             pase_id = r.pop('pase_id')
-            # r.pop('pase_id')
             if len(pase) > 0 :
                 pase = pase[0]
                 r['motivo_visita'] = self.unlist(pase.get('motivo_visita',''))
@@ -2410,7 +2410,14 @@ class Accesos( Accesos):
             r['equipos'] = self.format_equipos(r.get('equipos',[]))
             r['visita_a'] = self.format_visita(r.get('visita_a',[]))
             r['pase_id']=str(pase_id)
-        return  records
+
+        return {
+            "records": records,
+            "total_records": total_count,
+            "total_pages": total_pages,
+            "actual_page": current_page,
+            "records_on_page": len(records)
+        }
 
     def get_pdf_seg(self, qr_code, template_id=None, name_pdf=None):
         return self.lkf_api.get_pdf_record(qr_code, template_id = template_id, name_pdf =name_pdf, send_url=True)
