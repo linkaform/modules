@@ -86,8 +86,7 @@ if __name__ == "__main__":
     location = data.get("location",'Planta Monterrey')
     area = data.get("area","")
     status= data.get("status", "")
-    folio = data.get("folio")
-    record_id = data.get("record_id")
+    folio = data.get("folio",['553-10'])
     tipo = data.get("tipo","")
 
     dateFrom = data.get("dateFrom", "")
@@ -99,7 +98,7 @@ if __name__ == "__main__":
     elif option == 'get_articles':
         response = acceso_obj.get_list_articulos_concesionados(location, area, status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate)
     elif option == 'update_article':
-        response = acceso_obj.update_article_concessioned(data, record_id)
+        response = acceso_obj.update_article_concessioned(data_article_update, folio)
     elif option == 'delete_article':
         response = acceso_obj.delete_article_concessioned(folio)
     elif option == 'catalogo_tipo_concesion':
