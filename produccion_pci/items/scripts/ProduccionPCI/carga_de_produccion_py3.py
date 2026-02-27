@@ -256,6 +256,8 @@ class Produccion_PCI( Produccion_PCI ):
         map_other_tecs_admin = {
             11044: 10540, 16343: 25927, 21954: 25928, 21953: 25929,
             10540: 11044, 25927: 16343, 25928: 21954, 25929: 21953,
+            self.ORDEN_SERVICIO_FIBRA_TELNOR: self.ORDEN_SERVICIO_COBRE_TELNOR,
+            self.ORDEN_SERVICIO_COBRE_TELNOR: self.ORDEN_SERVICIO_FIBRA_TELNOR,
         }
         id_form_other_tec = map_other_tecs_admin[ val_form ]
         query_rec_other_tec = {
@@ -1206,13 +1208,15 @@ class Produccion_PCI( Produccion_PCI ):
                 'sur': self.ORDEN_SERVICIO_FIBRA_SURESTE,
                 'occidente': self.ORDEN_SERVICIO_FIBRA_OCCIDENTE,
                 'norte': self.ORDEN_SERVICIO_FIBRA_NORTE,
-                'metro': self.ORDEN_SERVICIO_FIBRA
+                'metro': self.ORDEN_SERVICIO_FIBRA,
+                'telnor': self.ORDEN_SERVICIO_FIBRA_TELNOR
             },
             'cobre': {
                 'sur': self.ORDEN_SERVICIO_COBRE_SURESTE,
                 'occidente': self.ORDEN_SERVICIO_COBRE_OCCIDENTE,
                 'norte': self.ORDEN_SERVICIO_COBRE_NORTE,
-                'metro': self.ORDEN_SERVICIO_COBRE
+                'metro': self.ORDEN_SERVICIO_COBRE,
+                'telnor': self.ORDEN_SERVICIO_COBRE_TELNOR
             }
         }
 

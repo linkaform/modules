@@ -24,34 +24,6 @@ class Produccion_PCI(Produccion_PCI):
         self.FORM_ID_CARGA_PROD = self.lkm.form_id('carga_de_produccin_diaria_por_contratistaiasa','id')
         self.FORM_ID_EXPEDIENTES_DE_TECNICOS = self.lkm.form_id('expedientes_de_tcnicosiasa','id')
         
-        # self.ORDEN_SERVICIO_FIBRA = self.lkm.form_id('orden_de_servicio_metro_ftthiasa','id')
-        # self.ORDEN_SERVICIO_COBRE = self.lkm.form_id('orden_de_servicio_metro_cobreiasa','id')
-        # self.ORDEN_SERVICIO_FIBRA_OCCIDENTE = self.lkm.form_id('orden_de_servicio_occidente_ftthiasa','id')
-        # self.ORDEN_SERVICIO_COBRE_OCCIDENTE = self.lkm.form_id('orden_de_servicio_occidente_cobreiasa','id')
-        # self.ORDEN_SERVICIO_FIBRA_NORTE = self.lkm.form_id('orden_de_servicio_norte_ftthiasa','id')
-        # self.ORDEN_SERVICIO_COBRE_NORTE = self.lkm.form_id('orden_de_servicio_norte_cobreiasa','id')
-        # self.ORDEN_SERVICIO_FIBRA_SURESTE = self.lkm.form_id('orden_de_servicio_sur_ftthiasa','id')
-        # self.ORDEN_SERVICIO_COBRE_SURESTE = self.lkm.form_id('orden_de_servicio_sur_cobreiasa','id')
-
-        # # Aqui los ids de las formas de liberacion
-        # self.FORMA_LIBERACION_FIBRA = self.lkm.form_id('liberacin_de_pagos_socio', 'id')
-        # self.FORMA_LIBERACION_FIBRA_SURESTE = self.lkm.form_id('liberacin_de_pagos_sur_socio', 'id')
-        # self.FORMA_LIBERACION_FIBRA_NORTE = self.lkm.form_id('liberacin_de_pagos_norte_socio', 'id')
-        # self.FORMA_LIBERACION_FIBRA_OCCIDENTE = self.lkm.form_id('liberacin_de_pagos_occidente_socio', 'id')
-        # self.FORMA_LIBERACION_COBRE = self.lkm.form_id('liberacin_de_pagos_cobre_socio', 'id')
-        # self.FORMA_LIBERACION_COBRE_SURESTE = self.lkm.form_id('liberacin_de_pagos_sur_cobre_socio', 'id')
-        # self.FORMA_LIBERACION_COBRE_NORTE = self.lkm.form_id('liberacin_de_pagos_norte_cobre_socio', 'id')
-        # self.FORMA_LIBERACION_COBRE_OCCIDENTE = self.lkm.form_id('liberacin_de_pagos_occidente_cobre_socio', 'id')
-
-        # # Aqui los ids de las formas de orden de compra
-        # self.FORMA_ORDEN_COMPRA_FIBRA = self.lkm.form_id('orden_compra_contratista_ftth_metro_socio', 'id')
-        # self.FORMA_ORDEN_COMPRA_FIBRA_SURESTE = self.lkm.form_id('orden_compra_contratista_ftth_sur_socio', 'id')
-        # self.FORMA_ORDEN_COMPRA_FIBRA_NORTE = self.lkm.form_id('orden_compra_contratista_ftth_norte_socio', 'id')
-        # self.FORMA_ORDEN_COMPRA_FIBRA_OCCIDENTE = self.lkm.form_id('orden_compra_contratista_ftth_occidente_socio', 'id')
-        # self.FORMA_ORDEN_COMPRA_COBRE = self.lkm.form_id('orden_compra_contratista_cobre_metro_socio', 'id')
-        # self.FORMA_ORDEN_COMPRA_COBRE_SURESTE = self.lkm.form_id('orden_compra_contratista_cobre_sur_socio', 'id')
-        # self.FORMA_ORDEN_COMPRA_COBRE_NORTE = self.lkm.form_id('orden_compra_contratista_cobre_norte_socio', 'id')
-        # self.FORMA_ORDEN_COMPRA_COBRE_OCCIDENTE = self.lkm.form_id('orden_compra_contratista_cobre_occidente_socio', 'id')
         self.FORM_ID_PRECIOS_FTTH = self.lkm.form_id('precios_fibra_socio', 'id')
         self.FORM_ID_PRECIOS_COBRE = self.lkm.form_id('precios_cobre_socio', 'id')
         
@@ -78,6 +50,10 @@ class Produccion_PCI(Produccion_PCI):
         self.bono_produccion_cant_fols_min = 12 # Cantidad mínima de expedientes para aplicar bono
         self.bono_produccion_monto = 50 # Monto del bono por expedientes
 
+        # Formas de nueva division TELNOR
+        self.ORDEN_SERVICIO_FIBRA_TELNOR = 148166
+        self.ORDEN_SERVICIO_COBRE_TELNOR = 148165
+
         # Equivalencias de las formas de orden de servicio en las cuentas de SC y en Admin
         self.dict_equivalences_forms_id = { 
             self.ORDEN_SERVICIO_FIBRA : 11044,
@@ -87,7 +63,9 @@ class Produccion_PCI(Produccion_PCI):
             self.ORDEN_SERVICIO_FIBRA_NORTE : 21954,
             self.ORDEN_SERVICIO_COBRE_NORTE : 25928,
             self.ORDEN_SERVICIO_FIBRA_SURESTE : 16343,
-            self.ORDEN_SERVICIO_COBRE_SURESTE : 25927
+            self.ORDEN_SERVICIO_COBRE_SURESTE : 25927,
+            self.ORDEN_SERVICIO_FIBRA_TELNOR: 147977,
+            self.ORDEN_SERVICIO_COBRE_TELNOR: 147978,
         }
 
         self.dict_ids_os_pdf = {
@@ -98,7 +76,9 @@ class Produccion_PCI(Produccion_PCI):
             self.ORDEN_SERVICIO_COBRE: '5ad13efef851c23d8a4d95af',
             self.ORDEN_SERVICIO_COBRE_SURESTE: '5ad13e8cf851c220dd0eb769',
             self.ORDEN_SERVICIO_COBRE_NORTE: '5ad13f49f851c2510b0d210a',
-            self.ORDEN_SERVICIO_COBRE_OCCIDENTE: '5ad13f95f851c2467770da9e'
+            self.ORDEN_SERVICIO_COBRE_OCCIDENTE: '5ad13f95f851c2467770da9e',
+            self.ORDEN_SERVICIO_FIBRA_TELNOR: '5ad14051f851c220dd0eb772',
+            self.ORDEN_SERVICIO_COBRE_TELNOR: '5ad13e8cf851c220dd0eb769'
         }
 
         self.all_divisiones = [

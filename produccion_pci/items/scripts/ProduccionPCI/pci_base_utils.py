@@ -434,12 +434,14 @@ class PCI_Utils():
                 'sur': {'form_os': 16343,'form_lib': 44671,'form_oc': 44672},
                 'norte': {'form_os': 21954,'form_lib': 50776,'form_oc': 50778},
                 'occidente': {'form_os': 21953,'form_lib': 50592,'form_oc': 50594},
+                'telnor': {'form_os': self.ORDEN_SERVICIO_FIBRA_TELNOR, 'form_lib': None, 'form_oc': None}
             },
             'cobre': {
                 'metro': {'form_os': 10540,'form_lib': 29670,'form_oc': 33658},
                 'sur': {'form_os': 25927,'form_lib': 45418,'form_oc': 45420},
                 'norte': {'form_os': 25928,'form_lib': 50777,'form_oc': 50779},
                 'occidente': {'form_os': 25929,'form_lib': 50593,'form_oc': 50595},
+                'telnor': {'form_os': self.ORDEN_SERVICIO_COBRE_TELNOR, 'form_lib': None, 'form_oc': None}
             }
         }
 
@@ -646,6 +648,8 @@ class PCI_Utils():
             ('sur', 'cobre'): ( self.lkf_obj.ORDEN_SERVICIO_COBRE_SURESTE, self.lkf_obj.FORMA_LIBERACION_COBRE_SURESTE, self.lkf_obj.FORMA_ORDEN_COMPRA_COBRE_SURESTE ),
             ('norte', 'cobre'): ( self.lkf_obj.ORDEN_SERVICIO_COBRE_NORTE, self.lkf_obj.FORMA_LIBERACION_COBRE_NORTE, self.lkf_obj.FORMA_ORDEN_COMPRA_COBRE_NORTE ),
             ('occidente', 'cobre'): ( self.lkf_obj.ORDEN_SERVICIO_COBRE_OCCIDENTE, self.lkf_obj.FORMA_LIBERACION_COBRE_OCCIDENTE, self.lkf_obj.FORMA_ORDEN_COMPRA_COBRE_OCCIDENTE ),
+            ('telnor', 'fibra'): ( self.lkf_obj.ORDEN_SERVICIO_FIBRA_TELNOR, None, None ),
+            ('telnor', 'cobre'): ( self.lkf_obj.ORDEN_SERVICIO_COBRE_TELNOR, None, None ),
         }
 
         # Buscar las formas correspondientes en el diccionario
