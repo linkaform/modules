@@ -1,5 +1,5 @@
 # coding: utf-8
-import sys, simplejson, json
+import sys, simplejson
 from linkaform_api import settings
 from account_settings import *
 
@@ -13,8 +13,7 @@ if __name__ == "__main__":
     acceso_obj.console_run()
     #-FILTROS
     data = acceso_obj.data.get('data',{})
-    data_raw = json.loads(sys.argv[2])
-    option = data.get("option", data_raw.get("option", ""))
+    option = data.get("option",'')
 
     area = data.get("area")
     comments = data.get('comments',"")
@@ -119,8 +118,6 @@ if __name__ == "__main__":
         response = acceso_obj.update_delete_suplente(nombre_suplente=nombre_suplente)
     elif option == 'force_quit_all_persons':
         response = acceso_obj.force_quit_all_persons(location=location)
-    elif option == 'pregenerate_pdf':
-        response = acceso_obj.pregenerate_pdf()
     else :
         response = {"msg": "Empty"}
     # print('================ END RETURN =================')
