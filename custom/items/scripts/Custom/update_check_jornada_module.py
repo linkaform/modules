@@ -12,6 +12,15 @@ class Custom(Custom):
         self.type_check = self.answers.get('a00000000000000000000007','')
         self.date_checkin = self.answers.get('a00000000000000000000001','')
         self.date_checkout = self.answers.get('a00000000000000000000002','')
+        self.users_no_validate = [29827, 29826]
+
+    def error_checkin(self, msg_err):
+        msg_error_app = {
+            "a00000000000000000000007": {
+                "msg": [msg_err], "label": "Accion", "error":[]
+            }
+        }
+        raise Exception(simplejson.dumps(msg_error_app))
 
     def update_record_action(self):
         #--Geolocation
@@ -29,26 +38,14 @@ class Custom(Custom):
         print(f'\n +++ user_id= {self.user_id} date_str= {date_str} start_today_utc= {start_today_utc} \n')
 
         
-        if not lkf.folio:
+        if not lkf.folio and self.user_id not in self.users_no_validate:
             record_check = self.get_record_check_in_today(start_today_utc)
             print('     record_check= ',record_check)
 
             if self.type_check == 'check_in' and record_check:
-                msg_error_app = {
-                    "a00000000000000000000007":{
-                        "msg": ["Solo puede crear 1 check in al día, si ya realizaste checkin en este dia recuerda hacer checkout desde el menú de Inbox"],
-                        "label": "Accion", "error":[]
-                    }
-                }
-                raise Exception(simplejson.dumps(msg_error_app))
+                self.error_checkin("Solo puede crear 1 check in al día, si ya realizaste checkin en este dia recuerda hacer checkout desde el menú de Inbox")
             elif self.type_check == 'check_out':
-                msg_error_app = {
-                    "a00000000000000000000007":{
-                        "msg": ["No se puede hacer Checkout sin su checkin previo"],
-                        "label": "Accion", "error":[]
-                    }
-                }
-                raise Exception(simplejson.dumps(msg_error_app))
+                self.error_checkin("No se puede hacer Checkout sin su checkin previo")
         
         if self.type_check == 'check_in' and not self.date_checkin:
             self.current_record['answers']['a00000000000000000000001'] = date_str

@@ -13,16 +13,22 @@ class Custom(Custom):
         record_check = self.get_record_check_in_today(start_today_utc, get_catalog_data=True)
 
         print(f'\n +++ user_id= {self.user_id} date_str= {date_str} start_today_utc= {start_today_utc} \n')
-        
-        data_catalog = {
-            "69667a148942065f5657f079": "Sin checkin",
-            "69667a148942065f5657f078": "Sin checkin",
-            "69667a148942065f5657f077": "Sin checkin",
-            "69667a148942065f5657f076": ["Sin checkin"]
-        }
 
-        if record_check:
-            data_catalog = record_check.get('answers', {}).get('69667a148942065f5657f075')
+        if not record_check:
+            msg_error_app = {
+                "folio": { "msg": ["Debes realizar checkin primero"], "label": "Folio", "error":[] }
+            }
+            raise Exception(simplejson.dumps(msg_error_app))
+        
+        # data_catalog = {
+        #     "69667a148942065f5657f079": "Sin checkin",
+        #     "69667a148942065f5657f078": "Sin checkin",
+        #     "69667a148942065f5657f077": "Sin checkin",
+        #     "69667a148942065f5657f076": ["Sin checkin"]
+        # }
+
+        # if record_check:
+        data_catalog = record_check.get('answers', {}).get('69667a148942065f5657f075')
 
         self.current_record['answers']['69667a148942065f5657f075'] = data_catalog
         sys.stdout.write(simplejson.dumps({
