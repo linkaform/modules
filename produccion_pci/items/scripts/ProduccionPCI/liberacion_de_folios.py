@@ -141,7 +141,7 @@ class Produccion_PCI( Produccion_PCI ):
             #     "54416653", "54364103", "54386672", "54408039", "28390810", "28391667", "28393482", "28402695", "28406089", "28410054", "28419328", "28423464", "28429045"
             # ]},
 
-            # 'folio': {'$in': [ '29077197', '29064786', '29075681', '40148737', '40160900', '40141770' ]},
+            # 'folio': {'$in': [ '40456668' ]},
 
             'created_at': {
                 '$gte': datetime.strptime('2026-02-03 00:00:00', "%Y-%m-%d %H:%M:%S")
@@ -1148,6 +1148,9 @@ class Produccion_PCI( Produccion_PCI ):
         return records_libs
     
     def liberacion_de_folios(self, current_record):
+        current_record['answers'].pop('f2362800a010000000000005', None)
+        current_record['answers'].pop('5fd05319cd189468810100c8', None)
+        current_record['answers'].pop('5fd05319cd189468810100c9', None)
         p_utils.set_status_proceso(current_record, record_id, 'procesando')
         all_liberaciones = {}
         header_cobre = ["Folio", "Teléfono", "Tipo de tarea", "COPE", "Empresa", "Linea de cliente basica de 1 par (bajante)", "Plusvalia por tramo adicional de 50m. con bajante de 1 par", "Bonificacion por distancia y volumen de 1 a 5 o.s construidas",\
