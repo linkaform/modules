@@ -3440,14 +3440,27 @@ class Accesos( Accesos):
         except:
             visita_a = []
         ### Perfiles de accesos
+        # try:
+        #     perfiles = self.get_pefiles_walkin(location)
+        # except:
+        #     perfiles = []
         try:
-            perfiles = self.get_pefiles_walkin(location)
+            config_modulo = self.get_config_modulo_seguridad(location)
+            requerimientos = config_modulo.get('requerimientos',[])
+            envios = config_modulo.get('envios',[])
+            perfiles = config_modulo.get('tipos',[])
         except:
-            perfiles = []
+            Perfiles = []
+            envios = []
+            requerimientos = []
         res = {
             'Areas': areas,
             'Visita_a': visita_a,
-            'Perfiles': perfiles
+            'Perfiles': perfiles,
+            'requerimientos': requerimientos,
+            'envios':envios,
+            'Perfiles':perfiles
+
         }
         return res
 
