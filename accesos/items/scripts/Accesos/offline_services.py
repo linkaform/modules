@@ -159,6 +159,20 @@ class Accesos(Accesos):
             'cantidad_areas_inspeccionadas': '68a7b68a22ac030a67b7f8f8'
         })
         
+
+    def delete_duplicate_areas(self, areas_list):
+        res = []
+        check_ids = []
+        for area in areas_list:
+            url = area.get(self.f['url_registro_rondin'])
+            if not url:
+                res.append(area)
+                continue
+            elif url not in check_ids:
+                res.append(area)
+                check_ids.append(url)
+        return res
+
     def clean_text(self, texto):
         """
         Limpia texto: minúsculas, espacios y puntos por guiones bajos, elimina acentos
@@ -282,28 +296,37 @@ class Accesos(Accesos):
         
         max_retries = 3
         wait_time = 2
-
+        current_rev_version = int(_rev.split('-')[0])
         for attempt in range(max_retries):
             record = self.cr_db.get(_id, revs_info=True)
             if not record:
                 return {'status_code': 404, 'type': 'error', 'msg': 'Record not found', 'data': {}}
 
             current_rev = record.rev
+            #testing borrar... igualo las revisones ara probar
+            _rev =  record.rev
+            try:
+                server_current_rev_version = int(record.rev.split('-')[0])
+            except:
+                server_current_rev_version = 0
             all_revs = [r['rev'] for r in record['_revs_info'] if r['status'] == 'available']
-
             if _rev == current_rev:
                 attachments = record.get("_attachments", {})
                 print('===> Revisión actual encontrada')
                 return record
-            elif _rev in all_revs:
-                print(f'===> Revisión vieja, ultima revision registrada: {current_rev}')
-                return {'status_code': 461, 'type': 'error', 'msg': 'Old revision found', 'data': {}}
-            else:
+            elif current_rev_version < server_current_rev_version:
+                print(f'===> Revisión vieja solicitada {_rev} , ultima revision registrada: {current_rev}')
+                return {'status_code': 461, 'type': 'error', 'msg': f'Old revision requested: {_rev}, current revision is: {current_rev}', 'data': {}}
+            elif current_rev_version > server_current_rev_version:
                 print(f'===> Revisión aún no propagada (Intento {attempt + 1}/{max_retries})')
                 if attempt < max_retries - 1:
                     time.sleep(wait_time)
                 else:
                     return {'status_code': 462, 'type': 'error', 'msg': 'Revision not yet propagated', 'data': {}}
+            else:
+                print(f'===> Registro {_id} no econtrado')
+                return {'status_code': 404, 'type': 'error', 'msg': 'Revision not yet propagated', 'data': {}}
+            return {'status_code': 404, 'type': 'error', 'msg': 'No record found...', 'data': {}}
 
     def upload_file_from_couchdb(self, image_data, attachment_name, id_forma_seleccionada, id_field):
         temp_dir = tempfile.gettempdir()
@@ -650,7 +673,7 @@ class Accesos(Accesos):
         
         if 'areas_del_rondin' not in bitacora_in_lkf:
             bitacora_in_lkf['areas_del_rondin'] = []
-
+        
         for item in bitacora_in_lkf.get('areas_del_rondin', []):
             nombre_area = item.get('incidente_area')
             check = new_areas.pop(nombre_area, None)
@@ -735,7 +758,7 @@ class Accesos(Accesos):
             areas_list,
             key=lambda x: self.parse_date_for_sorting(x.get(self.f['fecha_hora_inspeccion_area'], ''))
         )
-        answers[self.f['areas_del_rondin']] = all_areas_sorted
+        answers[self.f['areas_del_rondin']] = self.delete_duplicate_areas(all_areas_sorted)
         answers[self.f['estatus_del_recorrido']] = 'en_proceso' if estatus_bitacora_in_couch != 'completed' else 'realizado'
         answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = conf_recorrido
         if not answers.get(self.f['fecha_inicio_rondin']):
@@ -770,7 +793,6 @@ class Accesos(Accesos):
                 comentarios_finales.append(nuevo_comentario)
         
         answers[self.f['grupo_comentarios_generales']] = comentarios_finales
-
         if answers:
             metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_RONDINES)
             metadata.update(self.get_record_by_folio(bitacora_in_lkf.get('folio'), self.BITACORA_RONDINES, select_columns={'_id': 1}, limit=1))
@@ -864,7 +886,8 @@ class Accesos(Accesos):
             
         
         metadata.update({'answers':answers})
-        return self.lkf_api.post_forms_answers(metadata)
+        res = self.lkf_api.post_forms_answers(metadata)
+        return res
     
     def delete_rondines(self, records):
         status = {}
@@ -1099,6 +1122,7 @@ class Accesos(Accesos):
                     self.cr_db.save(record)
                 else:
                     record['status'] = 'error'
+                    record['last_error'] = response.get('error', 'Incorrect error search... offline_services.py')
                     self.cr_db.save(record)
 
     def create_checks_in_lkf(self, records):
@@ -1264,7 +1288,6 @@ class Accesos(Accesos):
                     data_list = [(i.get('_id'), name, existing_urls) for name in attachments]
                     results = executor.map(lambda x: self._process_attachment_upload(*x), data_list)
                     media = [r for r in results if r]
-                    print('media: ', media)
 
                 for m in media:
                     m_name = m.get('file_name')
@@ -1323,7 +1346,6 @@ if __name__ == "__main__":
         record = acceso_obj.get_couch_record(_id=_id, _rev=_rev)
         record = dict(record)
         type_sync = record.get('type', '')
-        
         if type_sync == 'incidencia':
             response = acceso_obj.sync_incidence_to_lkf(record=record)
         elif type_sync == 'check_area':
