@@ -37,7 +37,7 @@ class ValidarXLSDescuentos( Produccion_PCI ):
             if division_rec == "psr" or tecnologia_rec == "psr":
                 tecnologia_rec = "psr"
             else:
-                if division_rec not in ["metro", "sur", "norte", "occidente"]:
+                if division_rec not in ["metro", "sur", "norte", "occidente", "telnor"]:
                     error_descuentos.append(f"RENGLON {num_row}: División debe ser metro, sur, norte u occidente")
                     continue
                 if tecnologia_rec not in ["fibra", "cobre"]:

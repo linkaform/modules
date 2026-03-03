@@ -79,7 +79,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             if division_rec == "psr" or tecnologia_rec == "psr":
                 full_name = "psr"
             else:
-                if division_rec not in ["metro", "sur", "norte", "occidente"]:
+                if division_rec not in ["metro", "sur", "norte", "occidente", "telnor"]:
                     error_descuentos.append(rec_des + ["División debe ser metro, sur, norte u occidente",])
                     continue
                 if tecnologia_rec not in ["fibra", "cobre"]:
