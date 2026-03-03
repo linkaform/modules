@@ -648,8 +648,8 @@ class PCI_Utils():
             ('sur', 'cobre'): ( self.lkf_obj.ORDEN_SERVICIO_COBRE_SURESTE, self.lkf_obj.FORMA_LIBERACION_COBRE_SURESTE, self.lkf_obj.FORMA_ORDEN_COMPRA_COBRE_SURESTE ),
             ('norte', 'cobre'): ( self.lkf_obj.ORDEN_SERVICIO_COBRE_NORTE, self.lkf_obj.FORMA_LIBERACION_COBRE_NORTE, self.lkf_obj.FORMA_ORDEN_COMPRA_COBRE_NORTE ),
             ('occidente', 'cobre'): ( self.lkf_obj.ORDEN_SERVICIO_COBRE_OCCIDENTE, self.lkf_obj.FORMA_LIBERACION_COBRE_OCCIDENTE, self.lkf_obj.FORMA_ORDEN_COMPRA_COBRE_OCCIDENTE ),
-            ('telnor', 'fibra'): ( self.lkf_obj.ORDEN_SERVICIO_FIBRA_TELNOR, None, None ),
-            ('telnor', 'cobre'): ( self.lkf_obj.ORDEN_SERVICIO_COBRE_TELNOR, None, None ),
+            ('telnor', 'fibra'): ( self.lkf_obj.ORDEN_SERVICIO_FIBRA_TELNOR, self.lkf_obj.FORMA_LIBERACION_FIBRA_TELNOR, self.lkf_obj.FORMA_ORDEN_COMPRA_FIBRA_TELNOR ),
+            ('telnor', 'cobre'): ( self.lkf_obj.ORDEN_SERVICIO_COBRE_TELNOR, self.lkf_obj.FORMA_LIBERACION_COBRE_TELNOR, self.lkf_obj.FORMA_ORDEN_COMPRA_COBRE_TELNOR ),
         }
 
         # Buscar las formas correspondientes en el diccionario

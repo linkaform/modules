@@ -53,6 +53,10 @@ class Produccion_PCI(Produccion_PCI):
         # Formas de nueva division TELNOR
         self.ORDEN_SERVICIO_FIBRA_TELNOR = 148166
         self.ORDEN_SERVICIO_COBRE_TELNOR = 148165
+        self.FORMA_LIBERACION_FIBRA_TELNOR = 148225
+        self.FORMA_LIBERACION_COBRE_TELNOR = 148224
+        self.FORMA_ORDEN_COMPRA_FIBRA_TELNOR = 148227
+        self.FORMA_ORDEN_COMPRA_COBRE_TELNOR = 148226
 
         # Equivalencias de las formas de orden de servicio en las cuentas de SC y en Admin
         self.dict_equivalences_forms_id = { 
@@ -89,7 +93,10 @@ class Produccion_PCI(Produccion_PCI):
             
             # Cobre no se ocupa en SR
             {'tecnologia':'cobre','division':'metro'}, {'tecnologia':'cobre','division':'sur'}, 
-            {'tecnologia':'cobre','division':'norte'}, {'tecnologia':'cobre','division':'occidente'}
+            {'tecnologia':'cobre','division':'norte'}, {'tecnologia':'cobre','division':'occidente'},
+
+            # TELNOR
+            {'tecnologia':'fibra','division':'telnor'},{'tecnologia':'cobre','division':'telnor'},
         ]
 
         self.f.update({

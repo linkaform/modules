@@ -44,6 +44,9 @@ class Produccion_PCI( Produccion_PCI ):
             self.ORDEN_SERVICIO_COBRE_SURESTE: self.FORMA_ORDEN_COMPRA_COBRE_SURESTE, 
             self.ORDEN_SERVICIO_COBRE_NORTE: self.FORMA_ORDEN_COMPRA_COBRE_NORTE, 
             self.ORDEN_SERVICIO_COBRE_OCCIDENTE: self.FORMA_ORDEN_COMPRA_COBRE_OCCIDENTE, 
+
+            self.ORDEN_SERVICIO_FIBRA_TELNOR: self.FORMA_ORDEN_COMPRA_FIBRA_TELNOR,
+            self.ORDEN_SERVICIO_COBRE_TELNOR: self.FORMA_ORDEN_COMPRA_COBRE_TELNOR,
         }
         
         for record in records:
@@ -125,7 +128,9 @@ class Produccion_PCI( Produccion_PCI ):
             self.ORDEN_SERVICIO_FIBRA_SURESTE: ['5ad14051f851c220dd0eb772', '5a623ed8b43fdd2b2bffb905'],
             self.ORDEN_SERVICIO_FIBRA_OCCIDENTE: ['5ad4b4a9b43fdd7af0f65899', '5a623faff851c227180570a0'],
             self.ORDEN_SERVICIO_FIBRA_NORTE: ['5ad14687f851c23d8a4d95c9', '5a623f3af851c2270c8dc073'],
-            self.ORDEN_SERVICIO_FIBRA: ['5a8aefa7b43fdd100602f7be', '5a623e71b43fdd2b2d5a5893']
+            self.ORDEN_SERVICIO_FIBRA: ['5a8aefa7b43fdd100602f7be', '5a623e71b43fdd2b2d5a5893'],
+            self.ORDEN_SERVICIO_FIBRA_TELNOR: ['5ad14051f851c220dd0eb772', '5a623ed8b43fdd2b2bffb905'],
+            self.ORDEN_SERVICIO_COBRE_TELNOR: ['5ad13e8cf851c220dd0eb769', '5a623e30f851c2271179f823'],
         }
         field_id_cliente = 'f1054000a0100000000000c5' if tecnologia == 'fibra' else '58e6d4cff851c244a78f35ca'
         
@@ -169,7 +174,7 @@ class Produccion_PCI( Produccion_PCI ):
 
         select_columns = {'folio':1, 'form_id': 1, 'answers':1, 'connection_id':1}
         print('##################### query=',query)
-        records_found = self.cr.find(query, select_columns)        
+        records_found = self.cr.find(query, select_columns)
         """
         Identificar los folios y telefonos de PSR
         """
