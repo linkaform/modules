@@ -490,6 +490,71 @@ class Accesos( Accesos):
                 }
             }
         return res
+    
+    def access_pass_set_status(self, answers):
+        """
+        Evalua criterios del pase y regresa el status del pase
+        Proceso
+        Activo
+        Vencido
+        args:
+            answers (json): Objeto de answers
+        return:
+            status (str): String con status
+        """
+        foto_ok = False
+        id_vista = False
+        fecha_ok = False
+        vista_a_ok = False
+        autorizado_ok = False
+        status = 'proceso'
+        foto  = answers[self.pase_entrada_fields['walkin_fotografia']]
+        if isinstance(foto, list) and len(foto) > 0:
+            foto = foto[0]
+
+        if isinstance(foto, dict):
+            if 'file_url' in foto.keys() and foto['file_url']:
+                foto_ok = self.valid_url(foto['file_url'])
+        #TODO revisar configuracion
+        id_vista = answers.get(self.pase_entrada_fields['walkin_identificacion'], [])
+        if isinstance(id_vista, list) and len(id_vista) > 0:
+            id_vista = id_vista[0]
+
+        if isinstance(id_vista, dict):
+            if 'file_url' in id_vista.keys() and id_vista['file_url']:
+                id_vista = self.valid_url(id_vista['file_url'])
+        id_vista = True
+        today = self.get_today_format()
+        try:
+            fecha_desde_visita = self.valid_date(answers[self.pase_entrada_fields['fecha_desde_visita']]) 
+        except:
+            fecha_desde_visita = None
+        try:
+            fecha_desde_hasta = self.valid_date(answers[self.pase_entrada_fields['fecha_desde_hasta']])
+        except:
+            fecha_desde_hasta = None
+        if fecha_desde_visita and fecha_desde_hasta and fecha_desde_visita >= today and fecha_desde_hasta >= today: 
+            fecha_ok = True
+        
+        grupo_visitados = answers[self.mf['grupo_visitados']]
+        for vista in grupo_visitados:
+            if isinstance(vista, int):
+                vista_a = grupo_visitados[vista]
+            else:
+                vista_a = vista
+            if vista_a.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID,{}).get(self.mf['nombre_empleado']):
+                vista_a_ok = True
+
+            if answers.get(self.pase_entrada_fields['catalago_autorizado_por'],{}).get(self.pase_entrada_fields['autorizado_por']):
+                autorizado_ok = True
+
+        if foto_ok and id_vista and fecha_ok and vista_a_ok and autorizado_ok:
+            status = 'activo'
+        elif foto_ok and id_vista and fecha_ok and vista_a_ok and not autorizado_ok:
+            status = 'por_autorizar'
+        elif not fecha_ok:
+            status = 'vencido'
+        return status
 
     def access_pass_vista_a(self, visita_a):
         """
@@ -559,8 +624,8 @@ class Accesos( Accesos):
                 # TODO REVISAR ESTOOOOOO
                 if set_autorizado_por:
                     self.autorizado_por = employee.get('worker_name')
-            elif "OTHER_USER" in visita:
-                visita = visita.replace(" OTHER_USER", "")
+            elif "(No Registrado)" in visita:
+                visita = visita.replace("(No Registrado)", "")
                 employee = {
                     'worker_name': visita,
                     'usuario_email': "",
