@@ -99,7 +99,7 @@ if __name__ == "__main__":
     elif option == 'get_articles':
         response = acceso_obj.get_list_articulos_concesionados(location, area, status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate)
     elif option == 'update_article':
-        response = acceso_obj.update_article_concessioned(data, record_id)
+        response = acceso_obj.update_article_concessioned(data_article_update, folio)
     elif option == 'delete_article':
         response = acceso_obj.delete_article_concessioned(folio)
     elif option == 'catalogo_tipo_concesion':

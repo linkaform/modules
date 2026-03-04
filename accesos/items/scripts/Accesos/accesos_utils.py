@@ -71,7 +71,8 @@ class Accesos( Accesos):
             'datos_requeridos': '6769756fc728a0b63b8431ea',
             'envio_por': '6810180169eeaca9517baa5b',
             'configuracion_de_accesos': '696e6dda9517e760679e71eb',
-            'tipo_de_notificacion': '699dfe3b82be0dbe0319d38c'
+            'bitacora_sala': '6998931ce4b114620fd4724d',
+            'tipo_de_notificacion': '699dfe3b82be0dbe0319d38c',
         })
 
         #BORRAR
@@ -474,14 +475,16 @@ class Accesos( Accesos):
         departamento = self.unlist(employee.get('worker_department',""))
         puesto = self.unlist(employee.get('worker_position',""))
         #Lo seteamo en una lista porque es campo catlog detail
-        res = {self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID: {
-                self.mf['nombre_empleado'] : nombre_visita_a,
-                self.mf['telefono_visita_a']: [phone, ],
-                self.mf['email_visita_a']: [email, ],
-                self.mf['id_usuario']: [user_id_id, ],
-                self.mf['username']: [username, ],
-                self.mf['departamento_empleado']: [departamento, ],
-                self.mf['puesto_empleado']: [puesto, ],
+        if nombre_visita_a:
+            res = {
+                self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID: {
+                    self.mf['nombre_empleado'] : nombre_visita_a,
+                    self.mf['telefono_visita_a']: [phone, ],
+                    self.mf['email_visita_a']: [email, ],
+                    self.mf['id_usuario']: [user_id_id, ],
+                    self.mf['username']: [username, ],
+                    self.mf['departamento_empleado']: [departamento, ],
+                    self.mf['puesto_empleado']: [puesto, ],
                 }
             }
         return res
@@ -582,6 +585,47 @@ class Accesos( Accesos):
         self.last_check_in = self.get_last_checkin(location, area)
         last_status = True if self.last_check_in.get('checkin_type') == 'abierta' else False
         return last_status
+
+    def catalogos_pase_area(self, location_name):
+        areas, salas = self.get_areas_by_location(location_name, divide_salas=True)
+        res = {
+            "areas_by_location" : areas,
+            "salas_by_location" : salas
+        }
+        return res
+
+    def get_areas_by_location(self, location_name, divide_salas=False):
+        match_query = {
+            "deleted_at": {"$exists": False},
+            "form_id": self.AREAS_DE_LAS_UBICACIONES,
+        }
+        if type(location_name) == str:
+            match_query[f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.f['location']}"] = location_name
+        elif type(location_name) == list:
+            match_query[f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.f['location']}"] = {"$in": location_name}
+
+        query = [
+            {"$match": match_query},
+            {"$project": {
+                "_id": 0,
+                "area": f"$answers.{self.Location.f['area']}",
+                "tipo_de_area": f"$answers.{self.TIPO_AREA_OBJ_ID}.{self.f['tipo_de_area']}",
+            }}
+        ]
+        data = self.format_cr(self.cr.aggregate(query))
+        areas = []
+        salas = []
+        for item in data:
+            if divide_salas:
+                if item.get('tipo_de_area') == 'Salas de juntas':
+                    salas.append(item.get('area'))
+                else:
+                    areas.append(item.get('area'))
+            else:
+                areas.append(item.get('area'))
+        if divide_salas:
+            return sorted(areas), sorted(salas)
+        return sorted(areas)
 
     def get_employees_data(self, names=None, user_id=None, username=None, email=None,  get_one=False):
         match_query = {
@@ -2309,7 +2353,8 @@ class Accesos( Accesos):
             'status_visita':f"$answers.{self.mf['tipo_registro']}",
             'ubicacion':f"$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}",
             'vehiculos':f"$answers.{self.mf['grupo_vehiculos']}",
-            'visita_a': f"$answers.{self.mf['grupo_visitados']}"
+            'visita_a': f"$answers.{self.mf['grupo_visitados']}",
+            'sala': f"$answers.{self.f['bitacora_sala']}"
         }
 
         lookup = {
@@ -2832,7 +2877,7 @@ class Accesos( Accesos):
             fecha_obj_visita = datetime.strptime(fecha_visita, "%Y-%m-%d %H:%M:%S")
             fecha_visita_tz = timezone.localize(fecha_obj_visita)
             
-            if fecha_actual < fecha_visita_tz - timedelta(minutes=30):
+            if fecha_actual < fecha_visita_tz - timedelta(minutes=60):
                 self.LKFException({'msg': f"Aún no es hora de entrada. Tu acceso comienza a las {fecha_visita}", "title": 'Aviso'})
         
         if location not in access_pass.get("ubicacion",[]):
@@ -2973,7 +3018,7 @@ class Accesos( Accesos):
                 if index==0 :
                     docs+="-"
             link_pass= f"{link_info['link']}?id={record_id}&user={self.user.get('parent_id')}&docs={docs}"
-            answers[self.pase_entrada_fields['link']] = link_pass
+            answers[self.pase_entrada_fields['link']] = link_pass.replace('web.clave10.com', '3b.clave10.com')
         lkf_qr = generar_qr.LKF_QR(self.settings)
        
         qr_generado = lkf_qr.procesa_qr( 
@@ -3041,6 +3086,7 @@ class Accesos( Accesos):
         answers[self.pase_entrada_fields['walkin_identificacion']] = access_pass.get('identificacion')
         answers[self.pase_entrada_fields['walkin_telefono']] = access_pass.get('telefono', '')
         answers[self.pase_entrada_fields['enviar_correo_pre_registro']] = access_pass.get("enviar_correo_pre_registro",[])
+        answers[self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID] = {self.mf['nombre_area_salida']: access_pass.get('sala', '')}
 
         created_from = access_pass.get('created_from')
         if created_from == 'app':
@@ -3829,7 +3875,8 @@ class Accesos( Accesos):
                 'acepto_aviso_privacidad': f"$answers.{self.pase_entrada_fields['acepto_aviso_privacidad']}",
                 'acepto_aviso_datos_personales': f"$answers.{self.pase_entrada_fields['acepto_aviso_datos_personales']}",
                 'conservar_datos_por': f"$answers.{self.pase_entrada_fields['conservar_datos_por']}",
-                'ubicaciones': f"$answers.{self.pase_entrada_fields['ubicaciones']}"                
+                'ubicaciones': f"$answers.{self.pase_entrada_fields['ubicaciones']}",
+                'sala': f"$answers.{self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.mf['nombre_area_salida']}"
                 },
             },
             {'$sort':{'created_at':-1}},
@@ -4169,6 +4216,17 @@ class Accesos( Accesos):
             else:
                 print('=============', response)
                 self.LKFException({'title': 'Error', 'msg': 'Hubo un error al actualizar los registros.'})
+        return False
+
+    def pregenerate_pdf(self):
+        qr_code = self.answers.get(self.mf['codigo_qr'])
+        if qr_code:
+            try:
+                self.get_pdf(qr_code, template_id=622)
+                return True
+            except Exception as e:
+                print('========== Log:', simplejson.dumps(e, indent=2, default=str))
+                return False
         return False
 
     def update_pass(self, access_pass,folio=None):
