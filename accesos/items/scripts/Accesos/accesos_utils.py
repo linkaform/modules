@@ -75,6 +75,7 @@ class Accesos( Accesos):
             'configuracion_de_accesos': '696e6dda9517e760679e71eb',
             'bitacora_sala': '6998931ce4b114620fd4724d',
             'tipo_de_notificacion': '699dfe3b82be0dbe0319d38c',
+            'url_de_etiqueta': '69a88700c02fcbc4bcfe85d2'
         })
 
         #BORRAR
@@ -291,6 +292,11 @@ class Accesos( Accesos):
                 )
             answers.update({self.bitacora_fields['visita_a']:visit_list2})
 
+        #Pregeneracion de PDF de Etiqueta
+        qr_code = access_pass.get('_id')
+        pdf = self.lkf_api.get_pdf_record(qr_code, name_pdf='Pase de Entrada', send_url=True)
+        answers[self.f['url_de_etiqueta']] = pdf.get('json', {}).get('download_url', '')
+        
         metadata.update({'answers':answers})
         response_create = self.lkf_api.post_forms_answers(metadata)
         return response_create
@@ -2431,7 +2437,8 @@ class Accesos( Accesos):
             'ubicacion':f"$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}",
             'vehiculos':f"$answers.{self.mf['grupo_vehiculos']}",
             'visita_a': f"$answers.{self.mf['grupo_visitados']}",
-            'sala': f"$answers.{self.f['bitacora_sala']}"
+            'sala': f"$answers.{self.f['bitacora_sala']}",
+            'url_de_etiqueta': f"$answers.{self.f['url_de_etiqueta']}"
         }
 
         lookup = {
