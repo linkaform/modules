@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from os import access
+
 import pytz
 import sys, simplejson, json, pytz, base64, requests
 
@@ -557,6 +559,16 @@ class Accesos( Accesos):
                 # TODO REVISAR ESTOOOOOO
                 if set_autorizado_por:
                     self.autorizado_por = employee.get('worker_name')
+            elif "OTHER_USER" in visita:
+                visita = visita.replace(" OTHER_USER", "")
+                employee = {
+                    'worker_name': visita,
+                    'usuario_email': "",
+                    'user_id_id': "",
+                    'new_user_username': "",
+                    'worker_department': "",
+                    'worker_position': "",
+                }
             else:
                 employee = self.Employee.get_employee_data(name = visita, get_one=True)
                 self.employee = employee
@@ -3053,6 +3065,7 @@ class Accesos( Accesos):
 
         answers[self.UBICACIONES_CAT_OBJ_ID] = {}
 
+        fecha_limite_seleccionada = access_pass.get('fecha_desde_visita')
         ### Setting defaults
         if not access_pass.get('tipo_visita_pase') or access_pass['tipo_visita_pase'] :
             access_pass['tipo_visita_pase'] = 'fecha_fija'
@@ -3060,7 +3073,11 @@ class Accesos( Accesos):
         if not  access_pass.get('fecha_desde_visita') or access_pass['fecha_desde_visita'] == "":
             access_pass['fecha_desde_visita'] =  now_datetime
         
-        if not access_pass.get('fecha_desde_hasta') or access_pass['fecha_desde_hasta'] == "":
+        if access_pass['tipo_visita_pase'] == 'fecha_fija' and fecha_limite_seleccionada:
+            access_pass['fecha_desde_visita'] = now_datetime
+            limite_fecha = fecha_limite_seleccionada.split(' ')[0]
+            access_pass['fecha_desde_hasta'] = f"{limite_fecha} 23:59:59"
+        elif not access_pass.get('fecha_desde_hasta') or access_pass['fecha_desde_hasta'] == "":
             ics_invitation = True
             access_pass['fecha_desde_hasta'] = now_datetime_out
         
