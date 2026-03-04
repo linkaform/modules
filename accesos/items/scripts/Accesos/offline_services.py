@@ -789,13 +789,12 @@ class Accesos(Accesos):
                 '_id': bitacora_in_lkf.get('_id')
             })
             res = self.net.patch_forms_answers(metadata)
-            print("======log: ", res)
             return res
         
     def create_check_area(self, data):
         # metadata = self.lkf_api.get_metadata(form_id=self.CHECK_UBICACIONES)
         answers = {}
-        metadata = self.lkf_api.get_metadata(form_id=137161) #TODO: Modularizar id
+        metadata = self.lkf_api.get_metadata(form_id=self.CHECK_UBICACIONES) #TODO: Modularizar id
         metadata.update({
             "properties": {
                 "device_properties":{
@@ -1088,7 +1087,6 @@ class Accesos(Accesos):
         response = {}
         try:
             response = self.create_check_area(record)
-            print("======log: ", response)
         except Exception as e:
             self.LKFException({'title': 'Error inesperado', 'msg': str(e)})
         
@@ -1224,15 +1222,22 @@ class Accesos(Accesos):
                 checks_in_lkf = [i.get('incidente_area') for i in bitacora_in_lkf.get('areas_del_rondin', []) if i.get('fecha_hora_inspeccion_area')]
                 checks_in_couch = [i.get('area') for i in aux.get('record', {}).get('check_areas', []) if i.get('checked')]
                 if len(checks_in_couch) != len(checks_in_lkf):
+                    aux['status'] = 'received'
+                    aux['inbox'] = False
+                
+                    self.cr_db.save(aux)
                     return {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
 
                 aux['status'] = 'received'
                 aux['inbox'] = False
+
                 self.cr_db.save(aux)
             status = {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
         else:
-            aux['status'] = 'error'
-            self.cr_db.save(aux)
+            print('Revisando status de inbox para ver si es necesario guardar como error: ', aux )
+            if aux['status'] != 'error':
+                aux['status'] = 'error'
+                # self.cr_db.save(aux)
             status = {'status_code': 400, 'type': 'error', 'msg': bitacora_response, 'data': {}}
         return status
 
