@@ -277,19 +277,20 @@ class Accesos( Accesos):
             if comment_list:
                 answers.update({self.bitacora_fields['grupo_comentario']:comment_list})
 
-        visit_list = data.get('visita_a',[])
+        tipo_pase = data.get('perfil_pase', '')
+        visit_list = data.get('visita_a') if tipo_pase != 'Interno' else access_pass.get('answers', {}).get(self.bitacora_fields['visita_a'], [])
         if visit_list:
             visit_list2 = []
             for c in visit_list:
-                visit_list2.append(
-                   { f"{self.bitacora_fields['visita']}":{ 
-                       self.bitacora_fields['visita_nombre_empleado']:c.get('nombre'),
-                       self.mf['id_usuario'] :[c.get('user_id')],
-                       self.bitacora_fields['visita_departamento_empleado']:[c.get('departamento')],
-                       self.bitacora_fields['puesto_empleado']:[c.get('puesto')],
-                       self.mf['email_visita_a'] :[c.get('email')]
-                   }}
-                )
+                visit_list2.append({
+                    f"{self.bitacora_fields['visita']}": { 
+                        self.bitacora_fields['visita_nombre_empleado']: c.get('nombre', c.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID, {}).get(self.mf['nombre_empleado'], '')),
+                        self.mf['id_usuario'] : [c.get('user_id')] if c.get('user_id') else c.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID, {}).get(self.mf['id_usuario'], []),
+                        self.bitacora_fields['visita_departamento_empleado']: [c.get('departamento')],
+                        self.bitacora_fields['puesto_empleado']: [c.get('puesto')],
+                        self.mf['email_visita_a']: [c.get('email')] if c.get('email') else c.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID, {}).get(self.mf['email_visita_a'], []),
+                   }
+                })
             answers.update({self.bitacora_fields['visita_a']:visit_list2})
 
         #Pregeneracion de PDF de Etiqueta
@@ -299,6 +300,8 @@ class Accesos( Accesos):
         
         metadata.update({'answers':answers})
         response_create = self.lkf_api.post_forms_answers(metadata)
+        if response_create.get('status_code') in [200, 201, 202]:
+            response_create.update({'url_de_etiqueta': pdf.get('json', {}).get('download_url', '')})           
         return response_create
 
     def access_pass_create_ics(self, access_pass, answers, ics_invitation=False):
@@ -3139,8 +3142,7 @@ class Accesos( Accesos):
 
         fecha_limite_seleccionada = access_pass.get('fecha_desde_visita')
         ### Setting defaults
-        if not access_pass.get('tipo_visita_pase') or access_pass['tipo_visita_pase'] :
-            access_pass['tipo_visita_pase'] = 'fecha_fija'
+        access_pass['tipo_visita_pase'] = access_pass.get('tipo_visita_pase', 'fecha_fija')
 
         if not  access_pass.get('fecha_desde_visita') or access_pass['fecha_desde_visita'] == "":
             access_pass['fecha_desde_visita'] =  now_datetime
@@ -3245,10 +3247,14 @@ class Accesos( Accesos):
             if areas:
                 areas_list = []
                 for c in areas:
+                    # Validar si 'c' es un string (solo nombre) o un dict (objeto completo)
+                    area_nombre = c.get('nombre_area') if isinstance(c, dict) else c
+                    area_comentario = c.get('commentario_area', '') if isinstance(c, dict) else ""
+                    
                     areas_list.append(
                         {
-                            self.pase_entrada_fields['commentario_area']:c.get('commentario_area'),
-                            self.pase_entrada_fields['area_catalog_normal'] :{self.mf['nombre_area']: c.get('nombre_area')}
+                            self.pase_entrada_fields['commentario_area']: area_comentario,
+                            self.pase_entrada_fields['area_catalog_normal'] :{self.mf['nombre_area']: area_nombre}
                         }
                     )
                 answers.update({self.pase_entrada_fields['grupo_areas_acceso']:areas_list})
@@ -3272,13 +3278,57 @@ class Accesos( Accesos):
 
         answers[self.pase_entrada_fields['status_pase']] = self.access_pass_set_status(answers)
         metadata.update({'answers':answers})
-        res = self.lkf_api.post_forms_answers(metadata)
+        invitados = access_pass.get('invitados', [])
+        if len(invitados) > 1:
+            responses = self.create_multiple_access_pass(access_pass, invitados, metadata)
+            return responses
         
+        res = self.lkf_api.post_forms_answers(metadata)
+        qr_code = res.get('json', {}).get('id')
+        if perfil_pase == 'Interno' and created_from == 'nueva_visita' and qr_code:
+            response = self.do_access(qr_code, access_pass.get('location', ''), access_pass.get('area', ''), access_pass)
+            res['url_de_etiqueta'] = response.get('url_de_etiqueta', '') if response else ''
         qrcode_to_google_pass = ''
         id_forma = ''
         # if res.get("status_code") ==200 or res.get("status_code")==201:
         #     res = self.access_pass_google_pass(res, access_pass)
         return res
+    
+    def create_multiple_access_pass(self, access_pass, invitados, metadata):
+        responses = []
+        for invitado in invitados:
+            record_id = self.object_id()
+            metadata['id'] = record_id
+            answers = metadata.get('answers', {})
+            
+            link_info = access_pass.get('link', "")
+            docs=""
+            
+            if link_info:
+                for index, d in enumerate(link_info["docs"]): 
+                    if(d == "agregarIdentificacion"):
+                        docs+="iden"
+                    elif(d == "agregarFoto"):
+                        docs+="foto"
+                    if index==0 :
+                        docs+="-"
+                link_pass= f"{link_info['link']}?id={record_id}&user={self.user.get('parent_id')}&docs={docs}"
+                answers[self.pase_entrada_fields['link']] = link_pass.replace('web.clave10.com', '3b.clave10.com')
+            
+            lkf_qr = generar_qr.LKF_QR(self.settings)
+            qr_generado = lkf_qr.procesa_qr( 
+                record_id, 
+                f"qr_{record_id}", 
+                self.PASE_ENTRADA, 
+                img_field_id=self.pase_entrada_fields['qr_pase'] )
+
+            answers[self.pase_entrada_fields['qr_pase']] = qr_generado
+            answers[self.pase_entrada_fields['walkin_nombre']] = invitado.get('nombre')
+            answers[self.pase_entrada_fields['walkin_email']] = invitado.get('email', '')
+            metadata.update({'answers':answers})
+            res = self.lkf_api.post_forms_answers(metadata)
+            responses.append(res)
+        return responses
 
     def autorizar_pase_acceso(self, answers):
         autorizado_por = {}
