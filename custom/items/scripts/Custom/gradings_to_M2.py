@@ -56,10 +56,11 @@ class Custom(Custom):
                 
                 ponderaciones_by_page[name_page]['fields_considerados'].append( field_ponderable )
 
-                if value_field_ponderable == 'cumple':
+                if value_field_ponderable in ['cumple', 'no_aplica']:
                     ponderaciones_by_page[name_page]['fields_cumplen'].append( field_ponderable )
 
-        print(f"\n - ponderaciones_by_page = {ponderaciones_by_page}")
+        print(f"\n - ponderaciones_by_page = {simplejson.dumps(ponderaciones_by_page, indent=2)}")
+
 
         """
         Se consulta el grading del registro para editarlo y meter los que se calcularon
@@ -71,6 +72,13 @@ class Custom(Custom):
         if not rec_grading:
             print(f'[ERROR] grading no encontrado para el registro = {self.record_id}')
             return
+
+        total_campos_considerados = 0
+        for pagina_ponderable, data_fields in ponderaciones_by_page.items():
+            total_campos_considerados += len( data_fields.get('fields_considerados', []) )
+
+        valor_general_campo = round( valor_porcentual_base / total_campos_considerados, 2 )
+        valor_general_campo_2 = round( 100 / total_campos_considerados, 2 )
 
         total_points_available, total_points_obtained = 0, 0
         total_points_available_2, total_points_obtained_2 = 0, 0
@@ -85,8 +93,8 @@ class Custom(Custom):
             fields_cumplen = ponderaciones['fields_cumplen']
             
             total_fields_considerados = len( fields_considerados )
-            grading_1_field = round(valor_porcentual_base / total_fields_considerados, 2)
-            grading_2_field = round(100 / total_fields_considerados, 2)
+            # grading_1_field = round(valor_porcentual_base / total_fields_considerados, 2)
+            # grading_2_field = round(100 / total_fields_considerados, 2)
 
             page_points_available, page_points_obtained = 0, 0
             page_points_available_2, page_points_obtained_2 = 0, 0
@@ -100,13 +108,13 @@ class Custom(Custom):
 
                 if field_id in fields_considerados:
                     if field_id in fields_cumplen:
-                        val_grad_1 = grading_1_field
-                        val_grad_2 = grading_2_field
+                        val_grad_1 = valor_general_campo
+                        val_grad_2 = valor_general_campo_2
                 
-                    field_page['points_available'] = grading_1_field
-                    field_page['points_available_2'] = grading_2_field
-                    page_points_available += grading_1_field
-                    page_points_available_2 += grading_2_field
+                    field_page['points_available'] = valor_general_campo
+                    field_page['points_available_2'] = valor_general_campo_2
+                    page_points_available += valor_general_campo
+                    page_points_available_2 += valor_general_campo_2
                 
                 field_page['points_obtained'] = val_grad_1
                 field_page['points_obtained_2'] = val_grad_2
@@ -135,6 +143,12 @@ class Custom(Custom):
             'points_obtained_2': total_points_obtained_2,
         }} )
         print(f"\nMatched count: {resp_update_grading.matched_count} Modified count: {resp_update_grading.matched_count}", )
+
+
+        resp_update_record = lkf_obj.cr.update_one( {'_id': ObjectId( self.record_id )}, {'$set': {
+            'points': total_points_obtained
+        }} )
+        print(f"\nMatched count: {resp_update_record.matched_count} Modified count: {resp_update_record.matched_count}", )
 
 if __name__ == '__main__':
     lkf_obj = Custom(settings, sys_argv=sys.argv)

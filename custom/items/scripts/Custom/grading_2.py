@@ -77,6 +77,8 @@ class Custom(Custom):
             print(f'[ERROR] grading no encontrado para el registro = {self.record_id}')
             return
 
+        general_points_avalible, general_points_obtained = 0, 0
+        general_points_avalible_2, general_points_obtained_2 = 0, 0
         for page in rec_grading.get('pages', []):
             ponderaciones = ponderaciones_by_page.get( page['name'], {} )
             if not ponderaciones:
@@ -87,12 +89,39 @@ class Custom(Custom):
             page['points_available'] = ponderacion_base_x
             page['points_obtained'] = ponderaciones['grading_1']
 
+            general_points_avalible += page['points_available']
+            general_points_obtained += page['points_obtained']
+
             # Se agrega el Grading 2
             page['points_available_2'] = ponderacion_base_100
             page['points_obtained_2'] = ponderaciones['grading_2']
 
+            general_points_avalible_2 += page['points_available_2']
+            general_points_obtained_2 += page['points_obtained_2']
+
+            # Se calcula el grading a nivel de campo
+            page_fields = page.get('fields', [])
+            value_by_field = ponderacion_base_x / len(page_fields)
+            if page['points_obtained'] == 0:
+                value_by_field = 0
+            for field in page_fields:
+                field['points_obtained'] = value_by_field
+                field['points_available'] = value_by_field
+
         # Se guarda el grading con las páginas ya modificadas
-        resp_update_grading = cr_grading.update_one( query_grading, {'$set': {'pages': rec_grading['pages']}} )
+        resp_update_grading = cr_grading.update_one( query_grading, {'$set': {
+            'pages': rec_grading['pages'],
+            'points_available': general_points_avalible,
+            'points_obtained': general_points_obtained,
+            'points_available_2': general_points_avalible_2,
+            'points_obtained_2': general_points_obtained_2,
+        }} )
+        print(f"\nMatched count: {resp_update_grading.matched_count} Modified count: {resp_update_grading.matched_count}", )
+
+
+        resp_update_grading = lkf_obj.cr.update_one( {'_id': ObjectId( self.record_id )}, {'$set': {
+            'points': general_points_obtained
+        }} )
         print(f"\nMatched count: {resp_update_grading.matched_count} Modified count: {resp_update_grading.matched_count}", )
 
 if __name__ == '__main__':
