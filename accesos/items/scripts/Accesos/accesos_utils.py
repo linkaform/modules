@@ -633,8 +633,8 @@ class Accesos( Accesos):
                 # TODO REVISAR ESTOOOOOO
                 if set_autorizado_por:
                     self.autorizado_por = employee.get('worker_name')
-            elif "(No Registrado)" in visita:
-                visita = visita.replace("(No Registrado)", "")
+            elif "*" in visita:
+                visita = visita.replace("*", "")
                 employee = {
                     'worker_name': visita,
                     'usuario_email': "",
