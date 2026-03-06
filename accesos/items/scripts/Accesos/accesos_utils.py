@@ -73,8 +73,8 @@ class Accesos( Accesos):
             'datos_requeridos': '6769756fc728a0b63b8431ea',
             'envio_por': '6810180169eeaca9517baa5b',
             'configuracion_de_accesos': '696e6dda9517e760679e71eb',
-            'bitacora_sala': '6998931ce4b114620fd4724d'
-            'tipo_de_notificacion': '699dfe3b82be0dbe0319d38c'
+            'bitacora_sala': '6998931ce4b114620fd4724d',
+            'tipo_de_notificacion': '699dfe3b82be0dbe0319d38c',
             'bitacora_sala': '6998931ce4b114620fd4724d',
             'tipo_de_notificacion': '699dfe3b82be0dbe0319d38c',
             'url_de_etiqueta': '69a88700c02fcbc4bcfe85d2'
