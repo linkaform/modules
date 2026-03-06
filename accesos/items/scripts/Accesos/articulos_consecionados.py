@@ -20,9 +20,6 @@ if __name__ == "__main__":
     data_article = data.get("data_article",{})
 
 
-    data_article_update = data.get("data_article_update",{
-        'observacion_concesion':'hola actualizado',
-    })
     location = data.get("location",'Planta Monterrey')
     area = data.get("area","")
     status= data.get("status", "")
