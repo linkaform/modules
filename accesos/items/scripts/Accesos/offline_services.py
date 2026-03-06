@@ -336,14 +336,14 @@ class Accesos(Accesos):
         return update_file
     
     def assign_user_inbox(self, data):
-        db_name = f'clave_{self.user_id}'
+        user_id_to_assign = self.unlist(data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['id_usuario'], ''))
+        db_name = f'clave_{user_id_to_assign}'
         self.cr_db = self.lkf_api.couch.set_db(db_name)
         record = self.cr_db.get(self.record_id)
         if record:
             return {'status_code': 202, 'type': 'success', 'msg': 'Ya existe el registro', 'data': {}}
 
         user_name_to_assign = data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['nombre_usuario'], '')
-        user_id_to_assign = self.unlist(data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['id_usuario'], ''))
         nombre_recorrido = data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.mf['nombre_del_recorrido'], '')
         ubicacion_recorrido = data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], '')
         
@@ -789,13 +789,12 @@ class Accesos(Accesos):
                 '_id': bitacora_in_lkf.get('_id')
             })
             res = self.net.patch_forms_answers(metadata)
-            print("======log: ", res)
             return res
         
     def create_check_area(self, data):
         # metadata = self.lkf_api.get_metadata(form_id=self.CHECK_UBICACIONES)
         answers = {}
-        metadata = self.lkf_api.get_metadata(form_id=137161) #TODO: Modularizar id
+        metadata = self.lkf_api.get_metadata(form_id=self.CHECK_UBICACIONES) #TODO: Modularizar id
         metadata.update({
             "properties": {
                 "device_properties":{
@@ -1088,7 +1087,6 @@ class Accesos(Accesos):
         response = {}
         try:
             response = self.create_check_area(record)
-            print("======log: ", response)
         except Exception as e:
             self.LKFException({'title': 'Error inesperado', 'msg': str(e)})
         
@@ -1224,15 +1222,22 @@ class Accesos(Accesos):
                 checks_in_lkf = [i.get('incidente_area') for i in bitacora_in_lkf.get('areas_del_rondin', []) if i.get('fecha_hora_inspeccion_area')]
                 checks_in_couch = [i.get('area') for i in aux.get('record', {}).get('check_areas', []) if i.get('checked')]
                 if len(checks_in_couch) != len(checks_in_lkf):
+                    aux['status'] = 'received'
+                    aux['inbox'] = False
+                
+                    self.cr_db.save(aux)
                     return {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
 
                 aux['status'] = 'received'
                 aux['inbox'] = False
+
                 self.cr_db.save(aux)
             status = {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
         else:
-            aux['status'] = 'error'
-            self.cr_db.save(aux)
+            print('Revisando status de inbox para ver si es necesario guardar como error: ', aux )
+            if aux['status'] != 'error':
+                aux['status'] = 'error'
+                # self.cr_db.save(aux)
             status = {'status_code': 400, 'type': 'error', 'msg': bitacora_response, 'data': {}}
         return status
 
