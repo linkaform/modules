@@ -319,7 +319,7 @@ class Accesos( Accesos):
             #TODO poner mails de la getne vistiada
             #answers...
             attendee_ids = [{"email": email, "nombre": nombre}, {"email": creado_por_email, "nombre": visita_a}]
-            address = access_pass.get("address")
+            address = access_pass.get("address",{})
             geolocation = address.get('geolocation', [])
             if geolocation:
                 geolocation = self.unlist(address.get('geolocation', [])).get('search_txt', '')
