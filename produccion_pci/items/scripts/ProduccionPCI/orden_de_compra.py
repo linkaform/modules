@@ -18,6 +18,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
 
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
+        self.liberaciones_con_bono = self.get_liberaciones_con_bono()
 
     def get_descuentos_form_nomina(self):
         records_nomina = self.get_records(
@@ -197,11 +198,6 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             } 
             for r in records_contratistas_catalog 
         }
-
-    def get_periodo_bono(self):
-        fecha_ayer = (datetime.now(tz=timezone('America/Monterrey')) - timedelta(days=1)).date()
-        fecha_semana_pasada = fecha_ayer - timedelta(days=7)
-        return p_utils.str_to_date(fecha_semana_pasada.strftime("%Y-%m-%d")), p_utils.str_to_date(fecha_ayer.strftime("%Y-%m-%d"))
 
     def get_price_list(self):
         """
@@ -1206,15 +1202,19 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                     totalDescuento20porc = 0
                     list_areas = []
                     for detail in folios_sorted:
-
+                        
                         # Si aplica bono por expediente se agrega al set
+                        folio_in_liberaciones = f"{detail['f19620000000000000001fc1']}{detail['f19620000000000000001fc2']}"
                         exp_fol = detail.get('68f6a337764a6c7697770f8b')
-                        if exp_fol and expedientes_count.get(exp_fol, 0) >= self.bono_produccion_cant_fols_min:
-                            # Expediente aplica bono, pero hay que validar en que folios se va a pegar
-                            fec_liq = detail['62deccbcf1cac3245da9314d']
-                            if fecha_inicio_bono <= p_utils.str_to_date(fec_liq) <= fecha_fin_bono:
-                                detail['68f6a337764a6c7697770f8d'] = self.bono_produccion_monto
-                                detail['f1962000000000000001fc10'] += self.bono_produccion_monto
+                        # if exp_fol and expedientes_count.get(exp_fol, 0) >= self.bono_produccion_cant_fols_min:
+                        #     # Expediente aplica bono, pero hay que validar en que folios se va a pegar
+                        #     fec_liq = detail['62deccbcf1cac3245da9314d']
+                        #     if fecha_inicio_bono <= p_utils.str_to_date(fec_liq) <= fecha_fin_bono:
+
+                        folios_lib_bonos = self.liberaciones_con_bono.get(exp_fol)
+                        if folios_lib_bonos and folio_in_liberaciones in folios_lib_bonos:
+                            detail['68f6a337764a6c7697770f8d'] = self.bono_produccion_monto
+                            detail['f1962000000000000001fc10'] += self.bono_produccion_monto
 
                         total_oc += detail['f1962000000000000001fc10']
                         answers['f1962000000000000000fc10'].append(detail)
@@ -1424,6 +1424,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                         if folio_is_psr:
                             folio_payment['672cfb27388bff96a3650582'] = fila[-2] # Reparacion de Instalaciones
                             folio_payment['f19620000000000000001fc4'] = 'PSR'
+                            folio_payment['is_psr'] = True
                             # ocs_to_psr.setdefault(payment_connection_id, []).append(folio_payment)
                             # continue
                         folios_by_connection_and_forms[payment_connection_id][OC_CONTRATISTA].setdefault(for_oc, []).append( folio_payment )
@@ -1779,9 +1780,12 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             detail = folio if type(folio) == dict else folio_payment.get(folio)
             
             # Si aplica bono por expediente se agrega al set
+            folio_in_liberaciones = f"{detail['f19620000000000000001fc1']}{detail['f19620000000000000001fc2']}"
             exp_fol = detail.get('68f6a337764a6c7697770f8b')
-            list_fols_bono_exp = expedientes_count.get(exp_fol, [])
-            if exp_fol and len( list_fols_bono_exp ) >= self.bono_produccion_cant_fols_min and detail['f19620000000000000001fc1'] in list_fols_bono_exp:
+            # list_fols_bono_exp = expedientes_count.get(exp_fol, [])
+            # if exp_fol and len( list_fols_bono_exp ) >= self.bono_produccion_cant_fols_min and detail['f19620000000000000001fc1'] in list_fols_bono_exp:
+            folios_lib_bonos = self.liberaciones_con_bono.get(exp_fol)
+            if folios_lib_bonos and folio_in_liberaciones in folios_lib_bonos:
                 detail['68f6a337764a6c7697770f8d'] = self.bono_produccion_monto
                 detail['f1962000000000000001fc10'] += self.bono_produccion_monto
 
@@ -2087,7 +2091,8 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             
             fila_dict.update({
                 '_id_record_os': str(order['_id']),
-                '_id_record_liberacion': str(os_liberada['_id'])
+                '_id_record_liberacion': str(os_liberada['_id']),
+                'is_psr': folio_is_psr
             })
 
             # if folio_is_psr:
@@ -2195,6 +2200,47 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             "desde": datetime.strftime(for_update_ayer, '%Y-%m-%d'),
             "hasta": datetime.strftime(for_update_maniana, '%Y-%m-%d')
         })
+
+    def get_liberaciones_con_bono(self):
+        records_libs_bono = self.cr.aggregate([{'$match': {
+            'form_id': {'$in': [
+                self.FORMA_LIBERACION_FIBRA, 
+                self.FORMA_LIBERACION_FIBRA_SURESTE, 
+                self.FORMA_LIBERACION_FIBRA_NORTE, 
+                self.FORMA_LIBERACION_FIBRA_OCCIDENTE, 
+                self.FORMA_LIBERACION_FIBRA_TELNOR, 
+                self.FORMA_LIBERACION_COBRE, 
+                self.FORMA_LIBERACION_COBRE_SURESTE, 
+                self.FORMA_LIBERACION_COBRE_NORTE, 
+                self.FORMA_LIBERACION_COBRE_OCCIDENTE, 
+                self.FORMA_LIBERACION_COBRE_TELNOR, 
+            ]},
+            'deleted_at': {'$exists': False},
+            'answers.f2361400a010000000000005': 'liberado',
+            'answers.69aa157ff88a3627e348656a': 'sí'
+        }},
+        {'$project': {
+            'expediente': '$answers.f1054000a0100000000000d6',
+            'folio': '$folio'
+        }},
+        {'$group': {
+            '_id': {'expediente': '$expediente'},
+            'folios': {'$addToSet': '$folio'}
+        }},
+        {'$match': {
+            '$expr': { '$gte': [{ '$size': "$folios" }, self.bono_produccion_cant_fols_min] }
+        }},
+        {'$project': {
+            '_id': 0,
+            'expediente': '$_id.expediente',
+            'folios': 1
+        }}])
+
+        dict_expedientes_bono = { rec_bono['expediente']: rec_bono['folios'] for rec_bono in records_libs_bono }
+
+        # print( dict_expedientes_bono )
+        # stop
+        return dict_expedientes_bono
 
     def inicia_proceso_generar_ocs(self, only_connections, dict_info_connection, conn_carso):
         """

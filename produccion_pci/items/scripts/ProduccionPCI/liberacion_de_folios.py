@@ -378,6 +378,7 @@ class Produccion_PCI( Produccion_PCI ):
         dict_ids_record = {}
         detail_records = {}
         date_to_mayor_300m = p_utils.str_to_date('2022-09-01')
+        fecha_inicio_bono, fecha_fin_bono = self.get_periodo_bono()
         for pos_rec, record in enumerate(records):
             folio = self.strip_special_characters(record[0])
             
@@ -438,9 +439,9 @@ class Produccion_PCI( Produccion_PCI ):
                 '''
                 Agrego validiación para NO aceptar metrajes mayores a 300 Mts si no están en la forma Folios permitidos para liberación Fibra
                 '''
+                fecha_liquidada = answers.get('f1054000a02000000000fa02')
                 if metraje > 300:
                     telefono = answers.get('f1054000a010000000000005',0)
-                    fecha_liquidada = answers.get('f1054000a02000000000fa02')
                     date_fecha_liquidada = p_utils.str_to_date(fecha_liquidada)
                     continua_por_liquidacion_desde_agosto = date_fecha_liquidada >= date_to_mayor_300m
                     if not continua_por_liquidacion_desde_agosto and not find_folio_in_permitidos_liberacion(folio, telefono, division):
@@ -464,10 +465,15 @@ class Produccion_PCI( Produccion_PCI ):
                 for i_def0 in indices_default_cero:
                     record[i_def0] = 0 if not record[i_def0] else record[i_def0]
 
+                expediente_os = answers.get('f1054000a0100000000000d6')
+                apply_for_bono = self.valida_os_bono_produccion(fecha_inicio_bono, fecha_fin_bono, answers)
+                
                 detail_records.update({
                     rec_foliotelefono:{
                         'f2361400a010000000000001':current_record['folio'], # Utilizare el Folio del registro de carga como si fuera el PACO
                         'f2361400a010000000000002':metraje,
+                        'f1054000a0100000000000d6': expediente_os,
+                        '69aa157ff88a3627e348656a': 'sí' if apply_for_bono else 'no',
                         'f2361400a010000000000003':'', # Comentarios
                         'f2361400a010000000000004':tecnologia_os,
                         'f2361400a010000000000005':'liberado',
@@ -680,6 +686,7 @@ class Produccion_PCI( Produccion_PCI ):
         libs_by_connection = {}
         dict_new_answers = {}
 
+        fecha_inicio_bono, fecha_fin_bono = self.get_periodo_bono()
 
         for pos_rec, record in enumerate(records):
             folio = self.strip_special_characters(record[0])
@@ -723,7 +730,13 @@ class Produccion_PCI( Produccion_PCI ):
                 '''
                 dict_new_answers[ rec_foliotelefono ] = orden.get('answers', {})
                 record_is_psr = orden.get('answers',{}).get('633d9f63eb936fb6ec9bf580', '') == 'psr'
-                detail_records.update({rec_foliotelefono: self.get_detail_record_cobre(record, map_campos_cobre, conexion, division, tipo_trabajo, nivel_de_pago, is_psr=record_is_psr)})
+                # detail_records.update({rec_foliotelefono: self.get_detail_record_cobre(record, map_campos_cobre, conexion, division, tipo_trabajo, nivel_de_pago, is_psr=record_is_psr)})
+                answers_for_set = self.get_detail_record_cobre(record, map_campos_cobre, conexion, division, tipo_trabajo, nivel_de_pago, is_psr=record_is_psr)
+                
+                answers_for_set['expediente_os'] = orden.get('answers', {}).get('f1054000a010000000000007')
+                answers_for_set['apply_for_bono'] = self.valida_os_bono_produccion(fecha_inicio_bono, fecha_fin_bono, orden.get('answers', {}), id_field_fech_liq='5a1eecfbb43fdd65914505a1')
+
+                detail_records[rec_foliotelefono] = answers_for_set
                 dict_pos_record.update({rec_foliotelefono: pos_rec})
                 dict_ids_record.update({rec_foliotelefono: str( orden['_id'] )})
                 # Esto de evaluate_answer_values ya no se ocupa porque en este modulo no se trabajan todos los campos
@@ -762,15 +775,23 @@ class Produccion_PCI( Produccion_PCI ):
 
         #         if proceso_orden_servicio:
         for order_folio, data_to_lib in detail_records.items():
-            registro_arreglo = [data_to_lib,]
             new_metadata = metadata_cobre.copy()
             new_metadata['folio'] = str(order_folio)
             new_metadata.update({
                 "properties": {"device_properties":{"system": "SCRIPT","process":"PROCESO LIBERACION DE PAGOS", "accion":"Liberacion", "folio carga":current_record['folio'], "archive":"liberacion_de_folios.py"}}
             })
-            answers_para_meta = {'f2361400a010000000000001':current_record['folio'],
-                                'f2361400a010000000000005':'liberado',
-                                'f2361400a010000000000006':registro_arreglo}
+
+            expediente_os = data_to_lib.pop('expediente_os', None)
+            apply_for_bono = data_to_lib.pop('apply_for_bono', None)
+
+            answers_para_meta = {
+                'f2361400a010000000000001':current_record['folio'],
+                'f2361400a010000000000005':'liberado',
+                'f1054000a0100000000000d6': expediente_os,
+                '69aa157ff88a3627e348656a': 'sí' if apply_for_bono else 'no',
+            }
+            answers_para_meta['f2361400a010000000000006'] = [data_to_lib,]
+
             new_metadata['answers'] = answers_para_meta
             registros_acumulados.append(new_metadata)
         # else:

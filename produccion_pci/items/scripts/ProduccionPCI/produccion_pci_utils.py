@@ -2,6 +2,7 @@
 
 import sys, simplejson
 from datetime import datetime, timedelta, date
+from pytz import timezone
 from copy import deepcopy
 
 import urllib.request
@@ -48,6 +49,7 @@ class Produccion_PCI(Produccion_PCI):
         self.porcentaje_descuento_x_desfase = 0.05 # Porcentaje de descuento por folios marcados con desfase en carga
 
         self.bono_produccion_cant_fols_min = 12 # Cantidad mínima de expedientes para aplicar bono
+
         self.bono_produccion_monto = 50 # Monto del bono por expedientes
 
         # Formas de nueva division TELNOR
@@ -86,7 +88,7 @@ class Produccion_PCI(Produccion_PCI):
         }
 
         self.all_divisiones = [
-            # {'tecnologia':'fibra','division':'occidente'},
+            # {'tecnologia':'fibra','division':'occidente'}, {'tecnologia':'cobre','division':'occidente'},
             
             {'tecnologia':'fibra','division':'metro'}, {'tecnologia':'fibra','division':'sur'}, 
             {'tecnologia':'fibra','division':'norte'}, {'tecnologia':'fibra','division':'occidente'},
@@ -162,6 +164,24 @@ class Produccion_PCI(Produccion_PCI):
             return {'error': emails_not_exists}
 
         return {'result': emails_connections, 'info_connections': dict_info_connection}
+
+    def get_periodo_bono(self):
+        fecha_ayer = (datetime.now(tz=timezone('America/Monterrey')) - timedelta(days=1)).date()
+        fecha_semana_pasada = fecha_ayer - timedelta(days=7)
+
+        # PARA MIS PRUEBAS: Simular la ultima semana de enero
+        return self.str_to_date("2026-01-26"), self.str_to_date("2026-02-02")
+
+        return self.str_to_date(fecha_semana_pasada.strftime("%Y-%m-%d")), self.str_to_date(fecha_ayer.strftime("%Y-%m-%d"))
+
+    def valida_os_bono_produccion(self, inicio_bono, fin_bono, answers_os, id_field_fech_liq='f1054000a02000000000fa02'):
+        # Si el folio es PSR no se considera para Bono
+        if answers_os.get('633d9f63eb936fb6ec9bf580', '') == 'psr':
+            return False
+        
+        # Si no es PSR entonces se valida que la fecha de liquidacion esté dentro del periodo considerado
+        fecha_liquidacion_os = answers_os.get(id_field_fech_liq)
+        return inicio_bono <= self.str_to_date( fecha_liquidacion_os ) <= fin_bono
 
     # def get_metadata_properties(self, name_script, accion, process='', folio_carga=''):
     #     dict_properties = {
@@ -263,3 +283,6 @@ class Produccion_PCI(Produccion_PCI):
             msg (str): Mensaje de error que se presenta al usuario
         """
         raise Exception( simplejson.dumps({field_id: {'msg': [msg], 'label': lbl, 'error': []}}) )
+
+    def str_to_date(self, val_str, format_to_date='%Y-%m-%d'):
+        return datetime.strptime(val_str, format_to_date)
