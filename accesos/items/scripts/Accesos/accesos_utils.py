@@ -3009,15 +3009,21 @@ class Accesos( Accesos):
         answers[self.UBICACIONES_CAT_OBJ_ID] = {}
 
         ### Setting defaults
-        if not access_pass.get('tipo_visita_pase') or access_pass['tipo_visita_pase'] :
-            access_pass['tipo_visita_pase'] = 'fecha_fija'
+        access_pass['tipo_visita_pase'] = access_pass.get('tipo_visita_pase', 'fecha_fija')
 
         if not  access_pass.get('fecha_desde_visita') or access_pass['fecha_desde_visita'] == "":
             access_pass['fecha_desde_visita'] =  now_datetime
         
         if not access_pass.get('fecha_desde_hasta') or access_pass['fecha_desde_hasta'] == "":
-            ics_invitation = True
-            access_pass['fecha_desde_hasta'] = now_datetime_out
+            if access_pass.get('tipo_visita_pase') == 'fecha_fija':
+                fecha_limite = access_pass.get('fecha_desde_visita', now_datetime)
+                if isinstance(fecha_limite, datetime):
+                    fecha_limite = fecha_limite.strftime('%Y-%m-%d')
+                
+                access_pass['fecha_desde_hasta'] = f"{fecha_limite[:10]} 23:59:59"
+            else:
+                ics_invitation = True
+                access_pass['fecha_desde_hasta'] = now_datetime_out
         
         if not  access_pass.get('config_limitar_acceso') or access_pass['config_dia_de_acceso'] == "":
             access_pass['config_limitar_acceso'] =  1
@@ -3144,6 +3150,100 @@ class Accesos( Accesos):
         # if res.get("status_code") ==200 or res.get("status_code")==201:
         #     res = self.access_pass_google_pass(res, access_pass)
         return res
+
+    def access_pass_set_status(self, answers):
+        """
+        Evalua criterios del pase y regresa el status del pase
+        Proceso
+        Activo
+        Vencido
+        args:
+            answers (json): Objeto de answers
+        return:
+            status (str): String con status
+        """
+        foto_ok = False
+        id_vista = False
+        fecha_ok = False
+        vista_a_ok = False
+        autorizado_ok = False
+        status = 'proceso'
+        foto  = answers[self.pase_entrada_fields['walkin_fotografia']]
+        if isinstance(foto, list) and len(foto) > 0:
+            foto = foto[0]
+
+        if isinstance(foto, dict):
+            if 'file_url' in foto.keys() and foto['file_url']:
+                foto_ok = self.valid_url(foto['file_url'])
+        #TODO revisar configuracion
+        id_vista  = answers[self.pase_entrada_fields['walkin_identificacion']]
+        if isinstance(id_vista, list) and len(id_vista) > 0:
+            id_vista = id_vista[0]
+
+        if isinstance(id_vista, dict):
+            if 'file_url' in id_vista.keys() and id_vista['file_url']:
+                id_vista = self.valid_url(id_vista['file_url'])
+        id_vista = True
+        today = self.get_today_format()
+        if isinstance(today, datetime):
+            today = today.strftime('%Y-%m-%d')
+        elif today and isinstance(today, str) and len(today) > 10:
+            today = today[:10]
+
+        try:
+            val_visita = answers[self.pase_entrada_fields['fecha_desde_visita']]
+            if isinstance(val_visita, datetime):
+                fecha_desde_visita = val_visita.strftime('%Y-%m-%d')
+            else:
+                fecha_desde_visita = self.valid_date(val_visita)
+                if fecha_desde_visita:
+                    if isinstance(fecha_desde_visita, datetime):
+                        fecha_desde_visita = fecha_desde_visita.strftime('%Y-%m-%d')
+                    elif isinstance(fecha_desde_visita, str) and len(fecha_desde_visita) > 10:
+                        fecha_desde_visita = fecha_desde_visita[:10]
+        except Exception as e:
+            print(f"DEBUG DESDE ERROR: {e}")
+            fecha_desde_visita = None
+
+        try:
+            val_hasta = answers[self.pase_entrada_fields['fecha_desde_hasta']]
+            if isinstance(val_hasta, datetime):
+                fecha_desde_hasta = val_hasta.strftime('%Y-%m-%d')
+            else:
+                fecha_desde_hasta = self.valid_date(val_hasta)
+                if fecha_desde_hasta:
+                    if isinstance(fecha_desde_hasta, datetime):
+                        fecha_desde_hasta = fecha_desde_hasta.strftime('%Y-%m-%d')
+                    elif isinstance(fecha_desde_hasta, str) and len(fecha_desde_hasta) > 10:
+                        fecha_desde_hasta = fecha_desde_hasta[:10]
+        except Exception as e:
+            print(f"DEBUG HASTA ERROR: {e}")
+            fecha_desde_hasta = None
+            
+        if fecha_desde_hasta and today <= fecha_desde_hasta: 
+            fecha_ok = True
+        else:
+            print(f"DEBUG FECHA_OK FALSE: today={today}, desde={fecha_desde_visita}, hasta={fecha_desde_hasta}")
+        
+        grupo_visitados = answers[self.mf['grupo_visitados']]
+        for vista in grupo_visitados:
+            if isinstance(vista, int):
+                vista_a = grupo_visitados[vista]
+            else:
+                vista_a = vista
+            if vista_a.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID,{}).get(self.mf['nombre_empleado']):
+                vista_a_ok = True
+
+            if answers.get(self.pase_entrada_fields['catalago_autorizado_por'],{}).get(self.pase_entrada_fields['autorizado_por']):
+                autorizado_ok = True
+
+        if foto_ok and id_vista and fecha_ok and vista_a_ok and autorizado_ok:
+            status = 'activo'
+        elif foto_ok and id_vista and fecha_ok and vista_a_ok and not autorizado_ok:
+            status = 'por_autorizar'
+        elif not fecha_ok:
+            status = 'vencido'
+        return status
 
     def autorizar_pase_acceso(self, answers):
         autorizado_por = {}
