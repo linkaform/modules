@@ -1049,7 +1049,7 @@ class Accesos(Accesos):
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
-                "form_id": 137161, #TODO: Modularizar id
+                "form_id": self.CHECK_UBICACIONES,
                 "_id": {"$in": id_list}
             }},
             {"$project": {
@@ -1199,7 +1199,8 @@ class Accesos(Accesos):
         new_checks = self.cr_db.find({
             "selector": {
                 "_id": {"$in": format_checks_in_couch}
-            }
+            },
+            "limit": 1000
         })
         new_areas = {}
         for check in new_checks:
