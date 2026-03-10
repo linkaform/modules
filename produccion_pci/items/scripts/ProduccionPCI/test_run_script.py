@@ -45,6 +45,73 @@ class ParticularAction( Produccion_PCI ):
         print(' ==== ==== ====')
         print(simplejson.dumps(group_conexions, indent=4))
 
+    def delete_ocs_and_libs(self):
+        print('=======================================')
+        print('Borrando OCs y Liberaciones')
+        print('=======================================')
+        records_ocs = self.cr.find({
+            'form_id': {'$in': [
+                self.FORMA_ORDEN_COMPRA_FIBRA_TELNOR,
+                self.FORMA_ORDEN_COMPRA_FIBRA_OCCIDENTE,
+                self.FORMA_ORDEN_COMPRA_COBRE_OCCIDENTE,
+            ]},
+            'deleted_at': {'$exists': False},
+            'created_at': {'$gte': self.str_to_date('2026-03-10 00:00:00', format_to_date='%Y-%m-%d %H:%M:%S')}
+        }
+        ,{
+            'folio': 1, 
+            'answers.f1962000000000000000fc10.f19620000000000000001fc1': 1, # folio os
+            'answers.f1962000000000000000fc10.f19620000000000000001fc2': 1, # telefono os
+        }
+        )
+
+        c = 0
+        folios_libs_totales = []
+        for rec_oc in records_ocs:
+            c += 1
+            print(f"==== {c} = {rec_oc['folio']}")
+            for detail_os in rec_oc['answers'].get('f1962000000000000000fc10', []):
+                folios_libs_totales.append( f"{detail_os['f19620000000000000001fc1']}{detail_os['f19620000000000000001fc2']}" )
+        print(f"\n folios_libs_totales = {folios_libs_totales}")
+
+        """
+        Restauro estatus de liberacion de los folios liberados
+        """
+        query_libs = {
+            'form_id': {'$in': [
+                self.FORMA_LIBERACION_FIBRA_TELNOR,
+                self.FORMA_LIBERACION_FIBRA_OCCIDENTE,
+                self.FORMA_LIBERACION_COBRE_OCCIDENTE,
+            ]},
+            'deleted_at': {'$exists': False},
+            'folio': {'$in': folios_libs_totales}
+        }
+        resp_update_libs = self.cr.update_many(query_libs, {'$set': {'answers.f2361400a010000000000005': 'liberado'}})
+
+        print("Matched count:", resp_update_libs.matched_count)   # Cuántos documentos coincidieron
+        print("Modified count:", resp_update_libs.modified_count) # Cuántos fueron modificados
+
+        """
+        Borro las liberaciones que se crearon hoy
+        """
+        query_libs['created_at'] = {'$gte': self.str_to_date('2026-03-10 00:00:00', format_to_date='%Y-%m-%d %H:%M:%S')}
+        folios_os_in_libs = []
+
+        
+        # Obtener los folios de OS
+
+        # records_libs = self.cr.find(query_libs, {'folio': 1})
+        # for rec_lib in records_libs:
+        #     folios_os_in_libs.append( rec_lib['folio'][:8] )
+        # print(f"\n folios_os_in_libs ({len(folios_os_in_libs)}) = {folios_os_in_libs}")
+
+        
+        # Borrar las liberaciones
+
+        # records_deleted = self.cr.delete_many(query_libs)
+        # print(f"Eliminados: {records_deleted.deleted_count}")
+
 if __name__ == '__main__':
     lkf_obj = ParticularAction(settings, sys_argv=sys.argv)
-    lkf_obj.review_os_no_liberadas()
+    # lkf_obj.review_os_no_liberadas()
+    lkf_obj.delete_ocs_and_libs()

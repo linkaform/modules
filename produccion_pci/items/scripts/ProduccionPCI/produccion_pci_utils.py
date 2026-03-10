@@ -88,7 +88,7 @@ class Produccion_PCI(Produccion_PCI):
         }
 
         self.all_divisiones = [
-            # {'tecnologia':'fibra','division':'occidente'}, {'tecnologia':'cobre','division':'occidente'},
+            # {'tecnologia':'fibra','division':'occidente'}, {'tecnologia':'cobre','division':'occidente'}, {'tecnologia':'fibra','division':'telnor'}
             
             {'tecnologia':'fibra','division':'metro'}, {'tecnologia':'fibra','division':'sur'}, 
             {'tecnologia':'fibra','division':'norte'}, {'tecnologia':'fibra','division':'occidente'},
@@ -168,10 +168,6 @@ class Produccion_PCI(Produccion_PCI):
     def get_periodo_bono(self):
         fecha_ayer = (datetime.now(tz=timezone('America/Monterrey')) - timedelta(days=1)).date()
         fecha_semana_pasada = fecha_ayer - timedelta(days=7)
-
-        # PARA MIS PRUEBAS: Simular la ultima semana de enero
-        return self.str_to_date("2026-01-26"), self.str_to_date("2026-02-02")
-
         return self.str_to_date(fecha_semana_pasada.strftime("%Y-%m-%d")), self.str_to_date(fecha_ayer.strftime("%Y-%m-%d"))
 
     def valida_os_bono_produccion(self, inicio_bono, fin_bono, answers_os, id_field_fech_liq='f1054000a02000000000fa02'):
