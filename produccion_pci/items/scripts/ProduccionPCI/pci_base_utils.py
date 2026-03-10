@@ -31,6 +31,8 @@ class PCI_Utils():
         self.CATALOG_ID_COPES = 46944
         self.CATALOG_ID_TIPOS_TAREA_FACTIBLES = 56269
 
+        self.max_row_accepted = 5000
+
         self.equivalcens_map = { 
             'Aerea': ['AEREA', 'M. AEREO'],
             # 'Alfanumérico':['SERIE ONT ALFANUMÉRICO','ONT ALFANUMÉRICO','SERIE ONT ALFANUMERICO','Serie ONT Alfanumerico', 'Serie ONT Alfanumérico',
@@ -1049,16 +1051,45 @@ class PCI_Utils():
             header (list): Primer renglon del excel que se toma como cabecera
             all_records (list): Renglones del excel
         """
-        max_row_accepted = 5000
-        num_rows_found = self.get_num_rows_in_xls(file_url)
-        if num_rows_found > max_row_accepted:
-            print('[ERROR] numero de renglones =',num_rows_found)
-            return {'error': f'El excel rebasa el límite de renglones permitidos {max_row_accepted}. Favor de revisar'}, None
+        # Descargar el archivo
+        response = requests.get(file_url)
+        response.raise_for_status()
+
+        # Cargar el archivo excel desde la memoria
+        excel_file = BytesIO(response.content)
+        wb = openpyxl.load_workbook(excel_file)
+
+        # Accedemos a la hoja
+        hoja = wb.active
+
+        # Numero de lineas
+        num_rows = hoja.max_row
+        if num_rows > self.max_row_accepted:
+            return {'error': f'El excel rebasa el límite de renglones permitidos {self.max_row_accepted}. Favor de revisar'}, None
+
+        # Obtener el header (primera fila)
+        header = [
+            celda.value.lower().replace('\xa0', ' ').strip().replace(' ', '_') if celda.value else '' 
+            for celda in next(hoja.iter_rows(min_row=1, max_row=1))
+        ]
+
+        # Obtener los records (todas las filas a partir de la segunda)
+        records = [
+            [celda.value or '' for celda in fila]
+            for fila in hoja.iter_rows(min_row=2, values_only=False)
+        ]
+
+        return header, records
+        # max_row_accepted = 5000
+        # num_rows_found = self.get_num_rows_in_xls(file_url)
+        # if num_rows_found > max_row_accepted:
+        #     print('[ERROR] numero de renglones =',num_rows_found)
+        #     return {'error': f'El excel rebasa el límite de renglones permitidos {max_row_accepted}. Favor de revisar'}, None
         
-        sheet = pyexcel.get_sheet(url = file_url)
-        all_records = sheet.array
-        header = [h.lower().strip().replace(' ', '_') for h in all_records.pop(0)]
-        return header, all_records
+        # sheet = pyexcel.get_sheet(url = file_url)
+        # all_records = sheet.array
+        # header = [h.lower().strip().replace(' ', '_') for h in all_records.pop(0)]
+        # return header, all_records
 
     def rename_file_extract( self, actual_name ):
         # actual_name = actual_name.decode('latin-1')
