@@ -350,6 +350,19 @@ class Produccion_PCI( Produccion_PCI ):
             else:
                 value = (n+1) * 25 # Agregara valores de 25 en 25 segun la posicion
         return value
+
+    def get_order_by_folio(self, orders, folio):
+        """
+        Busca una orden por folio dentro de una lista de órdenes.
+
+        Args:
+            orders (list): lista de diccionarios (orders_to_patch)
+            folio (str): folio a buscar
+
+        Returns:
+            dict | None: orden encontrada o None si no existe
+        """
+        return next((order for order in orders if order.get("folio") == folio), None)
     
     def make_liberaciones_for_fibra(self, current_record, record_id, answers, header, records, tecnologia, division, id_os, id_lib, fols_sin_pdf, **kwargs):
         # CONCEPTOS MINIMOS PARA A4 EN LAS POSICIONES = 34 a 42
@@ -504,18 +517,23 @@ class Produccion_PCI( Produccion_PCI ):
             patch_res = lkf_api.bulk_patch(orders_to_patch, id_os, jwt_settings_key='USER_JWT_KEY', threading=True)
         metadata_fibra = lkf_api.get_metadata(form_id=id_lib)
         registros_acumulados = []
+        
         for order_folio, response in patch_res.items():
+            if response.get('status_code') == 502:
+                print(f'... [ERROR 502] en bulk_patch {order_folio} : {response} .... Reintentando')
+                order_to_retry = self.get_order_by_folio(orders_to_patch, order_folio)
+                if order_to_retry:
+                    patch_res_retry = lkf_api.bulk_patch([order_to_retry], id_os, jwt_settings_key='USER_JWT_KEY', threading=True)
+                    # print(f'     ... patch_res_retry = {patch_res_retry}')
+                    response = patch_res_retry.get(order_folio, {})
             if response.get('status_code') != 202:
-                print('... error en bulk_patch {} : {}'.format(order_folio, str(response)))
+                print(f'... error en bulk_patch {order_folio} : {response}')
             if detail_records.get(order_folio):
-                new_metadata = metadata_fibra.copy()
-                proceso_orden_servicio = response['status_code'] in (200, 201, 202, 204, 205)
-                if proceso_orden_servicio:
+                if response['status_code'] in (200, 201, 202, 204, 205):
+                    new_metadata = metadata_fibra.copy()
                     new_metadata['folio'] = str(order_folio)
+                    new_metadata['properties'] = self.get_metadata_properties('liberacion_de_folios.py', 'Liberacion', 'PROCESO LIBERACION DE PAGOS', self.folio)
                     answers_para_meta = detail_records[order_folio]
-                    new_metadata.update({
-                        "properties": {"device_properties":{"system": "SCRIPT","process":"PROCESO LIBERACION DE PAGOS", "accion":"Liberacion", "folio carga":current_record['folio'], "archive":"generar_liberaciones_fibra_cobre.py"}}
-                    })
                     new_metadata['answers'] = answers_para_meta
                     registros_acumulados.append(new_metadata)
                 else:
@@ -524,6 +542,7 @@ class Produccion_PCI( Produccion_PCI ):
                     record_errors_final.append( records[ dict_pos_record[ order_folio ] ] + [ msg_error, ] )
             else:
                 print('... ... queeeeee raro no esta en el detail_records =',order_folio)
+        
         response_liberaciones = self.procesa_liberaciones(registros_acumulados, id_os, records, dict_pos_record, dict_ids_record)
         response_liberaciones['list_errores'] = record_errors_final + response_liberaciones.get('list_errores', [])
 
