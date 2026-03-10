@@ -3,7 +3,7 @@ from hmac import new
 import os
 import pytz
 import sys, simplejson, json, pytz
-import time
+import time, random
 import tempfile
 import unicodedata
 from bson.objectid import ObjectId
@@ -1121,6 +1121,29 @@ class Accesos(Accesos):
         upload_image = self.upload_file_from_couchdb(data, name, self.CHECK_UBICACIONES, ref_field)
         return upload_image
     
+    def update_bitacora_with_retry(self, bitacora_in_lkf, data, new_incidencias, new_areas, max_retries=5, base_wait=2):
+        """
+        Reintenta update_bitacora en caso de error 208 (registro ocupado).
+        - base_wait: espera inicial en segundos antes del primer intento
+        - Backoff exponencial + jitter en cada reintento
+        """
+        for attempt in range(max_retries):
+            # Espera antes de cada intento (incluyendo el primero)
+            wait = base_wait * (2 ** attempt) + random.uniform(0, 1)
+            print(f'Esperando {wait:.1f}s antes del intento {attempt + 1}/{max_retries}...')
+            time.sleep(wait)
+
+            response = self.update_bitacora(bitacora_in_lkf, data, new_incidencias, new_areas)
+
+            if response.get('status_code') == 208:
+                print(f'Registro ocupado (208), reintentando...')
+                continue
+
+            # Cualquier otra respuesta (éxito o error diferente) se retorna directo
+            return response
+
+        return {'status_code': 408, 'type': 'error', 'msg': 'Max retries exceeded after 208 conflicts', 'data': {}}
+    
     def sync_rondin_to_lkf(self, data):
         status = {}
         rondin_id = data.get('_id', '')
@@ -1215,7 +1238,7 @@ class Accesos(Accesos):
         if not isinstance(data, dict):
             data = self.cr_db.get(rondin_id)
 
-        bitacora_response = self.update_bitacora(bitacora_in_lkf, data, new_incidencias, new_areas)
+        bitacora_response = self.update_bitacora_with_retry(bitacora_in_lkf, data, new_incidencias, new_areas)
         aux = self.cr_db.get(rondin_id)
         if bitacora_response and bitacora_response.get('status_code') in [200, 201, 202]:
             if aux.get('status_rondin') == 'completed':
