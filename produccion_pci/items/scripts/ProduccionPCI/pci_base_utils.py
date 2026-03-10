@@ -107,23 +107,39 @@ class PCI_Utils():
         try:
             msg_err_arr = []
             data_str_err = ''
+            
             if response.get('status_code', 0) == 400:
                 data_str_err = "Formato incorrecto:"
-            for msg_fin in response.get('json',{}):
-                info_json = response['json'][msg_fin]
+            
+            for msg_fin, info_json in response.get('json',{}).items():
+                
                 msgs = info_json.get('msg', [])
                 if msgs:
                     msg_err = str(msgs[0])
                     label_err = info_json.get('label')
                     msg_err_arr.append(str(msg_err+':'+label_err))
-                else:
-                    for i_err in info_json:
-                        info_i = info_json[i_err]
-                        for id_group in info_i:
-                            info_group = info_i[id_group]
-                            msg_err = str(info_group['msg'][0])
-                            label_err = info_group['label']
-                            msg_err_arr.append('SET {0}:: {1} - {2}'.format(i_err, msg_err, label_err))
+                    continue
+
+                name_group = info_json.pop('group', None)
+                # Caso donde hay un grupo
+                if name_group:
+                    lbl_group = name_group.get('label', '')
+                    errors_items = []
+                    for pos_item, data_item in info_json.items():
+                        for field_item, data_field_item in data_item.items():
+                            errors_items.append( f"{pos_item}: {data_field_item.get('label')}: {data_field_item['msg'][0]}" )
+                    if errors_items:
+                        data_str_err = f"{lbl_group} :: {self.lkf_obj.list_to_str(errors_items)}"
+                        continue
+                
+                for i_err in info_json:
+                    info_i = info_json[i_err]
+                    for id_group, info_group in info_i.items():
+                        print(f'\n   - {id_group} : {info_group}\n')
+                        msg_err = str(info_group['msg'][0])
+                        label_err = info_group['label']
+                        msg_err_arr.append('SET {0}:: {1} - {2}'.format(i_err, msg_err, label_err))
+            
             if msg_err_arr:
                 data_str_err = self.lkf_obj.list_to_str(msg_err_arr)
         except Exception as e:
@@ -133,8 +149,10 @@ class PCI_Utils():
             error_json = response.get('json',{}).get('error','')
             if error_json:
                 data_str_err = error_json
+        
         if not data_str_err:
             data_str_err = 'Ocurrio un error desconocido favor de contactar a soporte'
+
         return data_str_err
 
     def asignar_registro_a_conexion(self, connection_id, record_assign):

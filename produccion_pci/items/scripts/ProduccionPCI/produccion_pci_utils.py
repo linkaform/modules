@@ -286,3 +286,8 @@ class Produccion_PCI(Produccion_PCI):
 
     def str_to_date(self, val_str, format_to_date='%Y-%m-%d'):
         return datetime.strptime(val_str, format_to_date)
+
+    def bool_autorizacion(self, val_autorizacion):
+        if not val_autorizacion or val_autorizacion.lower() == "no":
+            return False
+        return True

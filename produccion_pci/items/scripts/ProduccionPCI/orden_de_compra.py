@@ -194,7 +194,8 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         return { 
             r['5f344a0476c82e1bebc991d6']: {
                 'resico_cobre': r.get('623cb114fe4f97bb0f5848a6'),
-                'resico_fibra': r.get('623cb114fe4f97bb0f5848a7')
+                'resico_fibra': r.get('623cb114fe4f97bb0f5848a7'),
+                'iva_8': self.bool_autorizacion( r.get('69af293fac2feffe9a82eadd') )
             } 
             for r in records_contratistas_catalog 
         }
@@ -365,6 +366,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             Registros de liberacion encontrados
         """
         extra_filters = {'answers.f2361400a010000000000005':'liberado'}
+
         if is_cobre:
             extra_filters['answers.f2361400a010000000000006.f2361400a0100000000000b6'] = {'$nin': ['tn', 'te']}
         return self.get_records( FORMA_LIBERACION, folios_carga, extra_filters, ['folio', 'user_id', 'form_id', 'answers', '_id'] )
@@ -1164,7 +1166,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         return lista_ordenada, conteo
     
     def create_oc_contista(self, folios_by_connection, folio_payment, folio_oc, descuentos, LIBERACION_PAGOS, FORMA_ORDEN_SERVICIO, \
-        map_email_connections, number_week, division, dict_oc_fecha_nomina):
+        map_email_connections, number_week, division, retenciones_in_catalog):
         errors_to_create = []
         send_mail = False;
         send_push_notification = False;
@@ -1266,12 +1268,18 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                         total_oc = total_oc - totalDescuento20porc
 
                     retencion_resico = 0
-                    resico_fibra = dict_oc_fecha_nomina.get( str(connection_id), {} ).get('resico_fibra', False)
+                    retenciones_connection = retenciones_in_catalog.get( str(connection_id), {} )
+                    resico_fibra = retenciones_connection.get('resico_fibra', False)
                     if resico_fibra and resico_fibra.lower() != 'no':
                         retencion_resico = total_oc * 0.0125
                         answers['621fe75ad98a2471ed6308f8'] = p_utils.add_coma(retencion_resico)
 
-                    iva_oc = total_oc * 0.16
+                    iva_connection = 0.16
+                    if retenciones_connection.get('iva_8'):
+                        iva_connection = 0.08
+
+                    iva_oc = total_oc * iva_connection
+                    
                     total_con_iva = (total_oc + iva_oc) - retencion_resico
                     answers['f19620000000000000000fc8'] = 'por_pagar'
                     answers['6061f8492ec2a3c070a86619'] = p_utils.add_coma(totalDescuento20porc) #descuento total 20%
@@ -1751,7 +1759,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         return ORDENES_A_GENERAR
 
     def get_oc_contista_metadata(self, connection_id, folio_payment, folio_oc, descuentos, FORMA_ORDEN_SERVICIO, map_email_connections, oc_count, number_week, metadata, \
-        dict_oc_fecha_nomina, expedientes_count, total_20_row=False):
+        retenciones_in_catalog, expedientes_count, total_20_row=False):
         oc_count += 1 #get_folios_num(OC_CONTRATISTA, folio_oc)
 
         metadata['properties'] = self.get_metadata_properties('orden_de_compra.py', 'GENERA OC CONTRATISTA', process='PROCESO CARGA ORDEN COMPRA CONTRATISTA', folio_carga=folio_oc)
@@ -1847,14 +1855,23 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         msg_subtotal_oc += ' Descuento = {} '.format(descuento)
 
         retencion_resico = 0
-        resico_cobre = dict_oc_fecha_nomina.get( str(connection_id), {} ).get('resico_cobre', False)
+        
+        retenciones_connection = retenciones_in_catalog.get( str(connection_id), {} )
+        resico_cobre = retenciones_connection.get('resico_cobre', False)
+        
         if resico_cobre and resico_cobre.lower() != 'no':
             retencion_resico = total_oc * 0.0125
             answers['621fe75ad98a2471ed6308f8'] = p_utils.add_coma(retencion_resico)
 
         msg_subtotal_oc += 'Subtotal Final = {}'.format(total_oc)
         print(msg_subtotal_oc)
-        iva_oc = total_oc * 0.16
+        
+        iva_connection = 0.16
+        if retenciones_connection.get('iva_8'):
+            iva_connection = 0.08
+
+        iva_oc = total_oc * iva_connection
+        
         total_con_iva = (total_oc + iva_oc) - retencion_resico
         answers.update({
             'f19620000000000000000fc8': 'por_pagar',
@@ -1876,7 +1893,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         return metadata
 
     def generate_ocs_cobre(self, current_record, LIBERACION_PAGOS, FORMA_ORDEN_SERVICIO, OC_CONTRATISTA, map_email_connections, descuentos, only_connections, number_week, \
-        price_list_cobre, division, dict_oc_fecha_nomina, conn_carso, ocs_to_psr):
+        price_list_cobre, division, retenciones_resico, conn_carso, ocs_to_psr):
         map_campos = [
             {'field_id':'f2361400a0100000000000f5',
              'name':u'CONSTRUCCION DE LINEA DE CLIENTE BASICA 1 PAR Y PUESTA EN SERVICIO (SIN PLUSVALIAS Y SIN PRUEBAS ADSL O VDSL)',
@@ -2071,7 +2088,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             folios.append(os_liberada['folio'])
             conn = order['connection_id']
             if not dict_dates_by_connection.get(conn, False):
-                # str_date_for_nomina = dict_oc_fecha_nomina.get( str(conn), {} ).get('fecha_nomina', '')
+                # str_date_for_nomina = retenciones_resico.get( str(conn), {} ).get('fecha_nomina', '')
                 # if not str_date_for_nomina:
                 str_date_for_nomina = '2022-02-01'
                 dict_dates_by_connection[ conn ] = datetime.strptime( str_date_for_nomina, '%Y-%m-%d' )
@@ -2167,7 +2184,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                     metadata_copy = metadata_form.copy()
 
                     metadata_oc = self.get_oc_contista_metadata(id_conexion, foliosPaymentInMontoMaximo, folio_oc, descuentos, FORMA_ORDEN_SERVICIO, map_email_connections, oc_count, number_week, metadata_copy, \
-                        dict_oc_fecha_nomina, dict_ocs_to_create['expedientes_count'], total_20_row=desc_20_porc_as_row)
+                        retenciones_resico, dict_ocs_to_create['expedientes_count'], total_20_row=desc_20_porc_as_row)
                     # else:
                     print('len folios de la OC',len(folios_2_update))
                     list_folios_con_bono = []
