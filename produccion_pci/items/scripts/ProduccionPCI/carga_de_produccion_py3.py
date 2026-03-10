@@ -709,8 +709,8 @@ class Produccion_PCI( Produccion_PCI ):
                     record[position] = 0
                 if record[position]:
                     bonificaciones_added += 1
-                    if (type(record[position]) != int) or (record[position] not in range(0,21)):
-                        error.append('{} El valor debe ser entre 0 y 20'.format(lbl))
+                    if (type(record[position]) != int) or (record[position] not in range(0,4)):
+                        error.append('{} El valor debe ser entre 0 y 3'.format(lbl))
                 else:
                     answer.pop( element.get('field_id', ''), None )
             elif lbl in ["Cableado interior 1 aparato y modem para infinitum (dit con splitter con proteccion)"]:
