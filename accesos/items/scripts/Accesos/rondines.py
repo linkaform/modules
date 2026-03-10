@@ -446,7 +446,7 @@ class Accesos(Accesos):
                 areas_recorrido = []
                 if bitacora_rondines:
                     primera_bitacora = bitacora_rondines[0]
-                    areas_del_rondin = primera_bitacora.get('areas_del_rondin', [])
+                    areas_del_rondin = primera_bitacora.get('grupo_areas_visitadas', [])
                     areas_recorrido = [
                         {'rondin_area': area.get('rondin_area', ''), 'area_tag_id': area.get('area_tag_id', [])}
                         for area in areas_del_rondin
@@ -1350,7 +1350,7 @@ class Accesos(Accesos):
                 "duracion": response.get('duracion_rondin', ''),
                 "estatus": response.get('estatus_del_recorrido', ''),
                 "recurrencia": response.get('fecha_programacion', ''),
-                "areas_a_inspeccionar": response.get('areas_del_rondin', []),
+                "areas_a_inspeccionar": response.get('grupo_areas_visitadas', []),
                 "incidencias": response.get('bitacora_rondin_incidencias', []),
             })
         return format_response
