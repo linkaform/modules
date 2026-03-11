@@ -62,17 +62,38 @@ class ParticularAction( Produccion_PCI ):
             'folio': 1, 
             'answers.f1962000000000000000fc10.f19620000000000000001fc1': 1, # folio os
             'answers.f1962000000000000000fc10.f19620000000000000001fc2': 1, # telefono os
+            'connection_id': 1,
+            'form_id': 1
         }
         )
+
+        # print(f"Eliminados: {records_ocs.deleted_count}")
+        # return
 
         c = 0
         folios_libs_totales = []
         for rec_oc in records_ocs:
             c += 1
-            print(f"==== {c} = {rec_oc['folio']}")
+            conexion = rec_oc.get('connection_id')
+            print(f"==== {c} = {rec_oc['folio']} conexion = {conexion}")
             for detail_os in rec_oc['answers'].get('f1962000000000000000fc10', []):
                 folios_libs_totales.append( f"{detail_os['f19620000000000000001fc1']}{detail_os['f19620000000000000001fc2']}" )
-        print(f"\n folios_libs_totales = {folios_libs_totales}")
+
+            # Buscando la OC en la conexion para borrarla
+            if conexion:
+                colection_connection = CollectionConnection(conexion, settings)
+                cr_contratista = colection_connection.get_collections_connection()
+                delete_conexion = cr_contratista.delete_one({
+                    'form_id': rec_oc['form_id'], 
+                    'folio': rec_oc['folio'], 
+                    'deleted_at': {'$exists': False}
+                }
+                # , {'folio': 1, 'connection_id': 1}
+                )
+                print(f"Eliminado de la conexion = {delete_conexion.deleted_count}")
+                
+
+        # print(f"\n folios_libs_totales = {folios_libs_totales}")
 
         """
         Restauro estatus de liberacion de los folios liberados
@@ -114,4 +135,7 @@ class ParticularAction( Produccion_PCI ):
 if __name__ == '__main__':
     lkf_obj = ParticularAction(settings, sys_argv=sys.argv)
     # lkf_obj.review_os_no_liberadas()
+
+    from pci_get_connection_db import CollectionConnection
+
     lkf_obj.delete_ocs_and_libs()
