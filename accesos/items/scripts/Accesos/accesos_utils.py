@@ -2774,6 +2774,50 @@ class Accesos( Accesos):
             })
 
         return response
+    
+    def get_count_ingresos(self, qr_code):
+        user_timezone = self.user.get('timezone', "America/Mexico_City")
+        tz = pytz.timezone(user_timezone)
+        today = datetime.now(tz)
+        today_start = datetime.strftime(today, "%Y-%m-%d") + " 00:00:00"
+        today_end = datetime.strftime(today, "%Y-%m-%d") + " 23:59:59"
+
+        match_query = {
+            "deleted_at": {"$exists": False},
+            "form_id": self.BITACORA_ACCESOS,
+            f"answers.{self.mf['codigo_qr']}": qr_code
+        }
+
+        query = [
+            {'$match': match_query},
+            {'$group': {
+                '_id': None,
+                'total_records': {'$sum': 1},
+                'today_records': {
+                    '$sum': {
+                        '$cond': [
+                            {'$and': [
+                                {'$gte': [f"$answers.{self.mf['fecha_entrada']}", today_start]},
+                                {'$lte': [f"$answers.{self.mf['fecha_entrada']}", today_end]}
+                            ]},
+                            1,
+                            0
+                        ]
+                    }
+                }
+            }}
+        ]
+        
+        result = self.format_cr_result(self.cr.aggregate(query))
+        total_entradas = {
+            'total_records': 0,
+            'today_records': 0
+        }
+
+        if result:
+            total_entradas = result[0]
+            
+        return total_entradas
 
     def do_access(self, qr_code, location, area, data):
         '''
@@ -2783,10 +2827,10 @@ class Accesos( Accesos):
         if not qr_code and not location and not area:
             return False
         total_entradas = self.get_count_ingresos(qr_code)
-        
+        user_timezone = self.user.get('timezone', "America/Mexico_City")
         diasDisponibles = access_pass.get("limitado_a_dias", [])
         dias_semana = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
-        tz = pytz.timezone("America/Mexico_City")
+        tz = pytz.timezone(user_timezone)
         hoy = datetime.now(tz)
         dia_semana = hoy.weekday()
         nombre_dia = dias_semana[dia_semana]
@@ -2814,26 +2858,22 @@ class Accesos( Accesos):
         if len(total_entradas) > 0 and limite_acceso and int(limite_acceso) > 0:
             if total_entradas['total_records']>= int(limite_acceso) :
                 self.LKFException({'msg':"Se ha completado el limite de entradas disponibles para este pase, edita el pase o crea uno nuevo.","title":'Revisa la Configuración'})
+        if total_entradas['today_records'] >= 3:
+            self.LKFException({
+                'title': 'Advertencia',
+                'msg': f"Ya se han registrado 3 entradas el día de hoy con este pase, no puede acceder más."
+            })
         
-        timezone = pytz.timezone('America/Mexico_City')
+        timezone = pytz.timezone(user_timezone)
         fecha_actual = datetime.now(timezone).replace(microsecond=0)
         fecha_caducidad = access_pass.get('fecha_de_caducidad')
         fecha_obj_caducidad = datetime.strptime(fecha_caducidad, "%Y-%m-%d %H:%M:%S")
         fecha_caducidad = timezone.localize(fecha_obj_caducidad)
 
-        # Se agrega 1 hora como margen de tolerancia
-        fecha_caducidad_con_margen = fecha_caducidad + timedelta(hours=1)
+        fecha_caducidad_con_margen = fecha_caducidad + timedelta(minutes=480)
 
         if fecha_caducidad_con_margen < fecha_actual:
             self.LKFException({'msg':"El pase esta vencido, ya paso su fecha de vigencia.","title":'Advertencia'})
-        
-        fecha_visita = access_pass.get('fecha_de_expedicion')
-        if fecha_visita:
-            fecha_obj_visita = datetime.strptime(fecha_visita, "%Y-%m-%d %H:%M:%S")
-            fecha_visita_tz = timezone.localize(fecha_obj_visita)
-            
-            if fecha_actual < fecha_visita_tz - timedelta(minutes=30):
-                self.LKFException({'msg': f"Aún no es hora de entrada. Tu acceso comienza a las {fecha_visita}", "title": 'Aviso'})
         
         if location not in access_pass.get("ubicacion",[]):
             msg = f"La ubicación {location}, no se encuentra en el pase. Pase valido para las siguientes ubicaciones: {access_pass.get('ubicacion',[])}."
