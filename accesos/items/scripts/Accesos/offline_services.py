@@ -3,7 +3,7 @@ from hmac import new
 import os
 import pytz
 import sys, simplejson, json, pytz
-import time
+import time, random
 import tempfile
 import unicodedata
 from bson.objectid import ObjectId
@@ -789,13 +789,12 @@ class Accesos(Accesos):
                 '_id': bitacora_in_lkf.get('_id')
             })
             res = self.net.patch_forms_answers(metadata)
-            print("======log: ", res)
             return res
         
     def create_check_area(self, data):
         # metadata = self.lkf_api.get_metadata(form_id=self.CHECK_UBICACIONES)
         answers = {}
-        metadata = self.lkf_api.get_metadata(form_id=137161) #TODO: Modularizar id
+        metadata = self.lkf_api.get_metadata(form_id=self.CHECK_UBICACIONES) #TODO: Modularizar id
         metadata.update({
             "properties": {
                 "device_properties":{
@@ -1050,7 +1049,7 @@ class Accesos(Accesos):
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
-                "form_id": 137161, #TODO: Modularizar id
+                "form_id": self.CHECK_UBICACIONES,
                 "_id": {"$in": id_list}
             }},
             {"$project": {
@@ -1088,7 +1087,6 @@ class Accesos(Accesos):
         response = {}
         try:
             response = self.create_check_area(record)
-            print("======log: ", response)
         except Exception as e:
             self.LKFException({'title': 'Error inesperado', 'msg': str(e)})
         
@@ -1122,6 +1120,29 @@ class Accesos(Accesos):
             ref_field = self.f['documento_check']
         upload_image = self.upload_file_from_couchdb(data, name, self.CHECK_UBICACIONES, ref_field)
         return upload_image
+    
+    def update_bitacora_with_retry(self, bitacora_in_lkf, data, new_incidencias, new_areas, max_retries=5, base_wait=2):
+        """
+        Reintenta update_bitacora en caso de error 208 (registro ocupado).
+        - base_wait: espera inicial en segundos antes del primer intento
+        - Backoff exponencial + jitter en cada reintento
+        """
+        for attempt in range(max_retries):
+            # Espera antes de cada intento (incluyendo el primero)
+            wait = base_wait * (2 ** attempt) + random.uniform(0, 1)
+            print(f'Esperando {wait:.1f}s antes del intento {attempt + 1}/{max_retries}...')
+            time.sleep(wait)
+
+            response = self.update_bitacora(bitacora_in_lkf, data, new_incidencias, new_areas)
+
+            if response.get('status_code') == 208:
+                print(f'Registro ocupado (208), reintentando...')
+                continue
+
+            # Cualquier otra respuesta (éxito o error diferente) se retorna directo
+            return response
+
+        return {'status_code': 408, 'type': 'error', 'msg': 'Max retries exceeded after 208 conflicts', 'data': {}}
     
     def sync_rondin_to_lkf(self, data):
         status = {}
@@ -1201,7 +1222,8 @@ class Accesos(Accesos):
         new_checks = self.cr_db.find({
             "selector": {
                 "_id": {"$in": format_checks_in_couch}
-            }
+            },
+            "limit": 1000
         })
         new_areas = {}
         for check in new_checks:
@@ -1216,7 +1238,7 @@ class Accesos(Accesos):
         if not isinstance(data, dict):
             data = self.cr_db.get(rondin_id)
 
-        bitacora_response = self.update_bitacora(bitacora_in_lkf, data, new_incidencias, new_areas)
+        bitacora_response = self.update_bitacora_with_retry(bitacora_in_lkf, data, new_incidencias, new_areas)
         aux = self.cr_db.get(rondin_id)
         if bitacora_response and bitacora_response.get('status_code') in [200, 201, 202]:
             if aux.get('status_rondin') == 'completed':
@@ -1224,15 +1246,22 @@ class Accesos(Accesos):
                 checks_in_lkf = [i.get('incidente_area') for i in bitacora_in_lkf.get('areas_del_rondin', []) if i.get('fecha_hora_inspeccion_area')]
                 checks_in_couch = [i.get('area') for i in aux.get('record', {}).get('check_areas', []) if i.get('checked')]
                 if len(checks_in_couch) != len(checks_in_lkf):
+                    aux['status'] = 'received'
+                    aux['inbox'] = False
+                
+                    self.cr_db.save(aux)
                     return {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
 
                 aux['status'] = 'received'
                 aux['inbox'] = False
+
                 self.cr_db.save(aux)
             status = {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
         else:
-            aux['status'] = 'error'
-            self.cr_db.save(aux)
+            print('Revisando status de inbox para ver si es necesario guardar como error: ', aux )
+            if aux['status'] != 'error':
+                aux['status'] = 'error'
+                # self.cr_db.save(aux)
             status = {'status_code': 400, 'type': 'error', 'msg': bitacora_response, 'data': {}}
         return status
 
