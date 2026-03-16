@@ -5,6 +5,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.styles import NamedStyle, Font, Border, Side, PatternFill, Alignment
 from datetime import datetime, timedelta, date, time
 from pytz import timezone
+from collections import OrderedDict, Counter
 
 class PCI_Utils():
     def __init__(self, cr=None, cr_admin=None, lkf_api=None, net=None, settings=None, lkf_obj=None):
@@ -369,6 +370,11 @@ class PCI_Utils():
         dict_response = response_delete[0][1]
         status_code = dict_response.get('status_code',0)
         return status_code
+
+    def encontrar_duplicados(self, lista):
+        conteo = Counter(lista)
+        duplicados = [item for item, cantidad in conteo.items() if cantidad > 1]
+        return duplicados
 
     def find_folio_autorizado(self, folio, telefono, division, tecnologia):
         query_autorizacion = {

@@ -2,6 +2,8 @@
 import re, sys, simplejson
 import random, os, shutil, wget, zipfile, collections
 from datetime import datetime
+from bson import ObjectId
+from copy import deepcopy
 from produccion_pci_utils import Produccion_PCI
 
 from account_settings import *
@@ -15,8 +17,9 @@ class Produccion_PCI( Produccion_PCI ):
         self.equivalcens_map_observa = { 'observaciones': ['OBSERVACIONES CLARO VIDEO', 'observaciones claro video', 'obs. claro video', 'observaciones cv']}
 
     def checa_liberacion_pago(self, form_id, folios):
-        record = lkf_obj.get_records(form_id=form_id, folio=folios, select_columns=['folio'])
-        liberados = [rec['folio'] for rec in record]
+        record = lkf_obj.get_records(form_id=form_id, folio=folios, select_columns=['folio', 'answers'])
+        # liberados = [rec['folio'] for rec in record]
+        liberados = { rec['folio']: rec.get('answers', {}) for rec in record }
         return liberados
 
     def get_count_folios_in_db(self, form_id, folios ):
@@ -28,11 +31,11 @@ class Produccion_PCI( Produccion_PCI ):
         return dict_records_os
 
     def get_all_folios_ya_liberados(self, id_lib, foliosTelefonos, folios, records, id_os):
-        foliosTelefonos_ya_liberados = []
+        foliosTelefonos_ya_liberados = {}
         ya_liberados = self.checa_liberacion_pago(id_lib, foliosTelefonos)
-        print('ya_liberados=',ya_liberados)
+        # print('ya_liberados=',ya_liberados)
         ya_liberados_by_folio = self.checa_liberacion_pago(id_lib, folios)
-        print('ya_liberados_by_folio=',ya_liberados_by_folio)
+        # print('ya_liberados_by_folio=',ya_liberados_by_folio)
         folios_a_buscar_duplicado = []
         
         dict_ids_forms_oc = { 
@@ -54,7 +57,8 @@ class Produccion_PCI( Produccion_PCI ):
             rec_telefono = record[1]
             rec_foliotelefono = '{}{}'.format(folio, rec_telefono)
             if rec_foliotelefono in ya_liberados:
-                foliosTelefonos_ya_liberados.append( rec_foliotelefono )
+                # foliosTelefonos_ya_liberados.append( rec_foliotelefono )
+                foliosTelefonos_ya_liberados[rec_foliotelefono] = ya_liberados[rec_foliotelefono]
                 print('Folio ya liberado por foliotelefono = ',folio)
                 continue
             if folio in ya_liberados_by_folio:
@@ -73,7 +77,8 @@ class Produccion_PCI( Produccion_PCI ):
                     # continue
                 folio_is_in_oc = get_folio_in_oc( dict_ids_forms_oc[id_os], folio, rec_telefono )
                 if folio_is_in_oc:
-                    foliosTelefonos_ya_liberados.append(rec_foliotelefono)
+                    # foliosTelefonos_ya_liberados.append(rec_foliotelefono)
+                    foliosTelefonos_ya_liberados[rec_foliotelefono] = {}
                     print('Folio ya liberado por folio {} si esta duplicado pero ya está en OC {} con el telefono {}'.format(folio, folio_is_in_oc, rec_telefono))
                     continue
         return foliosTelefonos_ya_liberados
@@ -119,6 +124,31 @@ class Produccion_PCI( Produccion_PCI ):
 
     #     return {'result': emails_connections}
 
+    def get_psr_entradas_50(self, folios_psr, telefonos_psr):
+        e50_founds = cr_admin.aggregate([{'$match':{
+            'form_id': 49792,
+            'deleted_at': {'$exists': False},
+            'answers.6140c4cde3b466ede7fa7f58.6140c5098b4c153ceefa7f8f': {'$in': folios_psr},
+            'answers.6140c4cde3b466ede7fa7f58.614245cc73e2daf134088623': {'$in': telefonos_psr},
+        }},
+        {'$unwind': '$answers.6140c4cde3b466ede7fa7f58'},
+        {'$project': {
+            '_id': 0,
+            'folio': '$answers.6140c4cde3b466ede7fa7f58.6140c5098b4c153ceefa7f8f',
+            'telefono': '$answers.6140c4cde3b466ede7fa7f58.614245cc73e2daf134088623',
+            'conceptos': '$answers.6140c4cde3b466ede7fa7f58.638e5f18030388ce2bd7c8d5',
+            'folio_entrada': '$folio'
+        }},
+        {'$match': {
+            'folio': {'$in': folios_psr},
+            'telefono': {'$in': telefonos_psr},
+        }}
+        ])
+        folios_telefonos_e50 = {}
+        for fol_in_e50 in e50_founds:
+            folios_telefonos_e50.setdefault( '{}{}'.format(fol_in_e50['folio'], fol_in_e50['telefono']), [] ).append(fol_in_e50)
+        return folios_telefonos_e50
+
     def get_os_for_liberacion(self, form_id, contratistas_no_autorizados, contratistas_autorizados_pdf, tecnologia, only_connections):
         dict_pdf_memo_by_form = {
             self.ORDEN_SERVICIO_COBRE: ['5ad13efef851c23d8a4d95af', '5a623e30f851c2271179f823'],
@@ -135,19 +165,12 @@ class Produccion_PCI( Produccion_PCI ):
         field_id_cliente = 'f1054000a0100000000000c5' if tecnologia == 'fibra' else '58e6d4cff851c244a78f35ca'
         
         query = {'form_id': form_id, 'deleted_at': {'$exists': False}, 
-
-            # 'folio': {'$in': [
-            #     "54336160", "54353191", "54372016", "54381766", "54384631", "15821946", "15868257", "15805948", "15838828", "15852207", "15859571", "15860547", "15863927", "15894223", "15895260", "15908445", "15916687", 
-            #     "15917650", "15935987", "15957727", "16124070", "54405242", "15649397", "54415970", "54381686", "54376454", "54408934", "54406796", "15701921", "54373807", "54407507", "54411656", "54417108", "54427541", 
-            #     "16125272", "16129543", "16172937", "16177574", "16178686", "16185349", "16188925", "16201320", "16213747", "16225257", "16226431", "16227368", "16235121", "16237413", "16245719", "16253253", "54387205", 
-            #     "54413752", "54415517", "54370191", "54384475", "54382369", "54414108", "54388070", "54420286", "54385315", "54426151", "54356389", "54361355", "54362948", "54343909", "54361619", "54351747", "54347627", 
-            #     "54351246", "54336991", "54406325", "54380470", "54381810", "54387039", "54378518", "54400187", "54402718", "54402767", "54397619", "54400193", "54403905", "54407297", "54404003", "54386809", "54404212", 
-            #     "54415076", "54405325", "54405720", "54406224", "54370669", "54396952", "54384864", "54392433", "54387509", "54401488", "54410531", "54383744", "54379777", "54399587", "54405072", "54414209", "54415812", 
-            #     "54416653", "54364103", "54386672", "54408039", "28390810", "28391667", "28393482", "28402695", "28406089", "28410054", "28419328", "28423464", "28429045"
-            # ]},
-
             # 'folio': {'$in': [ '40456668' ]},
-
+            # 'folio': {'$in': [
+            #     # TEST folios PSR
+            #     '11131515', '11131061', '11130145', '11128822', '11124936', '11122844', '29377454', '29428828', 
+            #     '11134355', '11128788', '11131899', '11137436', '11139959' # cobre
+            # ]},
             'created_at': {
                 '$gte': datetime.strptime('2026-02-03 00:00:00', "%Y-%m-%d %H:%M:%S")
             },
@@ -155,16 +178,23 @@ class Produccion_PCI( Produccion_PCI ):
             'answers.f1054000a030000000000002':'liquidada',
             'answers.f1054000a030000000000013': 'en_proceso',
             # 'answers.f1054000a030000000000012':{'$in':['estimacion','paco']},
-            'answers.f1054000a030000000000012': {'$in': ['pendiente', 'estimacion']},
+            'answers.f1054000a030000000000012': {'$in': ['pendiente', 'estimacion', 'paco']},
             f'answers.{field_id_cliente}': {'$exists': True},
             'answers.633d9f63eb936fb6ec9bf580': {'$nin': ['cfe']},
 
             # Para las liberaciones no se consideran los folios marcados por más de 30 días, a menos que ya estén en Entrada 50
+            # Esto no aplica para la cuenta SR
+            # '$or': [
+            #     {'answers.601c7ae006478d9cbee17e00': {'$nin': ['sí']}},
+            #     {'answers.5efa00c62542e523f391c636': {'$exists': True}}
+            # ]
+
+            # No tiene info en el campo Folio Orden de Compra Contratista o es PSR
             '$or': [
-                {'answers.601c7ae006478d9cbee17e00': {'$nin': ['sí']}},
-                {'answers.5efa00c62542e523f391c636': {'$exists': True}}
+                {'answers.5f40131c9bca6a32f518d9a9': {'$exists': False}},
+                {'answers.5f40131c9bca6a32f518d9a9': ""},
+                {'answers.633d9f63eb936fb6ec9bf580': 'psr'}
             ]
-            
         }
         
         liberando_cobre = tecnologia == 'cobre'
@@ -175,20 +205,24 @@ class Produccion_PCI( Produccion_PCI ):
         select_columns = {'folio':1, 'form_id': 1, 'answers':1, 'connection_id':1}
         print('##################### query=',query)
         records_found = self.cr.find(query, select_columns)
+
         """
         Identificar los folios y telefonos de PSR
         """
-        records_to_lib, fols_sin_pdf = [], []
+        # records_to_lib, fols_sin_pdf = [], []
         fields_pdfs_memo = dict_pdf_memo_by_form[ form_id ]
+        folios_psr, telefonos_psr, records_to_lib, fols_sin_pdf = [], [], [], []
         for temp_record in records_found:
             folio_record_found = temp_record['folio']
             temp_answer = temp_record['answers']
             telefono_record_found = temp_answer.get('f1054000a010000000000005')
+            temp_proyecto = temp_answer.get('633d9f63eb936fb6ec9bf580', '')
             
             # Los folios de los contratistas que generan en la otra forma de OC se van a ignorar
             if temp_record.get('connection_id',0) not in contratistas_no_autorizados:
+                temp_record_is_psr = temp_proyecto == 'psr'
                 # En COBRE no se estan liberando las QUEJAS
-                if liberando_cobre and temp_answer.get('f1054000a0100000000000a1', '') in ('QI', 'RI', 'EI', 'TN', 'TE'):
+                if liberando_cobre and temp_answer.get('f1054000a0100000000000a1', '') in ('QI', 'RI', 'EI', 'TN', 'TE') and not temp_record_is_psr:
                     continue
                 
                 records_to_lib.append(temp_record)
@@ -199,7 +233,17 @@ class Produccion_PCI( Produccion_PCI ):
                     if temp_record.get('connection_id') not in contratistas_autorizados_pdf:
                         fols_sin_pdf.append( f'{folio_record_found}_{telefono_record_found}' )
 
-        return records_to_lib, fols_sin_pdf
+                # Busco los registros que sean de PSR
+                if temp_record_is_psr:
+                    folios_psr.append(folio_record_found)
+                    telefonos_psr.append(str(telefono_record_found))
+                    telefonos_psr.append(telefono_record_found)
+
+        folios_psr_in_e50 = self.get_psr_entradas_50(folios_psr, telefonos_psr)
+
+        print('folios_psr_in_e50 =',folios_psr_in_e50)
+
+        return records_to_lib, fols_sin_pdf, folios_psr_in_e50
 
     def get_info_os(self, form_id, folios, telefonos):
         query = {'form_id':  form_id, 'deleted_at' : {'$exists':False}, 
@@ -290,9 +334,35 @@ class Produccion_PCI( Produccion_PCI ):
                         else:
                             folio_ok = response_libera_pago['folio']
                         #print "********** folio registrado ", reg_inserta['folio']
-                        folios_registrados.append( dict_ids_record[ folio_ok ] )
+
+
+
+
+
                         list_folios_liberados.append( records[ dict_pos_record[ folio_ok ] ] + ['Liberado correctamente',] )
                         libs_exitosas += 1
+
+                        data_record_id = dict_ids_record[ folio_ok ]
+                        if isinstance(data_record_id, dict):
+
+                            if 'ready_to_close' in data_record_id:
+                                if not data_record_id.get('ready_to_close'):
+                                    continue
+
+                            str_record_id = data_record_id['str_record_id']
+                            # map_id_pos_historial.setdefault( data_record_id['pos_historial'], [] ).append( ObjectId( str_record_id ) )
+                        else:
+                            str_record_id = data_record_id
+
+                        folios_registrados.append( str_record_id )
+
+
+
+
+
+
+
+                        # folios_registrados.append( dict_ids_record[ folio_ok ] )
                     else:
                         libs_erroneas += 1
                         if json.get('folio'):
@@ -363,6 +433,17 @@ class Produccion_PCI( Produccion_PCI ):
             dict | None: orden encontrada o None si no existe
         """
         return next((order for order in orders if order.get("folio") == folio), None)
+
+    def lib_psr_ready_close(self, answer_lib):
+        # REPARACION DE INSTALACIONES CON INCENTIVO
+        if answer_lib.get('6726ff1164633c2f15ba7af6'):
+            return True
+        
+        # INCENTIVO PSR y además REPARACIÓN DE INSTALACIONES
+        if answer_lib.get('6726ff1164633c2f15ba7af4') and answer_lib.get('6726ff1164633c2f15ba7af5'):
+            return True
+
+        return False
     
     def make_liberaciones_for_fibra(self, current_record, record_id, answers, header, records, tecnologia, division, id_os, id_lib, fols_sin_pdf, **kwargs):
         # CONCEPTOS MINIMOS PARA A4 EN LAS POSICIONES = 34 a 42
@@ -391,6 +472,7 @@ class Produccion_PCI( Produccion_PCI ):
         dict_ids_record = {}
         detail_records = {}
         date_to_mayor_300m = p_utils.str_to_date('2022-09-01')
+        libs_to_edit = {}
         fecha_inicio_bono, fecha_fin_bono = self.get_periodo_bono()
         for pos_rec, record in enumerate(records):
             folio = self.strip_special_characters(record[0])
@@ -417,6 +499,31 @@ class Produccion_PCI( Produccion_PCI ):
             rec_foliotelefono = '{}{}'.format(folio, rec_telefono)
             
             if rec_foliotelefono in total_folios_telefonos_liberados:
+
+
+                # Los folios que son de PSR si ya hay registro de liberacion se va a modificar sobre el registro encontrado
+                if rec_foliotelefono in kwargs.get('folios_psr_to_lib', []):
+                    conceptos_ya_liberados = total_folios_telefonos_liberados[ rec_foliotelefono ]
+
+                    conceptos_a_liberar = deepcopy(conceptos_ya_liberados)
+
+                    if record[44]:
+                        conceptos_a_liberar['6726ff1164633c2f15ba7af4'] = record[44] # INCENTIVO PSR
+                    
+                    if record[45]:
+                        conceptos_a_liberar['6726ff1164633c2f15ba7af5'] = record[45] # REPARACION DE INSTALACIONES
+                    
+                    if record[46]:
+                        conceptos_a_liberar['6726ff1164633c2f15ba7af6'] = record[46] # REPARACION DE INSTALACIONES CON INCENTIVO
+
+                    # si se tienen los mismos conceptos a liberar no es necesario hacer el patch
+                    if conceptos_ya_liberados == conceptos_a_liberar:
+                        continue
+
+                    libs_to_edit[rec_foliotelefono] = conceptos_a_liberar
+
+
+
                 print('folio ya liberado', folio)
                 continue
             
@@ -467,7 +574,9 @@ class Produccion_PCI( Produccion_PCI ):
                             continue
                 
                 dict_pos_record.update({rec_foliotelefono: pos_rec})
-                dict_ids_record.update({rec_foliotelefono: str( o_s['_id'] )})
+                dict_ids_record[rec_foliotelefono] = {
+                    'str_record_id': str( o_s['_id'] )
+                }
                 registro_orden_servicio = self.prepare_os_for_update(o_s, {}, current_record['folio'], metraje, tipo_de_instalacion, tecnologia_os)
                 registro_orden_servicio['records'] = [str( o_s['_id'] ),]
                 registro_orden_servicio['folio'] = rec_foliotelefono
@@ -481,35 +590,41 @@ class Produccion_PCI( Produccion_PCI ):
                 expediente_os = answers.get('f1054000a0100000000000d6')
                 apply_for_bono = self.valida_os_bono_produccion(fecha_inicio_bono, fecha_fin_bono, answers)
                 
+                answers_to_lib_record = {
+                    'f2361400a010000000000001':current_record['folio'], # Utilizare el Folio del registro de carga como si fuera el PACO
+                    'f2361400a010000000000002':metraje,
+                    'f1054000a0100000000000d6': expediente_os,
+                    '69aa157ff88a3627e348656a': 'sí' if apply_for_bono else 'no',
+                    'f2361400a010000000000003':'', # Comentarios
+                    'f2361400a010000000000004':tecnologia_os,
+                    'f2361400a010000000000005':'liberado',
+                    '5ebeaf5df6fcb50881282dc7': int(record[30]), # RADIAL EN BANQUETA
+                    '5ebeaf5df6fcb50881282dc6': int(record[31]), # RADIAL EN CEPA LIBRE
+                    '5ebeaf5df6fcb50881282dc5': int(record[32]), # REPARACION DE TROPEZON EN RADIAL
+                    # Conceptos para A4
+                    '5f033e1248598b3eda0e34c4': record[36],
+                    '5f033e1248598b3eda0e34c5': record[37],
+                    '5f033e1248598b3eda0e34c6': record[38],
+                    '5f033e1248598b3eda0e34c7': record[39],
+                    '5f033e1248598b3eda0e34c8': record[40],
+                    '5f033e1248598b3eda0e34c9': record[41],
+                    '5f033e1248598b3eda0e34ca': record[42],
+                    '5f033e1248598b3eda0e34cb': record[43],
+                    '649711a6ccc16f1189087d45': record[34],
+                    'f2361400a010000000000f17': record[35],
+                    '64c81ec3ca956450a2169a44': record[27], # Desmontaje en Migracion
+                    # Conceptos para PSR
+                    '6726ff1164633c2f15ba7af4': record[44], # INCENTIVO PSR
+                    '6726ff1164633c2f15ba7af5': record[45], # REPARACION DE INSTALACIONES
+                    '6726ff1164633c2f15ba7af6': record[46], # REPARACION DE INSTALACIONES CON INCENTIVO
+                }
+
+                # Si es PSR reviso si ya esta lista para cerrarse la liberacion
+                if answers.get('633d9f63eb936fb6ec9bf580') == 'psr':
+                    dict_ids_record[ rec_foliotelefono ]['ready_to_close'] = self.lib_psr_ready_close( answers_to_lib_record )
+
                 detail_records.update({
-                    rec_foliotelefono:{
-                        'f2361400a010000000000001':current_record['folio'], # Utilizare el Folio del registro de carga como si fuera el PACO
-                        'f2361400a010000000000002':metraje,
-                        'f1054000a0100000000000d6': expediente_os,
-                        '69aa157ff88a3627e348656a': 'sí' if apply_for_bono else 'no',
-                        'f2361400a010000000000003':'', # Comentarios
-                        'f2361400a010000000000004':tecnologia_os,
-                        'f2361400a010000000000005':'liberado',
-                        '5ebeaf5df6fcb50881282dc7': int(record[30]), # RADIAL EN BANQUETA
-                        '5ebeaf5df6fcb50881282dc6': int(record[31]), # RADIAL EN CEPA LIBRE
-                        '5ebeaf5df6fcb50881282dc5': int(record[32]), # REPARACION DE TROPEZON EN RADIAL
-                        # Conceptos para A4
-                        '5f033e1248598b3eda0e34c4': record[36],
-                        '5f033e1248598b3eda0e34c5': record[37],
-                        '5f033e1248598b3eda0e34c6': record[38],
-                        '5f033e1248598b3eda0e34c7': record[39],
-                        '5f033e1248598b3eda0e34c8': record[40],
-                        '5f033e1248598b3eda0e34c9': record[41],
-                        '5f033e1248598b3eda0e34ca': record[42],
-                        '5f033e1248598b3eda0e34cb': record[43],
-                        '649711a6ccc16f1189087d45': record[34],
-                        'f2361400a010000000000f17': record[35],
-                        '64c81ec3ca956450a2169a44': record[27], # Desmontaje en Migracion
-                        # Conceptos para PSR
-                        '6726ff1164633c2f15ba7af4': record[44], # INCENTIVO PSR
-                        '6726ff1164633c2f15ba7af5': record[45], # REPARACION DE INSTALACIONES
-                        '6726ff1164633c2f15ba7af6': record[46], # REPARACION DE INSTALACIONES CON INCENTIVO
-                    }
+                    rec_foliotelefono: answers_to_lib_record
                 })
         print("++++++++ orders_to_patch:",orders_to_patch)
         patch_res = {}
@@ -561,6 +676,9 @@ class Produccion_PCI( Produccion_PCI ):
 
         update_dicts_libs( 'list_errores' )
         update_dicts_libs( 'list_liberados' )
+
+        for folio_lib_update, data_to_update in libs_to_edit.items():
+            resp_update_lib = lkf_api.patch_multi_record(data_to_update, id_lib, folios=[folio_lib_update])
 
         return response_liberaciones, libs_by_connection
 
@@ -704,6 +822,7 @@ class Produccion_PCI( Produccion_PCI ):
         }
         libs_by_connection = {}
         dict_new_answers = {}
+        libs_to_edit = {}
 
         fecha_inicio_bono, fecha_fin_bono = self.get_periodo_bono()
 
@@ -715,6 +834,32 @@ class Produccion_PCI( Produccion_PCI ):
             rec_folio_telefono = '{}_{}'.format(folio, rec_telefono)
             rec_foliotelefono = '{}{}'.format(folio, rec_telefono)
             if rec_foliotelefono in total_folios_telefonos_liberados:
+
+
+
+                # Los folios que son de PSR si ya hay registro de liberacion se va a modificar sobre el registro encontrado
+                if rec_foliotelefono in kwargs.get('folios_psr_to_lib', []):
+                    conceptos_ya_liberados = total_folios_telefonos_liberados[ rec_foliotelefono ]
+
+                    conceptos_a_liberar = deepcopy(conceptos_ya_liberados)
+
+                    if record[32]:
+                        conceptos_a_liberar['6726ff1164633c2f15ba7af4'] = record[32] # INCENTIVO PSR
+                    
+                    if record[33]:
+                        conceptos_a_liberar['6726ff1164633c2f15ba7af5'] = record[33] # REPARACION DE INSTALACIONES
+                    
+                    if record[34]:
+                        conceptos_a_liberar['6726ff1164633c2f15ba7af6'] = record[34] # REPARACION DE INSTALACIONES CON INCENTIVO
+
+                    # si se tienen los mismos conceptos a liberar no es necesario hacer el patch
+                    if conceptos_ya_liberados == conceptos_a_liberar:
+                        continue
+
+                    libs_to_edit[rec_foliotelefono] = conceptos_a_liberar
+                
+
+
                 print('folio ya liberado', folio)
                 continue
             if rec_foliotelefono in folios_no_listos:
@@ -757,7 +902,15 @@ class Produccion_PCI( Produccion_PCI ):
 
                 detail_records[rec_foliotelefono] = answers_for_set
                 dict_pos_record.update({rec_foliotelefono: pos_rec})
-                dict_ids_record.update({rec_foliotelefono: str( orden['_id'] )})
+                # dict_ids_record.update({rec_foliotelefono: str( orden['_id'] )})
+                dict_ids_record[ rec_foliotelefono ] = {
+                    'str_record_id': str( orden['_id'] )
+                }
+                
+                # Si es PSR reviso si ya esta lista para cerrarse la liberacion
+                if record_is_psr:
+                    dict_ids_record[ rec_foliotelefono ]['ready_to_close'] = self.lib_psr_ready_close( answers_for_set )
+
                 # Esto de evaluate_answer_values ya no se ocupa porque en este modulo no se trabajan todos los campos
                 # registro_orden_servicio = evaluate_answer_values(orden, record, answers)
                 # registro_orden_servicio['folios'] = [folio,]
@@ -838,15 +991,67 @@ class Produccion_PCI( Produccion_PCI ):
         update_dicts_libs( 'list_errores' )
         update_dicts_libs( 'list_liberados' )
         
+        for folio_lib_update, data_to_update in libs_to_edit.items():
+            resp_update_lib = lkf_api.patch_multi_record({
+                'f2361400a010000000000006': {
+                    '0': data_to_update
+                }
+            }, id_lib, folios=[folio_lib_update])
+
         return response_liberaciones, libs_by_connection
 
     def remove_ceros( self, list_to_remove ):
         new_list_sin_ceros = [['' if m==0 else m for m in l] for l in list_to_remove]
         return new_list_sin_ceros
 
-    def process_rows_for_libs(self, records_for_liberacion, all_contratistas_1_0, tecnologia, division):
+    def get_conceptos_cobrados_psr(self, E50s_psr):
+        all_descripciones = []
+        for e50_psr in E50s_psr:
+            for cc in e50_psr.get('conceptos', '').split(';'):
+                nombres = re.findall(r'([^\[]+)\s+\[([^\]]+)\]', cc)
+                all_descripciones.extend( [nombre[0].strip().lower().replace(' ', '') for nombre in nombres] )
+
+        conceptos_duplicados = p_utils.encontrar_duplicados( all_descripciones )
+        if conceptos_duplicados:
+            return ('error', 'Folio de PSR. Se encontraron conceptos iguales en más de una entrada: {}'.format( self.list_to_str(conceptos_duplicados) ))
+        return all_descripciones
+
+    def get_psr_a_cobrar(self, conceptos_cobrados):
+        """
+        Determina qué conceptos PSR deben cobrarse.
+        
+        Parámetro:
+        conceptos_cobrados -> lista de conceptos cobrados
+        
+        Devuelve:
+        Lista de 3 posiciones con 1 o 0 indicando si se debe cobrar:
+        [incentivo_psr, reparacion_instalaciones, reparacion_instalaciones_con_incentivo]
+        """
+
+        # Normaliza todos los conceptos para evitar problemas con acentos o mayúsculas
+        conceptos = {self.normalize_text(c) for c in conceptos_cobrados}
+
+        # Diccionario que define qué palabra activa cada posición
+        reglas = {
+            0: {"incentivopsr"},
+            1: {"reparaciondeinstalaciones"},
+            2: {"reparaciondeinstalacionesconincentivo"},
+        }
+
+        # Lista resultado (0 = no cobrar, 1 = cobrar)
+        psr_a_cobrar = [0, 0, 0]
+
+        # Recorre las reglas y marca 1 si el concepto aparece
+        for idx, keywords in reglas.items():
+            if conceptos.intersection(keywords):
+                psr_a_cobrar[idx] = 1
+
+        return psr_a_cobrar
+
+
+    def process_rows_for_libs(self, records_for_liberacion, all_contratistas_1_0, tecnologia, division, folios_psr_in_e50):
         dict_ids_folio_telefono, expedientes_found = {}, {}
-        records_libs = []
+        records_libs, errores_psr, folios_psr_to_lib = [], [], []
         for rec in records_for_liberacion:
             try:
                 entero_folio = int( rec.get('folio') )
@@ -941,6 +1146,42 @@ class Produccion_PCI( Produccion_PCI ):
                 'PC INDUSTRIAL S.A. DE C.V.', 
             ]
 
+            
+
+
+
+            # Se procesan los registros de PSR
+            if record_is_psr:
+                print(f' === === Folio es PSR {os_record_folio}')
+                positions_psr_concepts = [0, 0, 0]
+                conceptos_cobrados = []
+                data_e50 = folios_psr_in_e50.get(folio_join_telefono)
+                if not data_e50:
+                    # Caso de PSR que no esta en Entrada 50. Se libera el concepto "Reparacion de Instalaciones"
+                    positions_psr_concepts = [0, 1, 0]
+                    folios_psr_to_lib.append(folio_join_telefono)
+                else:
+                    conceptos_cobrados = self.get_conceptos_cobrados_psr(data_e50)
+                    print (f'conceptos_cobrados = {conceptos_cobrados}')
+                    if not conceptos_cobrados:
+                        errores_psr.append( list_rec + ['Folio de PSR. No tiene conceptos a considerar',] )
+                        continue
+                    if 'error' in conceptos_cobrados:
+                        errores_psr.append( list_rec + [conceptos_cobrados[1],] )
+                        continue
+
+                    positions_psr_concepts = self.get_psr_a_cobrar(conceptos_cobrados)
+                    if not any(positions_psr_concepts):
+                        errores_psr.append( list_rec + ['Folio de PSR. No tiene conceptos a considerar',] )
+                        continue
+                    folios_psr_to_lib.append(folio_join_telefono)
+
+            
+
+
+
+
+
             if tecnologia == 'cobre':
                 '''
                 Empezando análisis de COBRE...
@@ -1034,7 +1275,7 @@ class Produccion_PCI( Produccion_PCI ):
                 else:
                     list_rec.append(0)
                 
-                list_rec.append(0)
+                # list_rec.append(0)
                 
                 # Otras varias columnas llegan de las nuevas columnas que se agregaron en la carga de producción, revisar notas en el excel de las estimaciones
                 '''
@@ -1050,7 +1291,6 @@ class Produccion_PCI( Produccion_PCI ):
 
                 # list_rec.extend([0] * 3)
                 if record_is_psr:
-                    positions_psr_concepts = [0, 0, 0]
                     for i in range(5, 32):
                         list_rec[ i ] = 0
                     list_rec.extend( positions_psr_concepts )
@@ -1163,7 +1403,10 @@ class Produccion_PCI( Produccion_PCI ):
                 list_rec.extend([visitas_adicionales, conexion_bajante_x_fusion, radial_banqueta, radial_cepa, reparacion_tropezon, \
                     migracion_exitosa_vsi, migracion_exitosa_voz_cobre_a_fibra, instalacion_poste])
                 # ============ Integro los conceptos minimos que se cobran si son a4 ============
-                if record_is_a4 and not record_is_cfe:
+                if record_is_psr:
+                    list_rec.extend([0] * 8)
+                    list_rec.extend( positions_psr_concepts )
+                elif record_is_a4 and not record_is_cfe:
                     list_rec.extend([1] * 8 + [0] * 3)
                 else:
                     list_rec.extend([0] * 11)
@@ -1190,7 +1433,7 @@ class Produccion_PCI( Produccion_PCI ):
 
             records_libs.append(list_rec)
 
-        return records_libs
+        return records_libs, errores_psr, folios_psr_to_lib
     
     def liberacion_de_folios(self, current_record):
         current_record['answers'].pop('f2362800a010000000000005', None)
@@ -1255,16 +1498,19 @@ class Produccion_PCI( Produccion_PCI ):
             id_os, id_lib, id_oc = p_utils.get_id_os(division, tecnologia)
 
             # Se consultan los registros que se van a liberar
-            records_for_liberacion, fols_sin_pdf = self.get_os_for_liberacion(id_os, contratistas_no_autorizados, contratistas_autorizados_pdf, tecnologia, only_connections)
+            records_for_liberacion, fols_sin_pdf, folios_psr_in_e50 = self.get_os_for_liberacion(id_os, contratistas_no_autorizados, contratistas_autorizados_pdf, tecnologia, only_connections)
             print('******** Total records:',len(records_for_liberacion))
 
-            records_total_for_libs = self.process_rows_for_libs(records_for_liberacion, all_contratistas_1_0, tecnologia, division)
+            records_total_for_libs, errores_psr, folios_psr_to_lib = self.process_rows_for_libs(records_for_liberacion, all_contratistas_1_0, tecnologia, division, folios_psr_in_e50)
 
-            kwargs_vars = {}
+            kwargs_vars = {'folios_psr_to_lib': folios_psr_to_lib}
             if tecnologia == 'fibra':
                 response_liberaciones, libs_by_connection = self.make_liberaciones_for_fibra(current_record, record_id, answers, header, records_total_for_libs, tecnologia, division, id_os, id_lib, fols_sin_pdf, **kwargs_vars)
             elif tecnologia == 'cobre':
                 response_liberaciones, libs_by_connection = self.make_liberaciones_for_cobre(current_record, record_id, answers, header, records_total_for_libs, tecnologia, division, id_os, id_lib, fols_sin_pdf, **kwargs_vars)
+            
+            response_liberaciones['list_errores'] += errores_psr
+
             all_liberaciones[ tec_y_div ] = response_liberaciones
             
             for id_con, dict_libs in libs_by_connection.items():

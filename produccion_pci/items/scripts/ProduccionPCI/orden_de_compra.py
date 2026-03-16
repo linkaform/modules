@@ -19,6 +19,23 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
         self.liberaciones_con_bono = self.get_liberaciones_con_bono()
+        self.map_fields_oc_psr = {
+            '672cfb27388bff96a3650581': 'incentivo_psr',
+            '672cfb27388bff96a3650582': 'reparacion_instalaciones',
+            '672cfb27388bff96a3650583': 'reparacion_instalaciones_con_incentivo',
+        }
+        self.list_forms_libs = [
+            self.FORMA_LIBERACION_FIBRA, 
+            self.FORMA_LIBERACION_FIBRA_SURESTE, 
+            self.FORMA_LIBERACION_FIBRA_NORTE, 
+            self.FORMA_LIBERACION_FIBRA_OCCIDENTE, 
+            self.FORMA_LIBERACION_FIBRA_TELNOR, 
+            self.FORMA_LIBERACION_COBRE, 
+            self.FORMA_LIBERACION_COBRE_SURESTE, 
+            self.FORMA_LIBERACION_COBRE_NORTE, 
+            self.FORMA_LIBERACION_COBRE_OCCIDENTE, 
+            self.FORMA_LIBERACION_COBRE_TELNOR, 
+        ]
 
     def get_descuentos_form_nomina(self):
         records_nomina = self.get_records(
@@ -367,6 +384,13 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         """
         extra_filters = {'answers.f2361400a010000000000005':'liberado'}
 
+        # extra_filters['folio'] = {'$in': [
+        #     "111315156699910107", "111249366699541090", "293774546181435970", "111228446691058145", 
+        #     "111288226699174650", "111301456699826635", "111310616699848623", "294288286188245217", 
+        #     # cobre
+        #     "111287886699851779", "111374366699400609", "111399596699528935", "111343556691059604", "111318996699884108"
+        # ]}
+
         if is_cobre:
             extra_filters['answers.f2361400a010000000000006.f2361400a0100000000000b6'] = {'$nin': ['tn', 'te']}
         return self.get_records( FORMA_LIBERACION, folios_carga, extra_filters, ['folio', 'user_id', 'form_id', 'answers', '_id'] )
@@ -483,11 +507,19 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         Return:
             Lista de folios y telefonos de las Ordenes de Servicio
         """
-        folios_oc = []
+        folios_oc, folios_oc_psr = [], {}
+        fields_psr = ['672cfb27388bff96a3650581', '672cfb27388bff96a3650582', '672cfb27388bff96a3650583']
         for record in oc_folios_cr:
             for folio_group in record['answers'].get('f1962000000000000000fc10', []):
-                folios_oc.append( f"{folio_group.get('f19620000000000000001fc1')}_{folio_group.get('f19620000000000000001fc2')}" )
-        return folios_oc
+                fol_tel = f"{folio_group.get('f19620000000000000001fc1')}_{folio_group.get('f19620000000000000001fc2')}"
+                folios_oc.append( fol_tel )
+
+                if folio_group.get('f19620000000000000001fc4') == 'PSR':
+                    for fpsr in fields_psr:
+                        if folio_group.get(fpsr):
+                            folios_oc_psr.setdefault(fol_tel, []).append( self.map_fields_oc_psr.get( fpsr ) )
+        
+        return folios_oc, folios_oc_psr
 
     def get_order_by_connection(self, form_id, folios_telefonos, OC_CONTRATISTA, only_connections=[]):
         """
@@ -518,15 +550,17 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         # if result.count() > 0:
         # Buscar si no exixte una orden de compra con ese folio
         print(f"_____ Se revisa que los folios NO esten en OC {OC_CONTRATISTA} _____")
+
         query_oc, select_columns = self.query_oc_folios(OC_CONTRATISTA, folios)
         oc_folios_cr = self.cr.find(query_oc, select_columns )
-        folios_telefonos_in_oc = self.get_folios_of_oc(oc_folios_cr)
+        folios_telefonos_in_oc, folios_oc_psr = self.get_folios_of_oc(oc_folios_cr)
 
         for res in result:
             folio_os = res['folio']
             folio_telefono = f"{folio_os}_{res['answers'].get('f1054000a010000000000005')}"
+            folio_is_psr = res['answers'].get('633d9f63eb936fb6ec9bf580') == 'psr'
             
-            if folio_telefono in folios_telefonos_in_oc:
+            if (folio_telefono in folios_telefonos_in_oc and not folio_is_psr):
                 status_pago_folios['otra_oc'].append(folio_telefono)
                 continue
 
@@ -538,8 +572,9 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             folios_by_connection[conn]['before_february'].append(folio_telefono)
 
             folios_id[folio_telefono] = res
+
         status_pago_folios['no_aplica'] = folios
-        return folios_by_connection, folios_id, status_pago_folios
+        return folios_by_connection, folios_id, status_pago_folios, folios_oc_psr
 
     ###########################################################################
     # Funciones para Procesar cada liberacion y OS para calcular el precio de cada concepto a aplicar
@@ -734,7 +769,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         precio = price_list.get(clave, {}).get('buy_price', 0)
         return cantidad * precio
 
-    def make_estimacion_row(self, price_list, order, paco, payment_connection_id, price_list_cobre, conn_carso, answers_lib={}):
+    def make_estimacion_row(self, price_list, order, paco, payment_connection_id, price_list_cobre, conn_carso, conceptos_cobrados_psr, answers_lib={}):
         answers = order['answers']
 
         # Obtener metraje actual y tecnología
@@ -821,31 +856,58 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             migration_price_list[1] = 0
             excedente = 0
             if is_psr:
-                """
-                === === INCENTIVO PSR
-                    PSRMI = Maqtel
-                    PSRCMI = Contratista Migrado
-                    PSRCI = Contratista
+                # """
+                # === === INCENTIVO PSR
+                #     PSRMI = Maqtel
+                #     PSRCMI = Contratista Migrado
+                #     PSRCI = Contratista
 
-                === === REPARACION DE INSTALACIONES CON INCENTIVO
-                    PSRMCI = Maqtel
-                    PSRCMCI = Contratista Migrado
-                    PSRCCI = Contratista
+                # === === REPARACION DE INSTALACIONES CON INCENTIVO
+                #     PSRMCI = Maqtel
+                #     PSRCMCI = Contratista Migrado
+                #     PSRCCI = Contratista
 
-                === === REPARACIÓN DE INSTALACIONES
-                    PSRM = Maqtel
-                    PSRCM = Contratista Migrado
-                    PSRC = Contratista
-                """
-                codigo_psr = 'PSRC'
-                if payment_connection_id in self.ID_CONTRATISTA_TIPO_MAQTEL:
-                    codigo_psr = 'PSRM'
-                elif payment_connection_id in conn_carso:
-                    codigo_psr = 'PSRCM'
-                # total_incentivo_psr = totales['incentivo_psr'] if not 'incentivo_psr' in conceptos_cobrados_psr else 0
-                total_reparacion_instalaciones = self.get_price(price_list, codigo_psr, 'buy_price')
-                # total_reparacion_instalaciones_con_incentivo = totales['reparacion_instalaciones_con_incentivo'] if not 'reparacion_instalaciones_con_incentivo' in conceptos_cobrados_psr else 0
-                campos_psr = [0, total_reparacion_instalaciones, 0]
+                # === === REPARACIÓN DE INSTALACIONES
+                #     PSRM = Maqtel
+                #     PSRCM = Contratista Migrado
+                #     PSRC = Contratista
+                # """
+                # codigo_psr = 'PSRC'
+                # if payment_connection_id in self.ID_CONTRATISTA_TIPO_MAQTEL:
+                #     codigo_psr = 'PSRM'
+                # elif payment_connection_id in conn_carso:
+                #     codigo_psr = 'PSRCM'
+
+                # # print('\n++ price_list =',price_list)
+                # # print('\n++ codigo_psr =',codigo_psr)
+
+                # # total_incentivo_psr = totales['incentivo_psr'] if not 'incentivo_psr' in conceptos_cobrados_psr else 0
+                # total_reparacion_instalaciones = self.get_price(price_list, codigo_psr, 'buy_price')
+                # # total_reparacion_instalaciones_con_incentivo = totales['reparacion_instalaciones_con_incentivo'] if not 'reparacion_instalaciones_con_incentivo' in conceptos_cobrados_psr else 0
+                # campos_psr = [0, total_reparacion_instalaciones, 0]
+                # # print('++ campos_psr =',campos_psr)
+                # # stop
+                psr_payed = 'incentivo_psr' in conceptos_cobrados_psr
+                reparacion_payed = 'reparacion_instalaciones' in conceptos_cobrados_psr
+                psr_con_reparacion_payed = 'reparacion_instalaciones_con_incentivo' in conceptos_cobrados_psr
+
+                total_incentivo_psr = totales['incentivo_psr'] if not psr_payed else 0
+                total_reparacion_instalaciones = totales['reparacion_instalaciones'] if not reparacion_payed else 0
+                total_reparacion_instalaciones_con_incentivo = totales['reparacion_instalaciones_con_incentivo'] if not psr_con_reparacion_payed else 0
+
+                # si se va a cobrar Reparacion con Incentivo antes validar que aun no se cobre el Incentivo PSR
+                if total_reparacion_instalaciones_con_incentivo:
+                    
+                    # si ya se cobro PSR anteriormente
+                    if reparacion_payed or psr_payed:
+                        total_reparacion_instalaciones_con_incentivo = 0
+
+                    # Excepcion de cuando no se ha cobrado repacarion ni incentivo pero ya se intenta cobrar este completo
+                    if total_reparacion_instalaciones_con_incentivo and not psr_payed and not reparacion_payed:
+                        total_incentivo_psr = 0
+                        total_reparacion_instalaciones = 0
+
+                campos_psr = [total_incentivo_psr, total_reparacion_instalaciones, total_reparacion_instalaciones_con_incentivo]
             else:
 
                 # nivel_de_pago = 'contratista' 
@@ -954,7 +1016,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
 
         return row, folioDescuento20porc
 
-    def get_folio_info(self, record_lib, price_list, order, payment_connection_id, price_list_cobre, conn_carso):
+    def get_folio_info(self, record_lib, price_list, order, payment_connection_id, price_list_cobre, conn_carso, conceptos_cobrados_psr):
         """
         Se obtiene la informacion del folio procesado
 
@@ -971,7 +1033,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         """
         answers_lib_record = record_lib['answers']
         paco = answers_lib_record['f2361400a010000000000001']
-        row, folioDescuento20porc = self.make_estimacion_row(price_list, order, paco, payment_connection_id, price_list_cobre, conn_carso, answers_lib=answers_lib_record)
+        row, folioDescuento20porc = self.make_estimacion_row(price_list, order, paco, payment_connection_id, price_list_cobre, conn_carso, conceptos_cobrados_psr, answers_lib=answers_lib_record)
         return row, folioDescuento20porc
 
     ###########################################################################
@@ -1044,6 +1106,15 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         #             return True
         return response
 
+    def close_libs_open( self, folios_libs, status_to_close='liberadoscon' ):
+        resp_close = self.cr.update_many({
+            'folio': {'$in': folios_libs},
+            'form_id': {'$in': self.list_forms_libs},
+            'deleted_at': {'$exists': False},
+        },{
+            '$set': {'answers.f2361400a010000000000005': status_to_close}
+        })
+
     def close_nominas_descuentos(self, folios_records_nomina, folio_oc_with_nomina):
         resp_close_nominas = lkf_api.patch_multi_record(
             {'68ef3a6f7b3f032ba9879047': 'aplicado', '68f087bb782a7cd1f064d8f1': folio_oc_with_nomina}, 
@@ -1062,6 +1133,24 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         list_ids_liberaciones = []
         list_ids_os = []
         for folio_in_oc in metadata_oc.get('answers', {}).get('f1962000000000000000fc10', []):
+            
+            if folio_in_oc.get('f19620000000000000001fc4') == 'PSR':
+                bool_incentivo = bool(folio_in_oc.get('672cfb27388bff96a3650581'))
+                bool_reparacion = bool(folio_in_oc.get('672cfb27388bff96a3650582'))
+                bool_reparacion_incentivo = bool(folio_in_oc.get('672cfb27388bff96a3650583'))
+
+                # incentivo_o_reparacion = (bool_incentivo or bool_reparacion) and (bool_incentivo ^ bool_reparacion)
+                no_incentivo_y_reparacion = not bool_reparacion_incentivo
+
+                if bool_incentivo or bool_reparacion:
+                    if bool_incentivo ^ bool_reparacion:
+                        continue
+                elif no_incentivo_y_reparacion:
+                    continue
+
+                # if inc_or_rep or no_inc_and_rep:
+                #     continue
+            
             list_ids_liberaciones.append( folio_in_oc.pop('_id_record_liberacion') )
             list_ids_os.append( folio_in_oc.pop('_id_record_os') )
 
@@ -1331,8 +1420,9 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             # Primero recupero la conexión de los folios a los se les generará la OC y los que no aplican por estar pagados o en alguna otra OC
             total_folios = len(folios)
             print("total_folios=",total_folios)
-            folios_by_connection, folios_ids, status_pago_folios = self.get_order_by_connection(FORMA_ORDEN_SERVICIO, folios, OC_CONTRATISTA, only_connections=only_connections)
+            folios_by_connection, folios_ids, status_pago_folios, folios_oc_psr = self.get_order_by_connection(FORMA_ORDEN_SERVICIO, folios, OC_CONTRATISTA, only_connections=only_connections)
             folios_by_connection_and_forms = {}
+            folios_libs_psr_to_close = []
             for payment_connection_id, dict_payment_folios in folios_by_connection.items():
                 payment_folios = dict_payment_folios.get('before_february', []) # + dict_payment_folios.get('february_and_more', [])
                 # =================================
@@ -1355,13 +1445,20 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                         if not record_lib:
                             print('No se encontro info de liberacion para = ',payment_folio)
                             continue
-                        fila, folioDescuento20porc = self.get_folio_info(record_lib, price_list_fibra, info_record_os, payment_connection_id, price_list_cobre, conn_carso) # paso los registros ya consultados en folios_ids
-
-
-
+                        
+                        conceptos_psr_payed = folios_oc_psr.get(payment_folio, [])
+                        if folio_is_psr and conceptos_psr_payed:
+                            conceptos_psr_in_oc = set(conceptos_psr_payed)
+                            if (
+                                'reparacion_instalaciones_con_incentivo' in conceptos_psr_in_oc 
+                                or {'incentivo_psr', 'reparacion_instalaciones'}.issubset(conceptos_psr_in_oc)
+                            ):
+                                folios_libs_psr_to_close.append( payment_folio.replace('_', '') )
+                                continue
+                        
+                        fila, folioDescuento20porc = self.get_folio_info(record_lib, price_list_fibra, info_record_os, payment_connection_id, price_list_cobre, conn_carso, conceptos_psr_payed)
+                        
                         # HASTA AQUI VOY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
                         folio_oc_rec = fila[0] #FOLIO f19620000000000000001fc1
                         telefono_oc_rec = fila[1] #TELEFONO f19620000000000000001fc2
                         ont_oc_rec = fila[2] #ONT
@@ -1430,9 +1527,18 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                             print('dddddescuento por=',str_descuentos_pos)
                             folio_payment.update( { '60231d3a4524c60430be8e17': str_descuentos_pos } )
                         if folio_is_psr:
-                            folio_payment['672cfb27388bff96a3650582'] = fila[-2] # Reparacion de Instalaciones
+                            if not any([fila[-3], fila[-2], fila[-1]]):
+                                print('no hay conceptos PSR a cobrar =',payment_folio)
+                                continue
+
+                            folio_payment['672cfb27388bff96a3650581'] = fila[-3]
+                            folio_payment['672cfb27388bff96a3650582'] = fila[-2]
+                            folio_payment['672cfb27388bff96a3650583'] = fila[-1]
+                            # folio_payment['672cfb27388bff96a3650582'] = fila[-2] # Reparacion de Instalaciones
                             folio_payment['f19620000000000000001fc4'] = 'PSR'
                             folio_payment['is_psr'] = True
+
+
                             # ocs_to_psr.setdefault(payment_connection_id, []).append(folio_payment)
                             # continue
                         folios_by_connection_and_forms[payment_connection_id][OC_CONTRATISTA].setdefault(for_oc, []).append( folio_payment )
@@ -1449,6 +1555,8 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                     response_update = self.update_records_status(status_pago_folios['pagada'], 'orden_de_compra', FORMA_ORDEN_SERVICIO, status_contratista='pagada')
             else:
                 msg_response = 'No hay registros para OC'
+            if folios_libs_psr_to_close:
+                self.close_libs_open(folios_libs_psr_to_close, status_to_close='orden_de_compra')
         else:
             msg_response = 'No hay registros para OC'
         return msg_response, ocs_creadas
@@ -1469,13 +1577,13 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         print("_____ Consulta si los folios estan en OC _____")
         query_oc, select_columns = self.query_oc_folios(OC_CONTRATISTA, folios)
         oc_folios_cr = self.cr.find(query_oc, select_columns )
-        folios_oc = self.get_folios_of_oc(oc_folios_cr)
+        folios_oc, folios_oc_psr = self.get_folios_of_oc(oc_folios_cr)
 
         status_pago_folios = {'no_aplica':[], 'pagada':[], 'otra_oc': [] }
         for folio in folios:
             if folio in folios_oc:
                 status_pago_folios['otra_oc'].append(folio)
-        return status_pago_folios
+        return status_pago_folios, folios_oc_psr
     
     
 
@@ -1720,7 +1828,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                 os_tipo_os = 'QI'
             response['anio_liq'] = anio_liq
             response['tipo_os'] = os_tipo_os
-            response['f19620000000000000001fc4'] = os_answers.get('f1054000a0100000000000a1','')
+            response['f19620000000000000001fc4'] = 'PSR' if order_psr else os_tipo_os
             response['descuento_20_porciento'] = descuento_20_porciento
             response['february_and_more'] = date_fecha_liquidacion >= date_february
             response['68f6a337764a6c7697770f8b'] = os_answers.get('f1054000a010000000000007', '') # Expediente
@@ -2063,10 +2171,12 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             msg_response = 'No hay registros para OC'
             return msg_response, ocs_creadas
 
-        folios_en_oc = self.get_payed_order(folios_carga_liberados, OC_CONTRATISTA)
+        folios_en_oc, folios_oc_psr = self.get_payed_order(folios_carga_liberados, OC_CONTRATISTA)
         
         fecha_inicio_bono, fecha_fin_bono = self.get_periodo_bono()
         dict_dates_by_connection = {}
+        folios_libs_psr_to_close = []
+        reverse_map_fields_oc_psr = {v: k for k, v in self.map_fields_oc_psr.items()}
         for os_liberada in registros_liberacion:
             order = os_consultadas.get( os_liberada['folio'], None )
             
@@ -2075,8 +2185,9 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                 continue
             
             folio_telefono = '{}_{}'.format( order['folio'], order['answers'].get('f1054000a010000000000005') )
+            folio_is_psr = order['answers'].get('633d9f63eb936fb6ec9bf580', '') == 'psr'
             
-            if os_liberada['folio'] in folios_en_oc['otra_oc']:
+            if os_liberada['folio'] in folios_en_oc['otra_oc'] and not folio_is_psr:
                 print('Este folio ya se encuentra en otra Orden de compra = ',folio_telefono)
                 continue
             
@@ -2084,7 +2195,6 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                 print('Este folio marca error porque no tiene conexion =',folio_telefono)
                 continue
 
-            folio_is_psr = order['answers'].get('633d9f63eb936fb6ec9bf580', '') == 'psr'
             folios.append(os_liberada['folio'])
             conn = order['connection_id']
             if not dict_dates_by_connection.get(conn, False):
@@ -2094,8 +2204,29 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                 dict_dates_by_connection[ conn ] = datetime.strptime( str_date_for_nomina, '%Y-%m-%d' )
             date_february = dict_dates_by_connection[ conn ]
 
-            # Parece que no hay PSR
+            
             conceptos_cobrados_psr_ids = []
+            if folio_is_psr:
+                conceptos_psr_payed = folios_oc_psr.get(folio_telefono, [])
+                if conceptos_psr_payed:
+                    conceptos_psr_in_oc = set(conceptos_psr_payed)
+                    if (
+                        'reparacion_instalaciones_con_incentivo' in conceptos_psr_in_oc 
+                        or {'incentivo_psr', 'reparacion_instalaciones'}.issubset(conceptos_psr_in_oc)
+                    ):
+                        folios_libs_psr_to_close.append( payment_folio.replace('_', '') )
+                        continue
+
+                    conceptos_cobrados_psr_ids = [ reverse_map_fields_oc_psr.get(cc) for cc in conceptos_psr_in_oc ]
+
+
+            
+
+
+
+
+
+
 
             fila_dict = self.get_folio_info_cobre(os_liberada, FORMA_ORDEN_SERVICIO, price_list_cobre, oc_ids_dict, map_campos, oc_ids, order, date_february, conn_carso, conceptos_cobrados_psr_ids, total_20_row=desc_20_porc_as_row)
             if not fila_dict:
@@ -2112,9 +2243,10 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                 'is_psr': folio_is_psr
             })
 
-            # if folio_is_psr:
-            #     ocs_to_psr.setdefault(connection_id, []).append(fila_dict)
-            #     continue
+            if folio_is_psr:
+                if not any([fila_dict.get('672cfb27388bff96a3650581'), fila_dict.get('672cfb27388bff96a3650582'), fila_dict.get('672cfb27388bff96a3650583')]):
+                    print('no hay conceptos PSR a cobrar =',folio_telefono)
+                    continue
 
             '''
             Agrupando los folios por año de liquidacion
@@ -2144,7 +2276,8 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         
         # print('-- ++ -- ++ -- ++ group_ocs_cobre =',group_ocs_cobre)
         # stop
-
+        if folios_libs_psr_to_close:
+            self.close_libs_open( folios_libs_psr_to_close )
         if len(folios) > 0:
             all_errors_to_create = []
             group_ocs_to_create = {}

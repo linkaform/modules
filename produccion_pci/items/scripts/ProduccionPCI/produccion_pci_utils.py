@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import sys, simplejson
+import sys, simplejson, unicodedata
 from datetime import datetime, timedelta, date
 from pytz import timezone
 from copy import deepcopy
@@ -268,6 +268,23 @@ class Produccion_PCI(Produccion_PCI):
         res_create_est = self.lkf_api.post_forms_answers(metadata)
         print('res_create_est=',res_create_est)
         return res_create_est
+
+    def normalize_text(self, text):
+        """
+        Normaliza un texto:
+        - Elimina acentos
+        - Convierte todo a minúsculas
+        Esto permite comparar textos sin preocuparnos por acentos o mayúsculas.
+        """
+        
+        # Descompone caracteres acentuados (ej: á -> a + ´)
+        text = unicodedata.normalize("NFD", text)
+        
+        # Elimina los símbolos de acento
+        text = "".join(c for c in text if unicodedata.category(c) != "Mn")
+        
+        # Convierte el texto a minúsculas
+        return text.lower()
 
     def notify_error(self, field_id, lbl, msg):
         """
