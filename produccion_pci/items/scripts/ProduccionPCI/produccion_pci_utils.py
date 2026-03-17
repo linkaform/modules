@@ -87,6 +87,10 @@ class Produccion_PCI(Produccion_PCI):
             self.ORDEN_SERVICIO_COBRE_TELNOR: '5ad13e8cf851c220dd0eb769'
         }
 
+        self.tipo_tarea_7v_metraje = ["TS197VG", "TS287VG"]
+        self.tipo_tarea_7v_voz_cobre_a_voz_fo = ["TSML7VG", "TS2L7VG", "TS1L7VG"]
+        self.tipo_tarea_7v_voz_pot_a_vsi = ["TS1L7VV", "TS1L7VM", "TS1L7VN"]
+
         self.all_divisiones = [
             # {'tecnologia':'fibra','division':'occidente'}, {'tecnologia':'cobre','division':'occidente'}, {'tecnologia':'fibra','division':'telnor'}
             

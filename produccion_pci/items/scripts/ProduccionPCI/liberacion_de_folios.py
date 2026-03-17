@@ -1309,6 +1309,7 @@ class Produccion_PCI( Produccion_PCI ):
                 # Para los tipos A4 y FC no se estiman ni liberan
                 tipo_instalacion = ans.get('f1054000a020000000000004','')
                 metros_bajante = ans.get('f1054000a02000000000007a', ans.get('f1054000a0200000000000d7',''))
+                mts_adicionales = ans.get('f1054000a020000000000bd7',0)
 
                 # Metros bajante y tipo de instalación serán aleatorios cuando es solo PIC
                 if not connection_id or os_has_minimo:
@@ -1330,12 +1331,12 @@ class Produccion_PCI( Produccion_PCI ):
                 migracion_exitosa_voz_cobre_a_fibra = 0
                 migracion_exitosa_vsi = ''
                 # if re.match(r"^TS.*7VG$|^ts.*7vg$", tipo_tarea):
-                if ('7V' in tipo_tarea) and not is_clase_10_20:
+                
+                # if ('7V' in tipo_tarea) and not is_clase_10_20:
+                if tipo_tarea in self.tipo_tarea_7v_voz_cobre_a_voz_fo:
                     migracion_exitosa_voz_cobre_a_fibra = 1
                     #print '{} Tipo de tarea lleva 7V y no es de clase 10 y 20 por tanto no se cobra bajante= {}'.format(rec.get('folio'), tipo_tarea)
                 else:
-                    mts_adicionales = ans.get('f1054000a020000000000bd7',0)
-
                     # Algunos tipos de tarea solo se paga el vsi y no se considera el metraje
                     if record_is_a4:
                         metros_bajante = '0'
