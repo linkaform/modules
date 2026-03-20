@@ -20,9 +20,6 @@ class Produccion_PCI( Produccion_PCI ):
         self.ALL_CONNECTIONS = {}
         self.USERS = {}
         self.TIPOS_TAREAS_ENCONTRADAS = {'fibra':[], 'cobre': []}
-
-        self.list_tareas_solo_vsi = ['TS1L7VGPI', 'TS2L7VGPI']
-
         self.equivalcens_map_observa = { 'observaciones': ['OBSERVACIONES CLARO VIDEO', 'observaciones claro video', 'obs. claro video', 'observaciones cv']}
 
     def read_txt_from_img(self, image_path, name_img):
@@ -614,6 +611,10 @@ class Produccion_PCI( Produccion_PCI ):
             is_clase_10_20 = False
         if is_clase_10_20:
             answer['609bf813b3f4e5c00cf76ee0'] = 1
+        
+        if '7V' in tipo_tarea_record and tipo_tarea_record not in self.all_tipos_tarea_7v:
+            return {'error': 'Tipo de Tarea 7V con error. Favor de revisar con soporte.'}
+
         mtts_before = {}
         pos_expediente = pre_os_field_id.pop('pos_expediente')
 
@@ -817,9 +818,8 @@ class Produccion_PCI( Produccion_PCI ):
                 if cobro_minimo:
                     mts = 75
                 # Hay tipos de tarea donde solo se cobra el VSI por tanto el metraje se deja como 0
-                if tecnologia_orden == 'fibra':
-                    if tipo_tarea_record in self.list_tareas_solo_vsi:
-                        mts = 0
+                if tecnologia_orden == 'fibra' and tipo_tarea_record in self.tipos_tarea_metraje_cero:
+                    mts = 0
                 
                 if mts or mts == 0:
                     metraje_cargado = mts
@@ -1007,7 +1007,8 @@ class Produccion_PCI( Produccion_PCI ):
                         is_in_listado_tecnicos = p_utils.carga_prod_find_expediente(id_connection_for_exp, settings.config['ACCOUNT_ID'], num_expediente, **kwargs_to_expediente)
                         if not is_in_listado_tecnicos:
                             # Validar que el expediente esté en los Expedientes de Tecnicos en Admin y IASA, si no existe en alguno, se manda error
-                            is_in_listado_tecnicos = p_utils.find_in_lista_tecnicos( 0, num_expediente, find_by_expediente=True )
+                            # is_in_listado_tecnicos = p_utils.find_in_lista_tecnicos( 0, num_expediente, find_by_expediente=True )
+                            is_in_listado_tecnicos = p_utils.find_in_lista_tecnicos( id_connection_for_exp, num_expediente )
                             print('-- -- -- -- response is_in_listado_tecnicos',is_in_listado_tecnicos)
                             # print('is_in_listado_tecnicos =',is_in_listado_tecnicos)
                             is_in_listado_tecnicos_admin = p_utils.find_in_lista_tecnicos( settings.config['ACCOUNT_ID'], num_expediente, find_in_admin=True )
@@ -1036,9 +1037,7 @@ class Produccion_PCI( Produccion_PCI ):
         # Para fibra hay tipos de tarea donde no se paga el metraje y solo se paga el vsi
         if tecnologia_orden == 'fibra':
             if tipo_tarea_record in self.list_tareas_solo_vsi:
-                answer.update({
-                    'f1054000a020000000000022': 'vsi'
-                })
+                answer['f1054000a020000000000022'] = 'vsi'
                 alerts.append('Para este tipo de Tarea solo se permite cobrar el VSI')
             # Para Fibra siempre se requiere el Tipo de Material
             if not answer.get('6346f10c24cc48504673c5d9'):
