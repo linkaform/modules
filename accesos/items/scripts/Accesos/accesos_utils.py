@@ -613,7 +613,7 @@ class Accesos( Accesos):
         match_query = {
             'form_id':self.PASE_ENTRADA,
             'deleted_at':{'$exists':False},
-            f"answers.{self.pase_entrada_fields['visita_a']}.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_empleado']}": employee.get('worker_name') or '',
+            'created_by_username': self.user.get('username'),
         }
         if tab_status == "Favoritos":
             match_query.update({f"answers.{self.pase_entrada_fields['favoritos']}":'si'})
