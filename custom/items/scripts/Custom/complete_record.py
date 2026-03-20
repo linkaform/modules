@@ -20,15 +20,17 @@ class Custom(Custom):
             }
             raise Exception(simplejson.dumps(msg_error_app))
         
-        # data_catalog = {
-        #     "69667a148942065f5657f079": "Sin checkin",
-        #     "69667a148942065f5657f078": "Sin checkin",
-        #     "69667a148942065f5657f077": "Sin checkin",
-        #     "69667a148942065f5657f076": ["Sin checkin"]
-        # }
 
         # if record_check:
-        data_catalog = record_check.get('answers', {}).get('69667a148942065f5657f075')
+        data_catalog_check = record_check.get('answers', {}).get('69667a148942065f5657f075', {})
+        
+        data_catalog = {
+            "69667a148942065f5657f079": data_catalog_check.get("69667a148942065f5657f079"), 
+            "69667a148942065f5657f078": data_catalog_check.get("69667a148942065f5657f078"), 
+            "69667a148942065f5657f077": data_catalog_check.get("69667a148942065f5657f077"), 
+            "69667a148942065f5657f076": [ self.unlist(data_catalog_check.get("69667a148942065f5657f076")) ], 
+            "69a1ca103aa6ba9b4b24e674": [ self.unlist(data_catalog_check.get("69a1ca103aa6ba9b4b24e674")) ], 
+        }
 
         self.current_record['answers']['69667a148942065f5657f075'] = data_catalog
         sys.stdout.write(simplejson.dumps({
