@@ -23,14 +23,26 @@ class Custom(Custom):
 
         # if record_check:
         data_catalog_check = record_check.get('answers', {}).get('69667a148942065f5657f075', {})
+
+        print(f'\n-- data_catalog_check = {data_catalog_check}\n')
+
+        data_catalog = {}
+
+        for fId in ["69667a148942065f5657f079", "69667a148942065f5657f078", "69a1ca103aa6ba9b4b24e674", "69667a148942065f5657f077"]:
+            if data_catalog_check.get(fId) is not None:
+                data_catalog[fId] = self.unlist(data_catalog_check[fId])
+
+        if data_catalog_check.get('69667a148942065f5657f076'):
+            data_catalog['69667a148942065f5657f076'] = [ self.unlist(data_catalog_check.get("69667a148942065f5657f076")) ]
+
         
-        data_catalog = {
-            "69667a148942065f5657f079": data_catalog_check.get("69667a148942065f5657f079"), 
-            "69667a148942065f5657f078": data_catalog_check.get("69667a148942065f5657f078"), 
-            "69667a148942065f5657f077": data_catalog_check.get("69667a148942065f5657f077"), 
-            "69667a148942065f5657f076": [ self.unlist(data_catalog_check.get("69667a148942065f5657f076")) ], 
-            "69a1ca103aa6ba9b4b24e674": [ self.unlist(data_catalog_check.get("69a1ca103aa6ba9b4b24e674")) ], 
-        }
+        # data_catalog = {
+        #     "69667a148942065f5657f079": data_catalog_check.get("69667a148942065f5657f079"), # Estado
+        #     "69667a148942065f5657f078": data_catalog_check.get("69667a148942065f5657f078"), # Cadena
+        #     "69a1ca103aa6ba9b4b24e674": data_catalog_check.get("69a1ca103aa6ba9b4b24e674"), # Supervisor
+        #     "69667a148942065f5657f077": data_catalog_check.get("69667a148942065f5657f077"), # Tienda
+        #     "69667a148942065f5657f076": [ self.unlist(data_catalog_check.get("69667a148942065f5657f076")) ], # Codigo
+        # }
 
         self.current_record['answers']['69667a148942065f5657f075'] = data_catalog
         sys.stdout.write(simplejson.dumps({
