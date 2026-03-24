@@ -71,7 +71,9 @@ class Accesos( Accesos):
             'datos_requeridos': '6769756fc728a0b63b8431ea',
             'envio_por': '6810180169eeaca9517baa5b',
             'configuracion_de_accesos': '696e6dda9517e760679e71eb',
-            'tipo_de_notificacion': '699dfe3b82be0dbe0319d38c'
+            'tipo_de_notificacion': '699dfe3b82be0dbe0319d38c',
+
+            'tipo_rondin': '69b9b98d2a02f4a0dd35f5c1'
         })
 
         #BORRAR
@@ -2294,7 +2296,10 @@ class Accesos( Accesos):
         }
 
         if location:
-            match_query.update({f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}":location})
+            if isinstance(location, list):
+                match_query.update({f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}": {"$in": location}})
+            else:
+                match_query.update({f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}":location})
         if area:
             match_query.update({f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['nombre_area']}":area})
         if prioridades:
