@@ -707,8 +707,8 @@ class Produccion_PCI( Produccion_PCI ):
                     record[position] = 0
                 if record[position]:
                     bonificaciones_added += 1
-                    if (type(record[position]) != int) or (record[position] not in range(0,21)):
-                        error.append('{} El valor debe ser entre 0 y 20'.format(lbl))
+                    if (type(record[position]) != int) or (record[position] not in range(0,4)):
+                        error.append('{} El valor debe ser entre 0 y 3'.format(lbl))
                 else:
                     answer.pop( element.get('field_id', ''), None )
             elif lbl in ["Cableado interior 1 aparato y modem para infinitum (dit con splitter con proteccion)"]:
@@ -1005,7 +1005,8 @@ class Produccion_PCI( Produccion_PCI ):
                         is_in_listado_tecnicos = p_utils.carga_prod_find_expediente(id_connection_for_exp, settings.config['ACCOUNT_ID'], num_expediente, **kwargs_to_expediente)
                         if not is_in_listado_tecnicos:
                             # Validar que el expediente esté en los Expedientes de Tecnicos en Admin y IASA, si no existe en alguno, se manda error
-                            is_in_listado_tecnicos = p_utils.find_in_lista_tecnicos( 0, num_expediente, find_by_expediente=True )
+                            # is_in_listado_tecnicos = p_utils.find_in_lista_tecnicos( 0, num_expediente, find_by_expediente=True )
+                            is_in_listado_tecnicos = p_utils.find_in_lista_tecnicos( id_connection_for_exp, num_expediente )
                             print('-- -- -- -- response is_in_listado_tecnicos',is_in_listado_tecnicos)
                             # print('is_in_listado_tecnicos =',is_in_listado_tecnicos)
                             is_in_listado_tecnicos_admin = p_utils.find_in_lista_tecnicos( settings.config['ACCOUNT_ID'], num_expediente, find_in_admin=True )
