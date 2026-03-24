@@ -179,7 +179,7 @@ class Produccion_PCI( Produccion_PCI ):
             # 'answers.f1054000a030000000000012':{'$in':['estimacion','paco']},
             'answers.f1054000a030000000000012': {'$in': ['pendiente', 'estimacion', 'paco']},
             f'answers.{field_id_cliente}': {'$exists': True},
-            'answers.633d9f63eb936fb6ec9bf580': {'$nin': ['cfe']},
+            'answers.633d9f63eb936fb6ec9bf580': {'$nin': ['cfe', 'psr']},
 
             # Para las liberaciones no se consideran los folios marcados por más de 30 días, a menos que ya estén en Entrada 50
             # Esto no aplica para la cuenta SR
@@ -192,7 +192,7 @@ class Produccion_PCI( Produccion_PCI ):
             '$or': [
                 {'answers.5f40131c9bca6a32f518d9a9': {'$exists': False}},
                 {'answers.5f40131c9bca6a32f518d9a9': ""},
-                {'answers.633d9f63eb936fb6ec9bf580': 'psr'}
+                # {'answers.633d9f63eb936fb6ec9bf580': 'psr'}
             ]
         }
         
