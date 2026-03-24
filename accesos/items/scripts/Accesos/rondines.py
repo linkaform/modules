@@ -363,7 +363,7 @@ class Accesos(Accesos):
         data.update({
             "recurrencia": data.get('recurrencia').replace('_', ' ').title() if data.get('recurrencia') else 'No Recurrente',
             "estatus_rondin": data.get('estatus_rondin').replace('_', ' ').title() if data.get('estatus_rondin') else 'No Especificado',
-            "ubicacion_geolocation": data.get('ubicacion_geolocation', [])[0] if len(data.get('ubicacion_geolocation', [])) > 0 else {},
+            "ubicacion_geolocation": (data.get('ubicacion_geolocation') or [{}])[0],
             "images_data": fotos_de_areas,
             "map_data": puntos_de_control,
         })
