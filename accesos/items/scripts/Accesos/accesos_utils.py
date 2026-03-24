@@ -71,7 +71,9 @@ class Accesos( Accesos):
             'datos_requeridos': '6769756fc728a0b63b8431ea',
             'envio_por': '6810180169eeaca9517baa5b',
             'configuracion_de_accesos': '696e6dda9517e760679e71eb',
-            'tipo_de_notificacion': '699dfe3b82be0dbe0319d38c'
+            'tipo_de_notificacion': '699dfe3b82be0dbe0319d38c',
+
+            'tipo_rondin': '69b9b98d2a02f4a0dd35f5c1'
         })
 
         #BORRAR
