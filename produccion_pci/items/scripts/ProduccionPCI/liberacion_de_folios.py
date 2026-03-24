@@ -12,8 +12,7 @@ class Produccion_PCI( Produccion_PCI ):
 
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
-
-        self.list_tareas_solo_vsi = ['TS1L7VGPI', 'TS2L7VGPI']
+        
         self.equivalcens_map_observa = { 'observaciones': ['OBSERVACIONES CLARO VIDEO', 'observaciones claro video', 'obs. claro video', 'observaciones cv']}
 
     def checa_liberacion_pago(self, form_id, folios):
@@ -1048,6 +1047,43 @@ class Produccion_PCI( Produccion_PCI ):
 
         return psr_a_cobrar
 
+    def get_metraje_y_adicional( self, os_answer, os_is_a4, os_mts ):
+        if os_is_a4:
+            return '0', 0, False
+
+        mts_adicionales = os_answer.get('f1054000a020000000000bd7', 0)
+        if type(mts_adicionales) in [str, unicode]:
+            mts_adicionales = int(mts_adicionales)
+
+        if os_mts:
+            os_mts = str(os_mts)
+
+        type_300mts = (os_mts == '300' and (mts_adicionales + 300 > 300))
+
+        return os_mts, mts_adicionales, type_300mts
+
+    def get_lista_metrajes(self, metros_bajante, mts_adicionales, tipo_instalacion):
+        cells_bajante_aereo = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        cells_bajante_subterranea = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        if metros_bajante not in ('300', '0'):
+            dict_mts_x_pos = {'25': 0, '50': 1, '75': 2, '100': 3, '125': 4, '150': 5, '175': 6, '200': 7, '250': 8}
+            pos_metraje = dict_mts_x_pos.get(metros_bajante)
+            if pos_metraje is None:
+                print '>>>>>>>>>>>>>>>>>> Error con el metraje Tecnologia: {0} Division: {1} Folio: {2}'.format(tecnologia, division, os_record_folio)
+                return None, None
+            if tipo_instalacion == 'aerea':
+                cells_bajante_aereo[ pos_metraje ] = 1
+            elif tipo_instalacion == 'subterranea':
+                cells_bajante_subterranea[ pos_metraje ] = 1
+        elif metros_bajante == '300':
+            if tipo_instalacion == 'aerea':
+                cells_bajante_aereo[ 9 ] = 1
+                cells_bajante_aereo[ 10 ] = mts_adicionales if (mts_adicionales > 0) else 0
+            elif tipo_instalacion == 'subterranea':
+                cells_bajante_subterranea[ 9 ] = 1
+                cells_bajante_subterranea[ 10 ] = mts_adicionales if (mts_adicionales > 0) else 0
+
+        return cells_bajante_aereo, cells_bajante_subterranea
 
     def process_rows_for_libs(self, records_for_liberacion, all_contratistas_1_0, tecnologia, division, folios_psr_in_e50):
         dict_ids_folio_telefono, expedientes_found = {}, {}
@@ -1331,47 +1367,64 @@ class Produccion_PCI( Produccion_PCI ):
                 migracion_exitosa_voz_cobre_a_fibra = 0
                 migracion_exitosa_vsi = ''
                 # if re.match(r"^TS.*7VG$|^ts.*7vg$", tipo_tarea):
-                
-                # if ('7V' in tipo_tarea) and not is_clase_10_20:
-                if tipo_tarea in self.tipo_tarea_7v_voz_cobre_a_voz_fo:
-                    migracion_exitosa_voz_cobre_a_fibra = 1
-                    #print '{} Tipo de tarea lleva 7V y no es de clase 10 y 20 por tanto no se cobra bajante= {}'.format(rec.get('folio'), tipo_tarea)
+
+                if ('7V' in tipo_tarea) and not is_clase_10_20:
+                    # cambios 20260320 se filtra por los tipos de tarea de la lista que me pasó Paulino
+                    if tipo_tarea not in self.all_tipos_tarea_7v:
+                        print(f"{os_record_folio} Tipo de tarea 7V {tipo_tarea} fuera de la lista donde se pueden cobrar conceptos")
+                        continue
+
+                    if tipo_tarea in self.tipo_tarea_7v_voz_cobre_a_voz_fo:
+                        migracion_exitosa_voz_cobre_a_fibra = 1
+                    elif tipo_tarea in self.tipo_tarea_7v_metraje or tipo_tarea in self.tipo_tarea_7v_voz_pot_a_vsi:
+                        # Concepto "Migracion De Servicio Voz Pot A Vsi" no lo tenemos en las formas... por ahora puro metraje
+                        metros_bajante, mts_adicionales, record_is_300m = self.get_metraje_y_adicional(ans, record_is_a4, metros_bajante)
+                        list_bajante_aereo, list_bajante_subterranea = self.get_lista_metrajes(metros_bajante, mts_adicionales, tipo_instalacion)
                 else:
-                    # Algunos tipos de tarea solo se paga el vsi y no se considera el metraje
-                    if record_is_a4:
-                        metros_bajante = '0'
-                        mts_adicionales = 0
+                    metros_bajante, mts_adicionales, record_is_300m = self.get_metraje_y_adicional(ans, record_is_a4, metros_bajante)
+                    list_bajante_aereo, list_bajante_subterranea = self.get_lista_metrajes(metros_bajante, mts_adicionales, tipo_instalacion)
+                
+                # # if ('7V' in tipo_tarea) and not is_clase_10_20:
+                # if tipo_tarea in self.tipo_tarea_7v_voz_cobre_a_voz_fo:
+                #     migracion_exitosa_voz_cobre_a_fibra = 1
+                #     #print '{} Tipo de tarea lleva 7V y no es de clase 10 y 20 por tanto no se cobra bajante= {}'.format(rec.get('folio'), tipo_tarea)
+                # else:
+                #     # Algunos tipos de tarea solo se paga el vsi y no se considera el metraje
+                #     if record_is_a4:
+                #         metros_bajante = '0'
+                #         mts_adicionales = 0
 
-                    if isinstance(mts_adicionales, str):
-                        mts_adicionales = int(mts_adicionales)
+                #     if isinstance(mts_adicionales, str):
+                #         mts_adicionales = int(mts_adicionales)
                     
-                    if metros_bajante:
-                        metros_bajante = str(metros_bajante)
+                #     if metros_bajante:
+                #         metros_bajante = str(metros_bajante)
 
-                    if tipo_instalacion == 'aerea':
-                        if metros_bajante == '300':
-                            if mts_adicionales > 0:
-                                list_bajante_aereo[9] = 1
-                                list_bajante_aereo[10] = mts_adicionales
-                            else:
-                                list_bajante_aereo[9] = 1
-                        elif metros_bajante != '0':
-                            if metros_bajante not in dict_mts_x_pos:
-                                print('>>>>>>>>>>>>>>>>>> Error con el metraje Tecnologia: {0} Division: {1} Folio: {2}'.format(tecnologia, division, rec.get('folio')))
-                                continue
-                            list_bajante_aereo[ dict_mts_x_pos[metros_bajante] ] = 1
-                    elif tipo_instalacion == 'subterranea':
-                        if metros_bajante == '300':
-                            if mts_adicionales > 0:
-                                list_bajante_subterranea[9] = 1
-                                list_bajante_subterranea[10] = mts_adicionales
-                            else:
-                                list_bajante_subterranea[9] = 1
-                        elif metros_bajante != '0':
-                            if metros_bajante not in dict_mts_x_pos:
-                                print('>>>>>>>>>>>>>>>>>> Error con el metraje Tecnologia: {0} Division: {1} Folio: {2}'.format(tecnologia, division, rec.get('folio')))
-                                continue
-                            list_bajante_subterranea[ dict_mts_x_pos[metros_bajante] ] = 1
+                #     if tipo_instalacion == 'aerea':
+                #         if metros_bajante == '300':
+                #             if mts_adicionales > 0:
+                #                 list_bajante_aereo[9] = 1
+                #                 list_bajante_aereo[10] = mts_adicionales
+                #             else:
+                #                 list_bajante_aereo[9] = 1
+                #         elif metros_bajante != '0':
+                #             if metros_bajante not in dict_mts_x_pos:
+                #                 print('>>>>>>>>>>>>>>>>>> Error con el metraje Tecnologia: {0} Division: {1} Folio: {2}'.format(tecnologia, division, rec.get('folio')))
+                #                 continue
+                #             list_bajante_aereo[ dict_mts_x_pos[metros_bajante] ] = 1
+                #     elif tipo_instalacion == 'subterranea':
+                #         if metros_bajante == '300':
+                #             if mts_adicionales > 0:
+                #                 list_bajante_subterranea[9] = 1
+                #                 list_bajante_subterranea[10] = mts_adicionales
+                #             else:
+                #                 list_bajante_subterranea[9] = 1
+                #         elif metros_bajante != '0':
+                #             if metros_bajante not in dict_mts_x_pos:
+                #                 print('>>>>>>>>>>>>>>>>>> Error con el metraje Tecnologia: {0} Division: {1} Folio: {2}'.format(tecnologia, division, rec.get('folio')))
+                #                 continue
+                #             list_bajante_subterranea[ dict_mts_x_pos[metros_bajante] ] = 1
+                
                 list_rec.extend(list_bajante_aereo)
                 list_rec.extend(list_bajante_subterranea)
                 # Estos radiales solo aplican para Fibra Metro

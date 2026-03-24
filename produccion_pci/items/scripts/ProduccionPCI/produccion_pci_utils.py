@@ -90,6 +90,9 @@ class Produccion_PCI(Produccion_PCI):
         self.tipo_tarea_7v_metraje = ["TS197VG", "TS287VG"]
         self.tipo_tarea_7v_voz_cobre_a_voz_fo = ["TSML7VG", "TS2L7VG", "TS1L7VG"]
         self.tipo_tarea_7v_voz_pot_a_vsi = ["TS1L7VV", "TS1L7VM", "TS1L7VN"]
+        self.list_tareas_solo_vsi = ['TS1L7VGPI', 'TS2L7VGPI']
+        self.tipos_tarea_metraje_cero = set(self.list_tareas_solo_vsi) | set(self.tipo_tarea_7v_voz_cobre_a_voz_fo)
+        self.all_tipos_tarea_7v = self.tipos_tarea_metraje_cero | set(self.tipo_tarea_7v_metraje) | set(self.tipo_tarea_7v_voz_pot_a_vsi)
 
         self.all_divisiones = [
             # {'tecnologia':'fibra','division':'occidente'}, {'tecnologia':'cobre','division':'occidente'}, {'tecnologia':'fibra','division':'telnor'}

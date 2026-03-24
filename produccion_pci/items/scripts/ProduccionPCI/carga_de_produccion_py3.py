@@ -612,7 +612,7 @@ class Produccion_PCI( Produccion_PCI ):
         if is_clase_10_20:
             answer['609bf813b3f4e5c00cf76ee0'] = 1
         
-        if '7V' in tipo_tarea_record and tipo_tarea_record not in self.all_tipos_tarea_7v:
+        if ('7V' in tipo_tarea_record) and not is_clase_10_20 and (tipo_tarea_record not in self.all_tipos_tarea_7v):
             return {'error': 'Tipo de Tarea 7V con error. Favor de revisar con soporte.'}
 
         mtts_before = {}
