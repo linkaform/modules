@@ -71,7 +71,9 @@ class Accesos( Accesos):
             'datos_requeridos': '6769756fc728a0b63b8431ea',
             'envio_por': '6810180169eeaca9517baa5b',
             'configuracion_de_accesos': '696e6dda9517e760679e71eb',
-            'tipo_de_notificacion': '699dfe3b82be0dbe0319d38c'
+            'tipo_de_notificacion': '699dfe3b82be0dbe0319d38c',
+
+            'tipo_rondin': '69b9b98d2a02f4a0dd35f5c1'
         })
 
         #BORRAR
@@ -606,14 +608,19 @@ class Accesos( Accesos):
 
     def get_my_pases(self, tab_status, limit=10, skip=0, search_name=None):
         employee = self.get_employee_data(user_id=self.user.get('user_id'), get_one=True)
-        user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
-        employee['timezone'] = user_data.get('timezone','America/Monterrey')
-        fecha_hoy = datetime.now(pytz.timezone(employee.get('timezone'))).replace(microsecond=0).astimezone(pytz.utc).replace(tzinfo=None)
+        fecha_hoy = datetime.now(pytz.timezone(self.user['timezone'])).replace(microsecond=0).astimezone(pytz.utc).replace(tzinfo=None)
         fecha_hoy_formateada = fecha_hoy.strftime('%Y-%m-%d %H:%M:%S')
         match_query = {
             'form_id':self.PASE_ENTRADA,
             'deleted_at':{'$exists':False},
-            'created_by_username': self.user.get('username'),
+                '$or': [
+            {
+                f"answers.{self.pase_entrada_fields['visita_a']}.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_empleado']}": employee.get('worker_name')
+            },
+            {
+                'created_by_id': self.user.get('user_id')
+            }
+        ]
         }
         if tab_status == "Favoritos":
             match_query.update({f"answers.{self.pase_entrada_fields['favoritos']}":'si'})
@@ -927,6 +934,35 @@ class Accesos( Accesos):
         this_user['status_turn'] = status_turn
         return this_user
 
+    def get_area_images(self, areas, location=None):
+        if not location:
+            location = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], '')
+        format_areas = []
+        for area in areas:
+            if isinstance(area, dict):
+                area = area.get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['area'], '')
+            if area:
+                format_areas.append(area)
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.AREAS_DE_LAS_UBICACIONES,
+                f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": location,
+                f"answers.{self.Location.f['area']}": {"$in": format_areas}
+            }},
+            {"$project": {
+                "_id": 0,
+                "tag_id": f"$answers.{self.f['area_tag_id']}",
+                "ubicacion": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}",
+                "area": f"$answers.{self.Location.f['area']}",
+                "tipo_de_area": f"$answers.{self.Location.TIPO_AREA_OBJ_ID}.{self.f['tipo_de_area']}",
+                "foto_del_area": f"$answers.{self.f['area_foto']}",
+            }}
+        ]
+        res = self.cr.aggregate(query)
+        format_res = list(res)
+        return format_res
+
     def get_shift_data(self, booth_location=None, booth_area=None, search_default=True):
         """
         Se obtienen los datos del turno.
@@ -1042,7 +1078,6 @@ class Accesos( Accesos):
         timezone = pytz.timezone('America/Mexico_City')
         today = datetime.now(timezone).strftime("%Y-%m-%d")        
         res={}
-
         if page == 'Turnos':
             #Visitas dentro, Gafetes pendientes y Vehiculos estacionados
             query_visitas = [
@@ -1435,6 +1470,7 @@ class Accesos( Accesos):
             fallas_pendientes = resultado[0]['fallas_pendientes'] if resultado else 0
 
             res['fallas_pendientes'] = fallas_pendientes
+
         elif page == 'Articulos':
             #Articulos concesionados pendientes
             query_concesionados = [
@@ -1564,15 +1600,20 @@ class Accesos( Accesos):
 
         elif page == 'PasesHistorial':
             employee = self.get_employee_data(user_id=self.user.get('user_id'), get_one=True)
-            name = employee.get('worker_name')
-
             query_pases = [
                 {"$match": {
                     "deleted_at": {"$exists": False},
                     "form_id": self.PASE_ENTRADA,
-                    f"answers.{self.pase_entrada_fields['status_pase']}": {"$in": ["activo", "proceso"]},
-                    f"answers.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['nombre_guardia_apoyo']}": name
-                }},
+                    '$or': [
+                    {
+                        f"answers.{self.pase_entrada_fields['visita_a']}.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_empleado']}": employee.get('worker_name')
+                    },
+                    {
+                        'created_by_id': self.user.get('user_id')
+                    }
+                        ]
+                    }
+                },
                 {
                     "$group": {
                         "_id": f"$answers.{self.pase_entrada_fields['status_pase']}",
@@ -1587,6 +1628,7 @@ class Accesos( Accesos):
                         res['pases_activos'] = item.get('total')
                     if item.get('_id') == 'proceso':
                         res['pases_proceso'] = item.get('total')
+
         elif page == 'Asistencias':
             year_str = str(year).zfill(4)
             month_str = str(month).zfill(2)
@@ -2254,7 +2296,10 @@ class Accesos( Accesos):
         }
 
         if location:
-            match_query.update({f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}":location})
+            if isinstance(location, list):
+                match_query.update({f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}": {"$in": location}})
+            else:
+                match_query.update({f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}":location})
         if area:
             match_query.update({f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['nombre_area']}":area})
         if prioridades:
