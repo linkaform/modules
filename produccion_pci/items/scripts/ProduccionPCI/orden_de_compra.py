@@ -460,8 +460,9 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         for i in sorted(descuento_used, reverse=True):
             del descuentos[i]
 
-        if (descuento + totalDescuento20porc) > total_oc:
-            return f'No se pudo crear la OC para el contratista: {email_of_connection} ya que el descuento rebasa el total de la OC Descuento: {descuento}, Descuento 20%: {totalDescuento20porc}, Total de la OC: {total_oc}'
+        # 20260324 se solicita desactivar la validacion aunque las OCs salgan en negativo
+        # if (descuento + totalDescuento20porc) > total_oc:
+        #     return f'No se pudo crear la OC para el contratista: {email_of_connection} ya que el descuento rebasa el total de la OC Descuento: {descuento}, Descuento 20%: {totalDescuento20porc}, Total de la OC: {total_oc}'
 
         return {
             'descuento': descuento,
