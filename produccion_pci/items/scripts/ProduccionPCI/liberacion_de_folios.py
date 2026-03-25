@@ -179,7 +179,7 @@ class Produccion_PCI( Produccion_PCI ):
             # 'answers.f1054000a030000000000012':{'$in':['estimacion','paco']},
             'answers.f1054000a030000000000012': {'$in': ['pendiente', 'estimacion', 'paco']},
             f'answers.{field_id_cliente}': {'$exists': True},
-            'answers.633d9f63eb936fb6ec9bf580': {'$nin': ['cfe', 'psr']},
+            'answers.633d9f63eb936fb6ec9bf580': {'$nin': ['cfe']},
 
             # Para las liberaciones no se consideran los folios marcados por más de 30 días, a menos que ya estén en Entrada 50
             # Esto no aplica para la cuenta SR
@@ -192,7 +192,7 @@ class Produccion_PCI( Produccion_PCI ):
             '$or': [
                 {'answers.5f40131c9bca6a32f518d9a9': {'$exists': False}},
                 {'answers.5f40131c9bca6a32f518d9a9': ""},
-                # {'answers.633d9f63eb936fb6ec9bf580': 'psr'}
+                {'answers.633d9f63eb936fb6ec9bf580': 'psr'}
             ]
         }
         
@@ -1052,7 +1052,7 @@ class Produccion_PCI( Produccion_PCI ):
             return '0', 0, False
 
         mts_adicionales = os_answer.get('f1054000a020000000000bd7', 0)
-        if type(mts_adicionales) in [str, unicode]:
+        if isinstance(mts_adicionales, str):
             mts_adicionales = int(mts_adicionales)
 
         if os_mts:
@@ -1069,7 +1069,7 @@ class Produccion_PCI( Produccion_PCI ):
             dict_mts_x_pos = {'25': 0, '50': 1, '75': 2, '100': 3, '125': 4, '150': 5, '175': 6, '200': 7, '250': 8}
             pos_metraje = dict_mts_x_pos.get(metros_bajante)
             if pos_metraje is None:
-                print '>>>>>>>>>>>>>>>>>> Error con el metraje Tecnologia: {0} Division: {1} Folio: {2}'.format(tecnologia, division, os_record_folio)
+                print(f'>>>>>>>>>>>>>>>>>> Error con el metraje Tecnologia: {tecnologia} Division: {division} Folio: {os_record_folio}')
                 return None, None
             if tipo_instalacion == 'aerea':
                 cells_bajante_aereo[ pos_metraje ] = 1
