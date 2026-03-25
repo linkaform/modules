@@ -365,6 +365,7 @@ class Accesos(Accesos):
             i['checked'] = False
             i['checked_at'] = ''
             i['check_area_id'] = ''
+        breakpoint()
         inbox_record = {
             "_id": self.record_id,
             "type": "rondin",
@@ -427,7 +428,8 @@ class Accesos(Accesos):
         format_res = {}
         if res:
             res = list(res)
-            format_res = self.unlist(res)
+            if res:
+                format_res = self.unlist(res)
         return format_res
     
     def sync_check_area_to_lkf(self, record):
