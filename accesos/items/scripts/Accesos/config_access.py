@@ -33,105 +33,135 @@ class Accesos(Accesos):
             'always':{
                 'forms':[],
                 'catalogs':[
-                        self.LISTA_INCIDENCIAS_CAT_ID,
-                        self.SUB_CATEGORIAS_INCIDENCIAS_ID,
-                        self.CATEGORIAS_INCIDENCIAS_ID,
-                        self.AREAS_DE_LAS_UBICACIONES_CAT_ID,
-                        self.UBICACIONES_CAT_ID,
-                        self.CONFIGURACION_RECORRIDOS_ID,
-                        self.USUARIOS_ID,
-                        self.CONF_AREA_EMPLEADOS_CAT_ID,
-                        self.TIPO_DE_EQUIPO_ID,
-                        self.LISTA_FALLAS_CAT_ID,
-                        self.CONF_AREA_EMPLEADOS_AP_CAT_ID,
-                        self.VISITA_AUTORIZADA_CAT_ID,
-                        self.ESTADO_ID,
-                        self.PROVEEDORES_CAT_ID,
-                        self.LOCKERS_CAT_ID,
-                        self.TIPO_ARTICULOS_PERDIDOS_CAT_ID,
-                        self.PASE_ENTRADA_ID,
-                        self.ACTIVOS_FIJOS_CAT_ID,
-                ],
+                    self.ACTIVOS_FIJOS_CAT_ID,
+                    self.AREAS_DE_LAS_UBICACIONES_CAT_ID,
+                    self.CATEGORIAS_INCIDENCIAS_ID,
+                    self.CONFIGURACION_RECORRIDOS_ID,
+                    self.CONF_AREA_EMPLEADOS_AP_CAT_ID,
+                    self.CONF_AREA_EMPLEADOS_CAT_ID,
+                    self.ESTADO_ID,
+                    self.LISTA_FALLAS_CAT_ID,
+                    self.LISTA_INCIDENCIAS_CAT_ID,
+                    self.LOCKERS_CAT_ID,
+                    self.PASE_ENTRADA_ID,
+                    self.PROVEEDORES_CAT_ID,
+                    self.SUB_CATEGORIAS_INCIDENCIAS_ID,
+                    self.TIPO_ARTICULOS_PERDIDOS_CAT_ID,
+                    self.TIPO_DE_EQUIPO_ID,
+                    self.UBICACIONES_CAT_ID,
+                    self.USUARIOS_ID,
+                    self.VISITA_AUTORIZADA_CAT_ID,                
+                    ],
                 'scripts':[self.OFFLINE_SERVICES]
             },
             'bitacoras':{
-                'forms':[],
+                'forms':[self.BITACORA_ACCESOS],
                 'catalogs':[],
                 'scripts':[]
             },
             'accesos':{
-                'forms':[self.CHECKIN_CASETAS, self.REGISTRO_ASISTENCIA],
+                'forms':[self.CHECKIN_CASETAS, self.REGISTRO_ASISTENCIA, self.BITACORA_GAFETES_LOCKERS, self.CHECK_UBICACIONES],
                 'catalogs':[],
                 'scripts':[]
             },
             'rondines':{
-                'forms':[],
+                'forms':[self.CONFIGURACION_RECORRIDOS_FORM, self.BITACORA_RONDINES],
                 'catalogs':[],
                 'scripts':[self.SCRIPT_RONDINES]
             },
             'articulos':{
-                'forms':[],
-                'catalogs':[self.ACTIVOS_FIJOS_CAT],
-                'scripts':[self.PAQUETERIA, self.GET_STATS, self.GAFETES_LOCKERS, self.FALLAS,self.ARTICULOS_PERDIDOS, self.ARTICULOS_CONSECIONADOS]
+                'forms':[self.CONCESSIONED_ARTICULOS, self.BITACORA_OBJETOS_PERDIDOS, self.PAQUETERIA],
+                'catalogs':[self.ACTIVOS_FIJOS_CAT_ID, ],
+                'scripts':[self.PAQUETERIA, self.GET_STATS, self.GAFETES_LOCKERS, self.FALLAS, self.ARTICULOS_PERDIDOS, self.ARTICULOS_CONSECIONADOS]
             },
             'incidencias':{
-                'forms':[],
+                'forms':[self.BITACORA_FALLAS, self.BITACORA_INCIDENCIAS],
                 'catalogs':[],
-                'scripts':[]
+                'scripts':[self.FALLAS]
             },
             'notas':{
-                'forms':[],
+                'forms':[self.ACCESOS_NOTAS],
                 'catalogs':[],
                 'scripts':[self.NOTAS]
             },
             'pases':{
-                'forms':[],
+                'forms':[self.PASE_ENTRADA],
                 'catalogs':[],
                 'scripts':[self.SCRIPT_PASE_ACCESO, self.GET_STATS]
             },
             'turnos':{
-                'forms':[],
+                'forms':[self.CHECKIN_CASETAS, self.REGISTRO_ASISTENCIA, self.FORMATO_VACACIONES],
                 'catalogs':[],
                 'scripts':[]
             },
         }
+
+
+
 
     def set_config(self):
         data = self._labels(self.answers)
         user_id = data.get('id_usuario')
         if user_id and isinstance(user_id, list):
             user_id = user_id[0]
-        print('user_id=', user_id)
         permissions = 'can_read_item'
         share_data = {
             "owner": f"/api/infosync/user/{user_id}/",
             "perm": permissions
         }
-        for menu in data['menus']:
-            forms_needed = self.module_permits.get(menu,{}).get('forms')
-            catalogs_needed = self.module_permits.get(menu,{}).get('catalogs')
-            scripts_needed = self.module_permits.get(menu,{}).get('scripts')
-            user_scripts = self.lkf_api.get_user_scripts(user_id)
-            print('user_scripts', user_scripts)
-            user_scripts = user_scripts.get('data',[])
-            unshare_scripts = [script_item for script_item in user_scripts if script_item['id'] not in scripts_needed]
-            if unshare_scripts:
-                unshare_data = {'group_id':None, 'filter_name':None}
-                for script in unshare_scripts:
-                    #TODO UN SHARE...
-                    unshare_data['uri'] = f"/api/infosync/file_shared/{script['share_id']}/"
-                    unshare_data['item_id'] = f"/api/infosync/file_shared/{script['id']}/"
-                    res = self.lkf_api.share_form(unshare_data, unshare=True)
-            for script_id in scripts_needed:
-                share_data["file_shared"]=  f"/api/infosync/item/{script_id}/"
-                res = self.lkf_api.share_form(share_data)
-                print('script_id', script_id)
-                if res['status_code'] != 201:
-                    self.LKFException(f'Error al compartir scritp: {share_data}')
-                print('res=',res)
+        forms_needed = set()
+        catalogs_needed = set()
+        scripts_needed = set()
+        menus = ['always'] + data.get('menus', [])
+        for menu in menus:
+            config = self.module_permits.get(menu, {})
+            forms_needed.update(config.get('forms',[]))
+            catalogs_needed.update(config.get('catalogs'))
+            scripts_needed.update(config.get('scripts'))
+
+        # response_forms = self.set_item_permits(user_id, forms_needed, item_type='form')
+        response_catalog = self.set_item_permits(user_id, catalogs_needed, item_type='catalog')
+        response_scripts = self.set_item_permits(user_id, scripts_needed,  item_type='script')
+            
         return True
 
-    
+    def set_item_permits(self, user_id, item_needed, item_type):
+        permissions = 'can_read_item'
+        share_data = {
+            "owner": f"/api/infosync/user/{user_id}/",
+            "perm": permissions
+        }
+        if item_type == 'form':
+            user_item = self.lkf_api.get_user_forms(user_id)
+        elif item_type == 'catalog':
+            user_item = self.lkf_api.get_user_catalog(user_id)
+        elif item_type == 'script':
+            user_item = self.lkf_api.get_user_scripts(user_id)
+        else:
+            self.LKFException('Item type not found: ', item_type)
+        res = {}
+        user_item = user_item.get('data',[])
+        user_item = [item for item in user_item ]
+        unshare_items = [item for item in user_item if item['id'] not in item_needed]
+        if unshare_items:
+            unshare_data = {'group_id':None, 'filter_name':None}
+            unshare_items_data = []
+            for item in unshare_items:
+                #TODO UN SHARE...
+                unshare_data['uri'] = f"/api/infosync/file_shared/{item['shared_id']}/"
+                unshare_data['item_id'] = item['id']
+                unshare_items_data.append(unshare_data)
+            if unshare_items_data:
+                res = self.lkf_api.share_form(unshare_items_data, unshare=True)
+        
+        user_item_ids = {item['id'] for item in user_item}
+        items_to_share = item_needed - user_item_ids
+        for item_id in items_to_share:
+            share_data["file_shared"]=  f"/api/infosync/item/{item_id}/"
+            res = self.lkf_api.share_form(share_data)
+            if res['status_code'] != 201:
+                self.LKFException(f'Error al compartir scritp: {share_data}')
+        return res
 
 
 if __name__ == "__main__":
