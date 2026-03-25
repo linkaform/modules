@@ -151,6 +151,7 @@ class Accesos( Accesos):
             'tipo_de_notificacion': '699dfe3b82be0dbe0319d38c'
         })
 
+
     def _do_access(self, access_pass, location, area, data):
         '''
         Registra el acceso del pase de entrada a ubicación.
@@ -2811,7 +2812,6 @@ class Accesos( Accesos):
         ]
         data = self.format_cr_result(self.cr.aggregate(query),  get_one=True)
         format_data = {}
-
         if data:
             exclude_inputs = data.get('exclude_inputs', [])
             format_exclude_inputs = self.unlist([i for i in exclude_inputs])
