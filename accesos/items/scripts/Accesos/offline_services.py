@@ -337,8 +337,11 @@ class Accesos(Accesos):
     
     def assign_user_inbox(self, data):
         user_id_to_assign = self.unlist(data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['id_usuario'], ''))
+
+        if not user_id_to_assign:
+            self.LKFException('No se encontro id de usuario en el registro a asignar')
         db_name = f'clave_{user_id_to_assign}'
-        self.cr_db = self.lkf_api.couch.set_db(db_name)
+        self.cr_db = self.get_couch_user_db(db_name)
         record = self.cr_db.get(self.record_id)
         if record:
             return {'status_code': 202, 'type': 'success', 'msg': 'Ya existe el registro', 'data': {}}
@@ -365,7 +368,7 @@ class Accesos(Accesos):
             i['checked'] = False
             i['checked_at'] = ''
             i['check_area_id'] = ''
-        breakpoint()
+
         inbox_record = {
             "_id": self.record_id,
             "type": "rondin",
