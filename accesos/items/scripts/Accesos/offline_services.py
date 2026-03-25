@@ -3,7 +3,7 @@ from hmac import new
 import os
 import pytz
 import sys, simplejson, json, pytz
-import time
+import time, random
 import tempfile
 import unicodedata
 from bson.objectid import ObjectId
@@ -365,6 +365,7 @@ class Accesos(Accesos):
             i['checked'] = False
             i['checked_at'] = ''
             i['check_area_id'] = ''
+        breakpoint()
         inbox_record = {
             "_id": self.record_id,
             "type": "rondin",
@@ -383,6 +384,7 @@ class Accesos(Accesos):
                 "user_name": user_name_to_assign,
                 "nombre_rondin": nombre_recorrido,
                 "ubicacion_rondin": ubicacion_recorrido,
+                "tipo_rondin": data.get(self.f['tipo_rondin'], 'qr'),
                 "duracion_estimada": recorrido_info.get('duracion_estimada', ''),
                 "fecha_programada": data.get(self.f['fecha_programacion'], ''),
                 "fecha_inicio": "",
@@ -407,29 +409,6 @@ class Accesos(Accesos):
         except Exception as e:
             status = {'status_code': 400, 'type': 'error', 'msg': str(e), 'data': {}}
         return status
-
-    def get_area_images(self, areas):
-        location = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], '')
-        format_areas = [area.get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['area'], '') for area in areas]
-        query = [
-            {"$match": {
-                "deleted_at": {"$exists": False},
-                "form_id": self.AREAS_DE_LAS_UBICACIONES,
-                f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": location,
-                f"answers.{self.Location.f['area']}": {"$in": format_areas}
-            }},
-            {"$project": {
-                "_id": 0,
-                "tag_id": f"$answers.{self.f['area_tag_id']}",
-                "ubicacion": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}",
-                "area": f"$answers.{self.Location.f['area']}",
-                "tipo_de_area": f"$answers.{self.Location.TIPO_AREA_OBJ_ID}.{self.f['tipo_de_area']}",
-                "foto_del_area": f"$answers.{self.f['area_foto']}",
-            }}
-        ]
-        res = self.cr.aggregate(query)
-        format_res = list(res)
-        return format_res
     
     def get_info_recorrido(self, nombre_recorrido, ubicacion_recorrido):
         query = [
@@ -449,7 +428,8 @@ class Accesos(Accesos):
         format_res = {}
         if res:
             res = list(res)
-            format_res = self.unlist(res)
+            if res:
+                format_res = self.unlist(res)
         return format_res
     
     def sync_check_area_to_lkf(self, record):
@@ -1049,7 +1029,7 @@ class Accesos(Accesos):
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
-                "form_id": 137161, #TODO: Modularizar id
+                "form_id": self.CHECK_UBICACIONES,
                 "_id": {"$in": id_list}
             }},
             {"$project": {
@@ -1120,6 +1100,29 @@ class Accesos(Accesos):
             ref_field = self.f['documento_check']
         upload_image = self.upload_file_from_couchdb(data, name, self.CHECK_UBICACIONES, ref_field)
         return upload_image
+    
+    def update_bitacora_with_retry(self, bitacora_in_lkf, data, new_incidencias, new_areas, max_retries=5, base_wait=2):
+        """
+        Reintenta update_bitacora en caso de error 208 (registro ocupado).
+        - base_wait: espera inicial en segundos antes del primer intento
+        - Backoff exponencial + jitter en cada reintento
+        """
+        for attempt in range(max_retries):
+            # Espera antes de cada intento (incluyendo el primero)
+            wait = base_wait * (2 ** attempt) + random.uniform(0, 1)
+            print(f'Esperando {wait:.1f}s antes del intento {attempt + 1}/{max_retries}...')
+            time.sleep(wait)
+
+            response = self.update_bitacora(bitacora_in_lkf, data, new_incidencias, new_areas)
+
+            if response.get('status_code') == 208:
+                print(f'Registro ocupado (208), reintentando...')
+                continue
+
+            # Cualquier otra respuesta (éxito o error diferente) se retorna directo
+            return response
+
+        return {'status_code': 408, 'type': 'error', 'msg': 'Max retries exceeded after 208 conflicts', 'data': {}}
     
     def sync_rondin_to_lkf(self, data):
         status = {}
@@ -1199,7 +1202,8 @@ class Accesos(Accesos):
         new_checks = self.cr_db.find({
             "selector": {
                 "_id": {"$in": format_checks_in_couch}
-            }
+            },
+            "limit": 1000
         })
         new_areas = {}
         for check in new_checks:
@@ -1214,7 +1218,7 @@ class Accesos(Accesos):
         if not isinstance(data, dict):
             data = self.cr_db.get(rondin_id)
 
-        bitacora_response = self.update_bitacora(bitacora_in_lkf, data, new_incidencias, new_areas)
+        bitacora_response = self.update_bitacora_with_retry(bitacora_in_lkf, data, new_incidencias, new_areas)
         aux = self.cr_db.get(rondin_id)
         if bitacora_response and bitacora_response.get('status_code') in [200, 201, 202]:
             if aux.get('status_rondin') == 'completed':

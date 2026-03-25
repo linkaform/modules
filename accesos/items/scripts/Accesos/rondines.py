@@ -29,42 +29,43 @@ class Accesos(Accesos):
         })
         
         self.rondin_keys = {
-            'nombre_rondin': '6645050d873fc2d733961eba',
-            'duracion_estimada': '6854459836ea891d9d2be7d9',
-            'ubicacion': '663e5c57f5b8a7ce8211ed0b',
+            'accion_recurrencia': 'abcde00010000000a0000001',
             'areas': '6645052ef8bc829a5ccafaf5',
-            'grupo_areas':'66462aa5d4a4af2eea07e0d1',
-            'grupo_asignado': '638a9ab3616398d2e392a9fa',
-            'fecha_hora_programada': 'abcde0001000000000010001',
-            'programar_anticipacion': 'abcde0002000000000010001',
+            'cada_cuantas_horas_se_repite': 'abcde0001000000000010013',
+            'cada_cuantos_dias_se_repite': 'abcde0001000000000010017',
+            'cada_cuantos_meses_se_repite': 'abcde0001000000000010019',
+            'cada_cuantos_minutos_se_repite': 'abcde0001000000000010011',
+            'cron_id':'abcde0001000000000011111',
             'cuanto_tiempo_de_anticipacion': 'abcde0002000000000010004',
             'cuanto_tiempo_de_anticipacion_expresado_en': 'abcde0002000000000010005',
-            'tiempo_para_ejecutar_tarea': 'abcde0001000000000010004',
-            'tiempo_para_ejecutar_tarea_expresado_en': 'abcde0001000000000010005',
-            'la_tarea_es_de': 'abcde0001000000000010006',
-            'se_repite_cada': 'abcde0001000000000010007',
-            'sucede_cada': 'abcde0001000000000010008',
-            'sucede_recurrencia': 'abcde0001000000000010009',
-            'en_que_minuto_sucede': 'abcde0001000000000010010',
-            'cada_cuantos_minutos_se_repite': 'abcde0001000000000010011',
+            'duracion_estimada': '6854459836ea891d9d2be7d9',
             'en_que_hora_sucede': 'abcde0001000000000010012',
-            'cada_cuantas_horas_se_repite': 'abcde0001000000000010013',
-            'que_dias_de_la_semana': 'abcde0001000000000010014',
-            'en_que_semana_sucede': 'abcde0001000000000010015',
-            'que_dia_del_mes': 'abcde0001000000000010016',
-            'cada_cuantos_dias_se_repite': 'abcde0001000000000010017',
             'en_que_mes': 'abcde0001000000000010018',
-            'cada_cuantos_meses_se_repite': 'abcde0001000000000010019',
-            'la_recurrencia_cuenta_con_fecha_final': '64374e47a208e5c0ff95e9bd',
-            'fecha_final_recurrencia': 'abcde0001000000000010099',
-            'accion_recurrencia': 'abcde00010000000a0000001',
-            'grupo_asignado_rondin':'671055aaa487da57ba57b294',
-            'id_grupo':'639b65dfaf316bacfc551ba2',
-            'cron_id':'abcde0001000000000011111',
-            'status':'abcde00010000000a0000000',
+            'en_que_minuto_sucede': 'abcde0001000000000010010',
+            'en_que_semana_sucede': 'abcde0001000000000010015',
             'fecha1':'abcde000100000000000f000',
             'fecha2':'abcde000100000000000f001',
-            "link":'6927eb61d92ecf923b60a0de'
+            'fecha_final_recurrencia': 'abcde0001000000000010099',
+            'fecha_hora_programada': 'abcde0001000000000010001',
+            'grupo_areas':'66462aa5d4a4af2eea07e0d1',
+            'grupo_asignado': '638a9ab3616398d2e392a9fa',
+            'grupo_asignado_rondin':'671055aaa487da57ba57b294',
+            'id_grupo':'639b65dfaf316bacfc551ba2',
+            'la_recurrencia_cuenta_con_fecha_final': '64374e47a208e5c0ff95e9bd',
+            'la_tarea_es_de': 'abcde0001000000000010006',
+            "link":'6927eb61d92ecf923b60a0de',
+            'nombre_rondin': '6645050d873fc2d733961eba',
+            'programar_anticipacion': 'abcde0002000000000010001',
+            'que_dia_del_mes': 'abcde0001000000000010016',
+            'que_dias_de_la_semana': 'abcde0001000000000010014',
+            'se_repite_cada': 'abcde0001000000000010007',
+            'status':'abcde00010000000a0000000',
+            'sucede_cada': 'abcde0001000000000010008',
+            'sucede_recurrencia': 'abcde0001000000000010009',
+            'tiempo_para_ejecutar_tarea': 'abcde0001000000000010004',
+            'tiempo_para_ejecutar_tarea_expresado_en': 'abcde0001000000000010005',
+            'tipo_rondin':'69b9b98d2a02f4a0dd35f5c1',
+            'ubicacion': '663e5c57f5b8a7ce8211ed0b',
         }
         
     def create_rondin(self, rondin_data: dict = {}):
@@ -273,7 +274,6 @@ class Accesos(Accesos):
         else:
             return {"status": "error", "message": "Unexpected error occurred."}
         
-    
     def edit_areas_rondin(self, areas, folio, record_id):
         metadata = self.lkf_api.get_metadata(form_id=self.CONFIGURACION_RECORRIDOS_FORM)
         metadata.update(self.get_record_by_folio(record_id, self.CONFIGURACION_RECORRIDOS_FORM, select_columns={'_id':1}, limit=1))
@@ -363,7 +363,7 @@ class Accesos(Accesos):
         data.update({
             "recurrencia": data.get('recurrencia').replace('_', ' ').title() if data.get('recurrencia') else 'No Recurrente',
             "estatus_rondin": data.get('estatus_rondin').replace('_', ' ').title() if data.get('estatus_rondin') else 'No Especificado',
-            "ubicacion_geolocation": data.get('ubicacion_geolocation', [])[0] if len(data.get('ubicacion_geolocation', [])) > 0 else {},
+            "ubicacion_geolocation": (data.get('ubicacion_geolocation') or [{}])[0],
             "images_data": fotos_de_areas,
             "map_data": puntos_de_control,
         })
@@ -446,7 +446,7 @@ class Accesos(Accesos):
                 areas_recorrido = []
                 if bitacora_rondines:
                     primera_bitacora = bitacora_rondines[0]
-                    areas_del_rondin = primera_bitacora.get('areas_del_rondin', [])
+                    areas_del_rondin = primera_bitacora.get('grupo_areas_visitadas', [])
                     areas_recorrido = [
                         {'rondin_area': area.get('rondin_area', ''), 'area_tag_id': area.get('area_tag_id', [])}
                         for area in areas_del_rondin
@@ -812,7 +812,7 @@ class Accesos(Accesos):
             format_response = self.unlist(response).get('average_duration', 0)
         return format_response
 
-    def get_rondines(self, date_from=None, date_to=None, limit=20, offset=0):
+    def get_rondines(self, date_from=None, date_to=None, area_details=False, limit=20, offset=0):
         """Lista los rondines según los filtros proporcionados.
         Params:
             date_from (str): Fecha de inicio del filtro.
@@ -851,7 +851,6 @@ class Accesos(Accesos):
                 "cada_cuantos_dias_se_repite": f"$answers.{self.rondin_keys['cada_cuantos_dias_se_repite']}",
                 "areas": f"$answers.{self.rondin_keys['areas']}.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area']}",
                 "se_repite_cada":f"$answers.{self.rondin_keys['se_repite_cada']}",
-
                 "ubicacion_geolocation": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.f['address_geolocation']}",
                 "estatus_rondin": f"$answers.{self.f['status_cron']}",
                 "fecha_inicio_rondin": f"$answers.{self.f['fecha_primer_evento']}",
@@ -872,8 +871,9 @@ class Accesos(Accesos):
                 "se_repite_cada":f"$answers.{self.rondin_keys['se_repite_cada']}",
                 "tiempo_para_ejecutar_tarea_expresado_en":f"$answers.{self.rondin_keys['tiempo_para_ejecutar_tarea_expresado_en']}",
                 "tiempo_para_ejecutar_tarea":f"$answers.{self.rondin_keys['tiempo_para_ejecutar_tarea']}",
-                "fecha1":f"$answers.abcde000100000000000f000",
-                "fecha2":f"$answers.abcde000100000000000f001",
+                "tipo_rondin":{"$ifNull": [f"$answers.{self.rondin_keys['tipo_rondin']}", "qr"]},
+                "fecha1":f"$answers.{self.rondin_keys['fecha1']}",
+                "fecha2":f"$answers.{self.rondin_keys['fecha2']}",
             }},
             {"$sort": {"folio": -1}},
             {"$skip": offset},
@@ -885,6 +885,9 @@ class Accesos(Accesos):
             for item in response:
                 item['recurrencia'] = item['recurrencia'].replace('_', ' ').title() if item.get('recurrencia') else 'No Recurrente'
                 format_response.append(item)
+                if area_details:
+                    item['areas']  = self.get_area_images(item['areas'], location=item['ubicacion'])
+                    
         return format_response
     
     def get_rondin_by_id(self, record_id: str):
@@ -934,8 +937,9 @@ class Accesos(Accesos):
                 "tiempo_para_ejecutar_tarea_expresado_en":f"$answers.{self.rondin_keys['tiempo_para_ejecutar_tarea_expresado_en']}",
                 "tiempo_para_ejecutar_tarea":f"$answers.{self.rondin_keys['tiempo_para_ejecutar_tarea']}",
                 "fecha_hora_programada":f"$answers.{self.rondin_keys['fecha_hora_programada']}",
-                "fecha1":f"$answers.abcde000100000000000f000",
-                "fecha2":f"$answers.abcde000100000000000f001",
+                "tipo_rondin":{"$ifNull": [f"$answers.{self.rondin_keys['tipo_rondin']}", "qr"]},
+                "fecha1":f"$answers.{self.rondin_keys['fecha1']}",
+                "fecha2":f"$answers.{self.rondin_keys['fecha2']}",
             }},
         ]
 
@@ -1350,7 +1354,7 @@ class Accesos(Accesos):
                 "duracion": response.get('duracion_rondin', ''),
                 "estatus": response.get('estatus_del_recorrido', ''),
                 "recurrencia": response.get('fecha_programacion', ''),
-                "areas_a_inspeccionar": response.get('areas_del_rondin', []),
+                "areas_a_inspeccionar": response.get('grupo_areas_visitadas', []),
                 "incidencias": response.get('bitacora_rondin_incidencias', []),
             })
         return format_response
@@ -1749,6 +1753,7 @@ if __name__ == "__main__":
     year = data.get("year", None)
     month = data.get("month", None)
     areas = data.get("areas", [])
+    area_details = data.get("area_details", False)
     user_to_assign = data.get("user_to_assign", {})
     data_script = class_obj.current_record
     class_obj.timezone = data_script.get('timezone', 'America/Mexico_City')
@@ -1763,7 +1768,7 @@ if __name__ == "__main__":
     elif option == 'edit_areas_rondin':
         response = class_obj.edit_areas_rondin(areas=areas, folio=folio, record_id=record_id)
     elif option == 'get_rondines':
-        response = class_obj.get_rondines(date_from=date_from, date_to=date_to, limit=limit, offset=offset)
+        response = class_obj.get_rondines(date_from=date_from, date_to=date_to, area_details=area_details, limit=limit, offset=offset)
     elif option == 'get_catalog_areas':
         response = class_obj.get_catalog_areas(ubicacion=ubicacion)
     elif option == 'get_rondin_by_id':
