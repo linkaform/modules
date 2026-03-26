@@ -337,8 +337,11 @@ class Accesos(Accesos):
     
     def assign_user_inbox(self, data):
         user_id_to_assign = self.unlist(data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['id_usuario'], ''))
+
+        if not user_id_to_assign:
+            self.LKFException('No se encontro id de usuario en el registro a asignar')
         db_name = f'clave_{user_id_to_assign}'
-        self.cr_db = self.lkf_api.couch.set_db(db_name)
+        self.cr_db = self.get_couch_user_db(db_name)
         record = self.cr_db.get(self.record_id)
         if record:
             return {'status_code': 202, 'type': 'success', 'msg': 'Ya existe el registro', 'data': {}}
@@ -365,6 +368,7 @@ class Accesos(Accesos):
             i['checked'] = False
             i['checked_at'] = ''
             i['check_area_id'] = ''
+
         inbox_record = {
             "_id": self.record_id,
             "type": "rondin",
@@ -427,7 +431,8 @@ class Accesos(Accesos):
         format_res = {}
         if res:
             res = list(res)
-            format_res = self.unlist(res)
+            if res:
+                format_res = self.unlist(res)
         return format_res
     
     def sync_check_area_to_lkf(self, record):
@@ -854,7 +859,7 @@ class Accesos(Accesos):
             return {'status_code': 400, 'type': 'error', 'msg': 'No records provided', 'data': {}}
         
         db_name = f'clave_{self.user_id}'
-        self.cr_db = self.lkf_api.couch.set_db(db_name)
+        self.cr_db = self.get_couch_user_db(db_name)
         for item in records:
             _id = item.get('_id', None)
             _rev = item.get('_rev', None)
@@ -893,7 +898,7 @@ class Accesos(Accesos):
             return {'status_code': 400, 'type': 'error', 'msg': 'No records provided', 'data': {}}
         
         db_name = f'clave_{self.user_id}'
-        self.cr_db = self.lkf_api.couch.set_db(db_name)
+        self.cr_db = self.get_couch_user_db(db_name)
         for item in records:
             _id = item.get('_id', None)
             _rev = item.get('_rev', None)
@@ -958,7 +963,7 @@ class Accesos(Accesos):
             return {'status_code': 400, 'type': 'error', 'msg': 'No records provided', 'data': {}}
         
         db_name = f'clave_{self.user_id}'
-        self.cr_db = self.lkf_api.couch.set_db(db_name)
+        self.cr_db = self.get_couch_user_db(db_name)
         for item in records:
             _id = item.get('_id', None)
             _rev = item.get('_rev', None)
@@ -1321,7 +1326,7 @@ if __name__ == "__main__":
         response = acceso_obj.get_user_catalogs()
     elif option == 'sync_to_lkf':
         db_name = f'clave_{acceso_obj.user_id}'
-        acceso_obj.cr_db = acceso_obj.lkf_api.couch.set_db(db_name)
+        acceso_obj.cr_db = acceso_obj.get_couch_user_db(db_name)
         record = acceso_obj.get_couch_record(_id=_id, _rev=_rev)
         record = dict(record)
         type_sync = record.get('type', '')
