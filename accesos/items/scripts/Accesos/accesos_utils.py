@@ -154,6 +154,19 @@ class Accesos( Accesos):
             'quien_recibe_otro': '69c47a1ce96590f9dbf494b0',
         })
         
+        self.configuracion_area = {
+            'area': '663e5d44f5b8a7ce8211ed0f',
+            'create_area': '688a33d9e61fcd2c299ff39e',
+            'comentarios': '68504a3fd3ebdc2e9b9869d2',
+            'foto_area': '68487646684fe30a8f9f3ef4',
+            'nombre_nueva_area': '688a33d9e61fcd2c299ff39f',
+            'option': '68487646684fe30a8f9f3ef2',
+            'status': '689a46342038ded0e949be07',
+            'status_comment': '689a46342038ded0e949be08',
+            'qr_area': '68487646684fe30a8f9f3ef3',
+            'tag_id': '68487646684fe30a8f9f3ef3',
+            'ubicacion': '663e5c57f5b8a7ce8211ed0b',
+        }
 
 
     def _do_access(self, access_pass, location, area, data):
