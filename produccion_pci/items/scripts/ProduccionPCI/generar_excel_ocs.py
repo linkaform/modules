@@ -25,7 +25,18 @@ class GenerarExcelOcs( Produccion_PCI ):
 
         self.filters = self.data.get('data', {})
 
-        self.fecha_periodo = self.filters.get('fecha_corte')
+        self.fecha_periodo = self.get_fecha_periodo()
+
+    def get_fecha_periodo(self):
+        # Se obtiene el dato de cuando se ejecuta desde el script de Orden de Compra
+        if self.filters.get('fecha_corte'):
+            return self.filters.get('fecha_corte')
+
+        # Se obtiene de data cuando se ejecuta directo en la pantalla de Scripts
+        if self.data.get('fecha_corte'):
+            return self.data.get('fecha_corte')
+
+        return None
     
     def get_query_ocs(self):
         query = [
