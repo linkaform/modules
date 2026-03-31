@@ -95,17 +95,8 @@ class Produccion_PCI(Produccion_PCI):
         self.all_tipos_tarea_7v = self.tipos_tarea_metraje_cero | set(self.tipo_tarea_7v_metraje) | set(self.tipo_tarea_7v_voz_pot_a_vsi)
 
         self.all_divisiones = [
-            # {'tecnologia':'fibra','division':'occidente'}, {'tecnologia':'cobre','division':'occidente'}, {'tecnologia':'fibra','division':'telnor'}
-            
-            {'tecnologia':'fibra','division':'metro'}, {'tecnologia':'fibra','division':'sur'}, 
-            {'tecnologia':'fibra','division':'norte'}, {'tecnologia':'fibra','division':'occidente'},
-            
-            # Cobre no se ocupa en SR
-            {'tecnologia':'cobre','division':'metro'}, {'tecnologia':'cobre','division':'sur'}, 
-            {'tecnologia':'cobre','division':'norte'}, {'tecnologia':'cobre','division':'occidente'},
-
-            # TELNOR
-            {'tecnologia':'fibra','division':'telnor'},{'tecnologia':'cobre','division':'telnor'},
+            {'tecnologia':'fibra','division':'occidente'}, {'tecnologia':'fibra','division':'telnor'}, 
+            {'tecnologia':'cobre','division':'occidente'}, {'tecnologia':'cobre','division':'telnor'},
         ]
 
         self.f.update({

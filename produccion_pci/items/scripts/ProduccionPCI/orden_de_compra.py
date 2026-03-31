@@ -36,6 +36,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             self.FORMA_LIBERACION_COBRE_OCCIDENTE, 
             self.FORMA_LIBERACION_COBRE_TELNOR, 
         ]
+        self.SCRIPT_ID_ENVIAR_EMAIL = 149873
 
     def get_descuentos_form_nomina(self):
         records_nomina = self.get_records(
@@ -961,27 +962,29 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         descuentoCobroMinimo = answers.get('5fc9269ce5363f7e3b9e3867', 'no')
         descuentos_por = []
 
+        # 20260330 se desactivan los descuentos de cobro minimo, desfase y mod. metraje
+
         """
         Revisando descuento por desfase de 15 días ó cobro mínimo
         """
         folioDescuento20porc = 0
-        if not record_is_for_acapulco:
-            if (descuento15dias != 'no') or (descuentoCobroMinimo != 'no'):
-                descuento_20_porciento = total * self.porcentaje_descuento_x_desfase
-                folioDescuento20porc += descuento_20_porciento
-            if descuento15dias != 'no':
-                descuentos_por.append('desfase_15_dias_en_carga')
-            if descuentoCobroMinimo != 'no':
-                descuentos_por.append('cobro_minimo')
+        # if not record_is_for_acapulco:
+        #     if (descuento15dias != 'no') or (descuentoCobroMinimo != 'no'):
+        #         descuento_20_porciento = total * self.porcentaje_descuento_x_desfase
+        #         folioDescuento20porc += descuento_20_porciento
+        #     if descuento15dias != 'no':
+        #         descuentos_por.append('desfase_15_dias_en_carga')
+        #     if descuentoCobroMinimo != 'no':
+        #         descuentos_por.append('cobro_minimo')
 
         """
         Descuento por modificación en el Metraje
         """
-        metrajeAnteriorModificado = answers.get('6021ba39dae34bd70dcd40b5', 0)
-        if metrajeAnteriorModificado and not record_is_for_acapulco:
-            descuento_20_porciento = total * self.porcentaje_descuento_x_desfase
-            folioDescuento20porc += descuento_20_porciento
-            descuentos_por.append('metraje_modificado')
+        # metrajeAnteriorModificado = answers.get('6021ba39dae34bd70dcd40b5', 0)
+        # if metrajeAnteriorModificado and not record_is_for_acapulco:
+        #     descuento_20_porciento = total * self.porcentaje_descuento_x_desfase
+        #     folioDescuento20porc += descuento_20_porciento
+        #     descuentos_por.append('metraje_modificado')
 
         if record_is_for_acapulco:
             descuentos_por.append('contingencia')
@@ -1508,14 +1511,14 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                             'descuento_20_porc': folioDescuento20porc,
                             # Se integran conceptos de A4
                             '5f0367db263081d4d60e34a9' : fila[21], #NUEVO CAMPO PARA EL CONCEPTO DE A4
-                            # los demas conceptos de A4 ya no aplican
-                            # '5f0367db263081d4d60e34aa' : fila[22], #total_a4_par_secundario
-                            # '5f0367db263081d4d60e34ab' : fila[23], #total_a4_reporte_ivr
-                            # '5f0367db263081d4d60e34ac' : fila[24], #total_a4_rosetas
-                            # '5f0367db263081d4d60e34ad' : fila[25], #total_a4_modem
-                            # '5f0367db263081d4d60e34ae' : fila[26], #total_a4_claro
-                            # '5f0367db263081d4d60e34af' : fila[27], #total_a4_montaje_puente
-                            # '5f0367db263081d4d60e34b0' : fila[28], #total_a4_desmontaje_puente
+                            '5f0367db263081d4d60e34aa' : fila[22], #total_a4_par_secundario
+                            '5f0367db263081d4d60e34ab' : fila[23], #total_a4_reporte_ivr
+                            '5f0367db263081d4d60e34ac' : fila[24], #total_a4_rosetas
+                            '5f0367db263081d4d60e34ad' : fila[25], #total_a4_modem
+                            '5f0367db263081d4d60e34ae' : fila[26], #total_a4_claro
+                            '5f0367db263081d4d60e34af' : fila[27], #total_a4_montaje_puente
+                            '5f0367db263081d4d60e34b0' : fila[28], #total_a4_desmontaje_puente
+                            
                             '6497150f3f35c6b5cd087d16' : fila[29], #total_migracion_exitosa
                             '64c81f473f6a4e86b5169a47' : fila[30], # Desmontaje en migracion
                             '5c647760d5351b000dc99870' : fila[31], # INSTALACIÓN DE POSTE DE 25'
@@ -1783,16 +1786,18 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             descuento15dias = os_answers.get('601c7ae006478d9cbee17e00', 'no')
             descuentoCobroMinimo = os_answers.get('5fc9269ce5363f7e3b9e3867', 'no')
             descuento_20_porciento = 0
-            if (descuento15dias != 'no') or (descuentoCobroMinimo != 'no'):
-                #print '... ... folio marcado para descuento de 20% 15 dias: {} Cobro Minimo: {}'.format( descuento15dias.encode('utf-8'), descuentoCobroMinimo.encode('utf-8') )
-                descuento_20_porciento = total_folio_os * self.porcentaje_descuento_x_desfase
-                if total_20_row:
-                    total_folio_os = total_folio_os - descuento_20_porciento
-                msg_folio_calc += 'Menos descuento {} = {} '.format(descuento_20_porciento, total_folio_os)
-            if descuento15dias != 'no':
-                descuentos_por.append('desfase_15_dias_en_carga')
-            if descuentoCobroMinimo != 'no':
-                descuentos_por.append('cobro_minimo')
+            
+            # 20260330 se desactivan los descuentos de cobro minimo, desfase y mod. metraje
+            # if (descuento15dias != 'no') or (descuentoCobroMinimo != 'no'):
+            #     #print '... ... folio marcado para descuento de 20% 15 dias: {} Cobro Minimo: {}'.format( descuento15dias.encode('utf-8'), descuentoCobroMinimo.encode('utf-8') )
+            #     descuento_20_porciento = total_folio_os * self.porcentaje_descuento_x_desfase
+            #     if total_20_row:
+            #         total_folio_os = total_folio_os - descuento_20_porciento
+            #     msg_folio_calc += 'Menos descuento {} = {} '.format(descuento_20_porciento, total_folio_os)
+            # if descuento15dias != 'no':
+            #     descuentos_por.append('desfase_15_dias_en_carga')
+            # if descuentoCobroMinimo != 'no':
+            #     descuentos_por.append('cobro_minimo')
 
             # apply_bono_prioridad = type_proyecto == 'prioridad'
             # if apply_bono_prioridad:
@@ -2352,6 +2357,12 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             "hasta": datetime.strftime(for_update_maniana, '%Y-%m-%d')
         })
 
+    def run_script_enviar_emails(self):
+        res = lkf_api.run_script({
+            'script_id': self.SCRIPT_ID_ENVIAR_EMAIL,
+            'fecha_corte': p_utils.get_date_now(only_date=True)
+        })
+
     def get_liberaciones_con_bono(self):
         records_libs_bono = self.cr.aggregate([{'$match': {
             'form_id': {'$in': [
@@ -2524,14 +2535,17 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
 
         current_record['answers']['5f10d2efbcfe0371cb2fbd39'] = 'ordenes_generadas'
         if general_msg_error:
-            current_record['answers']['5fd05319cd189468810100c9'] = self.list_to_str(general_msg_error)
+            current_record['answers']['5fd05319cd189468810100c9'] = self.list_to_str(general_msg_error, separator='\n\n')
             current_record['answers']['5f10d2efbcfe0371cb2fbd39'] = 'error'
         if general_msg_ok:
-            current_record['answers']['5fd05319cd189468810100c8'] = self.list_to_str(general_msg_ok)
+            current_record['answers']['5fd05319cd189468810100c8'] = self.list_to_str(general_msg_ok, separator='\n')
         response = lkf_api.patch_record(current_record, record_id, jwt_settings_key='USER_JWT_KEY')
         
         # Se ejecuta script para pegar el folio de Orden de Compra en las Ordenes de Servicio
         self.run_script_set_folio_oc()
+
+        # Se ejecuta script para enviar los correos con el excel de OCs a cada contratista
+        self.run_script_enviar_emails()
     
     def orden_de_compra(self):
         """ Se inicia el proceso para generar las Ordenes de Compra """

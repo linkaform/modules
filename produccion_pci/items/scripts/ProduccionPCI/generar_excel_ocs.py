@@ -22,7 +22,10 @@ class GenerarExcelOcs( Produccion_PCI ):
         self.forms_ocs_ftth = [142287, 148227]
         self.form_id_email = 149857
         self.field_xls_email = '69c98863121f86532adeb490'
-        self.fecha_periodo = '2026-03-24'
+
+        self.filters = self.data.get('data', {})
+
+        self.fecha_periodo = self.filters.get('fecha_corte')
     
     def get_query_ocs(self):
         query = [
@@ -440,8 +443,8 @@ class GenerarExcelOcs( Produccion_PCI ):
         metadata['answers'] = {
             '69c98863121f86532adeb48d': self.fecha_periodo,
             '69c993457ef2fb39f071f3ba': nombre,
-            # '69c98863121f86532adeb48e': email,
-            '69c98863121f86532adeb48e': 'pluna@operacionpci.com.mx', # Test
+            '69c98863121f86532adeb48e': email,
+            # '69c98863121f86532adeb48e': 'pluna@operacionpci.com.mx', # Test
             '69c98863121f86532adeb48f': id_conexion
         }
         metadata['answers'].update(xls)
@@ -449,7 +452,7 @@ class GenerarExcelOcs( Produccion_PCI ):
         print(' - resp_create_record_email =',resp_create_record_email)
 
     def generar_excel_ocs(self):
-        print('... ... Ejecutando proceso de Generar Excel de OCS ... ...')
+        print(f'... ... Ejecutando proceso de Generar Excel de OCS CORTE = {self.fecha_periodo} ... ...')
         
         # Obtener los registros de Orden de Compra
         records_oc = lkf_obj.cr.aggregate( self.get_query_ocs() )
@@ -568,4 +571,5 @@ class GenerarExcelOcs( Produccion_PCI ):
 
 if __name__ == '__main__':
     lkf_obj = GenerarExcelOcs(settings, sys_argv=sys.argv)
+    lkf_obj.console_run()
     lkf_obj.generar_excel_ocs()

@@ -1627,11 +1627,11 @@ class Produccion_PCI( Produccion_PCI ):
 
         if cant_errores:
             status_final = 'error'
-            current_record['answers']['5fd05319cd189468810100c9'] = self.list_to_str(cant_errores)
+            current_record['answers']['5fd05319cd189468810100c9'] = self.list_to_str(cant_errores, separator='\n')
         else:
             status_final = 'liberaciones_generadas'
         current_record['answers']['5f10d2efbcfe0371cb2fbd39'] = status_final
-        current_record['answers']['5fd05319cd189468810100c8'] = self.list_to_str(cant_libs)
+        current_record['answers']['5fd05319cd189468810100c8'] = self.list_to_str(cant_libs, separator='\n')
         if hojas_errores:
             file_errores_libs = p_utils.upload_error_file(["Folio",], [0,], current_record['form_id'], file_field_id='f2362800a010000000000005', content_sheets=hojas_errores)
             current_record['answers'].update(file_errores_libs)
