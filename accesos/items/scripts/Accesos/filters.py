@@ -25,7 +25,6 @@ class Accesos(Accesos):
             match_query.update(match_query_custom)
             
             query = [{"$match": match_query}, {"$project": {"_id": 0, **project_fields}}]
-            print('query', query)
             data = self.format_cr(self.cr.aggregate(query))
             format_data = []
             if data:
@@ -56,7 +55,6 @@ class Accesos(Accesos):
             match_query.update(match_query_custom)
 
             # Ejecutar distinct directamente en la colección
-            print(f'Ejecutando distinct en campo: {field_name} con filtro: {match_query}')
             data = self.cr.distinct(field_name, match_query)
             
             # Asegurar que todos son strings y remover Nones si existen
