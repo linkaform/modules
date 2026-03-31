@@ -203,6 +203,10 @@ class GenerarExcelOcs( Produccion_PCI ):
     def str_to_float(self, val):
         if not val:
             return 0
+        
+        if isinstance(val, float):
+            return val
+        
         return float( val.strip().replace(',', '').replace('$', '') )
 
     def process_link(self, val):
@@ -388,7 +392,7 @@ class GenerarExcelOcs( Produccion_PCI ):
 
         return map_descuentos, folios_ocs
 
-    def process_descuentos(self, data_descuentos):
+    def process_descuentos(self, data_descuentos, kwargs_fields):
         if not data_descuentos:
             return []
         # for name_contratista, data_descuentos in group_Descuentos.items():
@@ -421,10 +425,22 @@ class GenerarExcelOcs( Produccion_PCI ):
                     grupo_descuento.upper()
                 ])
 
+                kwargs_fields.setdefault('69cace87bba91641eb8c3f6f', []).append({
+                    '69cacee4056f23facbe1dd19': item_tecnico.get('nombre'),
+                    '69cacee4056f23facbe1dd1a': item_tecnico.get('neto_pagado', 0),
+                    '69cacee4056f23facbe1dd1b': item_tecnico.get('observaciones', ''),
+                    '69cacee4056f23facbe1dd1c': f"DEL {item_tecnico.get('fecha_inicio', '')} AL {item_tecnico.get('fecha_fin', '')}",
+                    '69cacee4056f23facbe1dd1d': grupo_descuento.upper()
+                })
+
         for grupo_descuento in GRUPOS_EXTRA:
             descuento = map_descuentos.get(grupo_descuento, 0)
             total_descuentos += descuento
             rows_descuentos.append(['', grupo_descuento.upper(), self.add_coma( descuento )])
+            kwargs_fields.setdefault('69cacdc9dcfb7b9636860e1d', []).append({
+                '69cace21a461e2086b34e260': grupo_descuento.upper(),
+                '69cace21a461e2086b34e261': round(descuento, 2)
+            })
         
         rows_descuentos.append(['', 'TOTAL DESCUENTO', self.add_coma( total_descuentos )])
         # rows_descuentos.append([])
@@ -438,7 +454,7 @@ class GenerarExcelOcs( Produccion_PCI ):
             list_links.append( f"LINK: {str_oc}" )
         return list_links
 
-    def send_xls_email(self, nombre, email, id_conexion, xls):
+    def send_xls_email(self, nombre, email, id_conexion, xls, **kwargs):
         metadata = self.lkf_api.get_metadata(self.form_id_email)
         metadata['answers'] = {
             '69c98863121f86532adeb48d': self.fecha_periodo,
@@ -448,6 +464,7 @@ class GenerarExcelOcs( Produccion_PCI ):
             '69c98863121f86532adeb48f': id_conexion
         }
         metadata['answers'].update(xls)
+        metadata['answers'].update(kwargs)
         resp_create_record_email = self.lkf_api.post_forms_answers(metadata)
         print(' - resp_create_record_email =',resp_create_record_email)
 
@@ -499,7 +516,7 @@ class GenerarExcelOcs( Produccion_PCI ):
 
         for name_contratista, grupos_folios in group_OCs.items():
             print(f'\n === === === {name_contratista} === === ===')
-            rows_xls = []
+            rows_xls, kwargs_fields = [], {}
             
             data_totales = group_Totales.get(name_contratista, {})
             email_contratista = data_totales.get('email')
@@ -519,11 +536,18 @@ class GenerarExcelOcs( Produccion_PCI ):
                 total_cantidad_bonos += cant_bonos
                 ordenes_de_compra |= set_ocs
                 name_group = grupo.replace('_', ' ').upper()
+                cantidad_folios = len(list_folios)
                 
-                print(f'    - {name_group} | Cantidad = {len(list_folios)} | Total Facturar = {self.add_coma(total_facturar_grupo)}')
+                print(f'    - {name_group} | Cantidad = {cantidad_folios} | Total Facturar = {self.add_coma(total_facturar_grupo)}')
                 print(f'        - {ordenes_de_compra}')
 
-                row_xls = [ name_group, len(list_folios), self.add_coma(total_facturar_grupo) ]
+                row_xls = [ name_group, cantidad_folios, self.add_coma(total_facturar_grupo) ]
+
+                kwargs_fields.setdefault('69cacc4d00615f9fe4ab283a', []).append({
+                    '69cacccab6b64982b5ae927e': name_group,
+                    '69cacccab6b64982b5ae927f': cantidad_folios,
+                    '69cacccab6b64982b5ae9280': round(total_facturar_grupo, 2)
+                })
 
                 # Se generan los Links a las OCs
                 cells_links = self.genera_links( set_ocs )
@@ -540,8 +564,10 @@ class GenerarExcelOcs( Produccion_PCI ):
             rows_xls.append([])
             rows_xls.append([])
 
+            kwargs_fields['69cacdc9dcfb7b9636860e1c'] = round(subtotal_sin_descuentos, 2)
+
             # Se obtienen los descuentos
-            monto_descuentos, tabla_descuentos, tabla_tecnicos = self.process_descuentos( group_Descuentos.get(name_contratista, {}) )
+            monto_descuentos, tabla_descuentos, tabla_tecnicos = self.process_descuentos( group_Descuentos.get(name_contratista, {}), kwargs_fields )
 
             # TOTALES
             map_totales, folios_ocs_totales = self.parse_descuentos( data_totales.get('totales') )
@@ -563,11 +589,18 @@ class GenerarExcelOcs( Produccion_PCI ):
             rows_xls.append([])
             rows_xls.extend( tabla_tecnicos )
 
+            kwargs_fields['69cace87bba91641eb8c3f6a'] = round(monto_descuentos, 2)
+
+            kwargs_fields['69cace87bba91641eb8c3f6b'] = round(subtotal, 2)
+            kwargs_fields['69cace87bba91641eb8c3f6c'] = round(self.str_to_float(map_totales.get('iva', 0)), 2)
+            kwargs_fields['69cace87bba91641eb8c3f6d'] = round(self.str_to_float(map_totales.get('retencion_resico', 0)), 2)
+            kwargs_fields['69cace87bba91641eb8c3f6e'] = round(self.str_to_float(map_totales.get('total', 0)), 2)
+
             excel_ocs = self.generar_xls(rows_xls)
             if not excel_ocs:
                 continue
             
-            self.send_xls_email(name_contratista.upper(), email_contratista, data_totales.get('id'), excel_ocs)
+            self.send_xls_email(name_contratista.upper(), email_contratista, data_totales.get('id'), excel_ocs, **kwargs_fields)
 
 if __name__ == '__main__':
     lkf_obj = GenerarExcelOcs(settings, sys_argv=sys.argv)
