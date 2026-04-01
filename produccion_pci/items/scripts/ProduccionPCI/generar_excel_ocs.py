@@ -427,6 +427,12 @@ class GenerarExcelOcs( Produccion_PCI ):
             descuento = data_nominas.get('total_neto_pagado', 0)
             total_descuentos += descuento
             rows_descuentos.append(['', grupo_descuento.upper(), self.add_coma( descuento )])
+
+            kwargs_fields.setdefault('69cacdc9dcfb7b9636860e1d', []).append({
+                '69cace21a461e2086b34e260': grupo_descuento.upper(),
+                '69cace21a461e2086b34e261': round(descuento, 2)
+            })
+
             for item_tecnico in data_nominas.get('items', []):
                 rows_tecnicos.append([
                     item_tecnico.get('nombre'),
