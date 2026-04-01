@@ -1642,9 +1642,10 @@ class Produccion_PCI( Produccion_PCI ):
                                 msg_error_completo = p_utils.arregla_msg_error_sistema(response)
                                 record_errors.append(record + [msg_error_completo,])
                     elif this_record.get('cambio_tecnologia'):
-                        records_ok.append(records[ dict_pos_record[ this_record['cambio_tecnologia'] ] ] + ['Folio marcado para Cambio de Tecnologia',])
-                        create_json['created']['total'] += 1
-                        create_json['created']['order'] += 1
+                        # records_ok.append(records[ dict_pos_record[ this_record['cambio_tecnologia'] ] ] + ['Folio marcado para Cambio de Tecnologia',])
+                        # create_json['created']['total'] += 1
+                        # create_json['created']['order'] += 1
+                        record_errors.append(record + ["Folio encontrado en Tecnología Contraria",])
                     else:
                         create_json['created']['duplicate'] += 1
                         if folio not in self.GLOBAL_COMMUNICATION:
