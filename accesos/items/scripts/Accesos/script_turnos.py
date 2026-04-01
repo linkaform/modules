@@ -48,6 +48,7 @@ if __name__ == "__main__":
     fotografia=data.get("fotografia",[])
     nombre_suplente=data.get("nombre_suplente","")
     guard_id=data.get("guard_id","")
+    dynamic_filters=data.get("dynamic_filters",{})
     #-FUNCTIONS
     print('option', option)
     if option == 'load_shift':
@@ -58,7 +59,7 @@ if __name__ == "__main__":
     elif option == 'assing_gafete':
         response = acceso_obj.assing_gafete(data_gafete, id_bitacora, tipo_movimiento)
     elif option == 'list_bitacora2':
-        response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, limit=limit, offset=offset)
+        response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, dynamic_filters=dynamic_filters, limit=limit, offset=offset)
     elif option == 'get_user_booths':
         response = acceso_obj.get_user_booths_availability(turn_areas=turn_areas)
     elif option == 'get_boot_guards' or option == 'guardias_de_apoyo':

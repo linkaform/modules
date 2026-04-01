@@ -1,18 +1,17 @@
 # coding: utf-8
-from hmac import new
-import os
-import pytz
-import sys, simplejson, json, pytz
-import time
-import tempfile
-import unicodedata
+import sys, simplejson, json, pytz, os
+import tempfile, unicodedata, threading
+
+from datetime import datetime
 from bson.objectid import ObjectId
-from linkaform_api import settings
-from account_settings import *
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from hmac import new
+import time, random
+
 
 from accesos_utils import Accesos
-from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor
+from account_settings import *
+from linkaform_api import settings
 
 class Accesos(Accesos):
 
@@ -175,6 +174,124 @@ class Accesos(Accesos):
         
         return texto
 
+    def complete_rondines(self, records):
+        status = {}
+        answers = {}
+        bad_items = []
+        good_items = []
+        
+        if not records:
+            return {'status_code': 400, 'type': 'error', 'msg': 'No records provided', 'data': {}}
+        
+        db_name = f'clave_{self.user_id}'
+        # self.cr_db = self.get_couch_user_db(db_name)
+        for item in records:
+            _id = item.get('_id', None)
+            _rev = item.get('_rev', None)
+            
+            if not _id or not _rev:
+                bad_items.append(item)
+                continue
+            
+            record = self.get_couch_record(_id=_id, _rev=_rev)
+            
+            if record.get('status_code') in [400, 404, 461, 462]:
+                bad_items.append(item)
+                continue
+            
+            if record.get('status_rondin') == 'completed':
+                good_items.append(_id)
+                record['inbox'] = False
+                record['status'] = 'received'
+                record['updated_at'] = self.today_str( date_format='datetime')
+                self.cr_db.save(record)
+        
+        answers[self.f['estatus_del_recorrido']] = 'realizado'
+        if good_items:
+            res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=good_items)
+            if res.get('status_code') == 201 or res.get('status_code') == 202:
+                status = {'status_code': 200, 'type': 'success', 'msg': 'Rondines completed successfully', 'data': {}}
+            else: 
+                status = {'status_code': 400, 'type': 'error', 'msg': res, 'data': {}}
+        if bad_items:
+            status.update({'data': {'bad_items': bad_items, 'good_items': good_items}})
+        return status
+    
+    def create_check_area(self, data):
+        # metadata = self.lkf_api.get_metadata(form_id=self.CHECK_UBICACIONES)
+        answers = {}
+        metadata = self.lkf_api.get_metadata(form_id=self.CHECK_UBICACIONES) #TODO: Modularizar id
+        metadata.update({
+            "properties": {
+                "device_properties":{
+                    "System": "Script",
+                    "Module": "Accesos",
+                    "Process": "Creación de check area",
+                    "Action": "create_check_area",
+                    "File": "accesos/app.py"
+                }
+            },
+        })
+        if data.get('record_id'):
+            metadata.update({
+                "id": data.pop('record_id')
+            })
+        if data.get('rondin_id'):
+            rondin_id = data.pop('rondin_id')
+            answers[self.f['bitacora_rondin_url']] = f"https://app.linkaform.com/#/records/detail/{rondin_id}"
+        if data.get('rondin_name'):
+            rondin_name = data.pop('rondin_name')
+            answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = {
+                self.mf['nombre_del_recorrido']: rondin_name
+            }
+        #---Define Answers
+        answers[self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID]={}
+        answers[self.f['check_status']] = "continuar_siguiente_punto_de_inspección"
+        for key, value in data.items():
+            if key == 'tag_id':
+                answers[self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID].update({
+                    self.f['area_tag_id']: value,
+                    self.Location.f['location']: [data.get('ubicacion', '')],
+                    self.Location.f['area']: [data.get('area', '')],
+                    self.f['tipo_de_area']: [data.get('tipo_de_area', '')],
+                    self.f['area_foto']: [data.get('foto_del_area', '')],
+                })
+            elif key == 'evidencia_incidencia':
+                answers[self.f['foto_evidencia_area']] = value
+            elif key == 'documento_incidencia':
+                answers[self.f['documento_check']] = value
+            elif key == 'incidencias':
+                incidencias = data.get('incidencias', [])
+                if incidencias:
+                    incidencias_list = []
+                    for incidencia in incidencias:
+                        item = {}
+                        if incidencia.get('categoria'):
+                            item = {self.LISTA_INCIDENCIAS_CAT_OBJ_ID: {
+                                self.f['categoria']: incidencia.get('categoria', ''),
+                                self.f['sub_categoria']: incidencia.get('sub_categoria', ''),
+                                self.f['incidente']: incidencia.get('incidente', ''),
+                            }}
+                        item.update({
+                            self.f['incidente_open']: incidencia.get('otro_incidente', ''),
+                            self.f['incidente_comentario']: incidencia.get('comentario', ''),
+                            self.f['incidente_accion']: incidencia.get('accion', ''),
+                            self.f['incidente_evidencia']: incidencia.get('evidencia', ''),
+                            self.f['incidente_documento']: incidencia.get('documento', ''),
+                        })
+                        incidencias_list.append(item)
+                    answers[self.f['grupo_incidencias_check']] = incidencias_list
+            elif key == 'comentario_check_area':
+                answers[self.f['comentario_check_area']] = value
+            elif key == 'status_check_area':
+                answers[self.f['check_status']] = value
+            else:
+                continue
+            
+        
+        metadata.update({'answers':answers})
+        return self.lkf_api.post_forms_answers(metadata)
+    
     def get_user_catalogs(self):
         soter_catalogs = [
             self.LISTA_INCIDENCIAS_CAT_ID,
@@ -248,34 +365,7 @@ class Accesos(Accesos):
         format_response = self.unlist(response)
         return format_response
 
-    def sync_incidence_to_lkf(self, record):
-        status = {}
-        record_id = record.pop('_id', None)
-        record = record.get('record', {})
-        folio = self.get_folio_incidencia(record_id)
-        payload = {k: record[k] for k in self.incidence_filter.keys() if k in record}
-            
-        if isinstance(record, dict) and 'status_code' in record:
-            return record
-        elif isinstance(record, dict) and folio:
-            folio = folio.get('folio', '')
-            response = self.update_incidence(payload, folio)
-        else:
-            payload.update({'record_id': record_id})
-            response = acceso_obj.create_incidence(payload)
-
-        record = self.cr_db.get(record_id)
-        if response.get('status_code') in [200, 201, 202]:
-            record['status'] = 'synced'
-            self.cr_db.save(record)
-            status = {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
-        else:
-            record['status'] = 'error'
-            self.cr_db.save(record)
-            status = {'status_code': 400, 'type': 'error', 'msg': response, 'data': {}}
-        return status
-
-    def get_couch_record(self, _id, _rev=None):
+    def get_couch_record(self, _id=None, _rev=None):
         if not _id:
             return {'status_code': 400, 'type': 'error', 'msg': 'ID is required', 'data': {}}
         
@@ -283,6 +373,7 @@ class Accesos(Accesos):
         wait_time = 2
 
         for attempt in range(max_retries):
+            # self.cr_db = self.get_couch_user_db(db_name)
             record = self.cr_db.get(_id, revs_info=True)
             if not record:
                 return {'status_code': 404, 'type': 'error', 'msg': 'Record not found', 'data': {}}
@@ -336,8 +427,11 @@ class Accesos(Accesos):
     
     def assign_user_inbox(self, data):
         user_id_to_assign = self.unlist(data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['id_usuario'], ''))
+
+        if not user_id_to_assign:
+            self.LKFException('No se encontro id de usuario en el registro a asignar')
         db_name = f'clave_{user_id_to_assign}'
-        self.cr_db = self.lkf_api.couch.set_db(db_name)
+        # self.cr_db = self.get_couch_user_db(db_name)
         record = self.cr_db.get(self.record_id)
         if record:
             return {'status_code': 202, 'type': 'success', 'msg': 'Ya existe el registro', 'data': {}}
@@ -364,6 +458,7 @@ class Accesos(Accesos):
             i['checked'] = False
             i['checked_at'] = ''
             i['check_area_id'] = ''
+
         inbox_record = {
             "_id": self.record_id,
             "type": "rondin",
@@ -371,7 +466,7 @@ class Accesos(Accesos):
             "status": "synced",
             "status_rondin": "new",
             "created_at": epoc_today,
-            "updated_at": epoc_today,
+            "updated_at": self.today_str( date_format='datetime'),
             "created_by_id": user_id_to_assign,
             "created_by_name": user_name_to_assign,
             "geolocation": {
@@ -382,6 +477,7 @@ class Accesos(Accesos):
                 "user_name": user_name_to_assign,
                 "nombre_rondin": nombre_recorrido,
                 "ubicacion_rondin": ubicacion_recorrido,
+                "tipo_rondin": data.get(self.f['tipo_rondin'], 'qr'),
                 "duracion_estimada": recorrido_info.get('duracion_estimada', ''),
                 "fecha_programada": data.get(self.f['fecha_programacion'], ''),
                 "fecha_inicio": "",
@@ -406,29 +502,6 @@ class Accesos(Accesos):
         except Exception as e:
             status = {'status_code': 400, 'type': 'error', 'msg': str(e), 'data': {}}
         return status
-
-    def get_area_images(self, areas):
-        location = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], '')
-        format_areas = [area.get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['area'], '') for area in areas]
-        query = [
-            {"$match": {
-                "deleted_at": {"$exists": False},
-                "form_id": self.AREAS_DE_LAS_UBICACIONES,
-                f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": location,
-                f"answers.{self.Location.f['area']}": {"$in": format_areas}
-            }},
-            {"$project": {
-                "_id": 0,
-                "tag_id": f"$answers.{self.f['area_tag_id']}",
-                "ubicacion": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}",
-                "area": f"$answers.{self.Location.f['area']}",
-                "tipo_de_area": f"$answers.{self.Location.TIPO_AREA_OBJ_ID}.{self.f['tipo_de_area']}",
-                "foto_del_area": f"$answers.{self.f['area_foto']}",
-            }}
-        ]
-        res = self.cr.aggregate(query)
-        format_res = list(res)
-        return format_res
     
     def get_info_recorrido(self, nombre_recorrido, ubicacion_recorrido):
         query = [
@@ -448,7 +521,8 @@ class Accesos(Accesos):
         format_res = {}
         if res:
             res = list(res)
-            format_res = self.unlist(res)
+            if res:
+                format_res = self.unlist(res)
         return format_res
     
     def sync_check_area_to_lkf(self, record):
@@ -788,84 +862,8 @@ class Accesos(Accesos):
                 '_id': bitacora_in_lkf.get('_id')
             })
             res = self.net.patch_forms_answers(metadata)
-            print("======log: ", res)
             return res
         
-    def create_check_area(self, data):
-        # metadata = self.lkf_api.get_metadata(form_id=self.CHECK_UBICACIONES)
-        answers = {}
-        metadata = self.lkf_api.get_metadata(form_id=137161) #TODO: Modularizar id
-        metadata.update({
-            "properties": {
-                "device_properties":{
-                    "System": "Script",
-                    "Module": "Accesos",
-                    "Process": "Creación de check area",
-                    "Action": "create_check_area",
-                    "File": "accesos/app.py"
-                }
-            },
-        })
-        if data.get('record_id'):
-            metadata.update({
-                "id": data.pop('record_id')
-            })
-        if data.get('rondin_id'):
-            rondin_id = data.pop('rondin_id')
-            answers[self.f['bitacora_rondin_url']] = f"https://app.linkaform.com/#/records/detail/{rondin_id}"
-        if data.get('rondin_name'):
-            rondin_name = data.pop('rondin_name')
-            answers[self.CONFIGURACION_RECORRIDOS_OBJ_ID] = {
-                self.mf['nombre_del_recorrido']: rondin_name
-            }
-        #---Define Answers
-        answers[self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID]={}
-        answers[self.f['check_status']] = "continuar_siguiente_punto_de_inspección"
-        for key, value in data.items():
-            if key == 'tag_id':
-                answers[self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID].update({
-                    self.f['area_tag_id']: value,
-                    self.Location.f['location']: [data.get('ubicacion', '')],
-                    self.Location.f['area']: [data.get('area', '')],
-                    self.f['tipo_de_area']: [data.get('tipo_de_area', '')],
-                    self.f['area_foto']: [data.get('foto_del_area', '')],
-                })
-            elif key == 'evidencia_incidencia':
-                answers[self.f['foto_evidencia_area']] = value
-            elif key == 'documento_incidencia':
-                answers[self.f['documento_check']] = value
-            elif key == 'incidencias':
-                incidencias = data.get('incidencias', [])
-                if incidencias:
-                    incidencias_list = []
-                    for incidencia in incidencias:
-                        item = {}
-                        if incidencia.get('categoria'):
-                            item = {self.LISTA_INCIDENCIAS_CAT_OBJ_ID: {
-                                self.f['categoria']: incidencia.get('categoria', ''),
-                                self.f['sub_categoria']: incidencia.get('sub_categoria', ''),
-                                self.f['incidente']: incidencia.get('incidente', ''),
-                            }}
-                        item.update({
-                            self.f['incidente_open']: incidencia.get('otro_incidente', ''),
-                            self.f['incidente_comentario']: incidencia.get('comentario', ''),
-                            self.f['incidente_accion']: incidencia.get('accion', ''),
-                            self.f['incidente_evidencia']: incidencia.get('evidencia', ''),
-                            self.f['incidente_documento']: incidencia.get('documento', ''),
-                        })
-                        incidencias_list.append(item)
-                    answers[self.f['grupo_incidencias_check']] = incidencias_list
-            elif key == 'comentario_check_area':
-                answers[self.f['comentario_check_area']] = value
-            elif key == 'status_check_area':
-                answers[self.f['check_status']] = value
-            else:
-                continue
-            
-        
-        metadata.update({'answers':answers})
-        return self.lkf_api.post_forms_answers(metadata)
-    
     def delete_rondines(self, records):
         status = {}
         answers = {}
@@ -876,7 +874,7 @@ class Accesos(Accesos):
             return {'status_code': 400, 'type': 'error', 'msg': 'No records provided', 'data': {}}
         
         db_name = f'clave_{self.user_id}'
-        self.cr_db = self.lkf_api.couch.set_db(db_name)
+        # self.cr_db = self.get_couch_user_db(db_name)
         for item in records:
             _id = item.get('_id', None)
             _rev = item.get('_rev', None)
@@ -904,49 +902,7 @@ class Accesos(Accesos):
         if bad_items:
             status.update({'data': {'bad_items': bad_items, 'good_items': good_items}})
         return status
-    
-    def complete_rondines(self, records):
-        status = {}
-        answers = {}
-        bad_items = []
-        good_items = []
-        
-        if not records:
-            return {'status_code': 400, 'type': 'error', 'msg': 'No records provided', 'data': {}}
-        
-        db_name = f'clave_{self.user_id}'
-        self.cr_db = self.lkf_api.couch.set_db(db_name)
-        for item in records:
-            _id = item.get('_id', None)
-            _rev = item.get('_rev', None)
-            
-            if not _id or not _rev:
-                bad_items.append(item)
-                continue
-            
-            record = self.get_couch_record(_id=_id, _rev=_rev)
-            
-            if record.get('status_code') in [400, 404, 461, 462]:
-                bad_items.append(item)
-                continue
-            
-            if record.get('status_rondin') == 'completed':
-                good_items.append(_id)
-                record['inbox'] = False
-                record['status'] = 'received'
-                self.cr_db.save(record)
-        
-        answers[self.f['estatus_del_recorrido']] = 'realizado'
-        if good_items:
-            res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=good_items)
-            if res.get('status_code') == 201 or res.get('status_code') == 202:
-                status = {'status_code': 200, 'type': 'success', 'msg': 'Rondines completed successfully', 'data': {}}
-            else: 
-                status = {'status_code': 400, 'type': 'error', 'msg': res, 'data': {}}
-        if bad_items:
-            status.update({'data': {'bad_items': bad_items, 'good_items': good_items}})
-        return status
-    
+  
     def get_user_data(self, user_id):
         query = [{"$match": {
             "deleted_at": {"$exists": False},
@@ -980,7 +936,7 @@ class Accesos(Accesos):
             return {'status_code': 400, 'type': 'error', 'msg': 'No records provided', 'data': {}}
         
         db_name = f'clave_{self.user_id}'
-        self.cr_db = self.lkf_api.couch.set_db(db_name)
+        # self.cr_db = self.get_couch_user_db(db_name)
         for item in records:
             _id = item.get('_id', None)
             _rev = item.get('_rev', None)
@@ -1049,7 +1005,7 @@ class Accesos(Accesos):
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
-                "form_id": 137161, #TODO: Modularizar id
+                "form_id": self.CHECK_UBICACIONES,
                 "_id": {"$in": id_list}
             }},
             {"$project": {
@@ -1087,7 +1043,6 @@ class Accesos(Accesos):
         response = {}
         try:
             response = self.create_check_area(record)
-            print("======log: ", response)
         except Exception as e:
             self.LKFException({'title': 'Error inesperado', 'msg': str(e)})
         
@@ -1100,10 +1055,11 @@ class Accesos(Accesos):
                     self.cr_db.save(record)
                 else:
                     record['status'] = 'error'
+                    record['last_error'] = response['json']['error']
                     self.cr_db.save(record)
 
     def create_checks_in_lkf(self, records):
-        with ThreadPoolExecutor(max_workers=5) as executor:
+        with ThreadPoolExecutor(max_workers=15) as executor:
             executor.map(self._process_single_check_record, records)
 
     def _process_attachment_upload(self, check_id, name, existing_urls):
@@ -1121,6 +1077,29 @@ class Accesos(Accesos):
             ref_field = self.f['documento_check']
         upload_image = self.upload_file_from_couchdb(data, name, self.CHECK_UBICACIONES, ref_field)
         return upload_image
+    
+    def update_bitacora_with_retry(self, bitacora_in_lkf, data, new_incidencias, new_areas, max_retries=5, base_wait=2):
+        """
+        Reintenta update_bitacora en caso de error 208 (registro ocupado).
+        - base_wait: espera inicial en segundos antes del primer intento
+        - Backoff exponencial + jitter en cada reintento
+        """
+        for attempt in range(max_retries):
+            # Espera antes de cada intento (incluyendo el primero)
+            wait = base_wait * (2 ** attempt) + random.uniform(0, 1)
+            print(f'Esperando {wait:.1f}s antes del intento {attempt + 1}/{max_retries}...')
+            time.sleep(wait)
+
+            response = self.update_bitacora(bitacora_in_lkf, data, new_incidencias, new_areas)
+
+            if response.get('status_code') == 208:
+                print(f'Registro ocupado (208), reintentando...')
+                continue
+
+            # Cualquier otra respuesta (éxito o error diferente) se retorna directo
+            return response
+
+        return {'status_code': 408, 'type': 'error', 'msg': 'Max retries exceeded after 208 conflicts', 'data': {}}
     
     def sync_rondin_to_lkf(self, data):
         status = {}
@@ -1200,7 +1179,8 @@ class Accesos(Accesos):
         new_checks = self.cr_db.find({
             "selector": {
                 "_id": {"$in": format_checks_in_couch}
-            }
+            },
+            "limit": 1000
         })
         new_areas = {}
         for check in new_checks:
@@ -1215,7 +1195,7 @@ class Accesos(Accesos):
         if not isinstance(data, dict):
             data = self.cr_db.get(rondin_id)
 
-        bitacora_response = self.update_bitacora(bitacora_in_lkf, data, new_incidencias, new_areas)
+        bitacora_response = self.update_bitacora_with_retry(bitacora_in_lkf, data, new_incidencias, new_areas)
         aux = self.cr_db.get(rondin_id)
         if bitacora_response and bitacora_response.get('status_code') in [200, 201, 202]:
             if aux.get('status_rondin') == 'completed':
@@ -1223,17 +1203,227 @@ class Accesos(Accesos):
                 checks_in_lkf = [i.get('incidente_area') for i in bitacora_in_lkf.get('areas_del_rondin', []) if i.get('fecha_hora_inspeccion_area')]
                 checks_in_couch = [i.get('area') for i in aux.get('record', {}).get('check_areas', []) if i.get('checked')]
                 if len(checks_in_couch) != len(checks_in_lkf):
+                    aux['status'] = 'received'
+                    aux['inbox'] = False
+                
+                    self.cr_db.save(aux)
                     return {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
 
                 aux['status'] = 'received'
                 aux['inbox'] = False
+
                 self.cr_db.save(aux)
             status = {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
         else:
-            aux['status'] = 'error'
-            self.cr_db.save(aux)
+            print('Revisando status de inbox para ver si es necesario guardar como error: ', aux )
+            if aux['status'] != 'error':
+                aux['status'] = 'error'
+                # self.cr_db.save(aux)
             status = {'status_code': 400, 'type': 'error', 'msg': bitacora_response, 'data': {}}
         return status
+
+    def sync_incidence_to_lkf(self, record):
+        status = {}
+        record_id = record.pop('_id', None)
+        record = record.get('record', {})
+        folio = self.get_folio_incidencia(record_id)
+        payload = {k: record[k] for k in self.incidence_filter.keys() if k in record}
+            
+        if isinstance(record, dict) and 'status_code' in record:
+            return record
+        elif isinstance(record, dict) and folio:
+            folio = folio.get('folio', '')
+            response = self.update_incidence(payload, folio)
+        else:
+            payload.update({'record_id': record_id})
+            response = self.create_incidence(payload)
+
+        record = self.cr_db.get(record_id)
+        if response.get('status_code') in [200, 201, 202]:
+            record['status'] = 'synced'
+            record['updated_at'] = self.today_str( date_format='datetime')
+            self.cr_db.save(record)
+            status = {'status_code': 200, 'type': 'success', 'msg': 'Record synced successfully', 'data': {}}
+        else:
+            record['last_error'] = record.get('json',{}).get('error','Error 1250 al sincronizar incidencia')
+            record['status'] = 'error'
+            record['updated_at'] = self.today_str( date_format='datetime')
+            self.cr_db.save(record)
+            status = {'status_code': 400, 'type': 'error', 'msg': response, 'data': {}}
+        return status
+
+    def _handle_result(self, res, _id):
+        """Registra el resultado de una operación y retorna True/False."""
+        if res.get('status_code') not in (200, 201, 202):
+            with self.results_lock:
+                self.results["failed"] += 1
+                self.results["errors"].append({"id": _id, "error": res.get('msg')})
+            return False
+        with self.results_lock:
+            self.results["success"] += 1
+        return True
+
+    def get_area_model(self, record):
+        """
+        Traduce un record de CouchDB al formato answers de LKF.
+        record['record'] contiene los datos del área capturada en la app.
+        """
+        data = record.get('record', {})
+        rec_id = record['_id']
+
+        nombre_area =  data.get('incidente_area')
+        area_catalogo =  data.get('area_catalogo')
+        if not nombre_area and not area_catalogo:
+            return {"error":"Nombre de Area Requerido"}
+
+        answers = {}
+        # Catálogo de ubicación 
+        answers[self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID] = {
+            self.f['location']    : data.get('incidente_location', ''),
+        }
+        if area_catalogo:
+            answers[self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID].update({self.f['nombre_area'] : area_catalogo})
+
+        # Nombre de Area
+        answers[self.configuracion_area['nombre_nueva_area']] = nombre_area
+
+        # Catalogo tipo de area
+        answers[self.TIPO_AREA_OBJ_ID] = {
+            self.f['tipo_de_area'] : data.get('tipo_area', ''),
+            }
+
+        existing_urls = {} #obtener las existntes
+
+        #foto del area
+        attachments = record.get('_attachments', {})
+        media = []
+        if attachments:
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                print('threading...')
+                data_list = [(rec_id, name, existing_urls) for name in attachments]
+                print('data_list...',data_list)
+                results = executor.map(lambda x: self._process_attachment_upload(*x), data_list)
+                media = [r for r in results if r]
+
+        answers[self.configuracion_area['foto_area']] = media
+
+        #TagId
+        answers[self.configuracion_area['tag_id']] = data.get('area_tag_id', '')
+
+        # Comentario del área
+        answers[self.configuracion_area['comentarios']] = data.get('comentario', '')
+        
+
+        return answers
+
+    def config_area(self, record):
+        if not record:
+            return {'status_code': 400, 'type': 'error', 'msg': 'No record provided', 'data': {}}
+
+        _id = record.id
+        _rev = record.rev
+
+        if not _id or not _rev:
+            return {'status_code': 400, 'type': 'error', 'msg': 'Missing _id or _rev', 'data': {}}
+
+        answers = self.get_area_model(record)
+        
+        print('answers', simplejson.dumps(answers, indent=3))
+
+        metadata = self.lkf_api.get_metadata(form_id=self.CONFIGURACION_AREA_FORM)
+        metadata.update({'answers': answers})
+
+        res = self.lkf_api.post_forms_answers(metadata)
+
+        if res.get('status_code') in (200, 201, 202):
+            # self.cr_db.save(record)
+            self.cr_db.delete(record)
+            res = {'status_code': 200, 'type': 'success', 'msg': 'Area synced', 'data': {}}
+        else:
+            error_msg = res.get('json',{}).get('exception',{}).get('msg','Error al crear la configuracon del area')
+            res = {'status_code': 400, 'type': 'error', 'msg': error_msg, 'data': {}}
+            record['updated_at'] = self.today_str( date_format='datetime')
+            record['status'] = 'error'
+            record['last_error'] = error_msg
+            self.cr_db.save(record)
+
+        return res
+
+    def process_record(self, rec):
+        try:
+            _id = rec.id
+            _rev = rec.rev
+            r_type = rec.get('type')
+            r_status = rec.get('status')
+
+            print(f"Processing record {_id}, type={r_type}, status={r_status}")
+
+            if r_type == 'area':
+                res = self.config_area(rec)
+                print('Sync Area res=', res)
+            elif r_type == 'rondin':
+                print('todo...sync rondin')
+                res = self.sync_rondin_to_lkf(data=rec)
+            else:
+                print(f"Unknown type '{r_type}' for record {_id}, skipping.")
+                res = {'status_code': 400, 'msg': f"Unknown type '{r_type}'"}
+
+            return self._handle_result(res, _id)
+
+
+        except Exception as e:
+            with self.results_lock:
+                self.results["failed"] += 1
+                self.results["errors"].append({"id": rec.id, "error": str(e)})
+            print(f"Error processing record {rec.id}: {e}")
+            return False
+
+    def sync_records(self, app_records=[]):
+        records = self.cr_db.find({
+            "selector": {
+                "status": {
+                    "$nin": ["received", "new"]
+                }
+            }
+        })
+
+        record_list = list(records)
+        if not record_list:
+            print("No records to sync")
+            return
+
+        self.results = {
+            "success": 0,
+            "failed": 0,
+            "errors": [],
+            "result": []
+        }
+        self.results_lock = threading.Lock()
+
+        with ThreadPoolExecutor(max_workers=20) as executor:
+            futures = {executor.submit(self.process_record, rec): rec for rec in record_list}
+
+            for future in as_completed(futures):
+                rec = futures[future]
+                if future.exception():
+                    print(f"Unhandled exception for record {rec.id}: {future.exception()}")
+                    with self.results_lock:
+                        self.results["failed"] += 1
+                        self.results["errors"].append({
+                            "id": rec.id,
+                            "error": str(future.exception())
+                        })
+                else:
+                    self.results["result"].append(future.result())
+
+        # FIX: self.results, no results
+        print(f"\nSync complete — Success: {self.results['success']} | Failed: {self.results['failed']}")
+        if self.results["errors"]:
+            print("Errors:")
+            for err in self.results["errors"]:
+                print(f"  - {err['id']}: {err['error']}")
+
+        return self.results
 
     def process_checks(self, checks_details, rondin_id, rondin_name):
         #! Se crean los payloads para crear los checks en Linkaform
@@ -1280,6 +1470,7 @@ class Accesos(Accesos):
                             if item.get('file_name') == m_name:
                                 item['file_url'] = m_url
 
+                i['updated_at'] = self.today_str( date_format='datetime')
                 self.cr_db.save(i)
 
             record = i.get('record', {})
@@ -1309,11 +1500,13 @@ if __name__ == "__main__":
     user_to_assign = data.get("user_to_assign", {})
 
     response = {}
+    db_name = f'clave_{acceso_obj.user_id}'
+    acceso_obj.cr_db = acceso_obj.get_couch_user_db(db_name)
     if option == 'get_user_catalogs':
         response = acceso_obj.get_user_catalogs()
     elif option == 'sync_to_lkf':
         db_name = f'clave_{acceso_obj.user_id}'
-        acceso_obj.cr_db = acceso_obj.lkf_api.couch.set_db(db_name)
+        acceso_obj.cr_db = acceso_obj.get_couch_user_db(db_name)
         record = acceso_obj.get_couch_record(_id=_id, _rev=_rev)
         record = dict(record)
         type_sync = record.get('type', '')
@@ -1332,7 +1525,6 @@ if __name__ == "__main__":
                 'record': record,
                 'db_name': db_name,
             }}
-
     elif option == 'assign_user_inbox':
         response = acceso_obj.assign_user_inbox(data=acceso_obj.answers)
     elif option == 'complete_rondines':
@@ -1343,6 +1535,8 @@ if __name__ == "__main__":
         response = acceso_obj.reasignar_rondines(records=records, user_to_assign=user_to_assign)
     elif option == 'get_active_guards':
         response = acceso_obj.get_active_guards()
+    elif option == 'sync':
+        response = acceso_obj.sync_records(records)
     else:
         response = {'status_code': 400, 'type': 'error', 'msg': 'Invalid option', 'data': {}}
 
