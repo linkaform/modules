@@ -13,15 +13,7 @@ class Accesos(Accesos):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
         self.load(module='Location', **self.kwargs)
 
-        self.configuracion_area = {
-            'qr_area': '68487646684fe30a8f9f3ef3',
-            'foto_area': '68487646684fe30a8f9f3ef4',
-            'ubicacion': '663e5c57f5b8a7ce8211ed0b',
-            'area': '663e5d44f5b8a7ce8211ed0f',
-            'option': '68487646684fe30a8f9f3ef2',
-            'create_area': '688a33d9e61fcd2c299ff39e',
-            'nombre_nueva_area': '688a33d9e61fcd2c299ff39f',
-        }
+       
 
         self.area_update = {
             'foto_area': '6763096aa99cee046ba766ad',
@@ -356,6 +348,11 @@ if __name__ == "__main__":
     acceso_obj.statuss = 'ok'
     acceso_obj.status_comment = ''
 
+    search_area = None
+    nueva_area = None
+
+
+
     #! Si trae solo el QR
     if data.get('qr_area') and not data.get('ubicacion') and not data.get('area'):
         qr_data = acceso_obj.get_record_ubicacion(tag_id_area=data.get('qr_area'))
@@ -363,13 +360,24 @@ if __name__ == "__main__":
             data['ubicacion'] = qr_data.get('ubicacion', '')
             data['area'] = qr_data.get('area', '')
             
+
+    if data.get('area'):
+            search_area = acceso_obj.get_record_ubicacion(ubicacion=data.get('ubicacion'), area=data.get('area'))
+    if data.get('nombre_nueva_area'):
+        nueva_area = data.get('nombre_nueva_area')
+
+
     #! Crea el area si no existe
-    if data.get('create_area', False):
+    if nueva_area:
         acceso_obj.create_new_area(data)
         data['area'] = data.get('nombre_nueva_area')
     else:
         #! Validacion para evitar problema con areas creadas directamente en el catalogo
-        search_area = acceso_obj.get_record_ubicacion(ubicacion=data.get('ubicacion'), area=data.get('area'))
+        if data.get('area'):
+            search_area = acceso_obj.get_record_ubicacion(ubicacion=data.get('ubicacion'), area=data.get('area'))
+        else:
+            search_area = None
+
         if not search_area:
             msg = 'Revisa el catalogo, no se encontró el área seleccionada en la forma Areas de las Ubicaciones.'
             acceso_obj.LKFException({'msg': msg, 'title': 'Área no encontrada'})
