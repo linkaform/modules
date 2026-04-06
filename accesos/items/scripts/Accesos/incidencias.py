@@ -82,7 +82,7 @@ if __name__ == "__main__":
     if option == 'nueva_incidencia':
         response = acceso_obj.create_incidence(data_incidence)
     elif option == 'get_incidences':
-        response = acceso_obj.get_list_incidences(location, area, prioridades= prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate)
+        response = acceso_obj.get_list_incidences(location, area, prioridades= prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, status=estatus)
     elif option == 'update_incidence':
         response = acceso_obj.update_incidence(data_incidence_update, folio)
     elif option == 'update_incidence_seguimiento':
