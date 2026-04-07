@@ -25,6 +25,7 @@ class PCI_Utils():
         self.FORM_ID_CAMBIO_TECNOLOGIA = 120499
         self.FORM_ID_HISTORICO_DE_PAGOS = 19704
         self.FORM_ID_LISTADO_TECNICOS = 12165
+        self.FORM_ID_INTEGRA_MTS = 148306
         self.UPLOAD_PERMISIONS = 21472
         
         self.CATALOG_ID_CONTRATISTAS_1_0_ADMIN = 59273
@@ -97,23 +98,39 @@ class PCI_Utils():
         try:
             msg_err_arr = []
             data_str_err = ''
+            
             if response.get('status_code', 0) == 400:
                 data_str_err = "Formato incorrecto:"
-            for msg_fin in response.get('json',{}):
-                info_json = response['json'][msg_fin]
+            
+            for msg_fin, info_json in response.get('json',{}).items():
+                
                 msgs = info_json.get('msg', [])
                 if msgs:
                     msg_err = str(msgs[0])
                     label_err = info_json.get('label')
                     msg_err_arr.append(str(msg_err+':'+label_err))
-                else:
-                    for i_err in info_json:
-                        info_i = info_json[i_err]
-                        for id_group in info_i:
-                            info_group = info_i[id_group]
-                            msg_err = str(info_group['msg'][0])
-                            label_err = info_group['label']
-                            msg_err_arr.append('SET {0}:: {1} - {2}'.format(i_err, msg_err, label_err))
+                    continue
+
+                name_group = info_json.pop('group', None)
+                # Caso donde hay un grupo
+                if name_group:
+                    lbl_group = name_group.get('label', '')
+                    errors_items = []
+                    for pos_item, data_item in info_json.items():
+                        for field_item, data_field_item in data_item.items():
+                            errors_items.append( f"{pos_item}: {data_field_item.get('label')}: {data_field_item['msg'][0]}" )
+                    if errors_items:
+                        data_str_err = f"{lbl_group} :: {self.lkf_obj.list_to_str(errors_items)}"
+                        continue
+                
+                for i_err in info_json:
+                    info_i = info_json[i_err]
+                    for id_group, info_group in info_i.items():
+                        print(f'\n   - {id_group} : {info_group}\n')
+                        msg_err = str(info_group['msg'][0])
+                        label_err = info_group['label']
+                        msg_err_arr.append('SET {0}:: {1} - {2}'.format(i_err, msg_err, label_err))
+            
             if msg_err_arr:
                 data_str_err = self.lkf_obj.list_to_str(msg_err_arr)
         except Exception as e:
@@ -123,8 +140,10 @@ class PCI_Utils():
             error_json = response.get('json',{}).get('error','')
             if error_json:
                 data_str_err = error_json
+        
         if not data_str_err:
             data_str_err = 'Ocurrio un error desconocido favor de contactar a soporte'
+
         return data_str_err
 
     def asignar_registro_a_conexion(self, connection_id, record_assign):
@@ -626,6 +645,116 @@ class PCI_Utils():
 
         # Buscar las formas correspondientes en el diccionario
         return formas.get((division, tecnologia), (None, None))
+    
+    def get_id_field_pdf(self, form_id_os):
+        map_form_fields = {
+            11044: {'type_field_pdf': 'dict', 'field_pdf': '5a8aefa7b43fdd100602f7be'},
+            16343: {'type_field_pdf': 'dict', 'field_pdf': '5ad14051f851c220dd0eb772'},
+            21954: {'type_field_pdf': 'dict', 'field_pdf': '5ad14687f851c23d8a4d95c9'},
+            21953: {'type_field_pdf': 'dict', 'field_pdf': '5ad4b4a9b43fdd7af0f65899'},
+            147977: {'type_field_pdf': 'dict', 'field_pdf': '5ad14051f851c220dd0eb772'},
+            10540: {'type_field_pdf': 'list', 'field_pdf': '5ad13efef851c23d8a4d95af'},
+            25927: {'type_field_pdf': 'dict', 'field_pdf': '5ad13e8cf851c220dd0eb769'},
+            25928: {'type_field_pdf': 'dict', 'field_pdf': '5ad13f49f851c2510b0d210a'},
+            25929: {'type_field_pdf': 'dict', 'field_pdf': '5ad13f95f851c2467770da9e'},
+            147978: {'type_field_pdf': 'dict', 'field_pdf': '5ad13e8cf851c220dd0eb769'},
+        }
+
+        return map_form_fields.get(form_id_os, {})
+
+    def get_integra_mts(self, list_folios, list_telefonos):
+        pipeline = [
+            {"$match": {
+                'form_id': self.FORM_ID_INTEGRA_MTS,
+                'deleted_at': {'$exists': False},
+                '$or':[
+                    {'answers.69a860fe7023f5ab79c9b9e1': {'$in': list_folios}},
+                    {'answers.69a860fe7023f5ab79c9b9e2': {'$in': list_telefonos}},
+                ],
+                'answers.69cc39fbea25a0385de39b64': {'$nin': ['aplicado']}
+            }},
+            {
+                "$project": {
+                    "_id": 0,
+                    "folio": {"$toString": "$answers.69a860fe7023f5ab79c9b9e1"},
+                    "telefono": {"$toString": "$answers.69a860fe7023f5ab79c9b9e2"},
+                    "metraje_total": "$answers.69a860fe7023f5ab79c9b9e4",
+                    "imagen_ruta": "$answers.69a860fe7023f5ab79c9b9e3",
+                    "foto_os": "$answers.69b1c67ffa41460bb741b502",
+                    "material_utilizado": "$answers.69b97a06d07c9f470e935e1d",
+                    "folio_record": "$folio"
+                }
+            }
+        ]
+
+        data, folio_index, telefono_index = {}, {}, {}
+
+        for doc in self.cr_admin.aggregate(pipeline):
+            folio = doc.get("folio")
+            telefono = doc.get("telefono")
+
+            if not folio or not telefono:
+                continue
+
+            key = f"{folio}||{telefono}"
+
+            data[key] = doc
+
+            folio_index.setdefault(folio, set()).add(telefono)
+            telefono_index.setdefault(telefono, set()).add(folio)
+
+        return data, folio_index, telefono_index
+
+    def buscar_integra_mts(self, folio, telefono, data, folio_index, telefono_index):
+        key = f"{folio}||{telefono}"
+
+        #Caso 1: match exacto
+        if key in data:
+            return { "status": "ok", "data": data[key] }
+
+        # Caso 2: folio existe pero teléfono no coincide
+        if folio in folio_index:
+            telefonos_validos = folio_index[folio]
+
+            # obtener un ejemplo seguro
+            ejemplo = next(iter(telefonos_validos)) if telefonos_validos else None
+
+            return {
+                "status": "error",
+                "message": f"[INTEGRA METROS] El folio {folio} existe pero el teléfono {telefono} no coincide. Telefono encontrado: {ejemplo}"
+            }
+
+        # Caso 3: teléfono existe pero folio no coincide
+        str_telefono = str(telefono)
+        if str_telefono in telefono_index:
+            folios_validos = telefono_index[str_telefono]
+
+            ejemplo = next(iter(folios_validos)) if folios_validos else None
+
+            return {
+                "status": "error",
+                "message": f"[INTEGRA METROS] El teléfono {telefono} existe pero con el folio {ejemplo}"
+            }
+
+        #Caso 4: no existe nada
+        return {
+            "status": "not_found",
+            "message": "No se encontró coincidencia"
+        }
+
+    def close_integra_mts(self, folios_to_close):
+        # resp_close_mts = self.lkf_api.patch_multi_record(
+        #     {'69cc39fbea25a0385de39b64': 'aplicado'}, 
+        #     self.FORM_ID_INTEGRA_MTS, 
+        #     folios=folios_to_close, 
+        #     threading=True
+        # )
+
+        print('Cerrando registros de Integra Metros =',folios_to_close)
+        resp_close_mts = self.cr_admin.update_many({
+            'form_id': self.FORM_ID_INTEGRA_MTS,
+            'folio': {'$in': folios_to_close}
+        }, {'$set': {'answers.69cc39fbea25a0385de39b64': 'aplicado'}})
 
     def get_info_user_from_catalog( self, folio_o_idUser, id_catalogo, filter_by_name={} ):
         # Asignar field_id basado en el catálogo
@@ -793,6 +922,8 @@ class PCI_Utils():
             forms_dict[ form_id ] = self.lkf_api.get_form_id_fields(form_id)
         
         form_fields = forms_dict[form_id]
+
+
         if not form_fields:
             return False
         
