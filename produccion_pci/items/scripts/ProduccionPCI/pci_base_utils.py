@@ -721,6 +721,7 @@ class PCI_Utils():
 
             return {
                 "status": "error",
+                "folio_posible_match": data[ f"{folio}||{ejemplo}" ]["folio_record"],
                 "message": f"[INTEGRA METROS] El folio {folio} existe pero el teléfono {telefono} no coincide. Telefono encontrado: {ejemplo}"
             }
 
@@ -733,6 +734,7 @@ class PCI_Utils():
 
             return {
                 "status": "error",
+                "folio_posible_match": data[ f"{ejemplo}||{telefono}" ]["folio_record"],
                 "message": f"[INTEGRA METROS] El teléfono {telefono} existe pero con el folio {ejemplo}"
             }
 
