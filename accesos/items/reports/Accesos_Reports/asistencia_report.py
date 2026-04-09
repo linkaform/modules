@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
+import re
 import sys, simplejson, math
+from math import ceil
 from tokenize import group
 import json
 import math
@@ -500,6 +502,75 @@ class Accesos(Accesos):
         format_row_catalog = [i.get(self.Location.f['location']) for i in row_catalog]
         return format_row_catalog
 
+    def get_attendance_data(self, locations=[], limit=100, offset=0):
+        """
+        Se obtiene la informacion de la asistencia de los empleados en forma Registro de Asistencia
+        """
+        custom_match_query = {
+            "deleted_at": {"$exists": False},
+            "form_id": self.REGISTRO_ASISTENCIA,
+        }
+        
+        if locations:
+            custom_match_query.update({
+                f"answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.Location.f['location']}": {"$in": locations}
+            })
+
+        query = [
+            {"$match": custom_match_query},
+            {"$project": {
+                "_id": 1,
+                "folio": 1,
+                "attendance_status": f"$answers.{self.f['status_turn']}",
+                "attendance_start_pic": f"$answers.{self.f['foto_inicio_turno']}",
+                "attendance_end_pic": f"$answers.{self.f['foto_cierre_turno']}",
+                "attendance_name": "$created_by_name",
+                "attendance_sup_name": f"$answers.{self.f['nombre_guardia_suplente']}",
+                "attendance_horario": f"$answers.{self.f['nombre_horario']}",
+                "attendance_position": f"$answers.{self.f['tipo_guardia']}",
+                "attendance_location": f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.Location.f['location']}",
+                "attendance_area": f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.Location.f['area']}",
+                "attendance_start_time": f"$answers.{self.f['fecha_inicio_turno']}",
+                "attendance_end_time": f"$answers.{self.f['fecha_cierre_turno']}",
+                "attendance_start_comment": f"$answers.{self.f['comentario_inicio_turno']}",
+                "attendance_end_comment": f"$answers.{self.f['comentario_cierre_turno']}",
+                "attendance_work_hours": f"$answers.{self.f['horas_trabajadas']}",
+            }}
+        ]
+
+        count_query = [
+            {"$match": custom_match_query},
+            {"$count": "total"}
+        ]
+        
+        count_result = self.format_cr(self.cr.aggregate(count_query))
+        total_count = count_result[0]['total'] if count_result else 0
+        current_page = (offset // limit) + 1 if limit else 1
+        total_pages = ceil(total_count / limit) if limit else 1
+
+        query.append({'$skip': offset})
+        query.append({'$limit': limit})
+
+        data = self.format_cr(self.cr.aggregate(query))
+        format_data = []
+        if data:
+            for item in data:
+                format_data.append({
+                    **item,
+                    "attendance_start_pic": self.unlist(item.get("attendance_start_pic", [])),
+                    "attendance_end_pic": self.unlist(item.get("attendance_end_pic", [])),
+                    "attendance_status": item.get("attendance_status", "").replace("_", " ").capitalize(),
+                    "attendance_position": item.get("attendance_position", "").replace("_", " ").capitalize(),
+                })
+        
+        return {
+            "records": format_data,
+            "total_records": total_count,
+            "total_pages": total_pages,
+            "actual_page": current_page,
+            "records_on_page": len(format_data)
+        }
+
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
     script_obj.console_run()
@@ -517,10 +588,14 @@ if __name__ == "__main__":
     location = data.get('location', '')
     month = data.get('month', 1)
     year = data.get('year', 2026)
+    limit = data.get('limit', 100)
+    offset = data.get('offset', 0)
 
     response = {}
     if option == 'get_report':
         response = script_obj.get_employees_attendance(group_by=group_by, locations=locations, month=month, year=year)
+    elif option == 'get_attendance_data':
+        response = script_obj.get_attendance_data(locations=locations, limit=limit, offset=offset)
     elif option == 'get_locations':
         response = script_obj.get_locations()
     elif option == 'get_guard_turn_details':
