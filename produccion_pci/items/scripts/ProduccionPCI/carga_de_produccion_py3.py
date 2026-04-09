@@ -1565,7 +1565,7 @@ class Produccion_PCI( Produccion_PCI ):
                         is_updating_record_exists = this_record['update'].get('exists_copy', False)
                         record_os_copy = this_record['update'].get('record_copy')
                         form_id_to_update = this_record['update'].get('form_id')
-                        form_id_in_admin = self.dict_equivalences_forms_id[form_id_to_update]
+                        form_id_in_admin = self.dict_equivalences_forms_id.get(form_id_to_update)
                         folio_to_update = this_record['update'].get('folio')
                         folio_to_update = this_record['update'].pop('folio_record_admin', folio_to_update)
                         telefono_to_update = this_record['update'].get('answers',{}).get('f1054000a010000000000005','')
