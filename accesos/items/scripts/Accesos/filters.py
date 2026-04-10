@@ -9,23 +9,16 @@ from accesos_utils import Accesos
 class Accesos(Accesos):
 
     def get_mongo_string_list(func):
-        """
-        Decorador que utiliza aggregate para obtener una lista de strings únicos de un campo específico tomando en cuenta un filtro personalizado.
-        """
         def wrapper(self, *args, **kwargs):
             config = func(self, *args, **kwargs)
-            
             match_query_custom = config.get('query', {})
             form_id = config.get('form_id')
             project_fields = config.get('project', {})
-
             match_query = {"deleted_at": {"$exists": False}}
             if form_id:
                 match_query["form_id"] = form_id
             match_query.update(match_query_custom)
-            
             query = [{"$match": match_query}, {"$project": {"_id": 0, **project_fields}}]
-            print('query', query)
             data = self.format_cr(self.cr.aggregate(query))
             format_data = []
             if data:
@@ -36,30 +29,18 @@ class Accesos(Accesos):
         return wrapper
 
     def get_mongo_distinct_list(func):
-        """
-        Decorador que utiliza distinct para obtener una lista de valores únicos de un campo específico tomando en cuenta un filtro personalizado.
-        """
         def wrapper(self, *args, **kwargs):
             config = func(self, *args, **kwargs)
-            
             field_name = config.get('field')
             form_id = config.get('form_id')
             match_query_custom = config.get('query', {})
-
             if not field_name:
                 return []
-
-            # Construir filtro base
             match_query = {"deleted_at": {"$exists": False}}
             if form_id:
                 match_query["form_id"] = form_id
             match_query.update(match_query_custom)
-
-            # Ejecutar distinct directamente en la colección
-            print(f'Ejecutando distinct en campo: {field_name} con filtro: {match_query}')
             data = self.cr.distinct(field_name, match_query)
-            
-            # Asegurar que todos son strings y remover Nones si existen
             return [str(item) for item in data if item is not None]
         return wrapper
 
@@ -123,14 +104,57 @@ class Accesos(Accesos):
         ]
         return filters
 
+    def get_filters_rondines(self):
+        """
+        Obtiene los filtros para la vista de Rondines
+        """
+        filters = [
+            {
+                "defaultDisplayOpen": True,
+                "key": "estatus_rondin",
+                "label": "Estatus",
+                "type": "single",
+                "options": [
+                    {"label": "Corriendo", "value": "corriendo"},
+                    {"label": "Pausado",   "value": "pausado"},
+                    {"label": "Cancelado", "value": "cancelado"},
+                    {"label": "Cerrado",   "value": "cerrado"},
+                ]
+            },
+            {
+                "defaultDisplayOpen": True,
+                "key": "tipo_rondin",
+                "label": "Tipo",
+                "type": "single",
+                "options": [
+                    {"label": "QR",  "value": "qr"},
+                    {"label": "NFC", "value": "nfc"},
+                ]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "recurrencia",
+                "label": "Recurrencia",
+                "type": "single",
+                "options": [
+                    {"label": "Con recurrencia", "value": "Cuenta Con Una Recurrencia"},
+                    {"label": "Sin recurrencia", "value": "No Recurrente"},
+                    {"label": "Única ocasión",   "value": "Es De Única Ocación"},
+                ]
+            },
+        ]
+        return filters
+
+
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
     script_obj.console_run()
-    data = script_obj.data.get('data',{})
-    option = data.get("option",'')
+    data = script_obj.data.get('data', {})
+    option = data.get("option", '')
 
     dispatcher = {
-        "in_and_out": lambda: script_obj.get_filters_in_and_out()
+        "in_and_out": lambda: script_obj.get_filters_in_and_out(),
+        "rondines":   lambda: script_obj.get_filters_rondines()
     }
 
     action = dispatcher.get(option)
@@ -139,5 +163,4 @@ if __name__ == "__main__":
     else:
         response = {"error": "Opción no válida"}
 
-    script_obj.HttpResponse({"data":response})
-
+    script_obj.HttpResponse({"data": response})
