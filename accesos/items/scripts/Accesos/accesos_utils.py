@@ -150,6 +150,10 @@ class Accesos( Accesos):
             'phone_to': '699f302213e8f8740c465bfc',
             'tipo_de_notificacion': '699dfe3b82be0dbe0319d38c'
         })
+        self.cons_f.update({
+            'quien_recibe_otro': '69c47a1ce96590f9dbf494b0',
+        })
+        
 
 
     def _do_access(self, access_pass, location, area, data):
@@ -2263,12 +2267,80 @@ class Accesos( Accesos):
                 answers[self.PROVEEDORES_CAT_OBJ_ID] = {self.paquetes_fields['proveedor']:value}
             elif key == 'quien_recibe_paqueteria':
                 answers[self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID] = {self.mf['nombre_empleado']:value}
+            elif key == 'quien_recibe_otro':
+                answers[self.cons_f['quien_recibe_otro']] = value
             else:
                 answers.update({f"{self.paquetes_fields[key]}":value})
         metadata.update({'answers':answers})
         res=self.lkf_api.post_forms_answers(metadata)
         return res
 
+    def get_paquetes(self, location= "", area="", status="", dateFrom="", dateTo="", filterDate=""):
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id": self.PAQUETERIA,
+        }
+        if location:
+             match_query[f"answers.{self.paquetes_fields['ubicacion_paqueteria']}"] = location
+        if area:
+             match_query[f"answers.{self.paquetes_fields['area_paqueteria']}"] = area
+        if status:
+             match_query[f"answers.{self.paquetes_fields['estatus_paqueteria']}"] = status
+
+        user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
+        zona = user_data.get('timezone','America/Monterrey')
+
+        if filterDate != "range":
+            dateFrom, dateTo = self.get_range_dates(filterDate,zona)
+
+            if dateFrom:
+                dateFrom = str(dateFrom)
+            if dateTo:
+                dateTo = str(dateTo)
+        if dateFrom and dateTo:
+            match_query.update({
+                f"answers.{self.paquetes_fields['fecha_recibido_paqueteria']}": {"$gte": dateFrom, "$lte": dateTo},
+            })
+        elif dateFrom:
+            match_query.update({
+                f"answers.{self.paquetes_fields['fecha_recibido_paqueteria']}": {"$gte": dateFrom}
+            })
+        elif dateTo:
+           match_query.update({
+                f"answers.{self.paquetes_fields['fecha_recibido_paqueteria']}": {"$lte": dateTo}
+            })
+        print("HOLAA")
+        query = [
+            {'$match': match_query },
+            {'$project': {
+                "folio":"$folio",
+                "_id":"$_id",
+                'created_at':'$created_at',
+                'ubicacion_paqueteria':f"$answers.{self.paquetes_fields['ubicacion_paqueteria']}",
+                'area_paqueteria': f"$answers.{self.paquetes_fields['area_paqueteria']}",
+                'fotografia_paqueteria':f"$answers.{self.paquetes_fields['fotografia_paqueteria']}",
+                'descripcion_paqueteria':f"$answers.{self.paquetes_fields['descripcion_paqueteria']}",
+                'quien_recibe_paqueteria':f"$answers.{self.paquetes_fields['quien_recibe_cat']}.{self.paquetes_fields['quien_recibe_paqueteria']}",
+                'guardado_en_paqueteria': f"$answers.{self.paquetes_fields['guardado_en_paqueteria']}",
+                'fecha_recibido_paqueteria': f"$answers.{self.paquetes_fields['fecha_recibido_paqueteria']}",
+                'fecha_entregado_paqueteria': f"$answers.{self.paquetes_fields['fecha_entregado_paqueteria']}",
+                'estatus_paqueteria': f"$answers.{self.paquetes_fields['estatus_paqueteria']}",
+                'entregado_a_paqueteria': f"$answers.{self.paquetes_fields['entregado_a_paqueteria']}",
+                'proveedor': f"$answers.{self.paquetes_fields['proveedor_cat']}.{self.paquetes_fields['proveedor']}",
+                'quien_recibe_otro': f"$answers.{self.cons_f['quien_recibe_otro']}",
+            }},
+            {'$sort':{'created_at':-1}},
+        ]
+        if not filterDate:
+            query.append(
+                {"$limit":25}
+            )
+        pr= self.format_cr_result(self.cr.aggregate(query))
+        for x in pr:
+            status = x.get('estatus_paqueteria', [])
+            x['estatus_paqueteria'] = status.pop() if status else ""
+        return pr
+   
     def update_paquete(self, data_paquete, folio):
         #---Define Answers
         answers = {}
@@ -2281,149 +2353,14 @@ class Accesos( Accesos):
                 answers[self.LOCKERS_CAT_OBJ_ID] ={self.mf['locker_id']:value} 
             elif key == 'proveedor':
                 answers[self.PROVEEDORES_CAT_OBJ_ID] = {self.paquetes_fields['proveedor']:value}
-            elif key == 'quien_recibe_paqueteria':
-                answers[self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID] = {self.mf['nombre_empleado']:value}
+            elif key == 'quien_recibe_otro':
+                answers[self.cons_f['quien_recibe_otro']] = value
             else:
                 answers.update({f"{self.paquetes_fields[key]}":value})
         if answers or folio:
             return self.lkf_api.patch_multi_record( answers = answers, form_id=self.PAQUETERIA, folios=[folio])
         else:
             self.LKFException('No se mandarón parametros para actualizar')
-
-    def get_list_bitacora(self, location=None, area=None, prioridades=[], dateFrom='', dateTo='', filterDate="", limit=20, offset=0):
-        match_query = {
-            "deleted_at":{"$exists":False},
-            "form_id": self.BITACORA_ACCESOS
-        }
-
-        if location:
-            if isinstance(location, list):
-                match_query.update({f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}": {"$in": location}})
-            else:
-                match_query.update({f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}":location})
-        if area:
-            match_query.update({f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['nombre_area']}":area})
-        if prioridades:
-            match_query[f"answers.{self.bitacora_fields['status_visita']}"] = {"$in": prioridades}
-  
-        zona = self.user.get('timezone','America/Monterrey')
-        if filterDate != "range":
-            dateFrom, dateTo = self.get_range_dates(filterDate, zona)
-            if dateFrom:
-                dateFrom = str(dateFrom)
-            if dateTo:
-                dateTo = str(dateTo)
-
-        if dateFrom and dateTo:
-           match_query.update({
-                f"answers.{self.mf['fecha_entrada']}": {"$gte": dateFrom, "$lte": dateTo},
-            })
-        elif dateFrom:
-            match_query.update({
-                f"answers.{self.mf['fecha_entrada']}": {"$gte": dateFrom}
-            })
-        elif dateTo:
-            match_query.update({
-                f"answers.{self.mf['fecha_entrada']}": {"$lte": dateTo}
-            })
-        
-        proyect_fields ={
-            '_id': 1,
-            'folio': "$folio",
-            'created_at': "$created_at",
-            'updated_at': "$updated_at",
-            'a_quien_visita':f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_empleado']}",
-            'documento': f"$answers.{self.mf['documento']}",
-            'caseta_entrada':f"$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['nombre_area']}",
-            'codigo_qr':f"$answers.{self.mf['codigo_qr']}",
-            'comentarios':f"$answers.{self.bitacora_fields['grupo_comentario']}",
-            'fecha_salida':f"$answers.{self.mf['fecha_salida']}",
-            'fecha_entrada':f"$answers.{self.mf['fecha_entrada']}",
-            'fotografia': f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['foto']}",
-            'equipos':f"$answers.{self.mf['grupo_equipos']}",
-            'grupo_areas_acceso': f"$answers.{self.mf['grupo_areas_acceso']}",
-            'id_gafet': f"$answers.{self.GAFETES_CAT_OBJ_ID}.{self.gafetes_fields['gafete_id']}",
-            'id_locker': f"$answers.{self.LOCKERS_CAT_OBJ_ID}.{self.lockers_fields['locker_id']}",
-            'identificacion':  f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['identificacion']}",
-            'pase_id': {"$toObjectId":f"$answers.{self.mf['codigo_qr']}"},
-            'motivo_visita':f"$answers.{self.CONFIG_PERFILES_OBJ_ID}.{self.mf['motivo']}",
-            'nombre_area_salida':f"$answers.{self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.mf['nombre_area_salida']}",
-            'nombre_visitante':f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['nombre_visita']}",
-            'contratista':f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['empresa']}",
-            'perfil_visita':{'$arrayElemAt': [f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['nombre_perfil']}",0]},
-            'status_gafete':f"$answers.{self.mf['status_gafete']}",
-            'status_visita':f"$answers.{self.mf['tipo_registro']}",
-            'ubicacion':f"$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}",
-            'vehiculos':f"$answers.{self.mf['grupo_vehiculos']}",
-            'visita_a': f"$answers.{self.mf['grupo_visitados']}"
-        }
-
-        lookup = {
-            'from': 'form_answer',
-            'localField': 'pase_id',
-            'foreignField': '_id',
-            "pipeline": [
-                {'$match':{
-                    "deleted_at":{"$exists":False},
-                    "form_id": self.PASE_ENTRADA,
-                }},
-                {'$project':{
-                    "_id": 0, 
-                    'motivo_visita':f"$answers.{self.CONFIG_PERFILES_OBJ_ID}.{self.mf['motivo']}",
-                    'grupo_areas_acceso': f"$answers.{self.mf['grupo_areas_acceso']}",                    
-                }},
-            ],
-            'as': 'pase',
-        }
-       
-        query = [
-            {'$match': match_query },
-            {'$project': proyect_fields},
-            {'$lookup': lookup},
-            {'$sort':{'created_at':-1}},
-        ]
-
-        count_query = [
-            {"$match": match_query},
-            {"$count": "total"}
-        ]
-        
-        count_result = self.format_cr(self.cr.aggregate(count_query))
-        total_count = count_result[0]['total'] if count_result else 0
-        current_page = (offset // limit) + 1 if limit else 1
-        total_pages = ceil(total_count / limit) if limit else 1
-
-        query.append({'$skip': offset})
-        query.append({'$limit': limit})
-
-        records = self.format_cr(self.cr.aggregate(query))
-
-        for r in records:
-            pase = r.pop('pase')
-            pase_id = r.pop('pase_id')
-            if len(pase) > 0 :
-                pase = pase[0]
-                r['motivo_visita'] = self.unlist(pase.get('motivo_visita',''))
-                r['grupo_areas_acceso'] = self._labels_list(pase.get('grupo_areas_acceso',[]), self.mf)
-            r['id_gafet'] = r.get('id_gafet','')
-            r['status_visita'] = r.get('status_visita','').title().replace('_', ' ')
-            r['contratista'] = self.unlist(r.get('contratista',[]))
-            r['status_gafete'] = r.get('status_gafete','').title().replace('_', ' ')
-            r['documento'] = r.get('documento','')
-            r['grupo_areas_acceso'] = self._labels_list(r.pop('grupo_areas_acceso',[]), self.mf)
-            r['comentarios'] = self.format_comentarios(r.get('comentarios',[]))
-            r['vehiculos'] = self.format_vehiculos(r.get('vehiculos',[]))
-            r['equipos'] = self.format_equipos(r.get('equipos',[]))
-            r['visita_a'] = self.format_visita(r.get('visita_a',[]))
-            r['pase_id']=str(pase_id)
-
-        return {
-            "records": records,
-            "total_records": total_count,
-            "total_pages": total_pages,
-            "actual_page": current_page,
-            "records_on_page": len(records)
-        }
 
     def get_pdf_seg(self, qr_code, template_id=None, name_pdf=None):
         return self.lkf_api.get_pdf_record(qr_code, template_id = template_id, name_pdf =name_pdf, send_url=True)
@@ -3050,6 +2987,53 @@ class Accesos( Accesos):
         if(access_pass.get('site', '') == 'accesos'):
             nombre_visita_a = access_pass.get('visita_a')
             # access_pass['ubicaciones'] = [location]
+        nombre_visita_a = access_pass.get('worker_name')
+        
+        ubicaciones = access_pass.get('ubicaciones')
+        location = ubicaciones[0] if isinstance(ubicaciones, list) and ubicaciones else None
+
+        #Visita A
+        answers[self.mf['grupo_visitados']] = []
+        nombre_visita_a = access_pass.get('visita_a') if not nombre_visita_a else nombre_visita_a
+        if access_pass.get('selected_visita_a'):
+            nombre_visita_a = access_pass.get('selected_visita_a')
+        visita_set = {
+            self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID:{
+                self.mf['nombre_empleado'] : nombre_visita_a,
+                }
+            }
+        options_vistia = {
+              "group_level": 3,
+              "startkey": [location, nombre_visita_a],
+              "endkey": [location, f"{nombre_visita_a}\n",{}],
+            }
+        cat_visita = self.catalogo_view(self.CONF_AREA_EMPLEADOS_CAT_ID, self.PASE_ENTRADA, options_vistia)
+        if len(cat_visita) > 0:
+            cat_visita =  {key: [value,] for key, value in cat_visita[0].items() if value}
+        else:
+            selector = {}
+            selector.update({f"answers.{self.mf['nombre_empleado']}": nombre_visita_a})
+            fields = ["_id", f"answers.{self.mf['nombre_empleado']}", f"answers.{self.mf['email_visita_a']}", f"answers.{self.mf['id_usuario']}"]
+
+            mango_query = {
+                "selector": selector,
+                "fields": fields,
+                "limit": 1
+            }
+
+            row_catalog = self.lkf_api.search_catalog(self.CONF_AREA_EMPLEADOS_CAT_ID, mango_query)
+            if row_catalog:
+                visita_set[self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID].update({
+                    self.mf['nombre_empleado']: nombre_visita_a,
+                    self.mf['email_visita_a']: [row_catalog[0].get(self.mf['email_visita_a'], "")],
+                    self.mf['id_usuario']: [row_catalog[0].get(self.mf['id_usuario'], "")],
+                })
+
+        visita_set[self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID].update(cat_visita)
+        answers[self.mf['grupo_visitados']].append(visita_set)
+
+
+
 
         answers[self.UBICACIONES_CAT_OBJ_ID] = {}
 
