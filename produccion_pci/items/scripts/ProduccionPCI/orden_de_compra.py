@@ -386,10 +386,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         extra_filters = {'answers.f2361400a010000000000005':'liberado'}
 
         # extra_filters['folio'] = {'$in': [
-        #     "111315156699910107", "111249366699541090", "293774546181435970", "111228446691058145", 
-        #     "111288226699174650", "111301456699826635", "111310616699848623", "294288286188245217", 
-        #     # cobre
-        #     "111287886699851779", "111374366699400609", "111399596699528935", "111343556691059604", "111318996699884108"
+        #     "403793536434359935", "404017976424220217", "292915366186884720", "406862816444179525", "406888596699400609"
         # ]}
 
         if is_cobre:
@@ -2447,6 +2444,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         dict_form_connections = {}
         map_users_email, map_email_connections = {}, {}
         ocs_to_psr = {}
+        descuentos_no_aplicados = []
 
         for div in self.all_divisiones:
             tecnologia = div.get('tecnologia')
@@ -2469,6 +2467,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             # Se revisa que los emails de los descuentos sean correctos
             form_connections = dict_form_connections[FORMA_ORDEN_SERVICIO]
             descuentos, emails_not_found = self.validate_emails_descuentos( form_connections, dict_emails_descuentos.get( tecnologia_division, [] ), map_users_email, map_email_connections )
+            
             if emails_not_found:
                 dict_general_msg_error[ tecnologia_division ].append( ' no se encontraron los emails para Descuento: ' + self.list_to_str(emails_not_found) )
                 continue
@@ -2485,9 +2484,12 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                 dict_general_msg_error[ tecnologia_division ].append( msg_response )
             if ocs_creadas:
                 dict_general_msg_ok.update( { tecnologia_division: ocs_creadas } )
-
         
-
+            # Si aun quedaron descuentos, quiere decir que no se aplicaron, se deja en caja de comentarios
+            if descuentos:
+                detail_no_aplicados = [ f"{d_no_a[0]} : {d_no_a[1].upper()} ${d_no_a[2]}" for d_no_a in descuentos ]
+                str_detail_no_aplicados = self.list_to_str(detail_no_aplicados, separator='\n')
+                descuentos_no_aplicados.append( f"{tecnologia.upper()} {division.upper()}: \n {str_detail_no_aplicados}" )
 
 
         # if ocs_to_psr:
@@ -2539,6 +2541,8 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             current_record['answers']['5f10d2efbcfe0371cb2fbd39'] = 'error'
         if general_msg_ok:
             current_record['answers']['5fd05319cd189468810100c8'] = self.list_to_str(general_msg_ok, separator='\n')
+        if descuentos_no_aplicados:
+            current_record['answers']['69d9ad2d7bc5b6c06c0edf2b'] = self.list_to_str(descuentos_no_aplicados, separator='\n\n')
         response = lkf_api.patch_record(current_record, record_id, jwt_settings_key='USER_JWT_KEY')
         
         # Se ejecuta script para pegar el folio de Orden de Compra en las Ordenes de Servicio
