@@ -88,10 +88,10 @@ class Accesos(Accesos):
             'pases':{
                 'forms':[self.PASE_ENTRADA],
                 'catalogs':[],
-                'scripts':[self.SCRIPT_PASE_ACCESO, self.GET_STATS]
+                'scripts':[self.SCRIPT_PASE_ACCESO, self.GET_STATS, self.SCRIPT_PASE_ACCESO_API]
             },
             'turnos':{
-                'forms':[self.CHECKIN_CASETAS, self.REGISTRO_ASISTENCIA, self.FORMATO_VACACIONES],
+                'forms':[self.CHECKIN_CASETAS, self.REGISTRO_ASISTENCIA, self.FORMATO_VACACIONES,self.SCRIPT_TURNOS],
                 'catalogs':[],
                 'scripts':[]
             },
