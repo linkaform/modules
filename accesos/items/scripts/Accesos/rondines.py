@@ -94,6 +94,8 @@ class Accesos(Accesos):
         rondin_data['areas'] = self.get_areas_details(areas_list=rondin_data.get('areas', []))
         
         for key, value in rondin_data.items():
+            print('key=', key)
+            print('value=', value)
             if key == 'ubicacion':
                 answers[self.Location.UBICACIONES_CAT_OBJ_ID] = {
                     self.Location.f['location']: value.get('location', ''),
@@ -127,9 +129,11 @@ class Accesos(Accesos):
                 answers[self.rondin_keys[key]] = value
             elif value == '':
                 pass
+            elif key == 'tipo_rondin':
+                answers[self.rondin_keys[key]] = value.lower()
             else:
                 answers[self.rondin_keys[key]] = value
-        print("ANSWERS", simplejson.dumps(answers, indent=4))
+        print('creando rondin...')
         response = self.create_register(
             module='Accesos',
             process='Creacion de un rondin',
