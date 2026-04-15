@@ -35,7 +35,7 @@ class Custom(Custom):
         # date_str = datetime.fromtimestamp(end_timestamp).strftime('%Y-%m-%d %H:%M:%S')
         date_str, start_today_utc = self.get_end_dates()
 
-        print(f'\n +++ user_id= {self.user_id} date_str= {date_str} start_today_utc= {start_today_utc} \n')
+        print(f'\n +++ {self.type_check} user_id= {self.user_id} date_str= {date_str} start_today_utc= {start_today_utc} \n')
 
         
         if not lkf.folio and self.user_id not in self.users_no_validate:
@@ -47,6 +47,13 @@ class Custom(Custom):
             elif self.type_check == 'check_out':
                 self.error_checkin("No se puede hacer Checkout sin su checkin previo")
         
+        if self.type_check == 'check_out':
+            # Se revisa que el usuario ya tenga una visita a tienda
+            record_visita = self.get_record_visita_tienda_today(start_today_utc)
+            print(f'     record_visita= {record_visita}')
+            if not record_visita:
+                self.error_checkin("No se puede hacer Checkout ya que no se encontró una Visita a Tienda registrada")
+
         if self.type_check == 'check_in' and not self.date_checkin:
             self.current_record['answers']['a00000000000000000000001'] = date_str
             self.current_record['answers']['a00000000000000000000005'] = dic_geolocation

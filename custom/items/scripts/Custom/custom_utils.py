@@ -15,6 +15,7 @@ class Custom(Custom):
         self.format_date = '%Y-%m-%d %H:%M:%S'
         self.user_id = self.user['user_id']
         self.form_id_checkin = 145667
+        self.form_id_visita_tienda = 145663
 
     def get_end_dates(self):
         # datos del registro
@@ -46,3 +47,11 @@ class Custom(Custom):
             'answers.a00000000000000000000007': 'check_in',
             'created_by_id': self.user_id
         }, data_to_get)
+
+    def get_record_visita_tienda_today(self, str_date_from):
+        return self.cr.find_one({
+            'form_id': self.form_id_visita_tienda,
+            'deleted_at': {'$exists': False},
+            'created_at': {'$gte': datetime.strptime( str_date_from, self.format_date )},
+            'created_by_id': self.user_id
+        }, {'folio': 1})
