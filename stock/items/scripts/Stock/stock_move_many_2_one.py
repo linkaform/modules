@@ -235,25 +235,7 @@ class Stock(Stock):
             #     self.ejecutar_transaccion({} )
         return True
     
-    def get_record_move_data(self, data):
-        move_group = data['answers'].get( self.f['move_group'], [] )
-        warehouse_from = data['answers'].get(self.WH.WAREHOUSE_LOCATION_OBJ_ID)
-        warehouse = warehouse_from.get( self.WH.f['warehouse'])
-        warehouse_location = warehouse_from.get( self.WH.f['warehouse_location'])
-        product_by_set = {}
-        for idx, rec_set in enumerate(move_group):
-            product_cat = rec_set.get(self.CATALOG_INVENTORY_OBJ_ID)
-            product_code = product_cat.get(self.Product.f['product_code'])
-            product_sku = product_cat.get(self.Product.f['product_sku'])
-            product_lot = product_cat.get(self.f['product_lot'])
-            move_qty = rec_set.get(self.f['move_group_qty'])
-            product_by_set[idx] = {
-                'product_code': product_code,
-                'product_sku': product_sku,
-                'product_lot': product_lot,
-                'move_qty': move_qty
-                }
-        return {'warehouse':warehouse, 'location':warehouse_location, 'product':product_by_set}
+
 
     def load_onts(self):
         self.read_xls_onts()
@@ -488,12 +470,16 @@ if __name__ == '__main__':
     # print('inv_adjust_status', simplejson.dumps(stock_obj.f, indent=3))
     status = stock_obj.answers[stock_obj.f['inv_adjust_status']]
     if hasattr(stock_obj,'folio'):
+        print('obotine el folio del objeto...')
         folio = stock_obj.folio
+        print('OBTUBO EL FOLOI?', folio)
     if not folio:
+        print('CALCULADO EL FOLOI')
         today = stock_obj.get_today_format()
         folio = "SAL"
         next_folio = stock_obj.get_record_folio(stock_obj.STOCK_ONE_MANY_ONE, folio)
         folio = f"{folio}-{next_folio}"
+    print('foliooooooooooooooooooooooo=', folio)
     if not stock_obj.record_id:
         stock_obj.record_id = stock_obj.object_id() 
     stock_obj.base_folio = folio
@@ -512,7 +498,6 @@ if __name__ == '__main__':
         if not records:
             stock_obj.LKFException('El archivo cargado no contiene datos, favor de revisar')
     groups = []
-
     if stock_obj.proceso_onts:
         stock_obj.sync_catalogs = False
         onts = [x[0] for x in records]

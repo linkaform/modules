@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from sre_parse import BRANCH
-import sys, simplejson, time
+import sys, simplejson, time, random, string
 from bson import ObjectId
 from datetime import datetime, timedelta, date
 from copy import deepcopy
@@ -78,6 +78,30 @@ class Stock(Stock):
             'capture_num_serie': '66c75e0c0810217b0b5593ca'
         }
         self.max_sets = 1500
+        self.production_keys = [
+                'area',
+                'cope', 
+                'division', 
+                'expediente_de_tecnico', 
+                'folio_produccion', 
+                'nombre_del_contratista',
+                'socio_comercial', 
+                'telefono', 
+                'tipo_de_tarea'
+            ]
+        self.f.update({
+            "area":"f1054000a0100000000000a2",
+            "cope":"f1054000a010000000000002",
+            "division":"f1054000a0100000000000b2",
+            "expediente_de_tecnico":"f1054000a0100000000000d6",
+            "folio_produccion":"69e2fd14e753a6398d9c4a87",
+            "nombre_del_contratista":"69e2fd14e753a6398d9c4a88",
+            "socio_comercial":"69e2fd14e753a6398d9c4a89",
+            "telefono":"f1054000a010000000000005",
+            "tipo_de_tarea":"f1054000a010000000000021",
+            })
+
+
 
     def do_groups(self, header, records):
         """
@@ -130,7 +154,7 @@ class Stock(Stock):
         metadata['updated_at'] = now
         return metadata
 
-    def direct_move_math(self, answers, move_in=0, move_out=0, product_stock={}, stock_pack=1):
+    def direct_move_math(self, answers, move_in=0, move_out=0, product_stock={}, stock_pack=1, warehouse_type=""):
         stock_move_in = product_stock.get('stock_in', answers.get(self.f['move_in'], 0))
         stock_move_out = product_stock.get('stock_out', answers.get(self.f['move_out'], 0))
         stock_sale = product_stock.get('sales', answers.get(self.f['product_lot_sales'], 0))
@@ -149,7 +173,7 @@ class Stock(Stock):
         answers[self.f['actuals']] = actuals + move_in - move_out
         answers[self.f['actual_eaches_on_hand']] = (stock_pack*actuals) + move_in - move_out
         new_actuals = answers[self.f['actuals']]
-        if new_actuals <= 0:
+        if new_actuals <= 0 or warehouse_type.lower() in ('client','scrap','supplier'):
             status = 'done'
         else:
             status = 'active'
@@ -206,12 +230,14 @@ class Stock(Stock):
         folios = []
         data_from = {'warehouse':warehouse, 'warehouse_location':location}
         new_records_data = []
+
         metadata = self.get_record_metadata(self.FORM_INVENTORY_ID)
         metadata['created_at'] = now
         metadata['updated_at'] = now
         new_stock_records = []
 
         folio = new_record['folio']
+        print('le estoy envienaod el folio???', folio)
         new_stock_records2, update_stock_records = self.direct_move_in_line_validations(folio, metadata, move_lines)
         new_records = []
         update_records = []
@@ -219,6 +245,7 @@ class Stock(Stock):
             if this_record:
                 new_records.append(this_record)
         if new_records:
+            print('environ=',self.get_enviroment())
             if self.get_enviroment() == 'prod':
                 with self.client.start_session() as session:
                     # Define el bloque de transacción
@@ -244,11 +271,14 @@ class Stock(Stock):
 
             else:
                 #Se insertan los nuevos registros a la base de datos
-                try:
+                # TODO, borrar esto es para pruebas q no me truene
+                # try:
+                if True:
+                    print('va a enviar el new_records.... NO INTERESA SABER EL VOUCHER')
                     res_new_stock = self.cr.insert_many(new_records)
-                    print('res_new_stock', res_new_stock)
-                except Exception as e:
-                    self.LKFException(f"2.Error en la creacion de registros de Stock.{e}")
+                    print('res_new_stock=',res_new_stock)
+                # except Exception as e:
+                #     self.LKFException(f"2.Error en la creacion de registros de Stock.{e}")
             sync_ids = []
             for idx, rec_idx in enumerate(res_new_stock.inserted_ids):
                 res[idx] = {
@@ -352,6 +382,7 @@ class Stock(Stock):
         observaciones = self.answers.get(self.f['stock_move_comments'])
         folio_recepcion = self.base_folio #self.answers.get(self.f['folio_recepcion'])
         wh_type = self.WH.warehouse_type(warehouse)
+        wh_to_type = self.WH.warehouse_type(warehouse_to)
         if self.proceso_onts:
             self.validate_move_qty_onts(warehouse, location, move_lines, move_type='in')
         for idx, moves in enumerate(move_lines):
@@ -366,15 +397,24 @@ class Stock(Stock):
                 vals = self.validate_move_qty(moves['product_code'], moves['sku'], moves['product_lot'], warehouse, location, move_qty)
             
             this_metadata = deepcopy(metadata)
+            #TODO REVISAR ESTO...
+            print('TODO ==========================================')
+            print('probar y borrar esto...')
+            this_metadata['voucher_id'] = ObjectId('69e301f01f4a5d5caf9c4a9f')
             if moves.get('folio'):
                 this_metadata['folio'] = moves['folio']
+            elif moves.get('folio_produccion'):
+                random_str = ''.join(random.choices(string.ascii_uppercase, k=3))
+                this_metadata['folio'] = f'PROD-{moves["folio_produccion"]}-{idx+1}-{random_str}'
             else:
                 this_metadata['folio'] = f'{folio}-{idx+1}'
             # records = self.cr.find({'form_id':self.FORM_INVENTORY_ID, 'folio':folio},{'folio':1})
             # folio_exists
             # move_line = self.answers[self.f['move_group']][idx]
-            answers = self.stock_inventory_model(moves, skus[moves['product_code']], labels=True)
-            answers.update(self.direct_move_math(answers, move_in= moves['move_group_qty']))
+            production_vars = {k: v for k, v in moves.items() if k in self.production_keys}
+            product_vars = {k: v for k, v in moves.items() if k not in self.production_keys}
+            answers = self.stock_inventory_model(product_vars, skus[moves['product_code']], labels=True)
+            answers.update(self.direct_move_math(answers, move_in= moves['move_group_qty'], warehouse_type=wh_to_type))
             answers.update({
                 self.WH.WAREHOUSE_LOCATION_OBJ_ID:{
                 self.f['warehouse']:warehouse_to,
@@ -385,8 +425,11 @@ class Stock(Stock):
                 self.f['folio_recepcion']: folio_recepcion,
                     }
                 )
+            if production_vars:
+                answers.update(self._lables_to_ids(production_vars))
             this_metadata['answers'] = answers
 
+            print('11111this_metadata', this_metadata)
             if self.proceso_onts:
                 #ONTS....
                 new_stock_records2[idx] = this_metadata
@@ -398,6 +441,7 @@ class Stock(Stock):
                             warehouse=warehouse_to, 
                             location=location_to)
             if exists:
+                print('exists????')
                 this_metadata['_id'] = exists['_id']
                 this_metadata['folio'] = exists['folio']
                 product_stock = self.get_product_stock(
@@ -406,7 +450,7 @@ class Stock(Stock):
                     lot_number=moves['product_lot'], 
                     warehouse=warehouse_to, 
                     location=location_to)
-                this_metadata['answers'].update(self.direct_move_math(exists['answers'], move_in=move_qty, product_stock=product_stock))
+                this_metadata['answers'].update(self.direct_move_math(exists['answers'], move_in=move_qty, product_stock=product_stock, warehouse_type=wh_type))
                 update_stock_records[idx] = this_metadata
             else:
                 ##### try to create the inventory
@@ -485,6 +529,26 @@ class Stock(Stock):
                     'sku_source' : this_sku.get(self.f['sku_source']),
                     })
         return skus
+
+    def get_record_move_data(self, data):
+        move_group = data['answers'].get( self.f['move_group'], [] )
+        warehouse_from = data['answers'].get(self.WH.WAREHOUSE_LOCATION_OBJ_ID)
+        warehouse = warehouse_from.get( self.WH.f['warehouse'])
+        warehouse_location = warehouse_from.get( self.WH.f['warehouse_location'])
+        product_by_set = {}
+        for idx, rec_set in enumerate(move_group):
+            product_cat = rec_set.get(self.CATALOG_INVENTORY_OBJ_ID)
+            product_code = product_cat.get(self.Product.f['product_code'])
+            product_sku = product_cat.get(self.Product.f['product_sku'])
+            product_lot = product_cat.get(self.f['product_lot'])
+            move_qty = rec_set.get(self.f['move_group_qty'])
+            product_by_set[idx] = {
+                'product_code': product_code,
+                'product_sku': product_sku,
+                'product_lot': product_lot,
+                'move_qty': move_qty
+                }
+        return {'warehouse':warehouse, 'location':warehouse_location, 'product':product_by_set}
 
     def carga_onts(self, header, records):
         header_dict = self.make_header_dict(header)
@@ -697,6 +761,7 @@ class Stock(Stock):
         args: move_type
 
         """
+        print('make_direct_stock_move', move_type)
         self.answer_label = self._labels()
         #se crea entrada al amcen
         response = self.direct_move_in(self.current_record)
@@ -733,25 +798,20 @@ class Stock(Stock):
         updated_ids = {}
         deleted_sync_ids = []
         edited_sync_ids = []
-        print('va a mover uno por uno en move_out_stock')
-
         for idx, product_data in record_data['product'].items():
             product_code = product_data['product_code']
             sku = product_data['product_sku']
             product_lot = product_data['product_lot']
             move_qty = product_data.get('move_qty',0)
-            print('moving 1')
             match_query = self.lot_match(product_code, sku, record_data['warehouse'], record_data['location'], product_lot)
             cr_data = self.cr.find(match_query)
             product_db_info = cr_data.next()
-            print('moving 2')
             product_db_info.update(self.get_record_metadata(metadata=product_db_info, pop_common=False))
             product_stock = self.get_product_stock(product_code, sku=sku, lot_number=product_lot, warehouse=record_data['warehouse'], location=record_data['location'])
             # acutals = product_stock.get('actuals',0)
             product_db_info['answers'].update(self.direct_move_math(product_db_info['answers'],  move_in=0, move_out=move_qty, product_stock=product_stock))
             rec_id = product_db_info.pop('_id')
             this_res = self.cr.update_one({'_id':ObjectId(rec_id)}, {"$set":product_db_info })
-            print('moving 3')
             updated_ids[idx] = {
                     'acknowledged': this_res.acknowledged, 
                     'modified_count': this_res.modified_count, 
@@ -765,15 +825,12 @@ class Stock(Stock):
             #     f"answers.{self.f['status']}":status,
             #     }})
             sync_action = 'edited'
-            print('moving 4')
             if product_db_info['answers'][self.f['status']] == 'done':
                 sync_action = 'deleted'
             if sync_action == 'deleted':
                 deleted_sync_ids.append(str(rec_id))
             else:
                 edited_sync_ids.append(str(rec_id))
-        print('deleted catalogs.... =', len(deleted_sync_ids))
-        print('edited catalogs.... =', len(edited_sync_ids))
         if deleted_sync_ids and self.sync_catalogs:
             sync_res = self.lkf_api.sync_catalogs_records({
                     'catalogs_ids':[self.CATALOG_INVENTORY_ID],
@@ -786,7 +843,6 @@ class Stock(Stock):
                     'form_answers_ids':edited_sync_ids,
                     'status':'edited',
                     })
-        print('moving 5')
         return updated_ids    
 
     def move_in(self):
