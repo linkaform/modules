@@ -2297,6 +2297,8 @@ if __name__ == "__main__":
                 response = acceso_obj.sync_incidence_to_lkf(record=record)
             else:
                 response = acceso_obj.sync_records(records)
+        else:
+            response = acceso_obj.sync_records(records)
     elif option == 'clean_db':
         response = acceso_obj.clean_db(data)
     else:
