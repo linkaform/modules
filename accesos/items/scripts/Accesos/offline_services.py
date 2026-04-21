@@ -157,6 +157,8 @@ class Accesos(Accesos):
             'bitacora_rondin_url': '690cefdca2dff2f469da17e0',
             'cantidad_areas_inspeccionadas': '68a7b68a22ac030a67b7f8f8',
             'checked_at': '68a7b68a22ac030a67b7f8f8',
+            'form_name':'5d810a982628de5556500d55',
+            'form_id':'5d810a982628de5556500d56',
         })
         
         self.IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.heic'}
@@ -351,7 +353,7 @@ class Accesos(Accesos):
         
         max_retries = 3
         wait_time = 2
-        current_rev_version = int(_rev.split('-')[0])
+
         for attempt in range(max_retries):
             # self.cr_db = self.get_couch_user_db(db_name)
             record = self.cr_db.get(_id, revs_info=True)
@@ -359,30 +361,21 @@ class Accesos(Accesos):
                 return {'status_code': 404, 'type': 'error', 'msg': 'Record not found', 'data': {}}
 
             current_rev = record.rev
-            #testing borrar... igualo las revisones ara probar
-            _rev =  record.rev
-            try:
-                server_current_rev_version = int(record.rev.split('-')[0])
-            except:
-                server_current_rev_version = 0
             all_revs = [r['rev'] for r in record['_revs_info'] if r['status'] == 'available']
+
             if _rev == current_rev:
                 attachments = record.get("_attachments", {})
                 print('===> Revisión actual encontrada')
                 return record
-            elif current_rev_version < server_current_rev_version:
-                print(f'===> Revisión vieja solicitada {_rev} , ultima revision registrada: {current_rev}')
-                return {'status_code': 461, 'type': 'error', 'msg': f'Old revision requested: {_rev}, current revision is: {current_rev}', 'data': {}}
-            elif current_rev_version > server_current_rev_version:
+            elif _rev in all_revs:
+                print(f'===> Revisión vieja, ultima revision registrada: {current_rev}')
+                return {'status_code': 461, 'type': 'error', 'msg': 'Old revision found', 'data': {}}
+            else:
                 print(f'===> Revisión aún no propagada (Intento {attempt + 1}/{max_retries})')
                 if attempt < max_retries - 1:
                     time.sleep(wait_time)
                 else:
                     return {'status_code': 462, 'type': 'error', 'msg': 'Revision not yet propagated', 'data': {}}
-            else:
-                print(f'===> Registro {_id} no econtrado')
-                return {'status_code': 404, 'type': 'error', 'msg': 'Revision not yet propagated', 'data': {}}
-            return {'status_code': 404, 'type': 'error', 'msg': 'No record found...', 'data': {}}
 
     def upload_file_from_couchdb(self, image_data, attachment_name, id_forma_seleccionada, id_field):
         temp_dir = tempfile.gettempdir()
@@ -414,15 +407,80 @@ class Accesos(Accesos):
             os.remove(temp_file_path)
         return update_file
     
-    def assign_user_inbox(self, data):
-        user_id_to_assign = self.unlist(data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['id_usuario'], ''))
+    def build_area_inspection_map(self, data):
+        """
+        Construye:
+        {
+            'areas': {'nombre area': form_id},
+            'inspection_ids': {
+                form_id: [schema_preguntas]
+            }
+        }
+        """
+        result = {
+            'areas': {},
+            'inspection_ids': {}
+        }
+        for item in data:
+            area_name = item.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID,{}).get(self.f['nombre_area'])
+            for _, value in item.items():
+                form_id = self.unlist(value.get(self.f['form_id'] ))
+                if form_id:
+                    result['areas'][area_name] = form_id
+                if form_id not in result['inspection_ids']:
+                    result['inspection_ids'][form_id] = self.get_form_question_schema(form_id)
+        return result
 
+    def get_form_question_schema(self, form_id):
+        """
+        Obtiene las pregutnas del formulario. Solo regiresa las pregutnas aceptadas por el rondin
+        Args:
+            form_id: el id de la forma a buscar y regresar con esuquema de pregutnas 
+        Regresa el esquema de preguntas de una forma de Linkaform:
+        [
+            {
+                'pregunta': '...',
+                'tipo': 'radio|checkbox|decimal|integer|text',
+                'opciones': [...],
+                'required': True|False
+            }
+        ]
+        """
+        res = self.lkf_api.get_form_id_fields(form_id)
+        if not res:
+            return []
+
+        form_info = res[0] if isinstance(res, list) else res
+        fields = form_info.get('fields', [])
+
+        questions = []
+        for field in fields:
+            options = field.get('options', [])
+            question_schema = {
+                'pregunta': field.get('label', ''),
+                'tipo': field.get('field_type',''),
+                'opciones': [opt.get('label') for opt in options if opt.get('label')],
+                'required': field.get('required', False)
+            }
+            questions.append(question_schema)
+
+        return questions
+
+
+    def assign_user_inbox(self, data):
+        """
+        Asigna registro a usuario
+        """
+        user_id_to_assign = self.unlist(data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['id_usuario'], ''))
         if not user_id_to_assign:
             self.LKFException('No se encontro id de usuario en el registro a asignar')
         db_name = f'clave_{user_id_to_assign}'
-        # self.cr_db = self.get_couch_user_db(db_name)
+        #sete la base de datos del usuario
+        self.cr_db = self.get_couch_user_db(db_name)
         record = self.cr_db.get(self.record_id)
-        if record:
+        #test borrar esto
+        # if record:
+        if False:
             return {'status_code': 202, 'type': 'success', 'msg': 'Ya existe el registro', 'data': {}}
 
         user_name_to_assign = data.get(self.USUARIOS_OBJ_ID, {}).get(self.mf['nombre_usuario'], '')
@@ -430,6 +488,8 @@ class Accesos(Accesos):
         ubicacion_recorrido = data.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], '')
         
         recorrido_info = self.get_info_recorrido(nombre_recorrido, ubicacion_recorrido)
+        print('recorrido_info',recorrido_info)
+        print('data',data)
         
         #! Revisar timezone en bitacora si sera necesario
         # user_data = self.lkf_api.get_user_by_id(self.user_id)
@@ -442,8 +502,13 @@ class Accesos(Accesos):
             lat = self.geolocation[0]
             long = self.geolocation[1]
         epoc_today = int(time.time())
+        #obtiene las areas bien formateadas
         format_check_areas = self.get_area_images(data.get(self.f['grupo_areas_visitadas'], []))
+        inpections_by_area = self.build_area_inspection_map(data.get(self.f['grupo_areas_visitadas'], []))
+
         for i in format_check_areas:
+            form_id = inpections_by_area['areas'].get(i['area'])
+            i['inspeccion'] = inpections_by_area['inspection_ids'].get(form_id, {})
             i['checked'] = False
             i['checked_at'] = ''
             i['check_area_id'] = ''
@@ -453,6 +518,7 @@ class Accesos(Accesos):
             "type": "rondin",
             "inbox": True,
             "status": "synced",
+            "folio": getattr(self, 'folio', None),
             "status_user": "new",
             "created_at": epoc_today,
             "updated_at": self.today_str( date_format='datetime'),
@@ -536,66 +602,20 @@ class Accesos(Accesos):
         #         'rondin_id': rondin_id
         #     })
         response = self.create_check_area(complete_record)
-        breakpoint()
         if response.get('status_code') in [200, 201, 202, 208,]:
             complete_record['status'] = 'received'
-            complete_record['status_user'] = 'received'
             #TODO delete backward compatibility
-            complete_record['status_check'] = 'received'
             complete_record['folio'] = response.get('json', {}).get('folio', '')
             self.cr_db.save(complete_record)
             status = {'status_code': 200, 'type': 'success', 'msg': 'Record received successfully', 'data': {}}
-            
-            # #! 1. Obtener la bitacora del rondin en Linkaform y obtener las areas ya revisadas
-            # time.sleep(5)
-                
-            # #! 2. Obtener la bitacora del rondin en CouchDB y obtener las areas ya revisadas
-            # bitacora_in_couch = self.cr_db.get(rondin_id)
-            # if bitacora_in_couch:
-            #     ultimo_check_area_id = bitacora_in_couch.get('record', {}).get('ultimo_check_area_id', '')
-            #     checks_in_couch = bitacora_in_couch.get('record', {}).get('check_areas', [])
-            #     format_checks_in_couch = []
-            #     for item in checks_in_couch:
-            #         #! 2.1 Se compara si el check area ya existe en la bitacora de Linkaform
-            #         if item.get('checked') and not item.get('area') in checks_in_lkf:
-            #             format_checks_in_couch.append(item.get('check_area_id'))
-
-            #     #! 3. Si el ultimo check area es igual al check area que se acaba de crear y hay nuevos checks
-            #     #! se actualiza la bitacora en Linkaform
-            #     if ultimo_check_area_id and ultimo_check_area_id == record_id and format_checks_in_couch:
-            #         new_checks = self.cr_db.find({
-            #             "selector": {
-            #                 "_id": {"$in": format_checks_in_couch}
-            #             }
-            #         })
-            #         new_areas = {}
-            #         for check in new_checks:
-            #             new_areas[check.get('record', {}).get('area')] = check.get('record', {})
-            #             new_areas[check.get('record', {}).get('area')].update({
-            #                 'fecha_check': check.get('created_at', ''),
-            #                 'record_id': check.get('_id', '')
-            #             })
-            #         new_incidencias = bitacora_in_couch.get('record', {}).get('incidencias', [])
-            #         #TODO ACTUALIZAR COUCH
-            #         print('debe de acutalizar couch')
-            # bitacora_in_lkf = self.get_bitacora_by_id(rondin_id)
-            # checks_in_lkf = []
-            # for item in bitacora_in_lkf.get('areas_del_rondin', []):
-            #     if item.get('fecha_hora_inspeccion_area'):
-            #         checks_in_lkf.append(item.get('incidente_area'))
-            #         print('checks_in_lkf', checks_in_lkf)
-            #         bitacora_response = self.update_bitacora(bitacora_in_lkf, {}, new_incidencias, new_areas)
-            #         print("bitacora_response", bitacora_response)
         else:
             if response.get('status_code') == 400:
                 last_error = response.get('json',{})
             else:
                 last_error = response.get('json',{}).get('error', 'sync_check_area_to_lkf: Error creating record.')
             if response.get('status_code') == 400 and response.get('json',{}).get('code',0) == 8:
+                print('TODO DESCOMENTARIAR PARA QUE SE MARQUE COMO RECIVIDO')
                 complete_record['status'] = 'received'
-                complete_record['status_user'] = 'received'
-                #TODO delete backward compatibility
-                complete_record['status_check'] = 'received'
                 complete_record['last_error'] = last_error
 
                 status = {'status_code': 208, 'type': 'success', 'msg': 'El id del registro no es único', 'data': {}}
@@ -607,6 +627,35 @@ class Accesos(Accesos):
             print('status', status)
         return status
     
+
+    def find_check_area_in_rondines(self, check_area_id):
+        rondines = self.cr_db.find({
+            "selector": {
+                "type": "rondin",
+                "record.check_areas": {
+                    "$elemMatch": {
+                        "check_area_id": check_area_id
+                    }
+                }
+            },
+            "limit": 1
+        })
+
+        rondin = next(iter(rondines), None)
+        if not rondin:
+            return None
+
+        check_areas = rondin.get('record', {}).get('check_areas', [])
+        for item in check_areas:
+            if item.get('check_area_id') == check_area_id:
+                return {
+                    'rondin_id': rondin.get('_id'),
+                    'rondin': rondin,
+                    'check_area': item
+                }
+
+        return None
+
     def process_single_check_for_rondin(self, rec):
         """
         Procesa un check_area y regresa info util para agruparla por rondin_id.
@@ -625,6 +674,9 @@ class Accesos(Accesos):
             "type": rec.get('type'),
         }
 
+        if not rondin_id:
+            check_data = self.find_check_area_in_rondines(_id)
+            rondin_id = check_data.get('rondin_id')
         return {
             "rondin_id": rondin_id,
             "check": check_info,
@@ -641,7 +693,8 @@ class Accesos(Accesos):
             return checks_by_rondin
 
         # Tetsting purposes...
-        #self.process_single_check_for_rondin(check_records[0])
+        # self.process_single_check_for_rondin(check_records[0])
+        # breakpoint()
 
         with ThreadPoolExecutor(max_workers=20) as executor:
             futures = {
@@ -794,12 +847,12 @@ class Accesos(Accesos):
     #         status = {'status_code': 400, 'type': 'error', 'msg': bitacora_response, 'data': {}}
     #     return status
 
-    def sync_rondin_to_lkf(self, rondin_id, checks_for_rondin=None, rondin_record=None):
+    def sync_rondin_to_lkf(self, rondin_id, checks_for_rondin=[], rondin_record={}):
         """
-        Actualiza la bitácora del rondín en Linkaform usando checks ya procesados.
+        Sincroniza la bitácora del rondín hacia Linkaform ya sea usando checks ya procesados. O 
+        Actualizar o cerrar el rondin en linkaform.
         No debe reconstruir estado desde CouchDB.
         """
-        checks_for_rondin = checks_for_rondin or []
         status = {}
 
         bitacora_in_lkf = self.get_bitacora_by_id(rondin_id)
@@ -813,7 +866,6 @@ class Accesos(Accesos):
 
         new_areas = {}
         new_incidencias = []
-
         for item in checks_for_rondin:
             if not item.get('ok'):
                 continue
@@ -825,8 +877,8 @@ class Accesos(Accesos):
 
             new_areas[area_name] = dict(check)
             new_areas[area_name].update({
-                'timezone': item.get('timezone', ''),
-                'fecha_check': item.get('created_at', ''),
+                'timezone': check.get('timezone') or  self.user.get('timezone'), 
+                'fecha_check': item.get('checked_at', ''),
                 'record_id': item.get('check_id', '')
             })
 
@@ -850,13 +902,10 @@ class Accesos(Accesos):
             new_incidencias,
             new_areas
         )
-        breakpoint()
         # solo si existe documento rondin y se sincronizó bien, marcar received
         if rondin_record and bitacora_response.get('status_code') in [200, 201, 202]:
             try:
                 rondin_record['status'] = 'received'
-                rondin_record['status_user'] = 'received'
-                rondin_record['status_rondin'] = 'received'
                 self.cr_db.save(rondin_record)
             except Exception as e:
                 return {
@@ -873,21 +922,21 @@ class Accesos(Accesos):
 
         return status
 
-    def process_single_rondin_with_checks(self, rec, checks_by_rondin):
-        rondin_id = rec.get('_id')
-        related_checks = checks_by_rondin.get(rondin_id, [])
+    # def process_single_rondin_with_checks(self, rec, checks_by_rondin):
+    #     rondin_id = rec.get('_id')
+    #     related_checks = checks_by_rondin.get(rondin_id, [])
 
-        # aquí puedes meterlos al rec o mandarlos como argumento
-        rec['processed_checks'] = related_checks
+    #     # aquí puedes meterlos al rec o mandarlos como argumento
+    #     rec['processed_checks'] = related_checks
 
-        res = self.sync_rondin_to_lkf(data=rec)
+    #     res = self.sync_rondin_to_lkf(data=rec)
 
-        return {
-            "rondin_id": rondin_id,
-            "status_code": res.get('status_code'),
-            "ok": res.get('status_code') in [200, 201, 202, 208],
-            "raw_result": res
-        }
+    #     return {
+    #         "rondin_id": rondin_id,
+    #         "status_code": res.get('status_code'),
+    #         "ok": res.get('status_code') in [200, 201, 202, 208],
+    #         "raw_result": res
+    #     }
 
     def process_rondin_stage(self, rondin_records, checks_by_rondin):
         rondin_results = []
@@ -935,11 +984,20 @@ class Accesos(Accesos):
 
         return rondin_results
 
-    def process_missing_rondines_from_checks(self, checks_by_rondin):
+    def update_rondines_from_checks(self, checks_by_rondin):
+        """
+        Actualiza el Rondin, segun los check que se estan sincronizando. Este caso aplica para cuando un rondin esta pausado o en progreso
+        Pero ya cuenta con checks de ubicacion, el rondin se va auto rellenando.
+        """
         results = []
 
         if not checks_by_rondin:
             return results
+
+        #TEST puposes
+        # for rondin_id, checks in checks_by_rondin.items():
+        #     self.sync_rondin_to_lkf(rondin_id, checks, None)
+        # print(stop)
 
         with ThreadPoolExecutor(max_workers=10) as executor:
             futures = {
@@ -1004,6 +1062,10 @@ class Accesos(Accesos):
             return datetime.max
 
     def format_incidencias_to_bitacora(self, bitacora_in_lkf, new_incidencias, new_areas):
+        """
+        Formate las incidencias para injectarlas al registro de bitacora de rondines
+        Si el registro de Bitacora de rondines tiene incidencias existente las toma enc uenta
+        """
         incidencias_list = []
         incidencias_existentes = bitacora_in_lkf.get('bitacora_rondin_incidencias', [])
         
@@ -1101,13 +1163,16 @@ class Accesos(Accesos):
         return incidencias_list
 
     def bitacora_set_area_format(self, nombre_area, check):
-        ts = check.get('fecha_check')
-        timezone_str = check.get('timezone', '')
+        ts = check.get('checked_at')
+        timezone_str = check.get('timezone') or self.user.get('timezone')
         fecha_str = ""
         if ts:
             try:
                 target_tz = pytz.timezone(timezone_str)
-                dt_aware = datetime.fromtimestamp(ts, tz=target_tz)
+                if isinstance(ts, str):
+                    dt_aware = target_tz.localize(datetime.strptime(ts, "%Y-%m-%d %H:%M:%S"))
+                else:
+                    dt_aware = datetime.fromtimestamp(ts, tz=target_tz)
                 fecha_str = dt_aware.strftime("%Y-%m-%d %H:%M:%S")
             except (pytz.exceptions.UnknownTimeZoneError, Exception):
                 fecha_str = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
@@ -1144,9 +1209,9 @@ class Accesos(Accesos):
             metadata.update({'geolocation': [data.get('geolocation').get('long'), data.get('geolocation').get('lat')]})
 
         metadata['start_date'] = record.get('checked_at', data.get('created_at', metadata['start_timestamp']))
-        metadata['start_timestamp'] = metadata['start_date'] 
-        metadata['end_timestamp'] = data.get('updated_at', metadata['end_timestamp'])
-        metadata['timezone'] = data.get('timezone', metadata.get('timezone'))
+        metadata['start_timestamp'] = self.get_epoch(metadata['start_date'] )
+        metadata['end_timestamp'] = self.get_epoch(data.get('updated_at', metadata['end_timestamp']))
+        metadata['timezone'] = data.get('timezone') or  metadata.get('timezone') or self.user.get('timezone')
 
         if data.get('rondin_id'):
             rondin_id = data.pop('rondin_id')
@@ -1203,6 +1268,7 @@ class Accesos(Accesos):
             
         
         metadata.update({'answers':answers})
+        print('ANSWERS=', simplejson.dumps(metadata, indent=3))
         res = self.lkf_api.post_forms_answers(metadata)
         return res
     
@@ -1356,6 +1422,7 @@ class Accesos(Accesos):
     #     ]
     #     response = self.format_cr(self.cr.aggregate(query))
     #     format_response = []
+
     #     if response:
     #         format_response = [item.get('_id') for item in response]
     #     return format_response
@@ -1398,7 +1465,7 @@ class Accesos(Accesos):
                     self.cr_db.save(record)
                 else:
                     record['status'] = 'error'
-                    record['last_error'] = response.get('error', 'Incorrect error search... offline_services.py')
+                    record['last_error'] = response['json']['error']
                     self.cr_db.save(record)
 
     def create_checks_in_lkf(self, records):
@@ -1428,7 +1495,11 @@ class Accesos(Accesos):
         return upload_image
     
     def update_bitacora(self, bitacora_in_lkf, data, new_incidencias, new_areas):
+        """
+        Actualiza la bitacora de Rondines
+        """
         answers={}
+        res = {}
         areas_list = []
         conf_recorrido = {}
         estatus_bitacora_in_couch = data.get('status_user', '')
@@ -1442,6 +1513,7 @@ class Accesos(Accesos):
         # Va a iterar las areas acutales si existe el nombre de la area en el rondin
         # quiere decir que ya previamente se habia inspeccionado, se actualzia el area
         # y se quita de las areas nuevas
+        print('updating bitacora')
         for item in bitacora_in_lkf.get('areas_del_rondin', []):
             nombre_area = item.get('incidente_area')
             check = new_areas.pop(nombre_area, None)
@@ -1451,6 +1523,7 @@ class Accesos(Accesos):
         # Despues de quitar las areas existentes, agrega las areas nuevas
         for nombre_area, check in new_areas.items():
             new_item = self.bitacora_set_area_format(nombre_area, check)
+            print('new_item=', new_item)
             bitacora_in_lkf['areas_del_rondin'].append(new_item)
 
         for key, value in bitacora_in_lkf.items():
@@ -1547,7 +1620,7 @@ class Accesos(Accesos):
                 '_id': bitacora_in_lkf.get('_id')
             })
             res = self.net.patch_forms_answers(metadata)
-            return res
+        return res
         
     def update_bitacora_with_retry(self, bitacora_in_lkf, data, new_incidencias, new_areas, max_retries=5, base_wait=2):
         """
@@ -1827,7 +1900,6 @@ class Accesos(Accesos):
         res = self.lkf_api.post_forms_answers(metadata)
 
         if res.get('status_code') in (200, 201, 202):
-            # self.cr_db.save(record)
             self.cr_db.delete(record)
             res = {'status_code': 200, 'type': 'success', 'msg': 'Area synced', 'data': {}}
         else:
@@ -1837,7 +1909,7 @@ class Accesos(Accesos):
             else:
                 last_error = res.get('json',{}).get('error','Error al crear la configuracon del area')
             if isinstance(last_error, dict):
-                record['status'] = 'user_error'
+                record['status'] = 'error'
                 last_error = last_error.get('exception', last_error)
 
             res = {'status_code': 400, 'type': 'error', 'msg': last_error, 'data': {}}
@@ -1847,32 +1919,32 @@ class Accesos(Accesos):
 
         return res
 
-    def process_record(self, rec):
-        """
-        Procesa registro segun su tipo
-        """
-        # try:
-        if True:
-            _id = rec.id
-            _rev = rec.rev
-            r_type = rec.get('type')
-            r_status = rec.get('status')
+    # def process_record(self, rec):
+    #     """
+    #     Procesa registro segun su tipo
+    #     """
+    #     # try:
+    #     if True:
+    #         _id = rec.id
+    #         _rev = rec.rev
+    #         r_type = rec.get('type')
+    #         r_status = rec.get('status')
 
-            print(f"Processing record {_id}  type={r_type}, status={r_status}")
-            if r_type == 'area':
-                res = self.config_area(rec)
-                print('Sync Area res=', res)
-            elif r_type == 'rondin':
-                print('todo...sync rondin')
-                res = self.sync_rondin_to_lkf(data=rec)
-            elif r_type == 'check_area':
-                print('Syncing Area ...')
-                res = acceso_obj.sync_check_area_to_lkf(complete_record=rec)
-            else:
-                print(f"Unknown type '{r_type}' for record {_id}, skipping.")
-                res = {'status_code': 400, 'msg': f"Unknown type '{r_type}'"}
+    #         print(f"Processing record {_id}  type={r_type}, status={r_status}")
+    #         if r_type == 'area':
+    #             res = self.config_area(rec)
+    #             print('Sync Area res=', res)
+    #         elif r_type == 'rondin':
+    #             print('todo...sync rondin')
+    #             res = self.sync_rondin_to_lkf(data=rec)
+    #         elif r_type == 'check_area':
+    #             print('Syncing Area ...')
+    #             res = acceso_obj.sync_check_area_to_lkf(complete_record=rec)
+    #         else:
+    #             print(f"Unknown type '{r_type}' for record {_id}, skipping.")
+    #             res = {'status_code': 400, 'msg': f"Unknown type '{r_type}'"}
 
-            return self._handle_result(res, _id)
+    #         return self._handle_result(res, _id)
 
 
         # except Exception as e:
@@ -2023,7 +2095,8 @@ class Accesos(Accesos):
         record_list = []
         records = self.cr_db.find({
             "selector": {
-                "status_user": "completed"
+                "status_user": "completed",
+                "status": "synced"
             },
             "limit": 1000
         })
@@ -2034,6 +2107,7 @@ class Accesos(Accesos):
         records_check = self.cr_db.find({
             "selector": {
                  "status_check": "completed",
+                 "status": "synced"
             },
             # "limit": 1000
             "limit": 1
@@ -2045,6 +2119,7 @@ class Accesos(Accesos):
         records_rondin = self.cr_db.find({
             "selector": {
                  "status_rondin": "completed",
+                 "status": "synced"
             },
             "limit": 1000
         })
@@ -2075,14 +2150,17 @@ class Accesos(Accesos):
             self.process_area_record,
             max_workers=10
         )
+
+        #todo
+        if  grouped_records.get('incidencia'):
+            response = acceso_obj.sync_incidence_to_lkf(record=record)
+
         # 1. primero checks
         checks_by_rondin = self.process_check_area_stage(
             grouped_records.get('check_area', [])
         )
         print('ya hizo los checks', checks_by_rondin)
-
         # checks_by_rondin = independent_results.get('check_area')
-
         # 2. luego rondines explícitos
         rondin_results = self.process_rondin_stage(
             grouped_records.get('rondin', []),
@@ -2090,7 +2168,7 @@ class Accesos(Accesos):
         )
 
         # 3. lo que sobró en checks_by_rondin son rondines que no venían como registro
-        missing_rondin_results = self.process_missing_rondines_from_checks(
+        missing_rondin_results = self.update_rondines_from_checks(
             checks_by_rondin
         )
 
@@ -2120,10 +2198,8 @@ class Accesos(Accesos):
                     existing_urls[item.get('file_name')] = item.get('file_url', '')
 
             attachments = i.get('_attachments', {})
-            media = []
+            media = self.do_attachments(attachments)
             if attachments:
-                media = self.do_attachments(attachments)
-
                 for m in media:
                     m_name = m.get('file_name')
                     m_url = m.get('file_url')
@@ -2179,26 +2255,26 @@ if __name__ == "__main__":
     acceso_obj.cr_db = acceso_obj.get_couch_user_db(db_name)
     if option == 'get_user_catalogs':
         response = acceso_obj.get_user_catalogs()
-    elif option == 'sync_to_lkf':
-        db_name = f'clave_{acceso_obj.user_id}'
-        acceso_obj.cr_db = acceso_obj.get_couch_user_db(db_name)
-        record = acceso_obj.get_couch_record(_id=_id, _rev=_rev)
-        record = dict(record)
-        type_sync = record.get('type', '')
-        if type_sync == 'incidencia':
-            response = acceso_obj.sync_incidence_to_lkf(record=record)
-        elif type_sync == 'check_area':
-            response = acceso_obj.sync_check_area_to_lkf(complete_record=record)
-        elif type_sync == 'rondin':
-            response = acceso_obj.sync_rondin_to_lkf(data=record)
-        elif type_sync == 'error':
-            response = record
-        else:
-            response = {'status_code': 400, 'type': 'error', 'msg': 'Unknown error', 'data': {
-                'type_sync': type_sync,
-                'record': record,
-                'db_name': db_name,
-            }}
+    # elif option == 'sync_to_lkf':
+    #     db_name = f'clave_{acceso_obj.user_id}'
+    #     acceso_obj.cr_db = acceso_obj.get_couch_user_db(db_name)
+    #     record = acceso_obj.get_couch_record(_id=_id, _rev=_rev)
+    #     record = dict(record)
+    #     type_sync = record.get('type', '')
+    #     if type_sync == 'incidencia':
+    #         response = acceso_obj.sync_incidence_to_lkf(record=record)
+        # elif type_sync == 'check_area':
+        #     response = acceso_obj.sync_check_area_to_lkf(complete_record=record)
+        # elif type_sync == 'rondin':
+        #     response = acceso_obj.sync_rondin_to_lkf(data=record)
+        # elif type_sync == 'error':
+        #     response = record
+        # else:
+        #     response = {'status_code': 400, 'type': 'error', 'msg': 'Unknown error', 'data': {
+        #         'type_sync': type_sync,
+        #         'record': record,
+        #         'db_name': db_name,
+        #     }}
     elif option == 'assign_user_inbox':
         response = acceso_obj.assign_user_inbox(data=acceso_obj.answers)
     elif option == 'complete_rondines':
@@ -2209,8 +2285,20 @@ if __name__ == "__main__":
         response = acceso_obj.reasignar_rondines(records=records, user_to_assign=user_to_assign)
     elif option == 'get_active_guards':
         response = acceso_obj.get_active_guards()
-    elif option == 'sync':
-        response = acceso_obj.sync_records(records)
+    elif option in ('sync','synced','rondin','check_area','sync_to_lkf'):
+        #todo quitar sync_to_lkf meterlo al new worflos
+        if  option == 'sync_to_lkf':
+            db_name = f'clave_{acceso_obj.user_id}'
+            acceso_obj.cr_db = acceso_obj.get_couch_user_db(db_name)
+            record = acceso_obj.get_couch_record(_id=_id, _rev=_rev)
+            record = dict(record)
+            type_sync = record.get('type', '')
+            if type_sync == 'incidencia':
+                response = acceso_obj.sync_incidence_to_lkf(record=record)
+            else:
+                response = acceso_obj.sync_records(records)
+        else:
+            response = acceso_obj.sync_records(records)
     elif option == 'clean_db':
         response = acceso_obj.clean_db(data)
     else:

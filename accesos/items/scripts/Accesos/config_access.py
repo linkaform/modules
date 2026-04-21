@@ -28,6 +28,7 @@ class Accesos(Accesos):
         self.SCRIPT_GOOGLE_WALLET = self.lkm.script_id('create_pass_google_wallet','id')
         self.SCRIPT_RONDINES = self.lkm.script_id('rondines','id')
         self.OFFLINE_SERVICES = self.lkm.script_id('offline_services','id')
+        self.FILTERS = self.lkm.script_id('filters','id')
 
         #TODO SHARE FORMS AND CATALOGGS
         self.module_permits = {
@@ -51,7 +52,8 @@ class Accesos(Accesos):
                     self.TIPO_DE_EQUIPO_ID,
                     self.UBICACIONES_CAT_ID,
                     self.USUARIOS_ID,
-                    self.VISITA_AUTORIZADA_CAT_ID,                
+                    self.VISITA_AUTORIZADA_CAT_ID,
+                    self.FILTERS             
                     ],
                 'scripts':[self.OFFLINE_SERVICES]
             },
@@ -88,10 +90,10 @@ class Accesos(Accesos):
             'pases':{
                 'forms':[self.PASE_ENTRADA],
                 'catalogs':[],
-                'scripts':[self.SCRIPT_PASE_ACCESO, self.GET_STATS]
+                'scripts':[self.SCRIPT_PASE_ACCESO, self.GET_STATS, self.SCRIPT_PASE_ACCESO_API]
             },
             'turnos':{
-                'forms':[self.CHECKIN_CASETAS, self.REGISTRO_ASISTENCIA, self.FORMATO_VACACIONES],
+                'forms':[self.CHECKIN_CASETAS, self.REGISTRO_ASISTENCIA, self.FORMATO_VACACIONES, self.SCRIPT_TURNOS],
                 'catalogs':[],
                 'scripts':[]
             },
@@ -118,9 +120,9 @@ class Accesos(Accesos):
             config = self.module_permits.get(menu, {})
             if not config:
                 continue
-            forms_needed.update(config.get('forms',[]))
-            catalogs_needed.update(config.get('catalogs'))
-            scripts_needed.update(config.get('scripts'))
+            forms_needed.update([x for x in config.get('forms',[]) if x])
+            catalogs_needed.update([x for x in config.get('catalogs') if x])
+            scripts_needed.update([x for x in config.get('scripts') if x])
 
         response_forms = self.set_item_permits(user_id, forms_needed, item_type='form')
         response_catalog = self.set_item_permits(user_id, catalogs_needed, item_type='catalog')

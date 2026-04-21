@@ -698,7 +698,7 @@ class PCI_Utils():
 
             key = f"{folio}||{telefono}"
 
-            data[key] = doc
+            data.setdefault(key, []).append(doc)
 
             folio_index.setdefault(folio, set()).add(telefono)
             telefono_index.setdefault(telefono, set()).add(folio)
@@ -709,8 +709,12 @@ class PCI_Utils():
         key = f"{folio}||{telefono}"
 
         #Caso 1: match exacto
-        if key in data:
-            return { "status": "ok", "data": data[key] }
+        records_integra_mts = data.get(key)
+        if records_integra_mts:
+            if len(records_integra_mts) > 1:
+                return { "status": "error", "message": "Se encontró más de un registro en HIT. Favor de revisar con soporte." }
+            
+            return { "status": "ok", "data": records_integra_mts[0] }
 
         # Caso 2: folio existe pero teléfono no coincide
         if folio in folio_index:
@@ -720,8 +724,8 @@ class PCI_Utils():
             ejemplo = next(iter(telefonos_validos)) if telefonos_validos else None
 
             return {
+                "folio_posible_match": data[ f"{folio}||{ejemplo}" ][0]["folio_record"],
                 "status": "error",
-                "folio_posible_match": data[ f"{folio}||{ejemplo}" ]["folio_record"],
                 "message": f"[INTEGRA METROS] El folio {folio} existe pero el teléfono {telefono} no coincide. Telefono encontrado: {ejemplo}"
             }
 
@@ -733,8 +737,8 @@ class PCI_Utils():
             ejemplo = next(iter(folios_validos)) if folios_validos else None
 
             return {
+                "folio_posible_match": data[ f"{ejemplo}||{telefono}" ][0]["folio_record"],
                 "status": "error",
-                "folio_posible_match": data[ f"{ejemplo}||{telefono}" ]["folio_record"],
                 "message": f"[INTEGRA METROS] El teléfono {telefono} existe pero con el folio {ejemplo}"
             }
 
