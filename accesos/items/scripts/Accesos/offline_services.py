@@ -2107,7 +2107,10 @@ class Accesos(Accesos):
         records_check = self.cr_db.find({
             "selector": {
                  "status_check": "completed",
-                 "status": "synced"
+                 "$or": [
+                        {"status": {"$exists": False}},
+                        {"status": "synced"}
+                    ]
             },
             # "limit": 1000
             "limit": 1
@@ -2119,12 +2122,14 @@ class Accesos(Accesos):
         records_rondin = self.cr_db.find({
             "selector": {
                  "status_rondin": "completed",
-                 "status": "synced"
+                "$or": [
+                        {"status": {"$exists": False}},
+                        {"status": "synced"}
+                    ]
             },
             "limit": 1000
         })
         record_list += list(records_rondin)
-
         # quitar duplicados
         unique_records = {}
         for rec in record_list:
