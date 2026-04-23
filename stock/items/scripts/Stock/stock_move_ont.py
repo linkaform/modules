@@ -230,41 +230,52 @@ if __name__ == '__main__':
     stock_obj.console_run()
     data = stock_obj.data.get('data', {})
     onts = data.get("onts",[])
-    onts =  {
-        "HWTC6D8856B5":{
-            "folio_produccion":str(int(random.random()*1000)),
-            "telefono":"132465790",
-            "tipo_de_tarea":"TIPO DE TAREA 1 ",
-            "expediente_de_tecnico":"EXPEDIENTE DEL TECNICO 1",
-            "nombre_del_contratista":"NOMBRE DEL CONTRTAISTA 1",
-            "socio_comercial":"SOCIO COMERICAL 1",
-            "division":"DIVISION 1",
-            "area":"AREA 1",
-            "cope":"COPE 1",
-            },
-        "HWTC2F548BB6":{
-            "folio_produccion":str(int(random.random()*1000)),
-            "telefono":"2222222222",
-            "tipo_de_tarea":"TIPO DE TAREA 2",
-            "expediente_de_tecnico":"EXPEDIENTE DEL TECNICO 2",
-            "nombre_del_contratista":"NOMBRE DEL CONTRTAISTA 2",
-            "socio_comercial":"SOCIO COMERICAL 2",
-            "division":"DIVISION 2",
-            "area":"AREA 2",
-            "cope":"COPE 2",
-            },
-        "HWTC8F50C4B5":{
-            "folio_produccion":str(int(random.random()*1000)),
-            "telefono":"133333333",
-            "tipo_de_tarea":"TIPO DE TAREA 3",
-            "expediente_de_tecnico":"EXPEDIENTE DEL TECNICO 3",
-            "nombre_del_contratista":"NOMBRE DEL CONTRTAISTA 3",
-            "socio_comercial":"SOCIO COMERICAL 3",
-            "division":"DIVISION 3",
-            "area":"AREA 3",
-            "cope":"COPE 3",
-            }, 
-        }
+    # onts =  {
+    #     "HWTC6D749DB5":{
+    #         "folio_produccion":str(int(random.random()*1000)),
+    #         "telefono":"132465790",
+    #         "tipo_de_tarea":"TIPO DE TAREA 1 ",
+    #         "expediente_de_tecnico":"EXPEDIENTE DEL TECNICO 1",
+    #         "nombre_del_contratista":"NOMBRE DEL CONTRTAISTA 1",
+    #         "socio_comercial":"SOCIO COMERICAL 1",
+    #         "division":"DIVISION 1",
+    #         "area":"AREA 1",
+    #         "cope":"COPE 1",
+    #         },
+    #     "HWTC6D8B83B5":{
+    #         "folio_produccion":str(int(random.random()*1000)),
+    #         "telefono":"2222222222",
+    #         "tipo_de_tarea":"TIPO DE TAREA 2",
+    #         "expediente_de_tecnico":"EXPEDIENTE DEL TECNICO 2",
+    #         "nombre_del_contratista":"NOMBRE DEL CONTRTAISTA 2",
+    #         "socio_comercial":"SOCIO COMERICAL 2",
+    #         "division":"DIVISION 2",
+    #         "area":"AREA 2",
+    #         "cope":"COPE 2",
+    #         },
+    #     "HWTC6D8CF9B5":{
+    #         "folio_produccion":str(int(random.random()*1000)),
+    #         "telefono":"133333333",
+    #         "tipo_de_tarea":"TIPO DE TAREA 3",
+    #         "expediente_de_tecnico":"EXPEDIENTE DEL TECNICO 3",
+    #         "nombre_del_contratista":"NOMBRE DEL CONTRTAISTA 3",
+    #         "socio_comercial":"SOCIO COMERICAL 3",
+    #         "division":"DIVISION 3",
+    #         "area":"AREA 3",
+    #         "cope":"COPE 3",
+    #         },
+    #     "HWTC2F557CB6":{
+    #         "folio_produccion":str(int(random.random()*1000)),
+    #         "telefono":"133333333",
+    #         "tipo_de_tarea":"TIPO DE TAREA 3",
+    #         "expediente_de_tecnico":"EXPEDIENTE DEL TECNICO 3",
+    #         "nombre_del_contratista":"NOMBRE DEL CONTRTAISTA 3",
+    #         "socio_comercial":"SOCIO COMERICAL 3",
+    #         "division":"DIVISION 3",
+    #         "area":"AREA 3",
+    #         "cope":"COPE 3",
+    #         }, 
+    #     }
     response = stock_obj.warehouse_out_onts(onts)
     print('response', simplejson.dumps(response))
     sys.stdout.write(simplejson.dumps(response))
