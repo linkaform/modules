@@ -78,6 +78,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'istay_monterrey_historico': self.ISTAY_MONTERREY_HISTRICO,
             'hie_guanajuato': self.HIE_GUANAJUATO,
             'hie_silao': self.HIE_SILAO,
+            'hgi_silao': self.HILTON_GARDEN_SILAO,
             'istay_ciudad_juarez': self.ISTAY_CIUDAD_JUREZ,
             'crowne_plaza_mty': self.CROWNE_PLAZA_MONTERREY,
             'hie_galerias': self.HIE_GALERIAS,
