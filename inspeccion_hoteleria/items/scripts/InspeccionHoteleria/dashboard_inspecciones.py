@@ -299,17 +299,25 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             datos_inventario = inventario_dict.get(nombre_hotel, {'total': 0, 'ciudad': 'N/A'})
             
             total_fallas = 0
+            total_fallas_resueltas = 0
             ultima_fecha = None
             gerente = "N/A"
+            habitaciones_distintas = set()
             
             for insp in inspecciones_lista:
                 # El primer created_by_name que encontremos será nuestro "gerente"
                 if gerente == "N/A" and insp.get('created_by_name'):
                     gerente = insp.get('created_by_name')
 
+                # Registrar habitación para contar únicas
+                num_habitacion = insp.get('habitacion')
+                if num_habitacion:
+                    habitaciones_distintas.add(num_habitacion)
+
                 # Sumar fallas del objeto de inspección
                 resumen_insp = insp.get('inspeccion', {})
                 total_fallas += resumen_insp.get('fallas', 0)
+                total_fallas_resueltas += len(resumen_insp.get('field_label_acciones_correctivas', {}))
                 
                 # Obtener la fecha más reciente
                 fecha_str = insp.get('created_at')
@@ -322,9 +330,10 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 "nombre": nombre_hotel,
                 "ciudad": datos_inventario.get('ciudad'),
                 "totalHabitaciones": datos_inventario.get('total'),
-                "habitacionesInspeccionadas": grupo.get('total', 0),
+                "habitacionesInspeccionadas": len(habitaciones_distintas),
+                "totalInspecciones": grupo.get('total', 0),
                 "fallasReportadas": total_fallas,
-                "fallasResueltas": 0, # Dato no disponible aún
+                "fallasResueltas": total_fallas_resueltas,
                 "gerente": gerente,
                 "ultimaInspeccion": ultima_fecha.strftime('%Y-%m-%d') if isinstance(ultima_fecha, datetime.datetime) else (ultima_fecha.split(' ')[0] if ultima_fecha else "N/A")
             }
@@ -592,6 +601,9 @@ if __name__ == '__main__':
         response = module_obj.get_hoteles()
     elif option == 'get_report':
         response = module_obj.get_report(selected_hoteles, cuatrimestres, anio)
+    elif option == 'test':
+        response = module_obj.cr_inspeccion.aggregate([{'$match': {'field_label_acciones_correctivas': {'$exists': True}, "form_id": 132791}}])
+        response = list(response)
     else:
         response = {'error': 'Opción no válida'}
 
