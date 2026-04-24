@@ -412,7 +412,7 @@ class Accesos(Accesos):
                 areas_recorrido = []
                 if bitacora_rondines:
                     primera_bitacora = bitacora_rondines[0]
-                    areas_del_rondin = primera_bitacora.get('grupo_areas_visitadas', [])
+                    areas_del_rondin = primera_bitacora.get('areas_del_rondin', [])
                     areas_recorrido = [
                         {'rondin_area': area.get('rondin_area', ''), 'area_tag_id': area.get('area_tag_id', [])}
                         for area in areas_del_rondin
@@ -1086,14 +1086,14 @@ class Accesos(Accesos):
         match = {
             "form_id": self.BITACORA_RONDINES,
             "deleted_at": {"$exists": False},
-            f"answers.{self.f['grupo_areas_visitadas']}": {
+            f"answers.{self.f['areas_del_rondin']}": {
                 "$type": "array",
                 "$not": {"$size": 0}
             }
         }
         
         unwind_match = {
-            f"answers.{self.f['grupo_areas_visitadas']}.{self.f['foto_evidencia_area_rondin']}": {
+            f"answers.{self.f['areas_del_rondin']}.{self.f['foto_evidencia_area_rondin']}": {
                 "$exists": True,
                 "$not": {"$size": 0}
             }
@@ -1105,7 +1105,7 @@ class Accesos(Accesos):
             })
         if areas:
             unwind_match.update({
-                f"answers.{self.f['grupo_areas_visitadas']}.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['area']}": {"$in": areas}
+                f"answers.{self.f['areas_del_rondin']}.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['area']}": {"$in": areas}
             })
         if date_from:
             match.update({
@@ -1119,12 +1119,12 @@ class Accesos(Accesos):
         query = [
             {"$match": match},
             {"$sort": {"created_at": -1}},
-            {'$unwind': f"$answers.{self.f['grupo_areas_visitadas']}"},
+            {'$unwind': f"$answers.{self.f['areas_del_rondin']}"},
             {"$match": unwind_match},
             {"$project": {
                 "_id": 1,
                 "folio": 1,
-                "areas_recorrido": f"$answers.{self.f['grupo_areas_visitadas']}",
+                "areas_recorrido": f"$answers.{self.f['areas_del_rondin']}",
                 "ubicacion": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}",
                 "nombre_recorrido": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}",
             }},
@@ -1256,7 +1256,7 @@ class Accesos(Accesos):
                         {"$anyElementTrue": {
                             "$map": {
                                 "input": {
-                                    "$ifNull": [f"$answers.{self.f['grupo_areas_visitadas']}", []]
+                                    "$ifNull": [f"$answers.{self.f['areas_del_rondin']}", []]
                                 },
                                 "as": "check",
                                 "in": {
@@ -1270,11 +1270,11 @@ class Accesos(Accesos):
                     ]
                 }
             }},
-            {"$unwind": f"$answers.{self.f['grupo_areas_visitadas']}"},
+            {"$unwind": f"$answers.{self.f['areas_del_rondin']}"},
             {"$match": {
                 "$expr": {
                     "$regexMatch": {
-                        "input": f"$answers.{self.f['grupo_areas_visitadas']}.{self.f['url_registro_rondin']}",
+                        "input": f"$answers.{self.f['areas_del_rondin']}.{self.f['url_registro_rondin']}",
                         "regex": record_id
                     }
                 }
@@ -1283,7 +1283,7 @@ class Accesos(Accesos):
                 "_id": 0,
                 "ubicacion": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}",
                 "nombre_recorrido": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}",
-                "area": f"$answers.{self.f['grupo_areas_visitadas']}",
+                "area": f"$answers.{self.f['areas_del_rondin']}",
                 "incidencias": f"$answers.{self.f['bitacora_rondin_incidencias']}",
             }}
         ]
@@ -1320,7 +1320,7 @@ class Accesos(Accesos):
                 "duracion": response.get('duracion_rondin', ''),
                 "estatus": response.get('estatus_del_recorrido', ''),
                 "recurrencia": response.get('fecha_programacion', ''),
-                "areas_a_inspeccionar": response.get('grupo_areas_visitadas', []),
+                "areas_a_inspeccionar": response.get('areas_del_rondin', []),
                 "incidencias": response.get('bitacora_rondin_incidencias', []),
             })
         return format_response
