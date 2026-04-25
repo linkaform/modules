@@ -1032,17 +1032,16 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             else:
                 fecha_str = ""
 
-            if inspeccion:
-                output.append({
-                    'habitacion': doc.get('habitacion'),
-                    'hotel': doc.get('hotel'),
-                    'nombre_camarista': doc.get('nombre_camarista'),
-                    'grade': inspeccion.get('grade'),
-                    'total_aciertos': inspeccion.get('aciertos'),
-                    'total_fallas': inspeccion.get('fallas'),
-                    'created_at': fecha_str
-                })
-
+            #! REVISAR DOCS SIN INSPECCION EN COLECCION INSPECCION_HOTELERIA
+            output.append({
+                'habitacion': doc.get('habitacion'),
+                'hotel': doc.get('hotel'),
+                'nombre_camarista': doc.get('nombre_camarista'),
+                'grade': inspeccion.get('grade', 0),
+                'total_aciertos': inspeccion.get('aciertos', 0),
+                'total_fallas': inspeccion.get('fallas', 0),
+                'created_at': fecha_str
+            })
         return output
     
     def get_mejor_y_peor_habitacion(self, inspecciones=[]):
