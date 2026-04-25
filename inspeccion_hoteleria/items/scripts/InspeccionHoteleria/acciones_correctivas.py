@@ -38,6 +38,9 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'accion_correctiva_foto': '68e6e392aacdc172c9fb6534',
             'comentarios_acciones_correctivas': '68eee8bad43b9a4d7ab283cd',
             'evidencia_acciones_correctivas': '68eed52e9b4da1b268b28364',
+            'lista_acciones_correctivas': '693c4cee4e2fb04b6804de13',
+            'status_accion_correctiva': '693c4d96fcc55a23bd20cba1',
+            'costo_inversion': '693c4d96fcc55a23bd20cba2',
         })
         
         self.labels_to_exclude = [
@@ -123,6 +126,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             "limit": limit,
         }
 
+        #TODO: Modularizar id de catalogo de acciones correctivas
         row_catalog = self.lkf_api.search_catalog(141320, mango_query)
         format_row_catalog = {}
         if row_catalog and limit > 1:
@@ -226,24 +230,14 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         else:
             return {'success': True, 'message': 'No hay acciones correctivas que crear'}
         
-    def complete_accion_correctiva(self, data):
-        # doc = self.cr_inspeccion.find_one({"_id": ObjectId('6866d0da564385449a772fbf')})
-        # doc.pop('_id', None)
-        # print('====log: doc', simplejson.dumps(doc, indent=4))
-        accion_correctiva_cat = data.pop('68e6e2ed68928c80a3297485', {}) #TODO: Modularizar objid de acciones correctivas catalog
-        hotel_name = accion_correctiva_cat.get(self.Location.f['location'])
-        hab_num = accion_correctiva_cat.get(self.Location.f['area'])
-        question = accion_correctiva_cat.get(self.f['desviacion'])
-        accion_correctiva = self.get_acciones_correctivas(hotel_name, hab_num, question, limit=1)
-        accion_correctiva_id = accion_correctiva.get(self.f['question_ref'], '') if isinstance(accion_correctiva, dict) else ''
-        search_hotel = self.form_ids.get(hotel_name.replace(' ', '_').lower(), '')
+    def get_inspeccion_id(self, hotel_id, hotel_name, hab_num, falla_id):
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
-                "form_id": search_hotel,
+                "form_id": hotel_id,
                 f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": hotel_name,
                 f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['area']}": hab_num,
-                f"answers.{accion_correctiva_id}": "no",
+                f"answers.{falla_id}": "no",
             }},
             {"$sort": {"created_at": -1}},
             {"$limit": 1},
@@ -252,11 +246,43 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             }}
         ]
         resp = self.format_cr(self.cr.aggregate(query))
-        inspeccion_id = self.unlist(resp if len(resp) > 0 else {}).get('_id', '')
-        format_resp = self.update_record_in_inspeccion_hoteleria(record_id=inspeccion_id, falla_id=accion_correctiva_id, falla=accion_correctiva, data=data) if inspeccion_id else {"success": False, "message": "No se encontró la inspección correspondiente"}
-        return format_resp
+        inspeccion_id = self.unlist(resp).get('_id', '')
+        return inspeccion_id
 
-    def update_record_in_inspeccion_hoteleria(self, record_id, falla_id, falla, data):
+    def complete_accion_correctiva(self, data):
+        # doc = self.cr_inspeccion.find_one({"_id": ObjectId('69d6dd1538f1afaaf54145fa')})
+        # doc.pop('_id', None)
+        # print('====log: doc', simplejson.dumps(doc, indent=4))
+        responses = []
+        acciones_correctivas_list = data.get(self.f['lista_acciones_correctivas'], [])
+        for accion in acciones_correctivas_list:
+            status_accion = accion.get(self.f['status_accion_correctiva'])
+            if status_accion and status_accion not in ['en_proceso']:
+                falla_data = accion.pop('68e6e2ed68928c80a3297485', {}) #TODO: Modularizar objid de acciones correctivas catalog
+                hotel_name = data.get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['location'])
+                hab_num = data.get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['area'])
+                question = falla_data.get(self.f['desviacion'])
+                inversion = accion.get(self.f['costo_inversion'], 0)
+
+                falla_record = self.get_acciones_correctivas(hotel_name, hab_num, question, limit=1)
+                if not falla_record:
+                    responses.append({
+                        'falla': question,
+                        'hotel': hotel_name,
+                        'habitacion': hab_num,
+                        'registrada': True
+                    })
+                    continue
+
+                falla_id = falla_record.get(self.f['question_ref'], '') if isinstance(falla_record, dict) else ''
+                search_hotel = self.form_ids.get(hotel_name.replace(' ', '_').lower(), '')
+                
+                inspeccion_id = self.get_inspeccion_id(search_hotel, hotel_name, hab_num, falla_id)
+                format_resp = self.update_record_in_inspeccion_hoteleria(record_id=inspeccion_id, falla_id=falla_id, falla=falla_record, data=data, inversion=inversion) if inspeccion_id else {"success": False, "message": "No se encontró la inspección correspondiente"}
+                responses.append(format_resp)
+        return responses
+
+    def update_record_in_inspeccion_hoteleria(self, record_id, falla_id, falla, data, inversion):
         doc = self.cr_inspeccion.find_one({"_id": ObjectId(record_id)})
         if not doc:
             return {"success": False, "message": "Documento no encontrado"}
@@ -282,6 +308,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 "media_acciones_correctivas": media_acciones_correctivas,
                 "comments": comments,
                 "comments_acciones_correctivas": comments_acciones_correctivas,
+                "inversion_acciones_correctivas": inversion
             }
             self.cr_inspeccion.update_one(
                 {"_id": ObjectId(record_id)},
