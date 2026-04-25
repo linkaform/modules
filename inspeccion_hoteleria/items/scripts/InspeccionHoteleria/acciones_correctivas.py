@@ -250,14 +250,26 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         return inspeccion_id
 
     def complete_accion_correctiva(self, data):
-        # doc = self.cr_inspeccion.find_one({"_id": ObjectId('69d6dd1538f1afaaf54145fa')})
+        # DEBUG
+        # doc = self.cr_inspeccion.find_one({"_id": ObjectId('6920a5b292142126f4f155eb')})
         # doc.pop('_id', None)
         # print('====log: doc', simplejson.dumps(doc, indent=4))
+        # breakpoint()
         responses = []
         acciones_correctivas_list = data.get(self.f['lista_acciones_correctivas'], [])
         for accion in acciones_correctivas_list:
             status_accion = accion.get(self.f['status_accion_correctiva'])
             if status_accion and status_accion not in ['en_proceso']:
+                if status_accion == 'inverion' and not accion.get(self.f['costo_inversion']):
+                    responses.append({
+                        'falla': accion.get(self.f['desviacion']),
+                        'hotel': data.get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['location']),
+                        'habitacion': data.get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['area']),
+                        'registrada': False,
+                        'message': 'Falta costo de inversión para registrar acción correctiva con status inversión'
+                    })
+                    continue
+
                 falla_data = accion.pop('68e6e2ed68928c80a3297485', {}) #TODO: Modularizar objid de acciones correctivas catalog
                 hotel_name = data.get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['location'])
                 hab_num = data.get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['area'])
@@ -278,6 +290,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 search_hotel = self.form_ids.get(hotel_name.replace(' ', '_').lower(), '')
                 
                 inspeccion_id = self.get_inspeccion_id(search_hotel, hotel_name, hab_num, falla_id)
+                print('====log: inspeccion_id', inspeccion_id)
                 format_resp = self.update_record_in_inspeccion_hoteleria(record_id=inspeccion_id, falla_id=falla_id, falla=falla_record, data=data, inversion=inversion) if inspeccion_id else {"success": False, "message": "No se encontró la inspección correspondiente"}
                 responses.append(format_resp)
         return responses
@@ -288,11 +301,12 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             return {"success": False, "message": "Documento no encontrado"}
 
         field_label = doc.get('field_label', {})
-        acciones_correctivas = doc.get('acciones_correctivas', {})
+        acciones_correctivas = doc.get('field_label_acciones_correctivas', {})
         media = doc.get('media', {})
         media_acciones_correctivas = doc.get('media_acciones_correctivas', {})
         comments = doc.get('comments', {})
         comments_acciones_correctivas = doc.get('comments_acciones_correctivas', {})
+        inversion_x_acciones = doc.get('inversion_x_acciones_correctivas', {})
 
         if falla_id in field_label:
             acciones_correctivas[falla_id] = field_label.pop(falla_id)
@@ -300,6 +314,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             media_acciones_correctivas.setdefault(falla_id, {})['after'] = data.get(self.f['accion_correctiva_foto'], [])
             comments_acciones_correctivas.setdefault(falla_id, {})['before'] = comments.pop(falla_id, "")
             comments_acciones_correctivas.setdefault(falla_id, {})['after'] = data.get(self.f['accion_correctiva_comentario'], "")
+            inversion_x_acciones[falla_id] = inversion
 
             update_data = {
                 "field_label": field_label,
@@ -308,11 +323,11 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 "media_acciones_correctivas": media_acciones_correctivas,
                 "comments": comments,
                 "comments_acciones_correctivas": comments_acciones_correctivas,
-                "inversion_acciones_correctivas": inversion
+                "inversion_x_acciones_correctivas": inversion_x_acciones,
             }
             self.cr_inspeccion.update_one(
                 {"_id": ObjectId(record_id)},
-                {"$set": update_data}
+                {"$set": update_data, "$inc": {"inversion_acciones_correctivas": inversion}}
             )
             self.delete_accion_correctiva_in_catalog(falla=falla)
             return {"success": True, "message": "Accion correctiva registrada correctamente"}
