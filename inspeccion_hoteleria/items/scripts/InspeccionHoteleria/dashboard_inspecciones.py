@@ -300,10 +300,12 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             
             total_fallas = 0
             total_fallas_resueltas = 0
+            total_inversion = 0
             ultima_fecha = None
             gerente = "N/A"
             habitaciones_distintas = set()
-            
+            inversion_x_hab = {}
+
             for insp in inspecciones_lista:
                 # El primer created_by_name que encontremos será nuestro "gerente"
                 if gerente == "N/A" and insp.get('created_by_name'):
@@ -318,12 +320,23 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 resumen_insp = insp.get('inspeccion', {})
                 total_fallas += resumen_insp.get('fallas', 0)
                 total_fallas_resueltas += len(resumen_insp.get('field_label_acciones_correctivas', {}))
-                
+                total_inversion += resumen_insp.get('inversion_acciones_correctivas', 0)
+
                 # Obtener la fecha más reciente
                 fecha_str = insp.get('created_at')
                 if fecha_str:
                     if not ultima_fecha or fecha_str > ultima_fecha:
                         ultima_fecha = fecha_str
+
+                if num_habitacion:
+                    entry = inversion_x_hab.setdefault(num_habitacion, {'inversion': 0, 'fallasResueltas': 0})
+                    entry['inversion'] += resumen_insp.get('inversion_acciones_correctivas', 0)
+                    entry['fallasResueltas'] += len(resumen_insp.get('field_label_acciones_correctivas', {}))
+
+            inversion_por_habitacion = sorted(
+                [{'habitacion': hab, **datos} for hab, datos in inversion_x_hab.items()],
+                key=lambda x: x['inversion'], reverse=True
+            )[:8]
 
             hotel_data = {
                 "id": form_id,
@@ -334,8 +347,10 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 "totalInspecciones": grupo.get('total', 0),
                 "fallasReportadas": total_fallas,
                 "fallasResueltas": total_fallas_resueltas,
+                "totalInversion": total_inversion,
                 "gerente": gerente,
-                "ultimaInspeccion": ultima_fecha.strftime('%Y-%m-%d') if isinstance(ultima_fecha, datetime.datetime) else (ultima_fecha.split(' ')[0] if ultima_fecha else "N/A")
+                "ultimaInspeccion": ultima_fecha.strftime('%Y-%m-%d') if isinstance(ultima_fecha, datetime.datetime) else (ultima_fecha.split(' ')[0] if ultima_fecha else "N/A"),
+                "inversionPorHabitacion": inversion_por_habitacion,
             }
             hoteles_resultado.append(hotel_data)
         return hoteles_resultado
@@ -540,6 +555,18 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         
         return todas_las_fallas[:5]
 
+    def format_fallas_x_departamento(self, inspecciones_agrupadas):
+        totales = {'pendientes': 0, 'enProceso': 0, 'realizadas': 0, 'capex': 0}
+
+        for grupo in inspecciones_agrupadas:
+            for insp in grupo.get('inspecciones', []):
+                resumen_insp = insp.get('inspeccion', {})
+                totales['pendientes']  += len(resumen_insp.get('field_label', {}))
+                totales['realizadas']  += len(resumen_insp.get('field_label_acciones_correctivas', {}))
+                totales['capex']       += len(resumen_insp.get('inversion_x_acciones_correctivas', {}))
+
+        return [{'departamento': 'Mantenimiento', **totales}]
+
     def get_report(self, selected_hoteles=[], cuatrimestres=None, anio=None):
         hotel_names_dict, hotel_names_list, hotel_ids_list = self.get_hotel_names()
         
@@ -572,14 +599,16 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         hoteles_inspecciones_x_dia = self.format_inspecciones_x_dia(inspecciones_agrupadas)
         hoteles_performance = self.format_hoteles_performance(inspecciones_agrupadas, hotel_names_dict)
         hoteles_ultimas_fallas = self.format_ultimas_fallas(inspecciones_agrupadas, hotel_names_dict)
-        
+        fallas_x_departamento = self.format_fallas_x_departamento(inspecciones_agrupadas)
+
         response = {
             "hoteles": hoteles_resultado,
             "secciones": hoteles_sections,
             "fallasPorSeccion": hoteles_fallas_x_section,
             "inspeccionesDiarias": hoteles_inspecciones_x_dia,
             "inspeccionesPorGerente": hoteles_performance,
-            "fallasRecientes": hoteles_ultimas_fallas
+            "fallasRecientes": hoteles_ultimas_fallas,
+            "fallasPorDepartamento": fallas_x_departamento,
         }
         return response
         
