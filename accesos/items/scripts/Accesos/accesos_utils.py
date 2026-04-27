@@ -24,7 +24,6 @@ class Accesos( Accesos):
             'fecha_inspeccion_area':'6760a908a43b1b0e41abad6b',
             'fecha_inicio_rondin':'6760a8e68cef14ecd7f8b6fe',
             'status_user':'6639b2744bb44059fc59eb62',
-            'grupo_areas_visitadas':'66462aa5d4a4af2eea07e0d1',
             'nombre_recorrido':'6644fb97e14dcb705407e0ef',
             
             'option_checkin': '663bffc28d00553254f274e0',
@@ -115,14 +114,12 @@ class Accesos( Accesos):
             'check_status': '681fa6a8d916c74b691e174b',
             'grupo_incidencias_check': '681144fb0d423e25b42818d3',
             'incidente_open': '6811455664dc22ecae83f75b',
-            'incidente_comentario': '681145323d9b5fa2e16e35cc',
             'incidente_area': '663e5d44f5b8a7ce8211ed0f',
             'incidente_location': '663e5c57f5b8a7ce8211ed0b',
             'incidente_evidencia': '681145323d9b5fa2e16e35cd',
             'incidente_documento': '685063ba36910b2da9952697',
             'url_registro_rondin': '6750adb2936622aecd075607',
             'bitacora_rondin_incidencias': '686468a637d014b9e0ab5090',
-            'tipo_de_incidencia': '663973809fa65cafa759eb97',
             'personalizacion_pases': '695d2e1f6be562c3da95c4a7',
             'pases': '695d31b503ccc7766ac28507',
             'grupo_alertas': '695d35b618a37ea04899524f',
@@ -656,6 +653,7 @@ class Accesos( Accesos):
         #! Se obtienen los puestos de guardia configurados.
         user_booths = []
         guards_positions = self.config_get_guards_positions()
+        print('guards_positions',guards_positions)
         if not guards_positions:
             return self.LKFException({'title': 'Advertencia', 'msg': 'No existen puestos de guardias configurados.'})
 
@@ -1470,7 +1468,7 @@ class Accesos( Accesos):
             'fecha_inspeccion_area':f"$answers.{self.f['fecha_inspeccion_area']}",
             'fecha_programacion':f"$answers.{self.f['fecha_programacion']}",
             'fecha_inicio_rondin':f"$answers.{self.f['fecha_inicio_rondin']}",
-            'grupo_areas_visitadas':f"$answers.{self.f['grupo_areas_visitadas']}",
+            'areas_del_rondin':f"$answers.{self.f['areas_del_rondin']}",
             
             # 'areas_del_rondin': '66462aa5d4a4af2eea07e0d1',
             # 'comentario_area_rondin': '66462b9d7124d1540f962088',
