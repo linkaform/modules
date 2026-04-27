@@ -301,6 +301,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             total_fallas = 0
             total_fallas_resueltas = 0
             total_inversion = 0
+            total_fallas_x_inversion = 0
             ultima_fecha = None
             gerente = "N/A"
             habitaciones_distintas = set()
@@ -321,6 +322,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 total_fallas += resumen_insp.get('fallas', 0)
                 total_fallas_resueltas += len(resumen_insp.get('field_label_acciones_correctivas', {}))
                 total_inversion += resumen_insp.get('inversion_acciones_correctivas', 0)
+                total_fallas_x_inversion += sum(1 for v in resumen_insp.get('inversion_x_acciones_correctivas', {}).values() if v > 0)
 
                 # Obtener la fecha más reciente
                 fecha_str = insp.get('created_at')
@@ -348,6 +350,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 "fallasReportadas": total_fallas,
                 "fallasResueltas": total_fallas_resueltas,
                 "totalInversion": total_inversion,
+                "fallasPorInversion": total_fallas_x_inversion,
                 "gerente": gerente,
                 "ultimaInspeccion": ultima_fecha.strftime('%Y-%m-%d') if isinstance(ultima_fecha, datetime.datetime) else (ultima_fecha.split(' ')[0] if ultima_fecha else "N/A"),
                 "inversionPorHabitacion": inversion_por_habitacion,
