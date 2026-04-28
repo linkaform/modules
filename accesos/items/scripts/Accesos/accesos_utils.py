@@ -431,9 +431,12 @@ class Accesos( Accesos):
                 employee = self.Employee.get_employee_data(name = visita, get_one=True)
                 self.employee = employee
             visita_set.update(self.visita_a_set_format(employee))
-            if visita_set:
+            if visita_set and self.employee:
                 res.append(visita_set)
-
+            else: 
+                visita_set = {self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID: {
+                self.mf['nombre_empleado'] : visita}}
+                res.append(visita_set)
         return res
 
     def catalagos_pase_no_jwt(self, qr_code):

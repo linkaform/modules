@@ -11,7 +11,6 @@ class Accesos(Accesos):
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
     acceso_obj.console_run()
-    #-FILTROS
     data = acceso_obj.data.get('data',{})
     option = data.get("option",'')
     location = data.get("location",'')

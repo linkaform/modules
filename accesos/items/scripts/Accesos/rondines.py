@@ -814,7 +814,8 @@ class Accesos(Accesos):
                 "asignado_a": {"$ifNull": [f"$answers.{self.GRUPOS_CAT_OBJ_ID}.{self.rondin_keys['grupo_asignado']}", 'No Asignado']},
                 "fecha_hora_programada": f"$answers.{self.rondin_keys['fecha_hora_programada']}",
                 "cada_cuantos_dias_se_repite": f"$answers.{self.rondin_keys['cada_cuantos_dias_se_repite']}",
-                "areas": f"$answers.{self.rondin_keys['areas']}.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area']}",
+                "areas_name": f"$answers.{self.rondin_keys['areas']}.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area']}",
+                "areas": f"$answers.{self.rondin_keys['areas']}",
                 "se_repite_cada":f"$answers.{self.rondin_keys['se_repite_cada']}",
                 "ubicacion_geolocation": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.f['address_geolocation']}",
                 "estatus_rondin": f"$answers.{self.f['status_cron']}",
@@ -846,13 +847,33 @@ class Accesos(Accesos):
         ]
         response = self.format_cr(self.cr.aggregate(query))
         format_response = []
+
         if response:
             for item in response:
-                item['recurrencia'] = item['recurrencia'].replace('_', ' ').title() if item.get('recurrencia') else 'No Recurrente'
-                format_response.append(item)
+                data = self.format_rondin_by_id(item)
+                location = item.get('ubicacion', '')
+                rondin_name = item.get('nombre_del_rondin', '')
+                
+                duracion_promedio = self.get_average_rondin_duration(
+                    location=location,
+                    rondin_name=rondin_name
+                )
+                data['duracion_promedio'] = duracion_promedio
                 if area_details:
-                    item['areas']  = self.get_area_images(item['areas'], location=item['ubicacion'])
-                    
+                    data['areas'] = self.get_area_images(
+                        data.get('areas', []),
+                        location=data.get('ubicacion')
+                    )
+
+                format_response.append(data)
+        # format_response = []
+        # if response:
+        #     for item in response:
+        #         item['recurrencia'] = item['recurrencia'].replace('_', ' ').title() if item.get('recurrencia') else 'No Recurrente'
+        #         format_response.append(item)
+        #         if area_details:
+        #             item['areas']  = self.get_area_images(item['areas'], location=item['ubicacion'])
+        print(simplejson.dumps(format_response, indent=4))
         return format_response
     
     def get_rondin_by_id(self, record_id: str):
@@ -919,6 +940,7 @@ class Accesos(Accesos):
             format_response['duracion_promedio'] = duracion_promedio
         return format_response
 
+        return data
     def get_ubicacion_geolocation(self, location: str):
         """
         Obtiene la geolocalización de una ubicación específica.
