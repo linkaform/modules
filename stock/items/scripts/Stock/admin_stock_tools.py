@@ -36,6 +36,7 @@ if __name__ == '__main__':
     stock_obj.console_run()
     data = stock_obj.data.get('data',{})
     option = data.get("option",'')
+    print('option', option)
     if option == 'update_status':
         print('corriendo update')
         response = stock_obj.update_stock_status()
