@@ -46,7 +46,7 @@ class Custom(Custom):
                 continue
 
             if area in areas_selected:
-                errores.append(f"Set {posicion}: El área '{area}' está duplicada")
+                errores.append(f"Set {posicion}: El área {area} está duplicada")
                 continue
 
             areas_selected.add(area)
@@ -54,7 +54,7 @@ class Custom(Custom):
             # El usuario seleccionado debe ser diferente al responsable de area en el catalogo
             usuario_asignacion = item_area.get('696517d545ba5981006be647', {}).get(self.field_responsable)
             if map_area_responsable.get(area) == usuario_asignacion:
-                errores.append(f"Set {posicion}: No es posible programar el area '{area}' al usuario '{usuario_asignacion}', ya que es el responsable de Área")
+                errores.append(f"Set {posicion}: No es posible programar el area {area} al usuario {usuario_asignacion}, ya que es el responsable de Área")
 
         # Todas las áreas deben estar cubiertas
         areas_totales = set( map_area_responsable.keys() )

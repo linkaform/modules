@@ -8,15 +8,6 @@ class Custom(Custom):
     """docstring for Custom"""
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
-        self.FORM_ID_PROGRAMACION = 150324
-        self.field_anio = "69dfc83706c1197cec034b39"
-        self.field_mes = "69d82f9651b77ef10d63b785"
-        self.field_semana = "69d82edb3203a903fb3fd9fd"
-
-        self.field_planta = "696130ce57ba2b8308adef4d"
-        self.field_area = "696133f1829d117f5e819e8d"
-        self.field_responsable = "638a9a7767c332f5d459fc81"
-        self.field_grupo_areas = "69dfc84f6748944372b3d533"
 
     def calcular_semana(self, f):
         """
@@ -58,6 +49,10 @@ class Custom(Custom):
         }
 
     def get_records_programacion(self, data_fecha):
+
+        # Semana 1 nomas para mis pruebas
+        data_fecha['semana'] = '1'
+
         query = {
             'form_id': self.FORM_ID_PROGRAMACION,
             'deleted_at': {'$exists': False},
@@ -67,13 +62,76 @@ class Custom(Custom):
         }
         print(f"\n query programacion = {simplejson.dumps(query, indent=2)} \n")
 
+        records_programacion = lkf_obj.cr.aggregate([
+            {"$match": query},
+            {"$project": {
+                "planta": f"$answers.696130ce57ba2b8308adef4c.{self.field_planta}",
+                "areas_programar": f"$answers.{self.field_grupo_areas}"
+            }},
+            {"$unwind": "$areas_programar"},
+            {"$project": {
+                "planta": "$planta",
+                "area": f"$areas_programar.{self.obj_plantas_areas}.{self.field_area}",
+                "usuario_a_asignar_nombre": f"$areas_programar.{self.obj_usuarios}.{self.field_responsable}",
+                "usuario_a_asignar_username": {
+                    "$arrayElemAt": [f"$areas_programar.{self.obj_usuarios}.{self.field_username}", 0]
+                }
+            }}
+        ])
+
+        print('+++ records_programacion =',list(records_programacion))
+
+        return records_programacion
+
+    def create_record_convercion(self, data_programacion):
+        answers_recorrido = {
+            self.obj_plantas_areas: {
+                self.field_planta: data_programacion.get('planta'),
+                self.field_area: data_programacion.get('area'),
+            },
+            self.obj_usuarios: {
+                self.field_responsable: data_programacion.get('usuario_a_asignar_nombre'),
+                self.field_email: [data_programacion.get('usuario_a_asignar_username')],
+                self.field_username: [data_programacion.get('usuario_a_asignar_username')],
+            },
+            "abcde0001000000000000020": "programado"
+        }
+
+        metadata = lkf_obj.lkf_api.get_metadata(self.FORM_ID_CONVERSION)
+        metadata['properties'] = {
+            "device_properties":{
+                "system": "SCRIPT",
+                "process": "Ejecutar programacion", 
+                "accion": "Crear registros de Recorrido",
+                "archive": "ejecuta_programacion.py"
+            }
+        }
+        metadata['answers'] = answers_recorrido
+
+    def create_record_molino(self, data_programacion):
+        answers_recorrido = {
+            self.obj_plantas_areas: {
+                self.field_planta: data_programacion.get('planta'),
+                self.field_area: data_programacion.get('area'),
+                self.field_responsable: [data_programacion.get('usuario_a_asignar_nombre')],
+                self.field_username: [data_programacion.get('usuario_a_asignar_username')],
+            }
+        }
+
     def ejecuta_programacion(self):
         # Se obtienen los datos de la fecha actual. anio, mes y semana
         data_fecha = self.semana_del_mes_lunes()
         print('++ data_fecha =', data_fecha)
 
         # Se consultan los registros de programacion
-        self.get_records_programacion(data_fecha)
+        records_programacion = self.get_records_programacion(data_fecha)
+
+        # Se va a crear un registro por cada set del grupo Areas a programar
+        for programacion in records_programacion:
+            if programacion.get('planta') == 'Molino':
+                self.create_record_molino(programacion)
+            else:
+                self.create_record_convercion(programacion)
 
 if __name__ == '__main__':
     lkf_obj = Custom(settings, sys_argv=sys.argv)
