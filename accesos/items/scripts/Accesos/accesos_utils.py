@@ -71,7 +71,6 @@ class Accesos( Accesos):
             'envio_por': '6810180169eeaca9517baa5b',
             'configuracion_de_accesos': '696e6dda9517e760679e71eb',
             'tipo_de_notificacion': '699dfe3b82be0dbe0319d38c',
-
             'tipo_rondin': '69b9b98d2a02f4a0dd35f5c1'
         })
 
@@ -150,6 +149,8 @@ class Accesos( Accesos):
         self.cons_f.update({
             'quien_recibe_otro': '69c47a1ce96590f9dbf494b0',
         })
+
+      
         
         self.configuracion_area = {
             'area': '663e5d44f5b8a7ce8211ed0f',
