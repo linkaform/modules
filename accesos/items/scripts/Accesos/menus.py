@@ -103,12 +103,12 @@ class Accesos(Accesos):
     def get_structured_mobile_menu(self, data):
         """
         Agrupa una lista plana de items de menú en la estructura
-        jerárquica módulo > sección > items.
+        jerárquica para móvil: módulo > submodulos > items.
         """
         modules_dict = {}
 
         for item in data:
-            if item.get('plataforms') == 'mobile':
+            if item.get('plataforms') == 'web':
                 continue
 
             menu_key    = item.get('menu_key') or self.slugify(item.get('menu', ''), '_')
@@ -116,50 +116,46 @@ class Accesos(Accesos):
 
             if menu_key not in modules_dict:
                 modules_dict[menu_key] = {
-                    'id':       menu_key.replace('_', '-'),
-                    'key':      menu_key,
-                    'label':    item.get('menu', ''),
-                    'icon':     item.get('menu_icon'),
-                    'order':    item.get('menu_order') or len(modules_dict) + 1,
-                    'columns':  item.get('menu_columns'),
-                    'sections': {}
+                    'id':         menu_key.replace('_', '-'),
+                    'key':        menu_key,
+                    'label':      item.get('menu', ''),
+                    'icon':       item.get('menu_icon'),
+                    'order':      item.get('menu_order') or len(modules_dict) + 1,
+                    'submodules': {}
                 }
 
-            sections = modules_dict[menu_key]['sections']
+            submodules = modules_dict[menu_key]['submodules']
 
-            if seccion_key not in sections:
-                seccion_href = item.get('href_web')
-                seccion_data = {
-                    'id':     seccion_key.replace('_', '-'),
-                    'key':    seccion_key,
-                    'label':  item.get('seccion', ''),
-                    'order':  item.get('seccion_order') or len(sections) + 1,
-                    'column': item.get('seccion_column') or len(sections) + 1,
-                    'items':  []
+            if seccion_key not in submodules:
+                submodules[seccion_key] = {
+                    'id':         seccion_key.replace('_', '-'),
+                    'key':        seccion_key,
+                    'label':      item.get('seccion', ''),
+                    'order':      item.get('seccion_order') or len(submodules) + 1,
+                    'icon':       item.get('seccion_icon'),
+                    'iconBgColor': item.get('seccion_icon_color'),
+                    'items':      []
                 }
-                if seccion_href:
-                    seccion_data['href'] = seccion_href
-                sections[seccion_key] = seccion_data
 
-            item_href = item.get('href_web')
             item_data = {
                 'key':   item.get('key') or self.slugify(item.get('elemento', ''), '_'),
                 'label': item.get('elemento', ''),
                 'type':  item.get('type', 'link'),
-                'order': item.get('item_order') or len(sections[seccion_key]['items']) + 1,
+                'order': item.get('item_order') or len(submodules[seccion_key]['items']) + 1,
             }
-            if item_href:
-                item_data['href'] = item_href
-            sections[seccion_key]['items'].append(item_data)
+            item_route = item.get('route_mobile')
+            if item_route:
+                item_data['route'] = item_route
+            submodules[seccion_key]['items'].append(item_data)
 
         modules = []
         for module in modules_dict.values():
-            sections = sorted(module['sections'].values(), key=lambda s: s['order'])
-            for s in sections:
+            submodules = sorted(module['submodules'].values(), key=lambda s: s['order'])
+            for s in submodules:
                 s['items'] = sorted(s['items'], key=lambda i: i['order'])
-            modules.append({**module, 'sections': sections})
+            modules.append({**module, 'submodules': submodules})
 
-        return {'modules': sorted(modules, key=lambda m: m['order'])}
+        return {'menu': sorted(modules, key=lambda m: m['order'])}
 
     def get_structured_web_menu(self, data):
         """
@@ -244,7 +240,6 @@ class Accesos(Accesos):
         ]
         data = self.format_cr(self.cr.aggregate(query), ids_label_dct=self.menu_form_fields)
         if data:
-            print('entra aqui')
             menu_keys = [self.unlist(item['menu_key']) for item in data if item.get('menu_key')]
             data = self.get_format_user_menus(filter_keys=menu_keys)
         else:
