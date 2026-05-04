@@ -72,6 +72,13 @@ class Accesos(Accesos):
             "field": f"answers.{self.mf['tipo_registro']}"
         }
 
+    @get_mongo_distinct_list
+    def get_pases_status(self):
+        return {
+            "form_id": self.PASE_ENTRADA,
+            "field": f"answers.{self.pase_entrada_fields['status_pase']}"
+        }
+
     def get_filters_in_and_out(self):
         """
         Obtiene los filtros para la Bitacora de Entradas y Salidas
@@ -106,7 +113,7 @@ class Accesos(Accesos):
 
     def get_filters_pases(self):
         profiles = self.get_profiles()
-        estatus = self.get_in_and_out_status()
+        estatus = self.get_pases_status()
         employees = self.get_employees_names()
         filters = [
             {
@@ -114,7 +121,7 @@ class Accesos(Accesos):
                 "key": "status",
                 "label": "Estatus",
                 "type": "multiple",
-                "options": [{"label": i.capitalize(), "value": i} for i in estatus]
+                "options": [{"label": i.capitalize().replace("_", " "), "value": i} for i in estatus if i]
             },
             {
                 "defaultDisplayOpen": False,
