@@ -249,7 +249,7 @@ class Accesos(Accesos):
                 self.LISTA_INCIDENCIAS_CAT_OBJ_ID: {
                     self.f['categoria']: item.get('categoria', ''),
                     self.f['sub_categoria']: item.get('sub_categoria', ''),
-                    self.f['incidente']: item.get('tipo_de_incidencia', ''),
+                    self.f['incidencia']: item.get('incidencia', ''),
                 },
                 self.f['incidente_open']: item.get('incidente_open', ''),
                 self.f['comentario_incidente_bitacora']: item.get('comentario_incidente_bitacora', ''),

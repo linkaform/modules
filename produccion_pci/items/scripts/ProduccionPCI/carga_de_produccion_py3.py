@@ -299,6 +299,48 @@ class Produccion_PCI( Produccion_PCI ):
         print('autorizaciones_carga_folio=',autorizaciones_carga_folio)
         return autorizaciones_carga_folio
 
+    def add_sets_integra_mts(self, integra_mts_possible_match):
+        FIELD_PATH = 'answers.69d54f9d1bc7a0c228017584'
+        FOLIO_KEY = '69d54fc4664f50823dc7684d'
+        TEL_KEY = '69d54fc4664f50823dc7684e'
+
+        for folio_mts, list_folios_tels in integra_mts_possible_match.items():
+            query_mts = {
+                'form_id': p_utils.FORM_ID_INTEGRA_MTS,
+                'deleted_at': {'$exists': False},
+                'folio': folio_mts
+            }
+
+            record_mts = cr_admin.find_one( query_mts, {'folio': 1, FIELD_PATH: 1} )
+
+            if not record_mts:
+                continue
+
+            coincidencias = record_mts.get('answers', {}).get('69d54f9d1bc7a0c228017584', [])
+
+            # Normalizamos estructura existente → {'folio', 'telefono'}
+            existentes_set = { (rec.get(FOLIO_KEY), rec.get(TEL_KEY)) for rec in coincidencias }
+
+            # Filtramos nuevos
+            nuevos = [
+                d for d in list_folios_tels
+                if (d.get('folio'), d.get('telefono')) not in existentes_set
+            ]
+
+            if not nuevos:
+                continue  # nada que actualizar
+
+            # Convertimos al formato Mongo
+            nuevos_formateados = [
+                { FOLIO_KEY: d.get('folio'), TEL_KEY: d.get('telefono') }
+                for d in nuevos
+            ]
+
+            coincidencias.extend(nuevos_formateados)
+
+            # Actualizar registro
+            cr_admin.update_one( query_mts, {'$set': {FIELD_PATH: coincidencias}} )
+
     def prepare_record(self, record, metadata, pos_field_id, folio, connection_id, RECORDS_PASSED, tecnologia_orden, hibrida, form_id_turno, current_record, copes_consultados, cambio_tecnologia, records_for_cambio_tec, \
         folios_autorizados, info_cope, pos_tipo=0, pos_telefono=0, datos_tecnico={}, permisos_contratista={}, dict_info_connections={}, header_dict={}):
         ###
@@ -1035,9 +1077,7 @@ class Produccion_PCI( Produccion_PCI ):
         # Para fibra hay tipos de tarea donde no se paga el metraje y solo se paga el vsi
         if tecnologia_orden == 'fibra':
             if tipo_tarea_record in self.list_tareas_solo_vsi:
-                answer.update({
-                    'f1054000a020000000000022': 'vsi'
-                })
+                answer['f1054000a020000000000022'] = 'vsi'
                 alerts.append('Para este tipo de Tarea solo se permite cobrar el VSI')
             # Para Fibra siempre se requiere el Tipo de Material
             if not answer.get('6346f10c24cc48504673c5d9'):
@@ -1251,7 +1291,7 @@ class Produccion_PCI( Produccion_PCI ):
         return record_orden
 
     def create_record_fibra_cobre_hibrida(self, pos_field_id, records, header, current_record, parent_id, header_dict, pdfs_found, distometros_found, carga_sin_pdf, carga_sin_disto, dif_type, 
-        permisos_contratista, dict_info_connections, records_for_cambio_tec, data_img, folios_autorizados):
+        permisos_contratista, dict_info_connections, records_for_cambio_tec, data_img, folios_autorizados, registros_integra_mts, folio_index, telefono_index):
         # print("Una sola funcion para fibra y cobre ....")
         record_errors = []
         records_ok = []
@@ -1276,6 +1316,8 @@ class Produccion_PCI( Produccion_PCI ):
         pos_tecnico = 0
         pos_expediente = 0
         pos_cambio_tecnologia = None
+        integra_mts_to_close, integra_mts_to_possible_match = {}, {}
+        this_record = {}
         for pos_rec, record in enumerate(records):
             hibrida = migracion = False
             
@@ -1383,6 +1425,7 @@ class Produccion_PCI( Produccion_PCI ):
             if connection_dir.get('connection_id'):
                 connection_id =  connection_dir['connection_id']
                 user_of_connection = connection_dir['user_of_connection']
+            this_record = {}
             if pos_field_id:
 
                 if not pos_telefono:
@@ -1392,7 +1435,6 @@ class Produccion_PCI( Produccion_PCI ):
                     hibrida = True
                 elif tec == 'migracion':
                     migracion = True
-                this_record = {}
 
                 # ------ Se obtiene el Folio del registro
                 pos_folio = p_utils.get_record_folio(header_dict)
@@ -1481,6 +1523,7 @@ class Produccion_PCI( Produccion_PCI ):
                         print('Parece que todo va en orden con el folio, entonces cargo su documento pdf')
                         folio_to_create = this_record['create']['folio']
                         form_id_to_create = this_record['create']['form_id']
+                        form_id_in_admin = self.dict_equivalences_forms_id[form_id_to_create]
                         telefono_to_create = this_record['create'].get('answers',{}).get('f1054000a010000000000005','')
                         area_to_create = this_record['create'].get('answers',{}).get('f1054000a0100000000000a2','')
                         pdf_uploaded = self.upload_pdf_disto( nombre_docto_a_buscar, form_id_to_create, pdfs_found )
@@ -1490,17 +1533,24 @@ class Produccion_PCI( Produccion_PCI ):
                         this_record['create']['answers'].update(pdf_uploaded)
                         # Cargando el Distómetro
                         folio_autorizado_sin_disto = this_record['create'].pop('autoriza_folio_sin_disto', False)
-                        if path_distom:
-                            resp_distom = self.read_txt_from_img(path_distom, nombre_docto_a_buscar)
-                            if 'error' in resp_distom:
-                                record_errors.append(record + [ resp_distom.get('error') or 'Ocurrió un error al leer la imagen de Distómetro' ])
-                                continue
-                            this_record['create']['answers']['68826735d9a13878537d7d3e'] = resp_distom.get('folio_img')
-                            this_record['create']['answers']['68826735d9a13878537d7d3f'] = resp_distom.get('mts_img')
-                        elif carga_sin_disto:
-                            this_record['create']['answers']['68f8714cc41b6aa3df1f8a53'] = 'Contratista habilitado para carga sin distometro'
-                        elif folio_autorizado_sin_disto:
-                            this_record['create']['answers']['68f8714cc41b6aa3df1f8a53'] = 'Folio autorizado para carga sin distometro'
+                        
+                        data_distom = self.get_datos_distometro(this_record['create'], path_distom, nombre_docto_a_buscar, carga_sin_disto, folio_autorizado_sin_disto, 
+                            registros_integra_mts, folio_index, telefono_index, form_id_in_admin)
+                        if data_distom.get('error'):
+                            record_errors.append(record + [ data_distom['error'] ])
+                            folio_mts_posible = data_distom.get('folio_posible_match')
+                            if folio_mts_posible:
+                                integra_mts_to_possible_match.setdefault( folio_mts_posible, [] ).append({
+                                    'folio': folio_to_create,
+                                    'telefono': telefono_registro
+                                })
+                            continue
+                        
+                        this_record['create']['answers'].update(data_distom)
+
+                        if data_distom.get('5fff390f68b587d973f1958f'):
+                            this_record['create']['answers']['5fff390f68b587d973f1958f'] = data_distom['5fff390f68b587d973f1958f'][0]
+                            distometros_found[nombre_docto_a_buscar] = False
 
                         disto_uploaded = self.upload_pdf_disto( nombre_docto_a_buscar, form_id_to_create, distometros_found, def_field_id='5fff390f68b587d973f1958f' )
                         if disto_uploaded.get('error', False):
@@ -1528,6 +1578,9 @@ class Produccion_PCI( Produccion_PCI ):
                             self.rmv_psr_created(settings.config['ACCOUNT_ID'], self.dict_equivalences_forms_id[form_id_to_create], folio_to_create, telefono_to_create, area_to_create)
                             continue
 
+                        if data_distom.get('folio_record_mts'):
+                            integra_mts_to_close[ folio_to_create ] = data_distom['folio_record_mts']
+
                         if folio_psr:
                             fols_psr_to_update.append( folio_psr )
                         
@@ -1544,6 +1597,7 @@ class Produccion_PCI( Produccion_PCI ):
                         is_updating_record_exists = this_record['update'].get('exists_copy', False)
                         record_os_copy = this_record['update'].get('record_copy')
                         form_id_to_update = this_record['update'].get('form_id')
+                        form_id_in_admin = self.dict_equivalences_forms_id.get(form_id_to_update)
                         folio_to_update = this_record['update'].get('folio')
                         folio_to_update = this_record['update'].pop('folio_record_admin', folio_to_update)
                         telefono_to_update = this_record['update'].get('answers',{}).get('f1054000a010000000000005','')
@@ -1589,18 +1643,26 @@ class Produccion_PCI( Produccion_PCI ):
                         this_record['update']['answers'].update(pdf_uploaded)
                         # Cargando el Distómetro
                         folio_autorizado_sin_disto = this_record['update'].pop('autoriza_folio_sin_disto', False)
-                        if path_distom:
-                            resp_distom = self.read_txt_from_img(path_distom, nombre_docto_a_buscar)
-                            if 'error' in resp_distom:
-                                record_errors.append(record + [ resp_distom.get('error') or 'Ocurrió un error al leer la imagen de Distómetro' ])
-                                self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, answers_prev, is_updating_record_exists )
-                                continue
-                            this_record['update']['answers']['68826735d9a13878537d7d3e'] = resp_distom.get('folio_img')
-                            this_record['update']['answers']['68826735d9a13878537d7d3f'] = resp_distom.get('mts_img')
-                        elif carga_sin_disto:
-                            this_record['update']['answers']['68f8714cc41b6aa3df1f8a53'] = 'Contratista habilitado para carga sin distometro'
-                        elif folio_autorizado_sin_disto:
-                            this_record['update']['answers']['68f8714cc41b6aa3df1f8a53'] = 'Folio autorizado para carga sin distometro'
+                        
+                        data_distom = self.get_datos_distometro(this_record['update'], path_distom, nombre_docto_a_buscar, carga_sin_disto, folio_autorizado_sin_disto, 
+                            registros_integra_mts, folio_index, telefono_index, form_id_in_admin)
+                        if data_distom.get('error'):
+                            record_errors.append(record + [ data_distom['error'] ])
+                            self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, form_id_in_admin, folio_to_update, telefono_to_update, area_to_update, answers_prev, is_updating_record_exists )
+                            folio_mts_posible = data_distom.get('folio_posible_match')
+                            if folio_mts_posible:
+                                integra_mts_to_possible_match.setdefault( folio_mts_posible, [] ).append({
+                                    'folio': folio_to_update,
+                                    'telefono': telefono_registro
+                                })
+
+                            continue
+                        
+                        this_record['update']['answers'].update(data_distom)
+
+                        if data_distom.get('5fff390f68b587d973f1958f'):
+                            this_record['update']['answers']['5fff390f68b587d973f1958f'] = data_distom['5fff390f68b587d973f1958f'][0]
+                            distometros_found[nombre_docto_a_buscar] = False
 
                         disto_uploaded = self.upload_pdf_disto( nombre_docto_a_buscar, form_id_to_update, distometros_found, def_field_id='5fff390f68b587d973f1958f' )
                         if disto_uploaded.get('error', False):
@@ -1629,6 +1691,8 @@ class Produccion_PCI( Produccion_PCI ):
                                     continue
                                 records_ok.append(record+[msg_exitoso,])
                                 create_json.update(p_utils.update_create_json(create_json, this_record))
+                                if data_distom.get('folio_record_mts'):
+                                    integra_mts_to_close[ folio_to_update ] = data_distom['folio_record_mts']
                         else:
                             if status_code == 404:
                                 record_errors.append(record + ["No se pudo actualizar el registro ya que no se encontró",])
@@ -1640,9 +1704,10 @@ class Produccion_PCI( Produccion_PCI ):
                                 msg_error_completo = p_utils.arregla_msg_error_sistema(response)
                                 record_errors.append(record + [msg_error_completo,])
                     elif this_record.get('cambio_tecnologia'):
-                        records_ok.append(records[ dict_pos_record[ this_record['cambio_tecnologia'] ] ] + ['Folio marcado para Cambio de Tecnologia',])
-                        create_json['created']['total'] += 1
-                        create_json['created']['order'] += 1
+                        # records_ok.append(records[ dict_pos_record[ this_record['cambio_tecnologia'] ] ] + ['Folio marcado para Cambio de Tecnologia',])
+                        # create_json['created']['total'] += 1
+                        # create_json['created']['order'] += 1
+                        record_errors.append(record + ["Folio encontrado en Tecnología Contraria",])
                     else:
                         create_json['created']['duplicate'] += 1
                         if folio not in self.GLOBAL_COMMUNICATION:
@@ -1690,6 +1755,12 @@ class Produccion_PCI( Produccion_PCI ):
                     #print('$#@!$#@!%$$##! 690')
                     msg_error_completo = p_utils.arregla_msg_error_sistema(create_record)
                     record_errors.append(records[dict_pos_record[create_record['folio']]] + [msg_error_completo,])
+        
+        if integra_mts_to_close:
+            p_utils.close_integra_mts( list(integra_mts_to_close.values()) )
+
+        self.add_sets_integra_mts( integra_mts_to_possible_match )
+
         print('....... ............ ............. fols_psr_to_update =',fols_psr_to_update)
         if fols_psr_to_update:
             resp_update_psr = lkf_api.patch_multi_record({'6670a0a6fe5560837d1cc9bc': 'autorizado'}, p_utils.FORM_ID_PSR, folios=fols_psr_to_update, jwt_settings_key='JWT_KEY_ADMIN', threading=True)
@@ -1737,6 +1808,70 @@ class Produccion_PCI( Produccion_PCI ):
         no_necesarias = ['cableado_interior_adicional_para_el_dit_con_splitter_con_proteccion_(extension)', 'reparacion_de_tropezon_en_radial', 'radial_en_banqueta', 'radial_en_cepa_libre', 'migracion_tba', 'direccion']
         necesarias_not_found = list( set(cols_not_found) - set(no_necesarias) )
         return necesarias_not_found
+
+    def get_datos_distometro(self, data_this_record, path_distom, nombre_docto_a_buscar, carga_sin_disto, autorizado_sin_disto, 
+        registros_integra_mts, folio_index, telefono_index, form_id_in_admin):
+        # Si la OS ya trae los datos, no es necesario procesar la imagen
+        answers_this_record = data_this_record.get('answers', {})
+        if answers_this_record.get('68826735d9a13878537d7d3e') and answers_this_record.get('68826735d9a13878537d7d3f'):
+            print('     - [Distometro] la OS ya tiene los datos')
+            return {}
+
+        # La OS aún no trae los datos, se revisa en la forma de Integra Metros
+        resp_integra_mts = p_utils.buscar_integra_mts(data_this_record['folio'], answers_this_record['f1054000a010000000000005'], registros_integra_mts, folio_index, telefono_index)
+        if resp_integra_mts.get('status') == "ok":
+            print('     - [Distometro] Datos obtenidos de Integra Metros')
+            answers_datos_dist = {}
+            data_integra_mts = resp_integra_mts['data']
+            answers_datos_dist['68826735d9a13878537d7d3e'] = data_this_record['folio']
+            answers_datos_dist['68826735d9a13878537d7d3f'] = data_integra_mts.get('metraje_total')
+            answers_datos_dist['5fff390f68b587d973f1958f'] = data_integra_mts.get('imagen_ruta')
+            answers_datos_dist['folio_record_mts'] = data_integra_mts.get('folio_record')
+            
+            img_os = data_integra_mts.get('foto_os')
+            if img_os:
+                data_type_field_pdf = p_utils.get_id_field_pdf(form_id_in_admin)
+                answers_datos_dist[ data_type_field_pdf.get('field_pdf') ] = img_os if data_type_field_pdf.get('type_field_pdf') == 'list' else img_os[0]
+                answers_datos_dist['60882afbf33276990d3f8edf'] = p_utils.get_date_now()
+
+            material = data_integra_mts.get('material_utilizado')
+            if material:
+                material = 'telmex/condumex' if material == 'condumex' else material
+                answers_datos_dist['6346f10c24cc48504673c5d9'] = material
+
+            return answers_datos_dist
+        
+        # Trae imagen de Distometro y el registro aún no tiene los datos... se lee la imagen
+        if path_distom:
+            print('     - [Distometro] Se lee de la imagen del zip')
+            resp_distom = self.read_txt_from_img(path_distom, nombre_docto_a_buscar)
+            if 'error' in resp_distom:
+                return {
+                    'error': resp_distom.get('error') or 'Ocurrió un error al leer la imagen de Distómetro'
+                }
+
+            return {
+                '68826735d9a13878537d7d3e': resp_distom.get('folio_img'),
+                '68826735d9a13878537d7d3f': resp_distom.get('mts_img'),
+            }
+
+        # No trae imagen de Distometro pero el contratista esta autorizado para cargar sin Distometro
+        if carga_sin_disto:
+            return {'68f8714cc41b6aa3df1f8a53': 'Contratista habilitado para carga sin distometro'}
+
+        # No trae imagen de Distometro, el contratista no está autorizado pero el folio si está autorizado en la forma de Autorizaciones
+        if autorizado_sin_disto:
+            return {
+                '68f8714cc41b6aa3df1f8a53': 'Folio autorizado para carga sin distometro',
+                '6981eb689ddea2b79458c5cf': 'sí',
+            }
+        
+
+        # Validacion de casos de error con sugerencia folio - telefono
+        if resp_integra_mts.get('status') == 'error':
+            return {'error': resp_integra_mts['message'], 'folio_posible_match': resp_integra_mts.get('folio_posible_match')}
+
+        return {'error': 'No se encontraron coincidencias en el Distómetro'}
 
     def get_tecnicos_by_conexion(self, parent_id):
         connections_users = p_utils.get_all_connections()
@@ -1827,6 +1962,7 @@ class Produccion_PCI( Produccion_PCI ):
         # if pos_folio is None:
         #     return self.set_status_proceso( current_record, record_id, 'error', msg='No se encontro la columna Folio en el documento de carga' )
         
+        registros_integra_mts, folio_index, telefono_index = {}, {}, {}
         if pos_folio != None:
             pos_telefono_xls = self.get_position_telefono(header_dict)
             # Si lleva la columna Folio se revisa que no haya duplicados
@@ -1848,6 +1984,10 @@ class Produccion_PCI( Produccion_PCI ):
             folios_autorizados = p_utils.find_folio_autorizado(all_folios_in_file, all_telefonos_in_file, '', '')
             print('++++++ folios_autorizados =',folios_autorizados)
 
+            registros_integra_mts, folio_index, telefono_index = p_utils.get_integra_mts(all_folios_in_file, all_telefonos_in_file)
+            # print(f'registros_integra_mts = {registros_integra_mts}, folio_index = {folio_index}, telefono_index = {telefono_index}')
+            # stop
+
             
             duplicated_folios = [str(item) for item, count in collections.Counter(all_folios_in_file).items() if count > 1]
             print("duplicated_folios=",duplicated_folios)
@@ -1858,9 +1998,9 @@ class Produccion_PCI( Produccion_PCI ):
         records_for_cambio_tec = p_utils.get_cambios_tecnologia()
         print('+++ records_for_cambio_tec =',records_for_cambio_tec)
         create_json_fibra.update(self.create_record_fibra_cobre_hibrida(pos_field_id, records, header, current_record, parent_id, header_dict, pdfs_found, distometros_found, carga_sin_pdf, carga_sin_disto, 
-            'fibra', permisos_contratista, dict_info_connections, records_for_cambio_tec, data_img_distometros, folios_autorizados))
+            'fibra', permisos_contratista, dict_info_connections, records_for_cambio_tec, data_img_distometros, folios_autorizados, registros_integra_mts, folio_index, telefono_index))
         create_json_cobre.update(self.create_record_fibra_cobre_hibrida(pos_field_cobre_id, records, header, current_record, parent_id, header_dict, pdfs_found, distometros_found, carga_sin_pdf, carga_sin_disto, 
-            'cobre', permisos_contratista, dict_info_connections, records_for_cambio_tec, data_img_distometros, folios_autorizados))
+            'cobre', permisos_contratista, dict_info_connections, records_for_cambio_tec, data_img_distometros, folios_autorizados, registros_integra_mts, folio_index, telefono_index))
         total_errors = len( create_json_fibra.get('error_file_records', []) ) + len( create_json_cobre.get('error_file_records', []) )
         print('total_errors=',total_errors)
         

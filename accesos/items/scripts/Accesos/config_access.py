@@ -1,5 +1,6 @@
 # coding: utf-8
 import sys, simplejson
+
 from linkaform_api import settings
 from account_settings import *
 
@@ -27,6 +28,7 @@ class Accesos(Accesos):
         self.SCRIPT_GOOGLE_WALLET = self.lkm.script_id('create_pass_google_wallet','id')
         self.SCRIPT_RONDINES = self.lkm.script_id('rondines','id')
         self.OFFLINE_SERVICES = self.lkm.script_id('offline_services','id')
+        self.FILTERS = self.lkm.script_id('filters','id')
 
         #TODO SHARE FORMS AND CATALOGGS
         self.module_permits = {
@@ -50,7 +52,8 @@ class Accesos(Accesos):
                     self.TIPO_DE_EQUIPO_ID,
                     self.UBICACIONES_CAT_ID,
                     self.USUARIOS_ID,
-                    self.VISITA_AUTORIZADA_CAT_ID,                
+                    self.VISITA_AUTORIZADA_CAT_ID,
+                    self.FILTERS             
                     ],
                 'scripts':[self.OFFLINE_SERVICES]
             },
@@ -87,10 +90,10 @@ class Accesos(Accesos):
             'pases':{
                 'forms':[self.PASE_ENTRADA],
                 'catalogs':[],
-                'scripts':[self.SCRIPT_PASE_ACCESO, self.GET_STATS]
+                'scripts':[self.SCRIPT_PASE_ACCESO, self.GET_STATS, self.SCRIPT_PASE_ACCESO_API]
             },
             'turnos':{
-                'forms':[self.CHECKIN_CASETAS, self.REGISTRO_ASISTENCIA, self.FORMATO_VACACIONES],
+                'forms':[self.CHECKIN_CASETAS, self.REGISTRO_ASISTENCIA, self.FORMATO_VACACIONES, self.SCRIPT_TURNOS],
                 'catalogs':[],
                 'scripts':[]
             },
@@ -115,11 +118,13 @@ class Accesos(Accesos):
         menus = ['always'] + data.get('menus', [])
         for menu in menus:
             config = self.module_permits.get(menu, {})
-            forms_needed.update(config.get('forms',[]))
-            catalogs_needed.update(config.get('catalogs'))
-            scripts_needed.update(config.get('scripts'))
+            if not config:
+                continue
+            forms_needed.update([x for x in config.get('forms',[]) if x])
+            catalogs_needed.update([x for x in config.get('catalogs') if x])
+            scripts_needed.update([x for x in config.get('scripts') if x])
 
-        # response_forms = self.set_item_permits(user_id, forms_needed, item_type='form')
+        response_forms = self.set_item_permits(user_id, forms_needed, item_type='form')
         response_catalog = self.set_item_permits(user_id, catalogs_needed, item_type='catalog')
         response_scripts = self.set_item_permits(user_id, scripts_needed,  item_type='script')
             
@@ -141,18 +146,25 @@ class Accesos(Accesos):
             self.LKFException('Item type not found: ', item_type)
         res = {}
         user_item = user_item.get('data',[])
+        if isinstance(user_item, dict):
+            user_item = []
         user_item = [item for item in user_item ]
-        unshare_items = [item for item in user_item if item['id'] not in item_needed]
+        unshare_items = []
+        for item in user_item:
+            if item['id'] not in item_needed:
+                unshare_items.append(item)
+
         if unshare_items:
-            unshare_data = {'group_id':None, 'filter_name':None}
             unshare_items_data = []
             for item in unshare_items:
+                unshare_data = {'group_id':None, 'filter_name':None}
                 #TODO UN SHARE...
                 unshare_data['uri'] = f"/api/infosync/file_shared/{item['shared_id']}/"
                 unshare_data['item_id'] = item['id']
                 unshare_items_data.append(unshare_data)
             if unshare_items_data:
                 res = self.lkf_api.share_form(unshare_items_data, unshare=True)
+
         
         user_item_ids = {item['id'] for item in user_item}
         items_to_share = item_needed - user_item_ids

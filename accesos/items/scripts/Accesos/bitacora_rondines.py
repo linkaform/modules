@@ -23,7 +23,7 @@ class Accesos(Accesos):
     def calcluta_tiempo_traslados(self):
         fecha_inicio = self.answers.get(self.f['fecha_inicio_rondin'], None)
         fecha_inicio = self.date_2_epoch(fecha_inicio)
-        areas_visitadas = self.answers.get(self.f['grupo_areas_visitadas'], [])
+        areas_visitadas = self.answers.get(self.f['areas_del_rondin'], [])
         fecha_inspeccion = 0
         duracion_total = 0
         cantidad_de_inspecciones = 0
@@ -37,6 +37,9 @@ class Accesos(Accesos):
             fecha_final = fecha_inspeccion
             cantidad_de_inspecciones += 1
             areas_procesadas = True
+            if not fecha_inicio:
+                fecha_inicio = fecha_inspeccion
+                self.answers[self.f['fecha_inicio_rondin']] = fecha_inicio
             duracion = fecha_inspeccion - fecha_inicio
             area[self.f['duracion_traslado_area']] = round(duracion / 60,2)
             duracion_total = duracion
@@ -68,7 +71,7 @@ class Accesos(Accesos):
         format_res = list(res)
         if format_res:
             areas_recorrido = self.unlist(format_res)
-            self.answers[self.f['grupo_areas_visitadas']] = areas_recorrido.get('rondin_areas', [])
+            self.answers[self.f['areas_del_rondin']] = areas_recorrido.get('rondin_areas', [])
             return True
         return False
     
@@ -123,7 +126,7 @@ if __name__ == "__main__":
     acceso_obj.calcluta_tiempo_traslados()
 
     if acceso_obj.answers.get(acceso_obj.mf['estatus_del_recorrido']) == 'programado':
-        if not acceso_obj.answers.get(acceso_obj.f['grupo_areas_visitadas']):
+        if not acceso_obj.answers.get(acceso_obj.f['areas_del_rondin']):
             acceso_obj.get_and_set_areas_recorrido()
         if not acceso_obj.answers.get(acceso_obj.USUARIOS_OBJ_ID):
             acceso_obj.get_and_set_user()
