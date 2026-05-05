@@ -603,3 +603,22 @@ class Accesos( Accesos):
     #     #         "gefetes_pendientes": 0,
     #     #     }
     #     return res
+
+    def get_config_accesos(self):
+        match_query = {
+            "deleted_at":{"$exists":False},
+            "form_id": self.CONF_ACCESOS,
+            f"answers.{self.EMPLOYEE_OBJ_ID}.{self.employee_fields['user_id_id']}":self.user['user_id'],
+        }
+        query = [
+            {'$match': match_query },
+            {"$sort": {"created_at": -1}},
+            {'$limit':1},
+            {'$project': {
+                "usuario":f"$answers.{self.conf_accesos_fields['usuario_cat']}",
+                "grupos":f"$answers.{self.conf_accesos_fields['grupos']}",
+                "menus": f"$answers.{self.conf_accesos_fields['menus']}",
+            }},
+        ]
+        data = self.format_cr_result(self.cr.aggregate(query),  get_one=True)
+        return data
