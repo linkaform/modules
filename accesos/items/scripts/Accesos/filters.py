@@ -72,6 +72,13 @@ class Accesos(Accesos):
             "field": f"answers.{self.mf['tipo_registro']}"
         }
 
+    @get_mongo_distinct_list
+    def get_pases_status(self):
+        return {
+            "form_id": self.PASE_ENTRADA,
+            "field": f"answers.{self.pase_entrada_fields['status_pase']}"
+        }
+
     def get_filters_in_and_out(self):
         """
         Obtiene los filtros para la Bitacora de Entradas y Salidas
@@ -86,6 +93,35 @@ class Accesos(Accesos):
                 "label": "Estatus",
                 "type": "multiple",
                 "options": [{"label": i.capitalize(), "value": i} for i in estatus]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "perfil_visita",
+                "label": "Perfil",
+                "type": "multiple",
+                "options": [{"label": i, "value": i} for i in profiles]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "visita_a",
+                "label": "Visita a",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in employees]
+            }
+        ]
+        return filters
+
+    def get_filters_pases(self):
+        profiles = self.get_profiles()
+        estatus = self.get_pases_status()
+        employees = self.get_employees_names()
+        filters = [
+            {
+                "defaultDisplayOpen": True,
+                "key": "status",
+                "label": "Estatus",
+                "type": "multiple",
+                "options": [{"label": i.capitalize().replace("_", " "), "value": i} for i in estatus if i]
             },
             {
                 "defaultDisplayOpen": False,
@@ -154,7 +190,8 @@ if __name__ == "__main__":
 
     dispatcher = {
         "in_and_out": lambda: script_obj.get_filters_in_and_out(),
-        "rondines":   lambda: script_obj.get_filters_rondines()
+        "rondines":   lambda: script_obj.get_filters_rondines(),
+        "pases":      lambda: script_obj.get_filters_pases(),
     }
 
     action = dispatcher.get(option)
