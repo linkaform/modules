@@ -282,7 +282,6 @@ class Accesos(Accesos):
             self.area_update['estatus']: 'activa',
             self.area_update['estatus_area']: 'disponible',
         }
-        breakpoint()
         response = self.create_register(
             module='Accesos',
             process='Creacion de una area',
@@ -332,7 +331,6 @@ class Accesos(Accesos):
                 }
             },
         })
-        breakpoint()
         metadata.update({'answers':answers})
         response = self.lkf_api.post_forms_answers(metadata)
         response = self.detail_response(response.get('status_code', 0))
