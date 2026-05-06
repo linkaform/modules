@@ -84,6 +84,7 @@ class Accesos(Accesos):
         }
 
     @get_mongo_distinct_list
+
     def get_incidencias_estatus(self):
         return {
             "form_id": self.BITACORA_INCIDENCIAS,
@@ -111,7 +112,12 @@ class Accesos(Accesos):
             "field": f"answers.{self.mf['tipo_falla']}"
         }
 
-    # ── Filtros ───────────────────────────────────────────────────────────────
+
+    def get_pases_status(self):
+        return {
+            "form_id": self.PASE_ENTRADA,
+            "field": f"answers.{self.pase_entrada_fields['status_pase']}"
+        }
 
     def get_filters_in_and_out(self):
         profiles  = self.get_profiles()
@@ -141,6 +147,35 @@ class Accesos(Accesos):
             }
         ]
 
+    def get_filters_pases(self):
+        profiles = self.get_profiles()
+        estatus = self.get_pases_status()
+        employees = self.get_employees_names()
+        filters = [
+            {
+                "defaultDisplayOpen": True,
+                "key": "status",
+                "label": "Estatus",
+                "type": "multiple",
+                "options": [{"label": i.capitalize().replace("_", " "), "value": i} for i in estatus if i]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "perfil_visita",
+                "label": "Perfil",
+                "type": "multiple",
+                "options": [{"label": i, "value": i} for i in profiles]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "visita_a",
+                "label": "Visita a",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in employees]
+            }
+        ]
+        return filters
+        
     def get_filters_recorridos(self):
         asignado_a = self.get_employees_names()
         areas      = self.get_areas()
@@ -309,12 +344,14 @@ if __name__ == "__main__":
     option = data.get("option", '')
 
     dispatcher = {
-        "in_and_out":  lambda: script_obj.get_filters_in_and_out(),
         "recorridos":  lambda: script_obj.get_filters_recorridos(),
         "rondines":    lambda: script_obj.get_filters_rondines(),
         "check_areas": lambda: script_obj.get_filters_check_areas(),
         "incidencias": lambda: script_obj.get_filters_incidencias(),
         "fallas":      lambda: script_obj.get_filters_fallas(),
+        "in_and_out": lambda: script_obj.get_filters_in_and_out(),
+        "rondines":   lambda: script_obj.get_filters_rondines(),
+        "pases":      lambda: script_obj.get_filters_pases(),
     }
 
     action = dispatcher.get(option)
