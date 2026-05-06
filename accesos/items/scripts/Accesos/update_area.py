@@ -282,7 +282,7 @@ class Accesos(Accesos):
             self.area_update['estatus']: 'activa',
             self.area_update['estatus_area']: 'disponible',
         }
-        
+        breakpoint()
         response = self.create_register(
             module='Accesos',
             process='Creacion de una area',
@@ -315,7 +315,12 @@ class Accesos(Accesos):
             response: La respuesta de la API de Linkaform al crear el registro.
         """
         metadata = self.lkf_api.get_metadata(form_id=form_id)
-        
+        if hasattr(self, 'geolocation_area'):
+            if isinstance(self.geolocation_area, dict):
+                metadata['geolocation'] = [ self.geolocation_area.get('latitude',0),self.geolocation_area.get('longitude',0) ]
+            elif isinstance(self.geolocation_area, list):
+                metadata['geolocation'] = self.geolocation_area
+
         metadata.update({
             "properties": {
                 "device_properties":{
@@ -327,7 +332,7 @@ class Accesos(Accesos):
                 }
             },
         })
-        
+        breakpoint()
         metadata.update({'answers':answers})
         response = self.lkf_api.post_forms_answers(metadata)
         response = self.detail_response(response.get('status_code', 0))
@@ -342,8 +347,8 @@ if __name__ == "__main__":
     acceso_obj.geolocation_area = data_conf_area.get('geolocation', [])
     if acceso_obj.geolocation_area:
         acceso_obj.geolocation_area = {
-            "latitude": acceso_obj.geolocation_area[0],
-            "longitude": acceso_obj.geolocation_area[1]
+            "latitude": acceso_obj.geolocation_area[1],
+            "longitude": acceso_obj.geolocation_area[0]
         }
     acceso_obj.statuss = 'ok'
     acceso_obj.status_comment = ''

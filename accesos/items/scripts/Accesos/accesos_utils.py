@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import pytz,threading, random, time
+import pytz,threading, random, time, unicodedata, tempfile, os
 import sys, simplejson, json, pytz, base64, requests
 
 from datetime import datetime, timedelta, date
@@ -3128,32 +3128,14 @@ class Accesos(Accesos):
         return status
     
     def get_user_catalogs(self):
-        soter_catalogs = [
-            self.LISTA_INCIDENCIAS_CAT_ID,
-            self.SUB_CATEGORIAS_INCIDENCIAS_ID,
-            self.CATEGORIAS_INCIDENCIAS_ID,
-            self.AREAS_DE_LAS_UBICACIONES_CAT_ID,
-            self.UBICACIONES_CAT_ID,
-            self.CONFIGURACION_RECORRIDOS_ID,
-            self.USUARIOS_ID,
-            self.CONF_AREA_EMPLEADOS_CAT_ID,
-            self.TIPO_DE_EQUIPO_ID,
-            self.LISTA_FALLAS_CAT_ID,
-            self.CONF_AREA_EMPLEADOS_AP_CAT_ID,
-            self.VISITA_AUTORIZADA_CAT_ID,
-            self.ESTADO_ID,
-            self.PROVEEDORES_CAT_ID,
-            self.LOCKERS_CAT_ID,
-            self.TIPO_ARTICULOS_PERDIDOS_CAT_ID,
-            self.PASE_ENTRADA_ID,
-            self.ACTIVOS_FIJOS_CAT_ID,
-        ]
+        
         dbs = {}
         try:
             fields_invertido = {v: k for k, v in self.f.items()}
-            for catalog_id in soter_catalogs:
+            for catalog_id in self.clave10_catalogs:
                 item = {}
                 version = "00.00"
+                print('catalog_id', catalog_id)
                 info_catalog = self.lkf_api.get_catalog_id_fields(catalog_id)
                 catalog_name = self.clean_text(info_catalog.get('catalog', {}).get('name', ''))
                 catalog_fields = info_catalog.get('catalog', {}).get('fields', [])
@@ -4273,6 +4255,7 @@ class Accesos(Accesos):
         return response
     
     ### revisar si esto no esta repitdio >>>
+ 
     def _process_single_check_record(self, record):
         record_id = record.get('record_id', None)
 
@@ -4811,13 +4794,13 @@ class Accesos(Accesos):
             return {'status_code': 400, 'type': 'error', 'msg': 'Missing _id or _rev', 'data': {}}
 
         answers = self.get_area_model(record)
-        
-
         metadata = self.lkf_api.get_metadata(form_id=self.CONFIGURACION_AREA_FORM)
+        if record.get('geolocation'):
+            metadata['geolocation'] = [record['geolocation']['long'], record['geolocation']['lat']]
         metadata.update({'answers': answers})
 
         res = self.lkf_api.post_forms_answers(metadata)
-
+        # res = {'status_code':400, 'exception':'testing'}
         if res.get('status_code') in (200, 201, 202):
             self.cr_db.delete(record)
             res = {'status_code': 200, 'type': 'success', 'msg': 'Area synced', 'data': {}}
@@ -4915,23 +4898,22 @@ class Accesos(Accesos):
             "limit": 1000
         })
         record_list += list(records)
-
         #TODO DELETE una vez que ya se hayan migrado todas las apps
         # backward compatibility: checks viejos
         records_check = self.cr_db.find({
             "selector": {
-                "$or": [
-                    {"status_check": "completed"},
-                    {"status_check": "in_progress"}, #bug hay que quitar esto.. 
-                ],
-                 "$or": [
-                        {"status": {"$exists": False}},
-                        {"status": "synced"},
-                        # {"status": "error"}
-                    ],
-
+                "$and": [
+                    {
+                        "status_check": "completed"
+                    },
+                    {
+                        "$or": [
+                            {"status": {"$exists": False}},
+                            {"status": "synced"},
+                        ]
+                    }
+                ]
             },
-            # "limit": 1000
             "limit": 1000
         })
         record_list += list(records_check)
@@ -4940,11 +4922,17 @@ class Accesos(Accesos):
         # backward compatibility: checks viejos
         records_rondin = self.cr_db.find({
             "selector": {
-                 "status_rondin": "completed",
-                "$or": [
-                        {"status": {"$exists": False}},
-                        {"status": "synced"}
-                    ],
+                "$and": [
+                    {
+                        "status_check": "completed"
+                    },
+                    {
+                        "$or": [
+                            {"status": {"$exists": False}},
+                            {"status": "synced"},
+                        ]
+                    }
+                ]
             },
             "limit": 1000
         })
@@ -4954,7 +4942,6 @@ class Accesos(Accesos):
         for rec in record_list:
             unique_records[rec.get('_id')] = rec
         record_list = list(unique_records.values())
-
         if not record_list:
             print("No records to sync")
             return

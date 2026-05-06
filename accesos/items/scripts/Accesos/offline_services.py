@@ -1,17 +1,9 @@
 # coding: utf-8
-import sys, simplejson, json, pytz, os
-import tempfile, unicodedata, threading
-
-from datetime import datetime
-from bson.objectid import ObjectId
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from hmac import new
-import time, random
-
+import sys, simplejson
 
 from accesos_utils import Accesos
 from account_settings import *
-from linkaform_api import settings
+#from linkaform_api import settings
 
 
 class Accesos(Accesos):
@@ -21,6 +13,26 @@ class Accesos(Accesos):
         # Module Globals#
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
         self.load(module='Location', **self.kwargs)
+        self.clave10_catalogs = [
+            self.LISTA_INCIDENCIAS_CAT_ID,
+            self.SUB_CATEGORIAS_INCIDENCIAS_ID,
+            self.CATEGORIAS_INCIDENCIAS_ID,
+            self.AREAS_DE_LAS_UBICACIONES_CAT_ID,
+            self.UBICACIONES_CAT_ID,
+            self.CONFIGURACION_RECORRIDOS_ID,
+            self.USUARIOS_ID,
+            self.CONF_AREA_EMPLEADOS_CAT_ID,
+            self.TIPO_DE_EQUIPO_ID,
+            self.LISTA_FALLAS_CAT_ID,
+            self.CONF_AREA_EMPLEADOS_AP_CAT_ID,
+            self.VISITA_AUTORIZADA_CAT_ID,
+            self.ESTADO_ID,
+            self.PROVEEDORES_CAT_ID,
+            self.LOCKERS_CAT_ID,
+            self.TIPO_ARTICULOS_PERDIDOS_CAT_ID,
+            self.PASE_ENTRADA_ID,
+            self.ACTIVOS_FIJOS_CAT_ID,
+        ]
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
