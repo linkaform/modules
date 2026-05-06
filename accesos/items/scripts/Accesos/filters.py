@@ -44,6 +44,8 @@ class Accesos(Accesos):
             return [str(item) for item in data if item is not None]
         return wrapper
 
+    # ── Helpers ──────────────────────────────────────────────────────────────
+
     @get_mongo_string_list
     def get_profiles(self):
         return {
@@ -52,16 +54,25 @@ class Accesos(Accesos):
                 f"answers.{self.PERFILES_OBJ_ID}.{self.mf['walkin']}": "Si"
             },
             "project": {
-                "value": f"$answers.{self.PERFILES_OBJ_ID}.{self.mf['nombre_perfil']}" 
+                "value": f"$answers.{self.PERFILES_OBJ_ID}.{self.mf['nombre_perfil']}"
             }
         }
-    
+
     @get_mongo_string_list
     def get_employees_names(self):
         return {
             "form_id": self.EMPLEADOS,
             "project": {
-                "value": f"$answers.{self.mf['nombre_empleado']}" 
+                "value": f"$answers.{self.mf['nombre_empleado']}"
+            }
+        }
+
+    @get_mongo_string_list
+    def get_areas(self):
+        return {
+            "form_id": self.AREAS_DE_LAS_UBICACIONES,
+            "project": {
+                "value": f"$answers.{self.mf['nombre_area']}"
             }
         }
 
@@ -72,14 +83,41 @@ class Accesos(Accesos):
             "field": f"answers.{self.mf['tipo_registro']}"
         }
 
+    @get_mongo_distinct_list
+    def get_incidencias_estatus(self):
+        return {
+            "form_id": self.BITACORA_INCIDENCIAS,
+            "field": f"answers.{self.incidence_fields['estatus']}"
+        }
+
+    @get_mongo_distinct_list
+    def get_incidencias_tipo(self):
+        return {
+            "form_id": self.BITACORA_INCIDENCIAS,
+            "field": f"answers.{self.incidence_fields['incidencia']}"
+        }
+
+    @get_mongo_distinct_list
+    def get_fallas_estatus(self):
+        return {
+            "form_id": self.BITACORA_FALLAS,
+            "field": f"answers.{self.mf['estatus_falla']}"
+        }
+
+    @get_mongo_distinct_list
+    def get_fallas_tipo(self):
+        return {
+            "form_id": self.BITACORA_FALLAS,
+            "field": f"answers.{self.mf['tipo_falla']}"
+        }
+
+    # ── Filtros ───────────────────────────────────────────────────────────────
+
     def get_filters_in_and_out(self):
-        """
-        Obtiene los filtros para la Bitacora de Entradas y Salidas
-        """
-        profiles = self.get_profiles()
-        estatus = self.get_in_and_out_status()
+        profiles  = self.get_profiles()
+        estatus   = self.get_in_and_out_status()
         employees = self.get_employees_names()
-        filters = [
+        return [
             {
                 "defaultDisplayOpen": True,
                 "key": "status",
@@ -102,13 +140,11 @@ class Accesos(Accesos):
                 "options": [{"label": i, "value": i} for i in employees]
             }
         ]
-        return filters
 
-    def get_filters_rondines(self):
-        """
-        Obtiene los filtros para la vista de Rondines
-        """
-        filters = [
+    def get_filters_recorridos(self):
+        asignado_a = self.get_employees_names()
+        areas      = self.get_areas()
+        return [
             {
                 "defaultDisplayOpen": True,
                 "key": "estatus_rondin",
@@ -137,13 +173,133 @@ class Accesos(Accesos):
                 "label": "Recurrencia",
                 "type": "single",
                 "options": [
-                    {"label": "Con recurrencia", "value": "Cuenta Con Una Recurrencia"},
-                    {"label": "Sin recurrencia", "value": "No Recurrente"},
-                    {"label": "Única ocasión",   "value": "Es De Única Ocación"},
+                    {"label": "Minuto",           "value": "Minuto"},
+                    {"label": "Hora",             "value": "Hora"},
+                    {"label": "Día de la semana", "value": "Dia de la Semana"},
+                    {"label": "Día del mes",      "value": "Dia del Mes"},
+                    {"label": "Mes",              "value": "Mes"},
                 ]
             },
+            {
+                "defaultDisplayOpen": False,
+                "key": "asignado_a",
+                "label": "Asignado a",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in asignado_a]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "area",
+                "label": "Área",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in areas]
+            },
         ]
-        return filters
+
+    def get_filters_rondines(self):
+        asignado_a = self.get_employees_names()
+        areas      = self.get_areas()
+        return [
+            {
+                "defaultDisplayOpen": True,
+                "key": "estatus_rondin",
+                "label": "Estatus",
+                "type": "single",
+                "options": [
+                    {"label": "Programado", "value": "Programado"},
+                    {"label": "Realizado",  "value": "Realizado"},
+                    {"label": "En Proceso", "value": "En Proceso"},
+                    {"label": "Cancelado",  "value": "Cancelado"},
+                    {"label": "Cerrado",    "value": "Cerrado"},
+                ]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "incidencias",
+                "label": "Tiene incidencias",
+                "type": "single",
+                "options": [
+                    {"label": "Si", "value": "Si"},
+                    {"label": "No", "value": "No"},
+                ]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "asignado_a",
+                "label": "Asignado a",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in asignado_a]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "area",
+                "label": "Área",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in areas]
+            },
+        ]
+
+    def get_filters_check_areas(self):
+        areas = self.get_areas()
+        return [
+            {
+                "defaultDisplayOpen": False,
+                "key": "incidencias",
+                "label": "Tiene incidencias",
+                "type": "single",
+                "options": [
+                    {"label": "Si", "value": "Si"},
+                    {"label": "No", "value": "No"},
+                ]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "area",
+                "label": "Área",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in areas]
+            },
+        ]
+
+    def get_filters_incidencias(self):
+        estatuses = self.get_incidencias_estatus()
+        tipos     = self.get_incidencias_tipo()
+        return [
+            {
+                "defaultDisplayOpen": True,
+                "key": "estatus_incidencia",
+                "label": "Estatus",
+                "type": "multiple",
+                "options": [{"label": i.capitalize(), "value": i} for i in estatuses]
+            },
+            {
+                "defaultDisplayOpen": True,
+                "key": "tipo_incidencia",
+                "label": "Tipo",
+                "type": "multiple",
+                "options": [{"label": i, "value": i} for i in tipos]
+            },
+        ]
+
+    def get_filters_fallas(self):
+        estatuses = self.get_fallas_estatus()
+        tipos     = self.get_fallas_tipo()
+        return [
+            {
+                "defaultDisplayOpen": True,
+                "key": "estatus_falla",
+                "label": "Estatus",
+                "type": "multiple",
+                "options": [{"label": i.capitalize(), "value": i} for i in estatuses]
+            },
+            {
+                "defaultDisplayOpen": True,
+                "key": "tipo_falla",
+                "label": "Tipo",
+                "type": "multiple",
+                "options": [{"label": i, "value": i} for i in tipos]
+            },
+        ]
 
 
 if __name__ == "__main__":
@@ -153,8 +309,12 @@ if __name__ == "__main__":
     option = data.get("option", '')
 
     dispatcher = {
-        "in_and_out": lambda: script_obj.get_filters_in_and_out(),
-        "rondines":   lambda: script_obj.get_filters_rondines()
+        "in_and_out":  lambda: script_obj.get_filters_in_and_out(),
+        "recorridos":  lambda: script_obj.get_filters_recorridos(),
+        "rondines":    lambda: script_obj.get_filters_rondines(),
+        "check_areas": lambda: script_obj.get_filters_check_areas(),
+        "incidencias": lambda: script_obj.get_filters_incidencias(),
+        "fallas":      lambda: script_obj.get_filters_fallas(),
     }
 
     action = dispatcher.get(option)
