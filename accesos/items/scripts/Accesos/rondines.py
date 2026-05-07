@@ -804,6 +804,11 @@ class Accesos(Accesos):
                 areas = [areas] if areas else []
 
             areas_formateadas = []
+            areas_default_images = {}
+            areas_config = self.unlist(record.get('recorrido_config', []))
+            if areas_config:
+                areas_config = areas_config.get('areas_config', {})
+                areas_default_images = {i.get('rondin_area', ''): i.get('foto_area', {}) for i in areas_config if i.get('foto_area')}
             for area in areas:
                 area_con_contexto = {
                     **area,
@@ -818,6 +823,7 @@ class Accesos(Accesos):
                     detalle = detalle[0] if detalle else detalle
                 areas_formateadas.append({
                     "area": area.get("rondin_area", ""),
+                    "foto_default_area": self.unlist(areas_default_images.get(area.get('rondin_area', []))),
                     "detalle": detalle,
                 })
 
@@ -870,6 +876,16 @@ class Accesos(Accesos):
                         "foto_area": foto.get("file_url", ""),
                     })
 
+            format_checks_data = []
+            checks_data = record.get('checks_data', [])
+            for check in checks_data:
+                new_item = {}
+                new_item['fecha_check'] = check.get('fecha_hora_inspeccion_area', '')
+                new_item['evidencias_check'] = check.get('foto_evidencia_area', [])
+                new_item['comentarios_check'] = check.get('comentario_check_area', '')
+                new_item['incidencias_check'] = check.get('grupo_incidencias_check', '')
+                format_checks_data.append(new_item)
+
             return {
                 "id": str(record.get("_id", "")),
                 "folio": record.get("folio", ""),
@@ -893,6 +909,7 @@ class Accesos(Accesos):
                 "incidencias": incidencias_formateadas,
                 "images_data": images_data,
                 "map_data": map_data,
+                "checks_data": format_checks_data
             }
 
     def get_bitacora(self, date_from=None, date_to=None, area_details=False, limit: int = 100, offset: int = 0, ubicacion: str = "", nombre_rondin: str = ""):
@@ -969,6 +986,53 @@ class Accesos(Accesos):
                 ],
                 "as": "recorrido_config"
             }},
+            {"$addFields": {
+                "area_record_ids": {
+                    "$filter": {
+                        "input": {
+                            "$map": {
+                                "input": {"$ifNull": ["$areas", []]},
+                                "as": "area",
+                                "in": {
+                                    "$convert": {
+                                        "input": {
+                                            "$arrayElemAt": [
+                                                {"$split": [{"$ifNull": [f"$$area.{self.f['url_registro_rondin']}", ""]}, "/"]},
+                                                -1
+                                            ]
+                                        },
+                                        "to": "objectId",
+                                        "onError": None,
+                                        "onNull": None
+                                    }
+                                }
+                            }
+                        },
+                        "as": "oid",
+                        "cond": {"$ne": ["$$oid", None]}
+                    }
+                }
+            }},
+            {"$lookup": {
+                "from": self.cr.name,
+                "let": {"record_ids": "$area_record_ids"},
+                "pipeline": [
+                    {"$match": {
+                        "$expr": {
+                            "$and": [
+                                {"$eq": ["$form_id", self.CHECK_UBICACIONES]},
+                                {"$in": ["$_id", "$$record_ids"]}
+                            ]
+                        }
+                    }},
+                    {"$project": {
+                        "_id": 1,
+                        "answers": 1,
+                    }}
+                ],
+                "as": "checks_data"
+            }},
+            {"$unset": "area_record_ids"},
             {"$sort": {"created_at": -1}},
             {"$skip": offset},
             {"$limit": limit}
