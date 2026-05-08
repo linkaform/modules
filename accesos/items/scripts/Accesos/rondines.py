@@ -1043,7 +1043,7 @@ class Accesos(Accesos):
         print("RESPUESTA DEL SERVICIO", simplejson.dumps(result, indent=4))
         return {"data": result, "total": len(result)}
 
-    def get_rondines(self, date_from=None, date_to=None, area_details=False, limit=20, offset=0):
+    def get_recorridos(self, date_from=None, date_to=None, area_details=False, limit=20, offset=0):
         """Lista los rondines según los filtros proporcionados.
         Params:
             date_from (str): Fecha de inicio del filtro.
@@ -1084,7 +1084,7 @@ class Accesos(Accesos):
                 "areas": f"$answers.{self.rondin_keys['areas']}",
                 "se_repite_cada":f"$answers.{self.rondin_keys['se_repite_cada']}",
                 "ubicacion_geolocation": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.f['address_geolocation']}",
-                "estatus_rondin": f"$answers.{self.f['status_cron']}",
+                "estatus_recorrido": f"$answers.{self.f['status_cron']}",
                 "fecha_inicio_rondin": f"$answers.{self.f['fecha_primer_evento']}",
                 "duracion_esperada_rondin": {"$ifNull": [f"$answers.{self.rondin_keys['duracion_estimada']}", "No especificada"]},
                 "fecha_final_rondin": {"$ifNull": [f"$answers.{self.f['fecha_final_recurrencia']}", "Sin fecha final"]},
@@ -1116,7 +1116,6 @@ class Accesos(Accesos):
 
         if response:
             for item in response:
-                print("ITEM", item)
                 data = self.format_rondin_by_id(item)
                 location = item.get('ubicacion', '')
                 rondin_name = item.get('nombre_del_rondin', '')
@@ -2170,8 +2169,8 @@ if __name__ == "__main__":
         response = class_obj.delete_rondin(folio=folio)
     elif option == 'edit_areas_rondin':
         response = class_obj.edit_areas_rondin(areas=areas, folio=folio, record_id=record_id)
-    elif option == 'get_rondines':
-        response = class_obj.get_rondines(date_from=date_from, date_to=date_to, area_details=area_details, limit=limit, offset=offset)
+    elif option == 'get_recorridos':
+        response = class_obj.get_recorridos(date_from=date_from, date_to=date_to, area_details=area_details, limit=limit, offset=offset)
     elif option == 'get_bitacora':
         response = class_obj.get_bitacora(date_from=date_from, date_to=date_to, area_details=area_details, limit=limit, offset=offset)
     elif option == 'get_catalog_areas':
