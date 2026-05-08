@@ -4731,7 +4731,8 @@ class Accesos(Accesos):
         res = self.lkf_api.post_forms_answers(metadata)
         # res = {'status_code':400, 'exception':'testing'}
         if res.get('status_code') in (200, 201, 202):
-            self.cr_db.delete(record)
+            record['status'] = 'synced'
+            self.cr_db.save(record)
             res = {'status_code': 200, 'type': 'success', 'msg': 'Area synced', 'data': {}}
         else:
             record['status'] = 'error'
@@ -4749,6 +4750,18 @@ class Accesos(Accesos):
             self.cr_db.save(record)
 
         return res
+
+    def delete_old_synced_areas(self, days=3):
+        import time
+        cutoff = time.time() - (days * 86400)
+        deleted = 0
+        for record in self.cr_db:
+            if record.get('status') != 'synced':
+                continue
+            if record.get('created_at', 0) < cutoff:
+                self.cr_db.delete(record)
+                deleted += 1
+        return deleted
 
     def group_records_by_type(self, records):
         """
