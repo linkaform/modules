@@ -102,6 +102,7 @@ class Accesos(Accesos):
             'estatus_del_recorrido': '6639b2744bb44059fc59eb62',
             'fecha_hora_inspeccion_area': '6760a908a43b1b0e41abad6b',
             'fecha_programacion':'6760a8e68cef14ecd7f8b6fe',
+            'fecha_hora_fin':'6760a8e68cef14ecd7f8b6ff',
             'foto_evidencia_area': '681144fb0d423e25b42818d2',
             'foto_evidencia_area_rondin': '66462b9d7124d1540f962087',
             'grupo_de_areas_recorrido': '6645052ef8bc829a5ccafaf5',

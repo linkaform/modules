@@ -802,7 +802,6 @@ class Accesos(Accesos):
             areas = record.get("areas", [])
             if not isinstance(areas, list):
                 areas = [areas] if areas else []
-
             areas_formateadas = []
             areas_default_images = {}
             areas_config = self.unlist(record.get('recorrido_config', []))
@@ -836,7 +835,7 @@ class Accesos(Accesos):
                 incidencias_formateadas.append({
                     "categoria": inc.get("categoria", ""),
                     "subcategoria": inc.get("sub_categoria", ""),
-                    "incidente": inc.get("incidente", ""),
+                    "incidente": inc.get("incidencia", ""),
                     "area_incidente": inc.get("nombre_area_salida", ""),
                     "fecha_hora_incidente": inc.get("fecha_hora_incidente_bitacora", ""),
                     "accion_tomada": inc.get("incidente_accion", ""),
@@ -897,6 +896,7 @@ class Accesos(Accesos):
                 "tipo_rondin": record.get("tipo_rondin", ""),
                 "fecha_hora_programada_inicio": record.get("fecha_hora_programada_inicio", ""),
                 "fecha_hora_inicio": record.get("fecha_hora_inicio", ""),
+                "fecha_hora_fin": record.get("fecha_hora_fin", ""),
                 "estatus_recorrido": record.get("estatus_recorrido", ""),
                 "duracion_rondin": record.get("duracion_rondin", ""),
                 "motivo_cancelacion": record.get("motivo_cancelacion", ""),
@@ -954,6 +954,7 @@ class Accesos(Accesos):
                 "tipo_rondin": f"$answers.{self.f['tipo_rondin']}",
                 "fecha_hora_programada_inicio": f"$answers.{self.f['fecha_hora_programada_inicio']}",
                 "fecha_hora_inicio": f"$answers.{self.f['fecha_hora_inicio']}",
+                "fecha_hora_fin": f"$answers.{self.f['fecha_hora_fin']}",
                 "estatus_recorrido": f"$answers.{self.f['estatus_recorrido']}",
                 "duracion_rondin": f"$answers.{self.f['duracion_rondin']}",
                 "motivo_cancelacion": f"$answers.{self.f['motivo_cancelacion']}",
@@ -1037,10 +1038,10 @@ class Accesos(Accesos):
             {"$skip": offset},
             {"$limit": limit}
         ]
-
         response = self.format_cr(self.cr.aggregate(query))
+        print("RESPONSEEEEEEEEEEEEEEEEEEEEEEEEEEE", simplejson.dumps(response[0]))
         result = [self.format_bitacora_record(record, area_details) for record in response]
-        print("RESPUESTA DEL SERVICIO", simplejson.dumps(result, indent=4))
+        # print("RESPUESTA DEL SERVICIO", simplejson.dumps(result, indent=4))
         return {"data": result, "total": len(result)}
 
     def get_recorridos(self, date_from=None, date_to=None, area_details=False, limit=20, offset=0):

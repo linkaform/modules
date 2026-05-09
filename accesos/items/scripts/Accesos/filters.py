@@ -217,13 +217,6 @@ class Accesos(Accesos):
             },
             {
                 "defaultDisplayOpen": False,
-                "key": "asignado_a",
-                "label": "Asignado a",
-                "type": "multiselect",
-                "options": [{"label": i, "value": i} for i in asignado_a]
-            },
-            {
-                "defaultDisplayOpen": False,
                 "key": "area",
                 "label": "Área",
                 "type": "multiselect",
@@ -350,7 +343,6 @@ if __name__ == "__main__":
         "incidencias": lambda: script_obj.get_filters_incidencias(),
         "fallas":      lambda: script_obj.get_filters_fallas(),
         "in_and_out": lambda: script_obj.get_filters_in_and_out(),
-        "rondines":   lambda: script_obj.get_filters_rondines(),
         "pases":      lambda: script_obj.get_filters_pases(),
     }
 
