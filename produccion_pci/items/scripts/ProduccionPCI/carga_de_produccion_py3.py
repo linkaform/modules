@@ -1230,8 +1230,9 @@ class Produccion_PCI( Produccion_PCI ):
         doctos_found, doctos_error, ruta_doctos = {}, '', ''
         data_img_distos = {}
         if not val_field_zip:
-            if not permiso_sin_docto:
-                return 'error', f'Se requiere documento zip de {docto_process}', None, None
+            return doctos_found, doctos_error, ruta_doctos, data_img_distos
+            # if not permiso_sin_docto:
+            #     return 'error', f'Se requiere documento zip de {docto_process}', None, None
         else:
             doctos_found, doctos_error, ruta_doctos, data_img_distos = self.descomprimeZips( val_field_zip, current_record['folio'], f'cargaPorduccion{docto_process}' )
             if isinstance(doctos_found, str):
@@ -1461,10 +1462,10 @@ class Produccion_PCI( Produccion_PCI ):
                     nombre_docto_a_buscar = folio if folio else str(telefono_registro)
                     
                     # Se revisa que existan los documentos de pdf y distometro si el contratista no esta autorizado para carga sin estos documentos
-                    if nombre_docto_a_buscar not in pdfs_found.keys() and not carga_sin_pdf:
-                        record_errors.append( record + ["El folio no trae su documento PDF"] )
-                        print('El folio no trae su documento PDF {}'.format(nombre_docto_a_buscar))
-                        continue
+                    # if nombre_docto_a_buscar not in pdfs_found.keys() and not carga_sin_pdf:
+                    #     record_errors.append( record + ["El folio no trae su documento PDF"] )
+                    #     print('El folio no trae su documento PDF {}'.format(nombre_docto_a_buscar))
+                    #     continue
                     
 
                     autorizado_sin_disto = False
@@ -1472,10 +1473,10 @@ class Produccion_PCI( Produccion_PCI ):
                         full_name_record = f"{folio}_{telefono_registro}_{area_cope_dir_inicial['division']}_{tecnologia_orden}"
                         autorizado_sin_disto = 'sin_distometro' in folios_autorizados.get(full_name_record, [])
 
-                    if nombre_docto_a_buscar not in distometros_found.keys() and not carga_sin_disto and not autorizado_sin_disto:
-                        record_errors.append( record + ["El folio no trae su documento de Distómetro"] )
-                        print('El folio no trae su documento Distómetro {}'.format(nombre_docto_a_buscar))
-                        continue
+                    # if nombre_docto_a_buscar not in distometros_found.keys() and not carga_sin_disto and not autorizado_sin_disto:
+                    #     record_errors.append( record + ["El folio no trae su documento de Distómetro"] )
+                    #     print('El folio no trae su documento Distómetro {}'.format(nombre_docto_a_buscar))
+                    #     continue
 
                     error_distom_extension = data_img.get(nombre_docto_a_buscar, {}).get('error')
                     if error_distom_extension:
@@ -1508,6 +1509,10 @@ class Produccion_PCI( Produccion_PCI ):
                     # fol_mts_distometro = data_img.get(str(nombre_docto_a_buscar))
                     path_distom = data_img.get(nombre_docto_a_buscar, {}).get('path_disto')
 
+                    data_pdf = {
+                        'in_zip': pdfs_found,
+                        'permiso_sin_pdf': carga_sin_pdf
+                    }
                     if this_record['create']:
                         if this_record['create'].get('error'):
                             error_create = [this_record['create']['error'],] if type(this_record['create']['error']) == str else this_record['create']['error']
@@ -1517,25 +1522,26 @@ class Produccion_PCI( Produccion_PCI ):
                         arreglo_grupo_repetitivo_hst = {'f1054000a030000000000e21':'','f1054000a030000000000e22':'pendiente','f1054000a030000000000e23':datetime.datetime.now().strftime("%Y-%m-%d")}
                         this_record['create']['answers']['f1054000a030000000000e20'] = [arreglo_grupo_repetitivo_hst,]
                         this_record['create']['answers'].update({'5e17674c50f45bac939c932e':'sí'})
-                        """
-                        # Empiezo a cargar el documento pdf del folio
-                        """
-                        print('Parece que todo va en orden con el folio, entonces cargo su documento pdf')
                         folio_to_create = this_record['create']['folio']
                         form_id_to_create = this_record['create']['form_id']
                         form_id_in_admin = self.dict_equivalences_forms_id[form_id_to_create]
                         telefono_to_create = this_record['create'].get('answers',{}).get('f1054000a010000000000005','')
                         area_to_create = this_record['create'].get('answers',{}).get('f1054000a0100000000000a2','')
-                        pdf_uploaded = self.upload_pdf_disto( nombre_docto_a_buscar, form_id_to_create, pdfs_found )
-                        if pdf_uploaded.get('error', False):
-                            record_errors.append(record + [pdf_uploaded.get('error'),])
-                            continue
-                        this_record['create']['answers'].update(pdf_uploaded)
+                        """
+                        # Empiezo a cargar el documento pdf del folio
+                        """
+                        # print('Parece que todo va en orden con el folio, entonces cargo su documento pdf')
+                        # pdf_uploaded = self.upload_pdf_disto( nombre_docto_a_buscar, form_id_to_create, pdfs_found )
+                        # if pdf_uploaded.get('error', False):
+                        #     record_errors.append(record + [pdf_uploaded.get('error'),])
+                        #     continue
+                        # this_record['create']['answers'].update(pdf_uploaded)
+                        
                         # Cargando el Distómetro
                         folio_autorizado_sin_disto = this_record['create'].pop('autoriza_folio_sin_disto', False)
                         
                         data_distom = self.get_datos_distometro(this_record['create'], path_distom, nombre_docto_a_buscar, carga_sin_disto, folio_autorizado_sin_disto, 
-                            registros_integra_mts, folio_index, telefono_index, form_id_in_admin)
+                            registros_integra_mts, folio_index, telefono_index, form_id_in_admin, data_pdfs=data_pdf)
                         if data_distom.get('error'):
                             record_errors.append(record + [ data_distom['error'] ])
                             folio_mts_posible = data_distom.get('folio_posible_match')
@@ -1634,18 +1640,19 @@ class Produccion_PCI( Produccion_PCI ):
                         """
                         # Empiezo a cargar el documento pdf del folio
                         """
-                        print('Parece que todo va en orden con el folio, entonces cargo su documento pdf')
-                        pdf_uploaded = self.upload_pdf_disto( nombre_docto_a_buscar, form_id_to_update, pdfs_found )
-                        if pdf_uploaded.get('error', False):
-                            record_errors.append(record + [pdf_uploaded.get('error'),])
-                            self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, answers_prev, is_updating_record_exists )
-                            continue
-                        this_record['update']['answers'].update(pdf_uploaded)
+                        # print('Parece que todo va en orden con el folio, entonces cargo su documento pdf')
+                        # pdf_uploaded = self.upload_pdf_disto( nombre_docto_a_buscar, form_id_to_update, pdfs_found )
+                        # if pdf_uploaded.get('error', False):
+                        #     record_errors.append(record + [pdf_uploaded.get('error'),])
+                        #     self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, self.dict_equivalences_forms_id[form_id_to_update], folio_to_update, telefono_to_update, area_to_update, answers_prev, is_updating_record_exists )
+                        #     continue
+                        # this_record['update']['answers'].update(pdf_uploaded)
+                        
                         # Cargando el Distómetro
                         folio_autorizado_sin_disto = this_record['update'].pop('autoriza_folio_sin_disto', False)
                         
                         data_distom = self.get_datos_distometro(this_record['update'], path_distom, nombre_docto_a_buscar, carga_sin_disto, folio_autorizado_sin_disto, 
-                            registros_integra_mts, folio_index, telefono_index, form_id_in_admin)
+                            registros_integra_mts, folio_index, telefono_index, form_id_in_admin, data_pdfs=data_pdf)
                         if data_distom.get('error'):
                             record_errors.append(record + [ data_distom['error'] ])
                             self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, form_id_in_admin, folio_to_update, telefono_to_update, area_to_update, answers_prev, is_updating_record_exists )
@@ -1809,8 +1816,17 @@ class Produccion_PCI( Produccion_PCI ):
         necesarias_not_found = list( set(cols_not_found) - set(no_necesarias) )
         return necesarias_not_found
 
+    def upload_pdf_to_ord_serv(self, data_pdfs, nombre_pdf, form_id_os):
+        pdfs_zip = data_pdfs.get('in_zip', {})
+        if nombre_pdf not in pdfs_zip and not data_pdfs.get('permiso_sin_pdf'):
+            print('El folio no trae su documento PDF {}'.format(nombre_pdf))
+            return {"error": "El folio no trae su documento PDF"}
+
+        print('Parece que todo va en orden con el folio, entonces cargo su documento pdf')
+        return self.upload_pdf_disto( nombre_pdf, form_id_os, pdfs_zip )
+
     def get_datos_distometro(self, data_this_record, path_distom, nombre_docto_a_buscar, carga_sin_disto, autorizado_sin_disto, 
-        registros_integra_mts, folio_index, telefono_index, form_id_in_admin):
+        registros_integra_mts, folio_index, telefono_index, form_id_in_admin, data_pdfs={}):
         # Si la OS ya trae los datos, no es necesario procesar la imagen
         answers_this_record = data_this_record.get('answers', {})
         if answers_this_record.get('68826735d9a13878537d7d3e') and answers_this_record.get('68826735d9a13878537d7d3f'):
@@ -1828,11 +1844,19 @@ class Produccion_PCI( Produccion_PCI ):
             answers_datos_dist['5fff390f68b587d973f1958f'] = data_integra_mts.get('imagen_ruta')
             answers_datos_dist['folio_record_mts'] = data_integra_mts.get('folio_record')
             
+            # Campo "Orden de Servicio Escaneada (PDF)"
             img_os = data_integra_mts.get('foto_os')
             if img_os:
                 data_type_field_pdf = p_utils.get_id_field_pdf(form_id_in_admin)
                 answers_datos_dist[ data_type_field_pdf.get('field_pdf') ] = img_os if data_type_field_pdf.get('type_field_pdf') == 'list' else img_os[0]
                 answers_datos_dist['60882afbf33276990d3f8edf'] = p_utils.get_date_now()
+            else:
+                # Se procesa desde el Zip
+                pdf_uploaded = self.upload_pdf_to_ord_serv(data_pdfs, nombre_docto_a_buscar, data_this_record['form_id'])
+                if pdf_uploaded.get('error', False):
+                    return pdf_uploaded
+                
+                answers_datos_dist.update(pdf_uploaded)
 
             material = data_integra_mts.get('material_utilizado')
             if material:
@@ -1841,6 +1865,7 @@ class Produccion_PCI( Produccion_PCI ):
 
             return answers_datos_dist
         
+        answers_disto_pdf = {}
         # Trae imagen de Distometro y el registro aún no tiene los datos... se lee la imagen
         if path_distom:
             print('     - [Distometro] Se lee de la imagen del zip')
@@ -1850,26 +1875,26 @@ class Produccion_PCI( Produccion_PCI ):
                     'error': resp_distom.get('error') or 'Ocurrió un error al leer la imagen de Distómetro'
                 }
 
-            return {
-                '68826735d9a13878537d7d3e': resp_distom.get('folio_img'),
-                '68826735d9a13878537d7d3f': resp_distom.get('mts_img'),
-            }
-
-        # No trae imagen de Distometro pero el contratista esta autorizado para cargar sin Distometro
-        if carga_sin_disto:
-            return {'68f8714cc41b6aa3df1f8a53': 'Contratista habilitado para carga sin distometro'}
-
-        # No trae imagen de Distometro, el contratista no está autorizado pero el folio si está autorizado en la forma de Autorizaciones
-        if autorizado_sin_disto:
-            return {
-                '68f8714cc41b6aa3df1f8a53': 'Folio autorizado para carga sin distometro',
-                '6981eb689ddea2b79458c5cf': 'sí',
-            }
+            answers_disto_pdf['68826735d9a13878537d7d3e'] = resp_distom.get('folio_img')
+            answers_disto_pdf['68826735d9a13878537d7d3f'] = resp_distom.get('mts_img')
+        elif carga_sin_disto:
+            # No trae imagen de Distometro pero el contratista esta autorizado para cargar sin Distometro
+            answers_disto_pdf['68f8714cc41b6aa3df1f8a53'] = 'Contratista habilitado para carga sin distometro'
+        elif autorizado_sin_disto:
+            # No trae imagen de Distometro, el contratista no está autorizado pero el folio si está autorizado en la forma de Autorizaciones
+            answers_disto_pdf['68f8714cc41b6aa3df1f8a53'] = 'Folio autorizado para carga sin distometro'
+            answers_disto_pdf['6981eb689ddea2b79458c5cf'] = 'sí'
         
 
         # Validacion de casos de error con sugerencia folio - telefono
-        if resp_integra_mts.get('status') == 'error':
+        if not answers_disto_pdf and resp_integra_mts.get('status') == 'error':
             return {'error': resp_integra_mts['message'], 'folio_posible_match': resp_integra_mts.get('folio_posible_match')}
+
+        # Se procesa el PDF
+        if answers_disto_pdf:
+            pdf_uploaded = self.upload_pdf_to_ord_serv(data_pdfs, nombre_docto_a_buscar, data_this_record['form_id'])
+            answers_disto_pdf.update(pdf_uploaded)
+            return answers_disto_pdf
 
         return {'error': 'No se encontraron coincidencias en el Distómetro'}
 
