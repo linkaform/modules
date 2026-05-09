@@ -182,14 +182,14 @@ class Accesos(Accesos):
         return [
             {
                 "defaultDisplayOpen": True,
-                "key": "estatus_rondin",
+                "key": "estatus_recorrido",
                 "label": "Estatus",
                 "type": "single",
                 "options": [
-                    {"label": "Corriendo", "value": "corriendo"},
-                    {"label": "Pausado",   "value": "pausado"},
-                    {"label": "Cancelado", "value": "cancelado"},
-                    {"label": "Cerrado",   "value": "cerrado"},
+                    {"label": "Corriendo", "value": "Corriendo"},
+                    {"label": "Pausado",   "value": "Pausado"},
+                    {"label": "Cancelado", "value": "Cancelado"},
+                    {"label": "Cerrado",   "value": "Cerrado"},
                 ]
             },
             {

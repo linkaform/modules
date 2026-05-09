@@ -41,6 +41,7 @@ class Accesos(Accesos):
             'comentario_general':'69149dcec7b3ec9f2b9395b2',
             'comentarios_generales':'6927a0cdc03f0f8e5355437a',
             'url_rondin':'690cefdca2dff2f469da17e0',
+            'nombre_emp':'638a9a7767c332f5d459fc81'
         })
         
     def create_rondin(self, rondin_data: dict = {}):
@@ -950,7 +951,7 @@ class Accesos(Accesos):
                 "ubicacion": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}",
                 "nombre_recorrido": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}",
                 "recorrido_id": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}._id",  # ← id del recorrido
-                "asignado_a": f"$answers.{self.f['asignado_a']}",
+                "asignado_a": f"$answers.{self.USUARIOS_OBJ_ID}.{self.mf['nombre_usuario']}",
                 "tipo_rondin": f"$answers.{self.f['tipo_rondin']}",
                 "fecha_hora_programada_inicio": f"$answers.{self.f['fecha_hora_programada_inicio']}",
                 "fecha_hora_inicio": f"$answers.{self.f['fecha_hora_inicio']}",
@@ -1039,7 +1040,6 @@ class Accesos(Accesos):
             {"$limit": limit}
         ]
         response = self.format_cr(self.cr.aggregate(query))
-        print("RESPONSEEEEEEEEEEEEEEEEEEEEEEEEEEE", simplejson.dumps(response[0]))
         result = [self.format_bitacora_record(record, area_details) for record in response]
         # print("RESPUESTA DEL SERVICIO", simplejson.dumps(result, indent=4))
         return {"data": result, "total": len(result)}
