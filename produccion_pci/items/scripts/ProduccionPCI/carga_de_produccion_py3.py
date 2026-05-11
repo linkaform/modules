@@ -1123,6 +1123,9 @@ class Produccion_PCI( Produccion_PCI ):
         if record_existente:
             found_record['answers'].update(answer)
             this_record["answers"] = found_record['answers']
+            distom_in_os = this_record["answers"].get("5fff390f68b587d973f1958f")
+            if distom_in_os and isinstance(distom_in_os, list):
+                this_record["answers"]["5fff390f68b587d973f1958f"] = distom_in_os[0]
         else:
             this_record["answers"] = answer
         this_record["autoriza_folio_sin_disto"] = "sin_distometro" in autorizaciones_carga_folio
