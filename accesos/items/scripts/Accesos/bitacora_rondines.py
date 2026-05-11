@@ -21,31 +21,47 @@ class Accesos(Accesos):
         })
 
     def calcluta_tiempo_traslados(self):
-        fecha_inicio = self.answers.get(self.f['fecha_inicio_rondin'], None)
-        fecha_inicio = self.date_2_epoch(fecha_inicio)
-        areas_visitadas = self.answers.get(self.f['grupo_areas_visitadas'], [])
-        fecha_inspeccion = 0
-        duracion_total = 0
-        cantidad_de_inspecciones = 0
-        areas_procesadas = False
-        fecha_final = None
-        for area in areas_visitadas:
-            fecha_inspeccion = area.get(self.f['fecha_inspeccion_area'])
-            fecha_inspeccion = self.date_2_epoch(fecha_inspeccion)
-            if not fecha_inspeccion:
-                continue
-            fecha_final = fecha_inspeccion
-            cantidad_de_inspecciones += 1
-            areas_procesadas = True
-            duracion = fecha_inspeccion - fecha_inicio
-            area[self.f['duracion_traslado_area']] = round(duracion / 60,2)
-            duracion_total = duracion
-        if areas_procesadas:
-            self.answers[self.f['duracion_rondin']] = round(duracion_total / 60,2)
-            self.answers[self.f['porcentaje_obtenido_bitacora']] = str(round((cantidad_de_inspecciones / len(areas_visitadas)) * 100, 2)) + '%'
-            self.answers[self.f['cantidad_areas_inspeccionadas']] = str(cantidad_de_inspecciones) + '/' + str(len(areas_visitadas))
-        fecha_final_str = datetime.datetime.fromtimestamp(fecha_final).strftime('%Y-%m-%d %H:%M:%S') if fecha_final else ''
-        if self.answers.get(self.f['estatus_del_recorrido']) in ['realizado', 'cerrado'] and fecha_final_str:
+        fecha_inicio = self.date_2_epoch(self.answers.get(self.f['fecha_inicio_rondin']))
+        areas_visitadas = self.answers.get(self.f['areas_del_rondin'], [])
+        areas_con_fecha = [
+            (self.date_2_epoch(a.get(self.f['fecha_inspeccion_area'])), a)
+            for a in areas_visitadas
+        ]
+        areas_con_fecha = sorted(
+            [(epoch, a) for epoch, a in areas_con_fecha if epoch],
+            key=lambda x: x[0]
+        )
+
+        if not areas_con_fecha:
+            return True
+
+        if not fecha_inicio:
+            fecha_inicio = areas_con_fecha[0][0]
+            self.answers[self.f['fecha_inicio_rondin']] = fecha_inicio
+
+        first_epoch = areas_con_fecha[0][0]
+        for epoch, area in areas_con_fecha:
+            area[self.f['duracion_traslado_area']] = round((epoch - first_epoch) / 60, 2)
+
+        fecha_final = areas_con_fecha[-1][0]
+        cantidad_inspeccionadas = len(areas_con_fecha)
+
+        self.answers[self.f['duracion_rondin']] = round((fecha_final - fecha_inicio) / 60, 2)
+        self.answers[self.f['porcentaje_obtenido_bitacora']] = (
+            str(round((cantidad_inspeccionadas / len(areas_visitadas)) * 100, 2)) + '%'
+        )
+        self.answers[self.f['cantidad_areas_inspeccionadas']] = (
+            f"{cantidad_inspeccionadas}/{len(areas_visitadas)}"
+        )
+        self.answers[self.f['areas_del_rondin']] = [a for _, a in areas_con_fecha] + [
+            a for epoch, a in zip(
+                [self.date_2_epoch(a.get(self.f['fecha_inspeccion_area'])) for a in areas_visitadas],
+                areas_visitadas
+            ) if not epoch
+        ]
+
+        if self.answers.get(self.f['estatus_del_recorrido']) in ['realizado', 'cerrado']:
+            fecha_final_str = datetime.datetime.fromtimestamp(fecha_final).strftime('%Y-%m-%d %H:%M:%S')
             self.answers[self.f['fecha_fin_rondin']] = fecha_final_str
         return True
     
@@ -68,7 +84,7 @@ class Accesos(Accesos):
         format_res = list(res)
         if format_res:
             areas_recorrido = self.unlist(format_res)
-            self.answers[self.f['grupo_areas_visitadas']] = areas_recorrido.get('rondin_areas', [])
+            self.answers[self.f['areas_del_rondin']] = areas_recorrido.get('rondin_areas', [])
             return True
         return False
     
@@ -123,7 +139,7 @@ if __name__ == "__main__":
     acceso_obj.calcluta_tiempo_traslados()
 
     if acceso_obj.answers.get(acceso_obj.mf['estatus_del_recorrido']) == 'programado':
-        if not acceso_obj.answers.get(acceso_obj.f['grupo_areas_visitadas']):
+        if not acceso_obj.answers.get(acceso_obj.f['areas_del_rondin']):
             acceso_obj.get_and_set_areas_recorrido()
         if not acceso_obj.answers.get(acceso_obj.USUARIOS_OBJ_ID):
             acceso_obj.get_and_set_user()
