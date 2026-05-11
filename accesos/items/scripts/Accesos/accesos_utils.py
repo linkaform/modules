@@ -695,6 +695,25 @@ class Accesos(Accesos):
             format_data = list(set(configuracion_de_accesos))
         return format_data
 
+    def close_orphaned_checkin(self, orphaned_record, closed_record):
+        """Cierra un registro de checkin huérfano usando la hora de cierre
+        del registro más reciente ya cerrado. Actualiza tanto el estatus
+        general de la caseta como el checkin_status individual de cada guardia."""
+        record_id = orphaned_record.get('_id', orphaned_record.get('id'))
+        checkout_time = closed_record.get('boot_checkout_date', self.today_str(date_format='datetime'))
+        data = self.lkf_api.get_metadata(self.CHECKIN_CASETAS)
+        record = self.get_record_by_id(record_id)
+        answers = record['answers']
+        answers[self.checkin_fields['checkin_type']] = 'cerrada'
+        answers[self.checkin_fields['boot_checkout_date']] = checkout_time
+        answers[self.checkin_fields['forzar_cierre']] = 'forzar'
+        for guard in answers.get(self.f['guard_group'], []):
+            if guard.get(self.checkin_fields['checkin_status']) != 'salida':
+                guard[self.checkin_fields['checkin_status']] = 'salida'
+                guard[self.checkin_fields['checkout_date']] = checkout_time
+        data['answers'] = answers
+        return self.lkf_api.patch_record(data=data, record_id=record_id)
+
     def get_booth_status(self, booth_area, location):
         last_chekin = self.get_last_checkin(location, booth_area)
         booth_status = {
@@ -776,6 +795,25 @@ class Accesos(Accesos):
         res = self.cr.aggregate(query)
         format_res = list(res)
         return format_res
+    
+    def get_open_checkin(self, location, area):
+        """Busca explícitamente un registro de checkin con estado abierto para una caseta.
+        A diferencia de get_last_checkin, filtra por checkin_type abierto antes de ordenar,
+        evitando falsos negativos cuando el registro más reciente ya fue cerrado."""
+        open_statuses = ['entrada', 'apertura', 'disponible', 'abierta']
+        query = [
+            {'$match': {
+                "deleted_at": {"$exists": False},
+                "form_id": self.CHECKIN_CASETAS,
+                f"answers.{self.checkin_fields['cat_location']}": location,
+                f"answers.{self.checkin_fields['cat_area']}": area,
+                f"answers.{self.checkin_fields['checkin_type']}": {"$in": open_statuses},
+            }},
+            {'$project': self.project_format(self.checkin_fields)},
+            {'$sort': {'created_at': -1}},
+            {'$limit': 1},
+        ]
+        return self.format_cr_result(self.cr.aggregate(query), get_one=True)
 
     def get_shift_data(self, booth_location=None, booth_area=None, search_default=True):
         """
@@ -878,6 +916,15 @@ class Accesos(Accesos):
             "address": booth_address.get('address'),
         }
         
+        #! Si el último checkin está cerrado pero existe uno huérfano abierto,
+        #! lo cerramos con la hora de cierre del registro más reciente.
+        open_statuses = ['entrada', 'apertura', 'disponible', 'abierta']
+        last_checkin = self.get_last_checkin(booth_location, booth_area)
+        if last_checkin.get('checkin_type') not in open_statuses:
+            orphaned = self.get_open_checkin(booth_location, booth_area)
+            if orphaned:
+                self.close_orphaned_checkin(orphaned, last_checkin)
+
         #! Se obtienen los detalles del turno.
         load_shift_json["booth_stats"] = self.get_page_stats( booth_area, booth_location, "Turnos")
         load_shift_json["booth_status"] = self.get_booth_status(booth_area, booth_location)
@@ -1134,7 +1181,15 @@ class Accesos(Accesos):
         user_id = self.user.get('user_id')
         user = self.lkf_api.get_user_by_id(user_id)
         user_name = user.get('name', '')
-        
+
+        #! Si is_boot_available no encontró el registro abierto (ej. condición de carrera),
+        #! se hace una búsqueda explícita por estado abierto como salvaguarda.
+        if not is_caseta_open:
+            open_record = self.get_open_checkin(location, area)
+            if open_record:
+                is_caseta_open = True
+                checkin_id = open_record.get('_id', open_record.get('id', checkin_id))
+
         #! Si la caseta esta abierta se actualizan los guardias solamente.
         if is_caseta_open:
             res = self.update_guards_checkin([{'user_id': user_id, 'name': user_name}], checkin_id, location, area, user, nombre_suplente, fotografia)
