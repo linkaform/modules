@@ -269,6 +269,7 @@ class Accesos(Accesos):
 
     def get_filters_check_areas(self):
         areas = self.get_areas()
+        asignado_a = self.get_employees_names()
         return [
             {
                 "defaultDisplayOpen": False,
@@ -279,6 +280,13 @@ class Accesos(Accesos):
                     {"label": "Si", "value": "Si"},
                     {"label": "No", "value": "No"},
                 ]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "asignado_a",
+                "label": "Asignado a",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in asignado_a]
             },
             {
                 "defaultDisplayOpen": False,
