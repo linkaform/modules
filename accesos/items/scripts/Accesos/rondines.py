@@ -1692,7 +1692,7 @@ class Accesos(Accesos):
         result = []
 
         for record in response:
-            rondin = record.get("rondin") or {}
+            rondin = self.unlist(record.get("rondin_info")) or {}
             result.append({
                 "id": str(record.get("_id", "")),
                 "folio": record.get("folio", ""),
@@ -1717,7 +1717,7 @@ class Accesos(Accesos):
                     "folio": rondin.get("folio", ""),
                     "ubicacion": rondin.get("ubicacion", ""),
                     "nombre_recorrido": rondin.get("nombre_recorrido", ""),
-                    "asignado_a": rondin.get("asignado_a", ""),
+                    "asignado_a": rondin.get("nombre_emp", ""),
                     "tipo_rondin": rondin.get("tipo_rondin", ""),
                     "fecha_hora_programada_inicio": rondin.get("fecha_hora_programada_inicio", ""),
                     "fecha_hora_inicio": rondin.get("fecha_hora_inicio", ""),
