@@ -312,7 +312,7 @@ class Accesos(Accesos):
                 "defaultDisplayOpen": True,
                 "key": "tipo_incidencia",
                 "label": "Tipo",
-                "type": "multiple",
+                "type": "multiselect",
                 "options": [{"label": i, "value": i} for i in tipos]
             },
         ]
