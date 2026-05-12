@@ -4006,7 +4006,7 @@ class Accesos(Accesos):
         res ={  self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
                     self.mf['nombre_area']: self.unlist(check.get('incidente_area', '')),
                     },
-                self.f['fecha_inspeccion_area']: check.get('fecha_inspeccion_area', check.get('created_at')),
+                self.f['fecha_inspeccion_area']: check.get('fecha_hora_inspeccion_area', check.get('created_at')),
                 self.f['foto_evidencia_area_rondin']: check.get('foto_evidencia_area', []),
                 self.f['comentario_area_rondin']: check.get('comentario_check_area', check.get('comentario_area_rondin', '')),
                 self.f['url_registro_rondin']: f"https://app.linkaform.com/#/records/detail/{check.get('_id')}",
