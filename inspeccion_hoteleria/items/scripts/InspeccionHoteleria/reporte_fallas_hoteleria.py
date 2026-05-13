@@ -83,6 +83,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'crowne_plaza_mty': self.CROWNE_PLAZA_MONTERREY,
             'hie_galerias': self.HIE_GALERIAS,
             'holiday_inn_tijuana': self.HOLIDAY_INN_TIJUANA,
+            'mcallen': self.WYNDHAM_GARDEN_MCALLEN
         }
 
         self.hotel_name_abreviatura = {
@@ -787,6 +788,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         hotel_name_list = [hotel_name.lower().replace(' ', '_')]
         form_id = self.get_forms_id_list(hotel_name_list)
         form_id = self.unlist(form_id)
+        
 
         if hotel_name in self.hotel_name_abreviatura:
             hotel_name = self.hotel_name_abreviatura[hotel_name]
