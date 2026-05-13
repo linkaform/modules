@@ -1616,7 +1616,7 @@ class Accesos(Accesos):
                 "incidente_location": f"$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['location']}",
                 "area_tag_id": f"$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['area_tag_id']}",
                 "foto_area": f"$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['foto_area']}",
-                "area_nombre": f"$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['area_nombre']}",
+                # "area_nombre": f"$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['area_nombre']}",
             }},
             # Extraer ID del final de la URL
             {"$addFields": {
@@ -1701,7 +1701,7 @@ class Accesos(Accesos):
                 "updated_at": str(record.get("updated_at", "")),
                 "url_rondin": record.get("url_rondin", ""),
                 # info del area
-                "nombre_area": record.get("nombre_area", []),
+                # "nombre_area": record.get("nombre_area", []),
                 "rondin_area": record.get("rondin_area", []),
                 "area_tag_id": record.get("area_tag_id", ""),
                 "tipo_de_area": record.get("tipo_de_area", []),
