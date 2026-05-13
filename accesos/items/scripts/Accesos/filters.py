@@ -184,7 +184,7 @@ class Accesos(Accesos):
                 "defaultDisplayOpen": True,
                 "key": "estatus_recorrido",
                 "label": "Estatus",
-                "type": "single",
+                "type": "multiple",
                 "options": [
                     {"label": "Corriendo", "value": "Corriendo"},
                     {"label": "Pausado",   "value": "Pausado"},
@@ -196,7 +196,7 @@ class Accesos(Accesos):
                 "defaultDisplayOpen": True,
                 "key": "tipo_rondin",
                 "label": "Tipo",
-                "type": "single",
+                "type": "multiple",
                 "options": [
                     {"label": "QR",  "value": "qr"},
                     {"label": "NFC", "value": "nfc"},
@@ -206,7 +206,7 @@ class Accesos(Accesos):
                 "defaultDisplayOpen": False,
                 "key": "recurrencia",
                 "label": "Recurrencia",
-                "type": "single",
+                "type": "multiple",
                 "options": [
                     {"label": "Minuto",           "value": "Minuto"},
                     {"label": "Hora",             "value": "Hora"},
@@ -232,7 +232,7 @@ class Accesos(Accesos):
                 "defaultDisplayOpen": True,
                 "key": "estatus_rondin",
                 "label": "Estatus",
-                "type": "single",
+                "type": "multiple",
                 "options": [
                     {"label": "Programado", "value": "Programado"},
                     {"label": "Realizado",  "value": "Realizado"},
