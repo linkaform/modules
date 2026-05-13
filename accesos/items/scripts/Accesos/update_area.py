@@ -56,6 +56,7 @@ class Accesos(Accesos):
             'create_area': True if data.get(self.configuracion_area['create_area']) == 'no' else False,
             'nombre_nueva_area': data.get(self.configuracion_area['nombre_nueva_area'], ''),
             'geolocation_area': data.get(self.area_update['geolocalizacion_area_ubicacion'], {}), # type: ignore
+            'tipo_de_area': data.get(self.TIPO_AREA_OBJ_ID, {}).get(self.f['tipo_de_area'], '')
         })
 
         return formatted_data
@@ -275,14 +276,13 @@ class Accesos(Accesos):
                 self.mf['nombre_ubicacion_salida']: data.get('ubicacion', ''),
             },
             self.Location.TIPO_AREA_OBJ_ID: {
-                self.area_update['tipo_area']: 'Área Pública'
+                self.area_update['tipo_area']: data.get('tipo_de_area', '')
             },
             self.area_update['geolocalizacion_area_ubicacion']: self.geolocation_area if self.geolocation_area else {},
             self.CONTACTO_CAT_OBJ_ID: contact_details,
             self.area_update['estatus']: 'activa',
             self.area_update['estatus_area']: 'disponible',
         }
-        
         response = self.create_register(
             module='Accesos',
             process='Creacion de una area',
@@ -315,7 +315,12 @@ class Accesos(Accesos):
             response: La respuesta de la API de Linkaform al crear el registro.
         """
         metadata = self.lkf_api.get_metadata(form_id=form_id)
-        
+        if hasattr(self, 'geolocation_area'):
+            if isinstance(self.geolocation_area, dict):
+                metadata['geolocation'] = [ self.geolocation_area.get('latitude',0),self.geolocation_area.get('longitude',0) ]
+            elif isinstance(self.geolocation_area, list):
+                metadata['geolocation'] = self.geolocation_area
+
         metadata.update({
             "properties": {
                 "device_properties":{
@@ -327,7 +332,6 @@ class Accesos(Accesos):
                 }
             },
         })
-        
         metadata.update({'answers':answers})
         response = self.lkf_api.post_forms_answers(metadata)
         response = self.detail_response(response.get('status_code', 0))
@@ -342,8 +346,8 @@ if __name__ == "__main__":
     acceso_obj.geolocation_area = data_conf_area.get('geolocation', [])
     if acceso_obj.geolocation_area:
         acceso_obj.geolocation_area = {
-            "latitude": acceso_obj.geolocation_area[0],
-            "longitude": acceso_obj.geolocation_area[1]
+            "latitude": acceso_obj.geolocation_area[1],
+            "longitude": acceso_obj.geolocation_area[0]
         }
     acceso_obj.statuss = 'ok'
     acceso_obj.status_comment = ''

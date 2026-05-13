@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import pytz,threading, random, time
+import pytz,threading, random, time, unicodedata, tempfile, os
 import sys, simplejson, json, pytz, base64, requests
 
 from datetime import datetime, timedelta, date
@@ -102,6 +102,7 @@ class Accesos(Accesos):
             'estatus_del_recorrido': '6639b2744bb44059fc59eb62',
             'fecha_hora_inspeccion_area': '6760a908a43b1b0e41abad6b',
             'fecha_programacion':'6760a8e68cef14ecd7f8b6fe',
+            'fecha_hora_fin':'6760a8e68cef14ecd7f8b6ff',
             'foto_evidencia_area': '681144fb0d423e25b42818d2',
             'foto_evidencia_area_rondin': '66462b9d7124d1540f962087',
             'grupo_de_areas_recorrido': '6645052ef8bc829a5ccafaf5',
@@ -694,6 +695,25 @@ class Accesos(Accesos):
             format_data = list(set(configuracion_de_accesos))
         return format_data
 
+    def close_orphaned_checkin(self, orphaned_record, closed_record):
+        """Cierra un registro de checkin huérfano usando la hora de cierre
+        del registro más reciente ya cerrado. Actualiza tanto el estatus
+        general de la caseta como el checkin_status individual de cada guardia."""
+        record_id = orphaned_record.get('_id', orphaned_record.get('id'))
+        checkout_time = closed_record.get('boot_checkout_date', self.today_str(date_format='datetime'))
+        data = self.lkf_api.get_metadata(self.CHECKIN_CASETAS)
+        record = self.get_record_by_id(record_id)
+        answers = record['answers']
+        answers[self.checkin_fields['checkin_type']] = 'cerrada'
+        answers[self.checkin_fields['boot_checkout_date']] = checkout_time
+        answers[self.checkin_fields['forzar_cierre']] = 'forzar'
+        for guard in answers.get(self.f['guard_group'], []):
+            if guard.get(self.checkin_fields['checkin_status']) != 'salida':
+                guard[self.checkin_fields['checkin_status']] = 'salida'
+                guard[self.checkin_fields['checkout_date']] = checkout_time
+        data['answers'] = answers
+        return self.lkf_api.patch_record(data=data, record_id=record_id)
+
     def get_booth_status(self, booth_area, location):
         last_chekin = self.get_last_checkin(location, booth_area)
         booth_status = {
@@ -775,6 +795,25 @@ class Accesos(Accesos):
         res = self.cr.aggregate(query)
         format_res = list(res)
         return format_res
+    
+    def get_open_checkin(self, location, area):
+        """Busca explícitamente un registro de checkin con estado abierto para una caseta.
+        A diferencia de get_last_checkin, filtra por checkin_type abierto antes de ordenar,
+        evitando falsos negativos cuando el registro más reciente ya fue cerrado."""
+        open_statuses = ['entrada', 'apertura', 'disponible', 'abierta']
+        query = [
+            {'$match': {
+                "deleted_at": {"$exists": False},
+                "form_id": self.CHECKIN_CASETAS,
+                f"answers.{self.checkin_fields['cat_location']}": location,
+                f"answers.{self.checkin_fields['cat_area']}": area,
+                f"answers.{self.checkin_fields['checkin_type']}": {"$in": open_statuses},
+            }},
+            {'$project': self.project_format(self.checkin_fields)},
+            {'$sort': {'created_at': -1}},
+            {'$limit': 1},
+        ]
+        return self.format_cr_result(self.cr.aggregate(query), get_one=True)
 
     def get_shift_data(self, booth_location=None, booth_area=None, search_default=True):
         """
@@ -877,6 +916,15 @@ class Accesos(Accesos):
             "address": booth_address.get('address'),
         }
         
+        #! Si el último checkin está cerrado pero existe uno huérfano abierto,
+        #! lo cerramos con la hora de cierre del registro más reciente.
+        open_statuses = ['entrada', 'apertura', 'disponible', 'abierta']
+        last_checkin = self.get_last_checkin(booth_location, booth_area)
+        if last_checkin.get('checkin_type') not in open_statuses:
+            orphaned = self.get_open_checkin(booth_location, booth_area)
+            if orphaned:
+                self.close_orphaned_checkin(orphaned, last_checkin)
+
         #! Se obtienen los detalles del turno.
         load_shift_json["booth_stats"] = self.get_page_stats( booth_area, booth_location, "Turnos")
         load_shift_json["booth_status"] = self.get_booth_status(booth_area, booth_location)
@@ -1133,7 +1181,15 @@ class Accesos(Accesos):
         user_id = self.user.get('user_id')
         user = self.lkf_api.get_user_by_id(user_id)
         user_name = user.get('name', '')
-        
+
+        #! Si is_boot_available no encontró el registro abierto (ej. condición de carrera),
+        #! se hace una búsqueda explícita por estado abierto como salvaguarda.
+        if not is_caseta_open:
+            open_record = self.get_open_checkin(location, area)
+            if open_record:
+                is_caseta_open = True
+                checkin_id = open_record.get('_id', open_record.get('id', checkin_id))
+
         #! Si la caseta esta abierta se actualizan los guardias solamente.
         if is_caseta_open:
             res = self.update_guards_checkin([{'user_id': user_id, 'name': user_name}], checkin_id, location, area, user, nombre_suplente, fotografia)
@@ -3057,32 +3113,14 @@ class Accesos(Accesos):
         return status
     
     def get_user_catalogs(self):
-        soter_catalogs = [
-            self.LISTA_INCIDENCIAS_CAT_ID,
-            self.SUB_CATEGORIAS_INCIDENCIAS_ID,
-            self.CATEGORIAS_INCIDENCIAS_ID,
-            self.AREAS_DE_LAS_UBICACIONES_CAT_ID,
-            self.UBICACIONES_CAT_ID,
-            self.CONFIGURACION_RECORRIDOS_ID,
-            self.USUARIOS_ID,
-            self.CONF_AREA_EMPLEADOS_CAT_ID,
-            self.TIPO_DE_EQUIPO_ID,
-            self.LISTA_FALLAS_CAT_ID,
-            self.CONF_AREA_EMPLEADOS_AP_CAT_ID,
-            self.VISITA_AUTORIZADA_CAT_ID,
-            self.ESTADO_ID,
-            self.PROVEEDORES_CAT_ID,
-            self.LOCKERS_CAT_ID,
-            self.TIPO_ARTICULOS_PERDIDOS_CAT_ID,
-            self.PASE_ENTRADA_ID,
-            self.ACTIVOS_FIJOS_CAT_ID,
-        ]
+        
         dbs = {}
         try:
             fields_invertido = {v: k for k, v in self.f.items()}
-            for catalog_id in soter_catalogs:
+            for catalog_id in self.clave10_catalogs:
                 item = {}
                 version = "00.00"
+                print('catalog_id', catalog_id)
                 info_catalog = self.lkf_api.get_catalog_id_fields(catalog_id)
                 catalog_name = self.clean_text(info_catalog.get('catalog', {}).get('name', ''))
                 catalog_fields = info_catalog.get('catalog', {}).get('fields', [])
@@ -3968,7 +4006,7 @@ class Accesos(Accesos):
         res ={  self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
                     self.mf['nombre_area']: self.unlist(check.get('incidente_area', '')),
                     },
-                self.f['fecha_inspeccion_area']: check.get('fecha_inspeccion_area', check.get('created_at')),
+                self.f['fecha_inspeccion_area']: check.get('fecha_hora_inspeccion_area', check.get('created_at')),
                 self.f['foto_evidencia_area_rondin']: check.get('foto_evidencia_area', []),
                 self.f['comentario_area_rondin']: check.get('comentario_check_area', check.get('comentario_area_rondin', '')),
                 self.f['url_registro_rondin']: f"https://app.linkaform.com/#/records/detail/{check.get('_id')}",
@@ -4202,6 +4240,7 @@ class Accesos(Accesos):
         return response
     
     ### revisar si esto no esta repitdio >>>
+ 
     def _process_single_check_record(self, record):
         record_id = record.get('record_id', None)
 
@@ -4740,15 +4779,16 @@ class Accesos(Accesos):
             return {'status_code': 400, 'type': 'error', 'msg': 'Missing _id or _rev', 'data': {}}
 
         answers = self.get_area_model(record)
-        
-
         metadata = self.lkf_api.get_metadata(form_id=self.CONFIGURACION_AREA_FORM)
+        if record.get('geolocation'):
+            metadata['geolocation'] = [record['geolocation']['long'], record['geolocation']['lat']]
         metadata.update({'answers': answers})
 
         res = self.lkf_api.post_forms_answers(metadata)
-
+        # res = {'status_code':400, 'exception':'testing'}
         if res.get('status_code') in (200, 201, 202):
-            self.cr_db.delete(record)
+            record['status'] = 'synced'
+            self.cr_db.save(record)
             res = {'status_code': 200, 'type': 'success', 'msg': 'Area synced', 'data': {}}
         else:
             record['status'] = 'error'
@@ -4766,6 +4806,18 @@ class Accesos(Accesos):
             self.cr_db.save(record)
 
         return res
+
+    def delete_old_synced_areas(self, days=3):
+        import time
+        cutoff = time.time() - (days * 86400)
+        deleted = 0
+        for record in self.cr_db:
+            if record.get('status') != 'synced':
+                continue
+            if record.get('created_at', 0) < cutoff:
+                self.cr_db.delete(record)
+                deleted += 1
+        return deleted
 
     def group_records_by_type(self, records):
         """
@@ -4844,23 +4896,22 @@ class Accesos(Accesos):
             "limit": 1000
         })
         record_list += list(records)
-
         #TODO DELETE una vez que ya se hayan migrado todas las apps
         # backward compatibility: checks viejos
         records_check = self.cr_db.find({
             "selector": {
-                "$or": [
-                    {"status_check": "completed"},
-                    {"status_check": "in_progress"}, #bug hay que quitar esto.. 
-                ],
-                 "$or": [
-                        {"status": {"$exists": False}},
-                        {"status": "synced"},
-                        # {"status": "error"}
-                    ],
-
+                "$and": [
+                    {
+                        "status_check": "completed"
+                    },
+                    {
+                        "$or": [
+                            {"status": {"$exists": False}},
+                            {"status": "synced"},
+                        ]
+                    }
+                ]
             },
-            # "limit": 1000
             "limit": 1000
         })
         record_list += list(records_check)
@@ -4869,11 +4920,17 @@ class Accesos(Accesos):
         # backward compatibility: checks viejos
         records_rondin = self.cr_db.find({
             "selector": {
-                 "status_rondin": "completed",
-                "$or": [
-                        {"status": {"$exists": False}},
-                        {"status": "synced"}
-                    ],
+                "$and": [
+                    {
+                        "status_check": "completed"
+                    },
+                    {
+                        "$or": [
+                            {"status": {"$exists": False}},
+                            {"status": "synced"},
+                        ]
+                    }
+                ]
             },
             "limit": 1000
         })
@@ -4883,7 +4940,6 @@ class Accesos(Accesos):
         for rec in record_list:
             unique_records[rec.get('_id')] = rec
         record_list = list(unique_records.values())
-
         if not record_list:
             print("No records to sync")
             return
