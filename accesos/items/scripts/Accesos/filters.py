@@ -107,14 +107,10 @@ class Accesos(Accesos):
 
     @get_mongo_distinct_list
     def get_fallas_tipo(self):
-            return {
+        return {
             "form_id": self.BITACORA_FALLAS,
-            "project": {
-                "value": f"$answers.{self.LISTA_FALLAS_CAT_OBJ_ID}.{self.fallas_fields['falla_estatus']}"
-            }
+            "field": f"answers.{self.LISTA_FALLAS_CAT_OBJ_ID}.{self.fallas_fields['falla']}"
         }
-
-
     def get_pases_status(self):
         return {
             "form_id": self.PASE_ENTRADA,
@@ -393,6 +389,7 @@ if __name__ == "__main__":
     action = dispatcher.get(option)
     if action:
         response = action()
+        print(simplejson.dumps(response, indent=4))
     else:
         response = {"error": "Opción no válida"}
 
