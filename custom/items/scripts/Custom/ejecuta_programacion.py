@@ -67,7 +67,7 @@ class Custom(Custom):
     def get_records_programacion(self, data_fecha):
 
         # Semana 1 nomas para mis pruebas
-        data_fecha['semana'] = '1'
+        # data_fecha['semana'] = '1'
 
         query = {
             'form_id': self.FORM_ID_PROGRAMACION,
@@ -99,8 +99,18 @@ class Custom(Custom):
 
         return records_programacion
 
-    def create_record_convercion(self, data_programacion, data_fecha):
-        answers_recorrido = {
+    def get_device_properties(self):
+        return {
+            "device_properties": {
+                "system": "SCRIPT",
+                "process": "Ejecutar programacion", 
+                "accion": "Crear registros de Recorrido",
+                "archive": "ejecuta_programacion.py"
+            }
+        }
+
+    def similar_fields(self, data_fecha, data_programacion):
+        return {
             self.obj_plantas_areas: {
                 self.field_planta: data_programacion.get('planta'),
                 self.field_area: data_programacion.get('area'),
@@ -115,29 +125,22 @@ class Custom(Custom):
             "fffff0001000000000000002": data_fecha.get('fecha_fin'),
         }
 
-        metadata = lkf_obj.lkf_api.get_metadata(self.FORM_ID_CONVERSION)
-        metadata['properties'] = {
-            "device_properties":{
-                "system": "SCRIPT",
-                "process": "Ejecutar programacion", 
-                "accion": "Crear registros de Recorrido",
-                "archive": "ejecuta_programacion.py"
-            }
-        }
+    def create_records_recorridos(self, form_recorrido, answers_recorrido):
+        metadata = lkf_obj.lkf_api.get_metadata(form_recorrido)
+        metadata['properties'] = self.get_device_properties()
         metadata['answers'] = answers_recorrido
 
         resp_create = self.lkf_api.post_forms_answers(metadata)
         print('     - resp_create =',resp_create)
 
-    def create_record_molino(self, data_programacion):
-        answers_recorrido = {
-            self.obj_plantas_areas: {
-                self.field_planta: data_programacion.get('planta'),
-                self.field_area: data_programacion.get('area'),
-                self.field_responsable: [data_programacion.get('usuario_a_asignar_nombre')],
-                self.field_username: [data_programacion.get('usuario_a_asignar_username')],
-            }
-        }
+    def create_record_conversion(self, data_programacion, data_fecha):
+        answers_recorrido_conversion = self.similar_fields(data_fecha, data_programacion)
+        self.create_records_recorridos(self.FORM_ID_CONVERSION, answers_recorrido_conversion)
+
+    def create_record_molino(self, data_programacion, data_fecha):
+        answers_recorrido_molino = self.similar_fields(data_fecha, data_programacion)
+        answers_recorrido_molino[ self.obj_usuarios ].pop( self.field_username, None )
+        self.create_records_recorridos(self.FORM_ID_MOLINOS, answers_recorrido_molino)
 
     def delete_record_from_inbox(self, str_record_id, user_id_inbox):
         print('... Borrando de inbox =',str_record_id)
@@ -170,22 +173,25 @@ class Custom(Custom):
         print('++ data_fecha =', simplejson.dumps(data_fecha, indent=4))
         
 
-        # Se borran los registros de Inbox si ya pasó la fecha limite
-
         # forzando fechas nomas para mis pruebas
-        data_fecha['fecha_inicio'] = "2026-05-04 00:00:00"
-        data_fecha['fecha_semana_anterior'] = "2026-04-27 00:00:00"
+        # data_fecha['fecha_inicio'] = "2026-05-04 00:00:00"
+        # data_fecha['fecha_semana_anterior'] = "2026-04-27 00:00:00"
 
+        
+        # QUITAR DE INBOX TEMPORALMENTE DESACTIVADO HASTA REVISAR CON PATO
+        
+        # Se borran los registros de Inbox si ya pasó la fecha limite
+        """
         records_unboxing = self.get_records_to_unbox(data_fecha['fecha_inicio'], data_fecha['fecha_semana_anterior'])
         # print('records_unboxing =',list(records_unboxing))
         for record_unbox in records_unboxing:
             self.delete_record_from_inbox( str(record_unbox['_id']), record_unbox['user_id'] )
+        """
 
-
-        stop
         
 
-
+        # stop
+        
         # Se consultan los registros de programacion
         records_programacion = self.get_records_programacion(data_fecha)
 
@@ -193,9 +199,9 @@ class Custom(Custom):
         for programacion in records_programacion:
             print(f"\n ===== Creando registro Planta: {programacion.get('planta')} Area: {programacion.get('area')} =====")
             if programacion.get('planta') == 'Molino':
-                self.create_record_molino(programacion)
+                self.create_record_molino(programacion, data_fecha)
             else:
-                self.create_record_convercion(programacion, data_fecha)
+                self.create_record_conversion(programacion, data_fecha)
 
 
 if __name__ == '__main__':
