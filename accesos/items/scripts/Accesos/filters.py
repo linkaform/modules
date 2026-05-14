@@ -357,7 +357,7 @@ class Accesos(Accesos):
                 "defaultDisplayOpen": True,
                 "key": "tipo_falla",
                 "label": "Falla",
-                "type": "multiple",
+                "type": "multiselect",
                 "options": [{"label": i, "value": i} for i in tipos]
             },
             {
