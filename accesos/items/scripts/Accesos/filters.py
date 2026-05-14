@@ -102,14 +102,14 @@ class Accesos(Accesos):
     def get_fallas_estatus(self):
         return {
             "form_id": self.BITACORA_FALLAS,
-            "field": f"answers.{self.mf['estatus_falla']}"
+            "field": f"answers.{self.fallas_fields['falla_estatus']}"
         }
 
     @get_mongo_distinct_list
     def get_fallas_tipo(self):
         return {
-            "form_id": self.BITACORA_FALLAS,
-            "field": f"answers.{self.mf['tipo_falla']}"
+            "form_id": self.LISTA_FALLAS_CAT_OBJ_ID,
+            "field": f"answers.{self.fallas_fields['falla']}"
         }
 
 
@@ -300,6 +300,9 @@ class Accesos(Accesos):
     def get_filters_incidencias(self):
         estatuses = self.get_incidencias_estatus()
         tipos     = self.get_incidencias_tipo()
+        reportado_por = self.get_employees_names()
+        areas = self.get_areas()
+        
         return [
             {
                 "defaultDisplayOpen": True,
@@ -309,17 +312,34 @@ class Accesos(Accesos):
                 "options": [{"label": i.capitalize(), "value": i} for i in estatuses]
             },
             {
+                "defaultDisplayOpen": False,
+                "key": "reportado_por",
+                "label": "Reportado por",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in reportado_por]
+            },
+            {
                 "defaultDisplayOpen": True,
                 "key": "tipo_incidencia",
                 "label": "Tipo",
                 "type": "multiselect",
                 "options": [{"label": i, "value": i} for i in tipos]
             },
+            {
+                "defaultDisplayOpen": False,
+                "key": "area",
+                "label": "Lugar del incidente",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in areas]
+            },
         ]
 
     def get_filters_fallas(self):
         estatuses = self.get_fallas_estatus()
         tipos     = self.get_fallas_tipo()
+        reportado_por = self.get_employees_names()
+        areas = self.get_areas()
+        
         return [
             {
                 "defaultDisplayOpen": True,
@@ -329,11 +349,25 @@ class Accesos(Accesos):
                 "options": [{"label": i.capitalize(), "value": i} for i in estatuses]
             },
             {
+                "defaultDisplayOpen": False,
+                "key": "reportado_por",
+                "label": "Reportado por",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in reportado_por]
+            },
+            {
                 "defaultDisplayOpen": True,
                 "key": "tipo_falla",
-                "label": "Tipo",
+                "label": "Falla",
                 "type": "multiple",
                 "options": [{"label": i, "value": i} for i in tipos]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "area",
+                "label": "Lugar de la falla",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in areas]
             },
         ]
 
@@ -350,8 +384,8 @@ if __name__ == "__main__":
         "check_areas": lambda: script_obj.get_filters_check_areas(),
         "incidencias": lambda: script_obj.get_filters_incidencias(),
         "fallas":      lambda: script_obj.get_filters_fallas(),
-        "in_and_out": lambda: script_obj.get_filters_in_and_out(),
-        "pases":      lambda: script_obj.get_filters_pases(),
+        "in_and_out":  lambda: script_obj.get_filters_in_and_out(),
+        "pases":       lambda: script_obj.get_filters_pases(),
     }
 
     action = dispatcher.get(option)
