@@ -107,9 +107,11 @@ class Accesos(Accesos):
 
     @get_mongo_distinct_list
     def get_fallas_tipo(self):
-        return {
-            "form_id": self.LISTA_FALLAS_CAT_OBJ_ID,
-            "field": f"answers.{self.fallas_fields['falla']}"
+            return {
+            "form_id": self.BITACORA_FALLAS,
+            "project": {
+                "value": f"$answers.{self.LISTA_FALLAS_CAT_OBJ_ID}.{self.fallas_fields['falla_estatus']}"
+            }
         }
 
 
@@ -321,7 +323,7 @@ class Accesos(Accesos):
             {
                 "defaultDisplayOpen": True,
                 "key": "tipo_incidencia",
-                "label": "Tipo",
+                "label": "Incidente",
                 "type": "multiselect",
                 "options": [{"label": i, "value": i} for i in tipos]
             },
