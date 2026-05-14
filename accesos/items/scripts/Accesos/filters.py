@@ -186,8 +186,8 @@ class Accesos(Accesos):
                 "options": [
                     {"label": "Corriendo", "value": "Corriendo"},
                     {"label": "Pausado",   "value": "Pausado"},
-                    {"label": "Cancelado", "value": "Cancelado"},
-                    {"label": "Cerrado",   "value": "Cerrado"},
+                    {"label": "Eliminado", "value": "Eliminado"},
+                    {"label": "Sin Programar",   "value": "Sin Programar"},
                 ]
             },
             {
