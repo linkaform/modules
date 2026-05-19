@@ -102,17 +102,15 @@ class Accesos(Accesos):
     def get_fallas_estatus(self):
         return {
             "form_id": self.BITACORA_FALLAS,
-            "field": f"answers.{self.mf['estatus_falla']}"
+            "field": f"answers.{self.fallas_fields['falla_estatus']}"
         }
 
     @get_mongo_distinct_list
     def get_fallas_tipo(self):
         return {
             "form_id": self.BITACORA_FALLAS,
-            "field": f"answers.{self.mf['tipo_falla']}"
+            "field": f"answers.{self.LISTA_FALLAS_CAT_OBJ_ID}.{self.fallas_fields['falla']}"
         }
-
-
     def get_pases_status(self):
         return {
             "form_id": self.PASE_ENTRADA,
@@ -184,19 +182,19 @@ class Accesos(Accesos):
                 "defaultDisplayOpen": True,
                 "key": "estatus_recorrido",
                 "label": "Estatus",
-                "type": "single",
+                "type": "multiple",
                 "options": [
                     {"label": "Corriendo", "value": "Corriendo"},
                     {"label": "Pausado",   "value": "Pausado"},
-                    {"label": "Cancelado", "value": "Cancelado"},
-                    {"label": "Cerrado",   "value": "Cerrado"},
+                    {"label": "Eliminado", "value": "Eliminado"},
+                    {"label": "Sin Programar",   "value": "Sin Programar"},
                 ]
             },
             {
                 "defaultDisplayOpen": True,
                 "key": "tipo_rondin",
                 "label": "Tipo",
-                "type": "single",
+                "type": "multiple",
                 "options": [
                     {"label": "QR",  "value": "qr"},
                     {"label": "NFC", "value": "nfc"},
@@ -206,7 +204,7 @@ class Accesos(Accesos):
                 "defaultDisplayOpen": False,
                 "key": "recurrencia",
                 "label": "Recurrencia",
-                "type": "single",
+                "type": "multiple",
                 "options": [
                     {"label": "Minuto",           "value": "Minuto"},
                     {"label": "Hora",             "value": "Hora"},
@@ -232,7 +230,7 @@ class Accesos(Accesos):
                 "defaultDisplayOpen": True,
                 "key": "estatus_rondin",
                 "label": "Estatus",
-                "type": "single",
+                "type": "multiple",
                 "options": [
                     {"label": "Programado", "value": "Programado"},
                     {"label": "Realizado",  "value": "Realizado"},
@@ -269,6 +267,7 @@ class Accesos(Accesos):
 
     def get_filters_check_areas(self):
         areas = self.get_areas()
+        asignado_a = self.get_employees_names()
         return [
             {
                 "defaultDisplayOpen": False,
@@ -282,6 +281,13 @@ class Accesos(Accesos):
             },
             {
                 "defaultDisplayOpen": False,
+                "key": "asignado_a",
+                "label": "Asignado a",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in asignado_a]
+            },
+            {
+                "defaultDisplayOpen": False,
                 "key": "area",
                 "label": "Área",
                 "type": "multiselect",
@@ -292,6 +298,9 @@ class Accesos(Accesos):
     def get_filters_incidencias(self):
         estatuses = self.get_incidencias_estatus()
         tipos     = self.get_incidencias_tipo()
+        reportado_por = self.get_employees_names()
+        areas = self.get_areas()
+        
         return [
             {
                 "defaultDisplayOpen": True,
@@ -301,17 +310,34 @@ class Accesos(Accesos):
                 "options": [{"label": i.capitalize(), "value": i} for i in estatuses]
             },
             {
+                "defaultDisplayOpen": False,
+                "key": "reportado_por",
+                "label": "Reportado por",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in reportado_por]
+            },
+            {
                 "defaultDisplayOpen": True,
                 "key": "tipo_incidencia",
-                "label": "Tipo",
-                "type": "multiple",
+                "label": "Incidente",
+                "type": "multiselect",
                 "options": [{"label": i, "value": i} for i in tipos]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "area",
+                "label": "Lugar del incidente",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in areas]
             },
         ]
 
     def get_filters_fallas(self):
         estatuses = self.get_fallas_estatus()
         tipos     = self.get_fallas_tipo()
+        reportado_por = self.get_employees_names()
+        areas = self.get_areas()
+        
         return [
             {
                 "defaultDisplayOpen": True,
@@ -321,11 +347,25 @@ class Accesos(Accesos):
                 "options": [{"label": i.capitalize(), "value": i} for i in estatuses]
             },
             {
+                "defaultDisplayOpen": False,
+                "key": "reportado_por",
+                "label": "Reportado por",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in reportado_por]
+            },
+            {
                 "defaultDisplayOpen": True,
                 "key": "tipo_falla",
-                "label": "Tipo",
-                "type": "multiple",
+                "label": "Falla",
+                "type": "multiselect",
                 "options": [{"label": i, "value": i} for i in tipos]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "area",
+                "label": "Lugar de la falla",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in areas]
             },
         ]
 
@@ -342,13 +382,14 @@ if __name__ == "__main__":
         "check_areas": lambda: script_obj.get_filters_check_areas(),
         "incidencias": lambda: script_obj.get_filters_incidencias(),
         "fallas":      lambda: script_obj.get_filters_fallas(),
-        "in_and_out": lambda: script_obj.get_filters_in_and_out(),
-        "pases":      lambda: script_obj.get_filters_pases(),
+        "in_and_out":  lambda: script_obj.get_filters_in_and_out(),
+        "pases":       lambda: script_obj.get_filters_pases(),
     }
 
     action = dispatcher.get(option)
     if action:
         response = action()
+        print(simplejson.dumps(response, indent=4))
     else:
         response = {"error": "Opción no válida"}
 

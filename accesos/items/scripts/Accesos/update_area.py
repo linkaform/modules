@@ -56,6 +56,7 @@ class Accesos(Accesos):
             'create_area': True if data.get(self.configuracion_area['create_area']) == 'no' else False,
             'nombre_nueva_area': data.get(self.configuracion_area['nombre_nueva_area'], ''),
             'geolocation_area': data.get(self.area_update['geolocalizacion_area_ubicacion'], {}), # type: ignore
+            'tipo_de_area': data.get(self.TIPO_AREA_OBJ_ID, {}).get(self.f['tipo_de_area'], '')
         })
 
         return formatted_data
@@ -275,7 +276,7 @@ class Accesos(Accesos):
                 self.mf['nombre_ubicacion_salida']: data.get('ubicacion', ''),
             },
             self.Location.TIPO_AREA_OBJ_ID: {
-                self.area_update['tipo_area']: 'Área Pública'
+                self.area_update['tipo_area']: data.get('tipo_de_area', '')
             },
             self.area_update['geolocalizacion_area_ubicacion']: self.geolocation_area if self.geolocation_area else {},
             self.CONTACTO_CAT_OBJ_ID: contact_details,

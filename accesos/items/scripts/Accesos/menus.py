@@ -41,6 +41,7 @@ class Accesos(Accesos):
             "catalog_seccion": "69efaf883bcb25ed1458465e",
             "catalog_seccion_order": "69f27e8cdf4d7acc80f2e9ab",
             "catalog_seccion_column": "69f27e8cdf4d7acc80f2e9ac",
+            "catalog_seccion_href": "6a036ef020c6e62e1c3fdee6",
             "catalog_seccion_icon": "69f27e8cdf4d7acc80f2e9ad",
             "catalog_seccion_icon_color": "69f27e8cdf4d7acc80f2e9ae",
             "catalog_elemento": "69efaf883bcb25ed1458465f",
@@ -57,6 +58,9 @@ class Accesos(Accesos):
         Formatea los datos de los registros obtenidos en el catalogo de ELEMENTOS MENU
         para obtener los menus.
         """
+        if not data:
+            return []
+
         f = self.menu_catalog_fields
         format_data = []
         for item in data:
@@ -72,6 +76,7 @@ class Accesos(Accesos):
                 "seccion":            item.get(f['catalog_seccion']),
                 "seccion_order":      item.get(f['catalog_seccion_order']),
                 "seccion_column":     item.get(f['catalog_seccion_column']),
+                "seccion_href":       item.get(f['catalog_seccion_href']),
                 "seccion_icon":       item.get(f['catalog_seccion_icon']),
                 "seccion_icon_color": item.get(f['catalog_seccion_icon_color']),
                 # Item
@@ -165,7 +170,7 @@ class Accesos(Accesos):
         modules_dict = {}
 
         for item in data:
-            if item.get('plataforms') == 'mobile':
+            if item.get('plataforms') in ['Mobile', 'mobile']:
                 continue
 
             menu_key    = item.get('menu_key') or self.slugify(item.get('menu', ''), '_')
@@ -185,7 +190,7 @@ class Accesos(Accesos):
             sections = modules_dict[menu_key]['sections']
 
             if seccion_key not in sections:
-                seccion_href = item.get('href_web')
+                seccion_href = item.get('seccion_href')
                 seccion_data = {
                     'id':     seccion_key.replace('_', '-'),
                     'key':    seccion_key,
@@ -227,7 +232,7 @@ class Accesos(Accesos):
             {"$match": {
                 "form_id": self.MENUS_FORM,
                 "deleted_at": {"$exists": False},
-                f"answers.{self.EMPLOYEE_OBJ_ID}.{self.menu_form_fields['username']}": self.user.get('username')
+                f"answers.{self.USUARIOS_OBJ_ID}.{self.menu_form_fields['username']}": self.user.get('username')
             }},
             {"$project": {
                 "_id": 0,
