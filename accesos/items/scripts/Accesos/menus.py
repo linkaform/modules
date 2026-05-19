@@ -219,6 +219,9 @@ class Accesos(Accesos):
             sections = sorted(module['sections'].values(), key=lambda s: s['order'])
             for s in sections:
                 s['items'] = sorted(s['items'], key=lambda i: i['order'])
+            if len(sections) <= 2:
+                for i, s in enumerate(sections, 1):
+                    s['column'] = i
             modules.append({**module, 'sections': sections})
 
         return {'modules': sorted(modules, key=lambda m: m['order'])}
