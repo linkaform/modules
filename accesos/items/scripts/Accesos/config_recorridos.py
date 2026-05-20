@@ -96,7 +96,7 @@ class Schedule(Schedule):
         duration = self.answers.get(self.f['duration'], 1) * 3600
         description = self.answers.get(self.f['description'], '')
         status = self.answers.get(self.f['status'])
-        tipo_rondin = self.answers.get(self.rondin_keys['tipo_rondin'])
+        tipo_rondin = self.answers.get(self.Accesos.rondin_keys['tipo_rondin'])
         # field_map = {self.f['field_map']: self.answers.get(self.f['field_map'], '')}
         # group_field_map = {self.f['group_field_map']: self.answers.get(self.f['group_field_map'], '')}
 

@@ -9,23 +9,16 @@ from accesos_utils import Accesos
 class Accesos(Accesos):
 
     def get_mongo_string_list(func):
-        """
-        Decorador que utiliza aggregate para obtener una lista de strings únicos de un campo específico tomando en cuenta un filtro personalizado.
-        """
         def wrapper(self, *args, **kwargs):
             config = func(self, *args, **kwargs)
-            
             match_query_custom = config.get('query', {})
             form_id = config.get('form_id')
             project_fields = config.get('project', {})
-
             match_query = {"deleted_at": {"$exists": False}}
             if form_id:
                 match_query["form_id"] = form_id
             match_query.update(match_query_custom)
-            
             query = [{"$match": match_query}, {"$project": {"_id": 0, **project_fields}}]
-            print('query', query)
             data = self.format_cr(self.cr.aggregate(query))
             format_data = []
             if data:
@@ -36,32 +29,22 @@ class Accesos(Accesos):
         return wrapper
 
     def get_mongo_distinct_list(func):
-        """
-        Decorador que utiliza distinct para obtener una lista de valores únicos de un campo específico tomando en cuenta un filtro personalizado.
-        """
         def wrapper(self, *args, **kwargs):
             config = func(self, *args, **kwargs)
-            
             field_name = config.get('field')
             form_id = config.get('form_id')
             match_query_custom = config.get('query', {})
-
             if not field_name:
                 return []
-
-            # Construir filtro base
             match_query = {"deleted_at": {"$exists": False}}
             if form_id:
                 match_query["form_id"] = form_id
             match_query.update(match_query_custom)
-
-            # Ejecutar distinct directamente en la colección
-            print(f'Ejecutando distinct en campo: {field_name} con filtro: {match_query}')
             data = self.cr.distinct(field_name, match_query)
-            
-            # Asegurar que todos son strings y remover Nones si existen
             return [str(item) for item in data if item is not None]
         return wrapper
+
+    # ── Helpers ──────────────────────────────────────────────────────────────
 
     @get_mongo_string_list
     def get_profiles(self):
@@ -71,16 +54,25 @@ class Accesos(Accesos):
                 f"answers.{self.PERFILES_OBJ_ID}.{self.mf['walkin']}": "Si"
             },
             "project": {
-                "value": f"$answers.{self.PERFILES_OBJ_ID}.{self.mf['nombre_perfil']}" 
+                "value": f"$answers.{self.PERFILES_OBJ_ID}.{self.mf['nombre_perfil']}"
             }
         }
-    
+
     @get_mongo_string_list
     def get_employees_names(self):
         return {
             "form_id": self.EMPLEADOS,
             "project": {
-                "value": f"$answers.{self.mf['nombre_empleado']}" 
+                "value": f"$answers.{self.mf['nombre_empleado']}"
+            }
+        }
+
+    @get_mongo_string_list
+    def get_areas(self):
+        return {
+            "form_id": self.AREAS_DE_LAS_UBICACIONES,
+            "project": {
+                "value": f"$answers.{self.mf['nombre_area']}"
             }
         }
 
@@ -91,14 +83,45 @@ class Accesos(Accesos):
             "field": f"answers.{self.mf['tipo_registro']}"
         }
 
+    @get_mongo_distinct_list
+
+    def get_incidencias_estatus(self):
+        return {
+            "form_id": self.BITACORA_INCIDENCIAS,
+            "field": f"answers.{self.incidence_fields['estatus']}"
+        }
+
+    @get_mongo_distinct_list
+    def get_incidencias_tipo(self):
+        return {
+            "form_id": self.BITACORA_INCIDENCIAS,
+            "field": f"answers.{self.incidence_fields['incidencia']}"
+        }
+
+    @get_mongo_distinct_list
+    def get_fallas_estatus(self):
+        return {
+            "form_id": self.BITACORA_FALLAS,
+            "field": f"answers.{self.fallas_fields['falla_estatus']}"
+        }
+
+    @get_mongo_distinct_list
+    def get_fallas_tipo(self):
+        return {
+            "form_id": self.BITACORA_FALLAS,
+            "field": f"answers.{self.LISTA_FALLAS_CAT_OBJ_ID}.{self.fallas_fields['falla']}"
+        }
+    def get_pases_status(self):
+        return {
+            "form_id": self.PASE_ENTRADA,
+            "field": f"answers.{self.pase_entrada_fields['status_pase']}"
+        }
+
     def get_filters_in_and_out(self):
-        """
-        Obtiene los filtros para la Bitacora de Entradas y Salidas
-        """
-        profiles = self.get_profiles()
-        estatus = self.get_in_and_out_status()
+        profiles  = self.get_profiles()
+        estatus   = self.get_in_and_out_status()
         employees = self.get_employees_names()
-        filters = [
+        return [
             {
                 "defaultDisplayOpen": True,
                 "key": "status",
@@ -121,23 +144,253 @@ class Accesos(Accesos):
                 "options": [{"label": i, "value": i} for i in employees]
             }
         ]
+
+    def get_filters_pases(self):
+        profiles = self.get_profiles()
+        estatus = self.get_pases_status()
+        employees = self.get_employees_names()
+        filters = [
+            {
+                "defaultDisplayOpen": True,
+                "key": "status",
+                "label": "Estatus",
+                "type": "multiple",
+                "options": [{"label": i.capitalize().replace("_", " "), "value": i} for i in estatus if i]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "perfil_visita",
+                "label": "Perfil",
+                "type": "multiple",
+                "options": [{"label": i, "value": i} for i in profiles]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "visita_a",
+                "label": "Visita a",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in employees]
+            }
+        ]
         return filters
+        
+    def get_filters_recorridos(self):
+        asignado_a = self.get_employees_names()
+        areas      = self.get_areas()
+        return [
+            {
+                "defaultDisplayOpen": True,
+                "key": "estatus_recorrido",
+                "label": "Estatus",
+                "type": "multiple",
+                "options": [
+                    {"label": "Corriendo", "value": "Corriendo"},
+                    {"label": "Pausado",   "value": "Pausado"},
+                    {"label": "Eliminado", "value": "Eliminado"},
+                    {"label": "Sin Programar",   "value": "Sin Programar"},
+                ]
+            },
+            {
+                "defaultDisplayOpen": True,
+                "key": "tipo_rondin",
+                "label": "Tipo",
+                "type": "multiple",
+                "options": [
+                    {"label": "QR",  "value": "qr"},
+                    {"label": "NFC", "value": "nfc"},
+                ]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "recurrencia",
+                "label": "Recurrencia",
+                "type": "multiple",
+                "options": [
+                    {"label": "Minuto",           "value": "Minuto"},
+                    {"label": "Hora",             "value": "Hora"},
+                    {"label": "Día de la semana", "value": "Dia de la Semana"},
+                    {"label": "Día del mes",      "value": "Dia del Mes"},
+                    {"label": "Mes",              "value": "Mes"},
+                ]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "area",
+                "label": "Área",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in areas]
+            },
+        ]
+
+    def get_filters_rondines(self):
+        asignado_a = self.get_employees_names()
+        areas      = self.get_areas()
+        return [
+            {
+                "defaultDisplayOpen": True,
+                "key": "estatus_rondin",
+                "label": "Estatus",
+                "type": "multiple",
+                "options": [
+                    {"label": "Programado", "value": "Programado"},
+                    {"label": "Realizado",  "value": "Realizado"},
+                    {"label": "En Proceso", "value": "En Proceso"},
+                    {"label": "Cancelado",  "value": "Cancelado"},
+                    {"label": "Cerrado",    "value": "Cerrado"},
+                ]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "incidencias",
+                "label": "Tiene incidencias",
+                "type": "single",
+                "options": [
+                    {"label": "Si", "value": "Si"},
+                    {"label": "No", "value": "No"},
+                ]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "asignado_a",
+                "label": "Asignado a",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in asignado_a]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "area",
+                "label": "Área",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in areas]
+            },
+        ]
+
+    def get_filters_check_areas(self):
+        areas = self.get_areas()
+        asignado_a = self.get_employees_names()
+        return [
+            {
+                "defaultDisplayOpen": False,
+                "key": "incidencias",
+                "label": "Tiene incidencias",
+                "type": "single",
+                "options": [
+                    {"label": "Si", "value": "Si"},
+                    {"label": "No", "value": "No"},
+                ]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "asignado_a",
+                "label": "Asignado a",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in asignado_a]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "area",
+                "label": "Área",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in areas]
+            },
+        ]
+
+    def get_filters_incidencias(self):
+        estatuses = self.get_incidencias_estatus()
+        tipos     = self.get_incidencias_tipo()
+        reportado_por = self.get_employees_names()
+        areas = self.get_areas()
+        
+        return [
+            {
+                "defaultDisplayOpen": True,
+                "key": "estatus_incidencia",
+                "label": "Estatus",
+                "type": "multiple",
+                "options": [{"label": i.capitalize(), "value": i} for i in estatuses]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "reportado_por",
+                "label": "Reportado por",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in reportado_por]
+            },
+            {
+                "defaultDisplayOpen": True,
+                "key": "tipo_incidencia",
+                "label": "Incidente",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in tipos]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "area",
+                "label": "Lugar del incidente",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in areas]
+            },
+        ]
+
+    def get_filters_fallas(self):
+        estatuses = self.get_fallas_estatus()
+        tipos     = self.get_fallas_tipo()
+        reportado_por = self.get_employees_names()
+        areas = self.get_areas()
+        
+        return [
+            {
+                "defaultDisplayOpen": True,
+                "key": "estatus_falla",
+                "label": "Estatus",
+                "type": "multiple",
+                "options": [{"label": i.capitalize(), "value": i} for i in estatuses]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "reportado_por",
+                "label": "Reportado por",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in reportado_por]
+            },
+            {
+                "defaultDisplayOpen": True,
+                "key": "tipo_falla",
+                "label": "Falla",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in tipos]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "area",
+                "label": "Lugar de la falla",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in areas]
+            },
+        ]
+
 
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
     script_obj.console_run()
-    data = script_obj.data.get('data',{})
-    option = data.get("option",'')
+    data = script_obj.data.get('data', {})
+    option = data.get("option", '')
 
     dispatcher = {
-        "in_and_out": lambda: script_obj.get_filters_in_and_out()
+        "recorridos":  lambda: script_obj.get_filters_recorridos(),
+        "rondines":    lambda: script_obj.get_filters_rondines(),
+        "check_areas": lambda: script_obj.get_filters_check_areas(),
+        "incidencias": lambda: script_obj.get_filters_incidencias(),
+        "fallas":      lambda: script_obj.get_filters_fallas(),
+        "in_and_out":  lambda: script_obj.get_filters_in_and_out(),
+        "pases":       lambda: script_obj.get_filters_pases(),
     }
 
     action = dispatcher.get(option)
     if action:
         response = action()
+        print(simplejson.dumps(response, indent=4))
     else:
         response = {"error": "Opción no válida"}
 
-    script_obj.HttpResponse({"data":response})
-
+    script_obj.HttpResponse({"data": response})

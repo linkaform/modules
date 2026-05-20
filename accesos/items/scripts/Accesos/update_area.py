@@ -13,15 +13,7 @@ class Accesos(Accesos):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
         self.load(module='Location', **self.kwargs)
 
-        self.configuracion_area = {
-            'qr_area': '68487646684fe30a8f9f3ef3',
-            'foto_area': '68487646684fe30a8f9f3ef4',
-            'ubicacion': '663e5c57f5b8a7ce8211ed0b',
-            'area': '663e5d44f5b8a7ce8211ed0f',
-            'option': '68487646684fe30a8f9f3ef2',
-            'create_area': '688a33d9e61fcd2c299ff39e',
-            'nombre_nueva_area': '688a33d9e61fcd2c299ff39f',
-        }
+       
 
         self.area_update = {
             'foto_area': '6763096aa99cee046ba766ad',
@@ -64,6 +56,7 @@ class Accesos(Accesos):
             'create_area': True if data.get(self.configuracion_area['create_area']) == 'no' else False,
             'nombre_nueva_area': data.get(self.configuracion_area['nombre_nueva_area'], ''),
             'geolocation_area': data.get(self.area_update['geolocalizacion_area_ubicacion'], {}), # type: ignore
+            'tipo_de_area': data.get(self.TIPO_AREA_OBJ_ID, {}).get(self.f['tipo_de_area'], '')
         })
 
         return formatted_data
@@ -283,14 +276,13 @@ class Accesos(Accesos):
                 self.mf['nombre_ubicacion_salida']: data.get('ubicacion', ''),
             },
             self.Location.TIPO_AREA_OBJ_ID: {
-                self.area_update['tipo_area']: 'Área Pública'
+                self.area_update['tipo_area']: data.get('tipo_de_area', '')
             },
             self.area_update['geolocalizacion_area_ubicacion']: self.geolocation_area if self.geolocation_area else {},
             self.CONTACTO_CAT_OBJ_ID: contact_details,
             self.area_update['estatus']: 'activa',
             self.area_update['estatus_area']: 'disponible',
         }
-        
         response = self.create_register(
             module='Accesos',
             process='Creacion de una area',
@@ -323,7 +315,12 @@ class Accesos(Accesos):
             response: La respuesta de la API de Linkaform al crear el registro.
         """
         metadata = self.lkf_api.get_metadata(form_id=form_id)
-        
+        if hasattr(self, 'geolocation_area'):
+            if isinstance(self.geolocation_area, dict):
+                metadata['geolocation'] = [ self.geolocation_area.get('latitude',0),self.geolocation_area.get('longitude',0) ]
+            elif isinstance(self.geolocation_area, list):
+                metadata['geolocation'] = self.geolocation_area
+
         metadata.update({
             "properties": {
                 "device_properties":{
@@ -335,7 +332,6 @@ class Accesos(Accesos):
                 }
             },
         })
-        
         metadata.update({'answers':answers})
         response = self.lkf_api.post_forms_answers(metadata)
         response = self.detail_response(response.get('status_code', 0))
@@ -350,11 +346,16 @@ if __name__ == "__main__":
     acceso_obj.geolocation_area = data_conf_area.get('geolocation', [])
     if acceso_obj.geolocation_area:
         acceso_obj.geolocation_area = {
-            "latitude": acceso_obj.geolocation_area[0],
-            "longitude": acceso_obj.geolocation_area[1]
+            "latitude": acceso_obj.geolocation_area[1],
+            "longitude": acceso_obj.geolocation_area[0]
         }
     acceso_obj.statuss = 'ok'
     acceso_obj.status_comment = ''
+
+    search_area = None
+    nueva_area = None
+
+
 
     #! Si trae solo el QR
     if data.get('qr_area') and not data.get('ubicacion') and not data.get('area'):
@@ -363,13 +364,24 @@ if __name__ == "__main__":
             data['ubicacion'] = qr_data.get('ubicacion', '')
             data['area'] = qr_data.get('area', '')
             
+
+    if data.get('area'):
+            search_area = acceso_obj.get_record_ubicacion(ubicacion=data.get('ubicacion'), area=data.get('area'))
+    if data.get('nombre_nueva_area'):
+        nueva_area = data.get('nombre_nueva_area')
+
+
     #! Crea el area si no existe
-    if data.get('create_area', False):
+    if nueva_area:
         acceso_obj.create_new_area(data)
         data['area'] = data.get('nombre_nueva_area')
     else:
         #! Validacion para evitar problema con areas creadas directamente en el catalogo
-        search_area = acceso_obj.get_record_ubicacion(ubicacion=data.get('ubicacion'), area=data.get('area'))
+        if data.get('area'):
+            search_area = acceso_obj.get_record_ubicacion(ubicacion=data.get('ubicacion'), area=data.get('area'))
+        else:
+            search_area = None
+
         if not search_area:
             msg = 'Revisa el catalogo, no se encontró el área seleccionada en la forma Areas de las Ubicaciones.'
             acceso_obj.LKFException({'msg': msg, 'title': 'Área no encontrada'})

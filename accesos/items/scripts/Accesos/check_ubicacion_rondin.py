@@ -166,12 +166,12 @@ class Accesos(Accesos):
         
         format_list_incidencias = []
         for incidencia in rondin.get('bitacora_rondin_incidencias', []):
-            inc = incidencia.get(self.f['tipo_de_incidencia'])
+            inc = incidencia.get(self.f['incidencia'])
             if inc:
-                incidencia.pop(self.f['tipo_de_incidencia'], None)
+                incidencia.pop(self.f['incidencia'], None)
                 incidencia.update({
                     self.LISTA_INCIDENCIAS_CAT_OBJ_ID: {
-                        self.f['tipo_de_incidencia']: inc
+                        self.f['incidencia']: inc
                     }
                 })
                 format_list_incidencias.append(incidencia)
@@ -327,7 +327,7 @@ class Accesos(Accesos):
                     self.f['incidente_area']: self.unlist(self.answers.get(self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.f['incidente_area'], []))
                 },
                 self.incidence_fields['tipo_incidencia']: incidente,
-                self.incidence_fields['comentario_incidencia']: incidencia.get(self.f['incidente_comentario'], ''),
+                self.incidence_fields['comentario_incidente_bitacora']: incidencia.get(self.f['comentario_incidente_bitacora'], ''),
                 self.incidence_fields['evidencia_incidencia']: incidencia.get(self.f['incidente_evidencia'], []),
                 self.incidence_fields['documento_incidencia']: incidencia.get(self.f['incidente_documento'], []),
                 self.incidence_fields['prioridad_incidencia']: incidencia.get(self.incidence_fields['prioridad_incidencia'], 'baja'),
