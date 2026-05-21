@@ -58,6 +58,9 @@ class Accesos(Accesos):
         Formatea los datos de los registros obtenidos en el catalogo de ELEMENTOS MENU
         para obtener los menus.
         """
+        if not data:
+            return []
+
         f = self.menu_catalog_fields
         format_data = []
         for item in data:
