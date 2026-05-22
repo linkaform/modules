@@ -332,6 +332,27 @@ class Accesos(Accesos):
             },
         ]
 
+    def get_filters_incidencias_rondines(self):
+        tipos     = self.get_incidencias_tipo()
+        areas = self.get_areas()
+        
+        return [
+            {
+                "defaultDisplayOpen": True,
+                "key": "tipo_incidencia",
+                "label": "Incidente",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in tipos]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "area",
+                "label": "Lugar del incidente",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in areas]
+            },
+        ]
+
     def get_filters_fallas(self):
         estatuses = self.get_fallas_estatus()
         tipos     = self.get_fallas_tipo()
@@ -380,6 +401,7 @@ if __name__ == "__main__":
         "recorridos":  lambda: script_obj.get_filters_recorridos(),
         "rondines":    lambda: script_obj.get_filters_rondines(),
         "check_areas": lambda: script_obj.get_filters_check_areas(),
+        "incidencias_rondines": lambda: script_obj.get_filters_incidencias_rondines(),
         "incidencias": lambda: script_obj.get_filters_incidencias(),
         "fallas":      lambda: script_obj.get_filters_fallas(),
         "in_and_out":  lambda: script_obj.get_filters_in_and_out(),
