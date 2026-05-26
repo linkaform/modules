@@ -84,7 +84,7 @@ if __name__ == "__main__":
         response = acceso_obj.get_lista_pase(location=location, inActive=inActive)
     elif option == 'do_out':
         # used
-        response = acceso_obj.do_out(qr_code, location, area, gafete_id)
+        response = acceso_obj.do_out(qr_code, location, area, gafete_id, record_id)
     elif option == 'do_access':
         # used
         response = acceso_obj.do_access(qr_code, location, area, data)

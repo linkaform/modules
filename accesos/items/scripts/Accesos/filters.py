@@ -84,7 +84,6 @@ class Accesos(Accesos):
         }
 
     @get_mongo_distinct_list
-
     def get_incidencias_estatus(self):
         return {
             "form_id": self.BITACORA_INCIDENCIAS,
@@ -105,6 +104,63 @@ class Accesos(Accesos):
             "field": f"answers.{self.fallas_fields['falla_estatus']}"
         }
 
+    @get_mongo_distinct_list
+    def get_paqueteria_estatus(self):
+        return {
+            "form_id": self.PAQUETERIA,
+            "field": f"answers.{self.paquetes_fields['estatus_paqueteria']}"
+        }
+
+    @get_mongo_distinct_list
+    def get_lockers(self):
+        return {
+            "form_id": self.PAQUETERIA,
+            "field": f"answers.{self.paquetes_fields['guardado_en_paqueteria']}"
+        }
+
+    @get_mongo_distinct_list
+    def get_cons_estatus(self):
+        return {
+            "form_id": self.CONCESSIONED_ARTICULOS,
+            "field": f"answers.{self.cons_f['status_concesion']}"
+        }
+    @get_mongo_distinct_list
+    def get_cons_categoria(self):
+        return {
+            "form_id": self.CONCESSIONED_ARTICULOS,
+            "field": f"answers.{self.cons_f['grupo_equipos']}.{self.cons_f['categoria_equipo_concesion']}"
+        }
+    @get_mongo_distinct_list
+    def get_cons_equipos(self):
+        return {
+            "form_id": self.CONCESSIONED_ARTICULOS,
+            "field": f"answers.{self.cons_f['grupo_equipos']}.{self.cons_f['nombre_equipo']}"
+        }
+
+    @get_mongo_distinct_list
+    def get_perdidos_estatus(self):
+        return {
+            "form_id": self.BITACORA_OBJETOS_PERDIDOS,
+            "field": f"answers.{self.perdidos_fields['estatus_perdido']}"
+        }
+    @get_mongo_distinct_list
+    def get_perdidos_cat(self):
+        return {
+            "form_id": self.BITACORA_OBJETOS_PERDIDOS,
+            "field": f"answers.{self.perdidos_fields['articulo_seleccion_catalog']}.{self.cons_f['_categoria_equipo_concesion']}"
+        }
+    @get_mongo_distinct_list
+    def get_perdidos_art(self):
+        return {
+            "form_id": self.BITACORA_OBJETOS_PERDIDOS,
+            "field": f"answers.{self.perdidos_fields['articulo_seleccion_catalog']}.{self.perdidos_fields['nombre_articulo_perdido']}"
+        }
+    @get_mongo_distinct_list
+    def get_perdidos_color(self):
+        return {
+            "form_id": self.BITACORA_OBJETOS_PERDIDOS,
+            "field": f"answers.{self.perdidos_fields['color_perdido']}"
+        }
     @get_mongo_distinct_list
     def get_fallas_tipo(self):
         return {
@@ -332,6 +388,27 @@ class Accesos(Accesos):
             },
         ]
 
+    def get_filters_incidencias_rondines(self):
+        tipos     = self.get_incidencias_tipo()
+        areas = self.get_areas()
+        
+        return [
+            {
+                "defaultDisplayOpen": True,
+                "key": "tipo_incidencia",
+                "label": "Incidente",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in tipos]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "area",
+                "label": "Lugar del incidente",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in areas]
+            },
+        ]
+
     def get_filters_fallas(self):
         estatuses = self.get_fallas_estatus()
         tipos     = self.get_fallas_tipo()
@@ -369,6 +446,133 @@ class Accesos(Accesos):
             },
         ]
 
+    def get_filters_paqueteria(self):
+        estatuses = self.get_paqueteria_estatus()
+        reportado_por = self.get_employees_names()
+        areas = self.get_areas()
+        lockers = self.get_lockers()
+        return [
+            {
+                "defaultDisplayOpen": True,
+                "key": "estatus_paqueteria",
+                "label": "Estatus",
+                "type": "multiple",
+                "options": [{"label": i.capitalize(), "value": i} for i in estatuses]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "quien_recibe_paqueteria",
+                "label": "Quien recibe ",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in reportado_por]
+            },
+              {
+                "defaultDisplayOpen": False,
+                "key": "locker",
+                "label": "Locker ",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in lockers]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "area_paqueteria",
+                "label": "Área",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in areas]
+            },
+        ]
+
+    def get_filters_concesionados(self):
+        estatuses = self.get_cons_estatus()
+        equipos = self.get_cons_equipos()
+        reportado_por = self.get_employees_names()
+        areas = self.get_areas()
+        categoria = self.get_cons_categoria()
+
+        return [
+            {
+                "defaultDisplayOpen": True,
+                "key": "status_concesion",
+                "label": "Estatus",
+                "type": "multiple",
+                "options": [{"label": i.capitalize(), "value": i} for i in estatuses]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "persona_nombre_concesion",
+                "label": "Solicitante ",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in reportado_por]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "categoria_equipo_concesion",
+                "label": "Categoría",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in categoria]
+            },
+             {
+                "defaultDisplayOpen": False,
+                "key": "nombre_equipo",
+                "label": "Equipo ",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in equipos]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "area_paqueteria",
+                "label": "Área",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in areas]
+            },
+        ]
+
+    def get_filters_perdidos(self):
+        estatus = self.get_perdidos_estatus()
+        cat = self.get_perdidos_cat()
+        art = self.get_perdidos_art()
+        color = self.get_perdidos_color()
+        reportado_por = self.get_employees_names()
+        areas = self.get_areas()
+        
+        return [
+            {
+                "defaultDisplayOpen": True,
+                "key": "estatus_p",
+                "label": "Estatus",
+                "type": "multiple",
+                "options": [{"label": i.capitalize(), "value": i} for i in estatus]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "categoria",
+                "label": "Categoría",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in cat]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "articulo",
+                "label": "Artículo",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in art]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "color",
+                "label": "Color",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in color]
+            },
+      
+            {
+                "defaultDisplayOpen": False,
+                "key": "area_paqueteria",
+                "label": "Área",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in areas]
+            },
+        ]
 
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
@@ -380,10 +584,14 @@ if __name__ == "__main__":
         "recorridos":  lambda: script_obj.get_filters_recorridos(),
         "rondines":    lambda: script_obj.get_filters_rondines(),
         "check_areas": lambda: script_obj.get_filters_check_areas(),
+        "incidencias_rondines": lambda: script_obj.get_filters_incidencias_rondines(),
         "incidencias": lambda: script_obj.get_filters_incidencias(),
         "fallas":      lambda: script_obj.get_filters_fallas(),
         "in_and_out":  lambda: script_obj.get_filters_in_and_out(),
         "pases":       lambda: script_obj.get_filters_pases(),
+        "paqueteria": lambda:script_obj.get_filters_paqueteria(),
+        "concesionados": lambda:script_obj.get_filters_concesionados(),
+        "perdidos": lambda:script_obj.get_filters_perdidos()
     }
 
     action = dispatcher.get(option)

@@ -913,7 +913,7 @@ class Accesos(Accesos):
                 "checks_data": format_checks_data
             }
 
-    def get_bitacora(self, date_from=None, date_to=None, area_details=False, limit: int = 100, offset: int = 0, ubicacion: str = "", nombre_rondin: str = ""):
+    def get_bitacora(self, date_from=None, date_to=None, area_details=False, limit: int = 15, offset: int = 0, ubicacion: str = "", nombre_rondin: str = ""):
         from datetime import datetime
         año = datetime.now().year
 
