@@ -2,7 +2,7 @@
 import dis
 import re
 import unicodedata
-import sys, simplejson
+import sys, simplejson, json
 from linkaform_api import settings
 from account_settings import *
 
@@ -51,6 +51,83 @@ class Accesos(Accesos):
             "catalog_href_web": "69efb3dcfc8545da78179bf8",
             "catalog_route_mobile": "69f27e8cdf4d7acc80f2e9af",
             "catalog_plataforms": "69f27e8cdf4d7acc80f2e9b0"
+        }
+
+        self.f.update({
+            'menus':'6722472f162366c38ebe1c64'
+        })
+
+        self.ARTICULOS_CONSECIONADOS = self.lkm.script_id('articulos_consecionados','id')
+        self.ARTICULOS_PERDIDOS = self.lkm.script_id('articulos_perdidos','id')
+        self.FALLAS = self.lkm.script_id('fallas','id')
+        self.GET_STATS = self.lkm.script_id('get_stats','id')
+        self.GAFETES_LOCKERS = self.lkm.script_id('gafetes_lockers','id')
+        self.NOTAS = self.lkm.script_id('notes','id')
+        self.PAQUETERIA = self.lkm.script_id('paqueteria','id')
+        self.SCRIPT_TURNOS = self.lkm.script_id('script_turnos','id')
+        self.SCRIPT_PASE_ACCESO = self.lkm.script_id('pase_de_acceso','id')
+        self.SCRIPT_PASE_ACCESO_API = self.lkm.script_id('pase_de_acceso_use_api','id')
+        self.SCRIPT_GOOGLE_WALLET = self.lkm.script_id('create_pass_google_wallet','id')
+        self.SCRIPT_RONDINES = self.lkm.script_id('rondines','id')
+        self.OFFLINE_SERVICES = self.lkm.script_id('offline_services','id')
+        self.FILTERS = self.lkm.script_id('filters','id')
+
+        self.module_permits = {
+            'always':{
+                'forms':[],
+                'catalogs':[
+                    self.ACTIVOS_FIJOS_CAT_ID,
+                    self.AREAS_DE_LAS_UBICACIONES_CAT_ID,
+                    self.CATEGORIAS_INCIDENCIAS_ID,
+                    self.CONFIGURACION_RECORRIDOS_ID,
+                    self.CONF_AREA_EMPLEADOS_AP_CAT_ID,
+                    self.CONF_AREA_EMPLEADOS_CAT_ID,
+                    self.ESTADO_ID,
+                    self.LISTA_FALLAS_CAT_ID,
+                    self.LISTA_INCIDENCIAS_CAT_ID,
+                    self.LOCKERS_CAT_ID,
+                    self.PASE_ENTRADA_ID,
+                    self.PROVEEDORES_CAT_ID,
+                    self.SUB_CATEGORIAS_INCIDENCIAS_ID,
+                    self.TIPO_ARTICULOS_PERDIDOS_CAT_ID,
+                    self.TIPO_DE_EQUIPO_ID,
+                    self.UBICACIONES_CAT_ID,
+                    self.USUARIOS_ID,
+                    self.VISITA_AUTORIZADA_CAT_ID,
+                    self.FILTERS             
+                    ],
+                'scripts':[self.OFFLINE_SERVICES]
+            },
+            'accesos':{
+                'forms':[self.CHECKIN_CASETAS, self.REGISTRO_ASISTENCIA, self.BITACORA_GAFETES_LOCKERS, self.CHECK_UBICACIONES, self.BITACORA_ACCESOS],
+                'catalogs':[],
+                'scripts':[]
+            },
+            'seguridad':{
+                'forms':[self.CONFIGURACION_RECORRIDOS_FORM, self.BITACORA_RONDINES, self.BITACORA_FALLAS, self.BITACORA_INCIDENCIAS],
+                'catalogs':[],
+                'scripts':[self.SCRIPT_RONDINES, self.FALLAS]
+            },
+            'activos':{
+                'forms':[self.CONCESSIONED_ARTICULOS, self.BITACORA_OBJETOS_PERDIDOS, self.PAQUETERIA],
+                'catalogs':[self.ACTIVOS_FIJOS_CAT_ID, ],
+                'scripts':[self.PAQUETERIA, self.GET_STATS, self.GAFETES_LOCKERS, self.FALLAS, self.ARTICULOS_PERDIDOS, self.ARTICULOS_CONSECIONADOS]
+            },
+            'notas':{
+                'forms':[self.ACCESOS_NOTAS],
+                'catalogs':[],
+                'scripts':[self.NOTAS]
+            },
+            'pases_de_entrada':{
+                'forms':[self.PASE_ENTRADA],
+                'catalogs':[],
+                'scripts':[self.SCRIPT_PASE_ACCESO, self.GET_STATS, self.SCRIPT_PASE_ACCESO_API]
+            },
+            'caseta':{
+                'forms':[self.CHECKIN_CASETAS, self.REGISTRO_ASISTENCIA, self.FORMATO_VACACIONES, self.SCRIPT_TURNOS],
+                'catalogs':[],
+                'scripts':[]
+            },
         }
 
     def format_menus(self, data):
@@ -256,6 +333,85 @@ class Accesos(Accesos):
         modules = self.get_structured_web_menu(data)
         return modules
 
+    def set_item_permits(self, user_id, item_needed, item_type):
+        """
+        Comparte los items necesarios para el usuario
+        """
+        permissions = 'can_read_item'
+        share_data = {
+            "owner": f"/api/infosync/user/{user_id}/",
+            "perm": permissions
+        }
+        if item_type == 'form':
+            user_item = self.lkf_api.get_user_forms(user_id)
+        elif item_type == 'catalog':
+            user_item = self.lkf_api.get_user_catalog(user_id)
+        elif item_type == 'script':
+            user_item = self.lkf_api.get_user_scripts(user_id)
+        else:
+            self.LKFException('Item type not found: ', item_type)
+        res = {}
+        user_item = user_item.get('data',[])
+        if isinstance(user_item, dict):
+            user_item = []
+        user_item = [item for item in user_item ]
+        unshare_items = []
+        for item in user_item:
+            if item['id'] not in item_needed:
+                unshare_items.append(item)
+
+        if unshare_items:
+            unshare_items_data = []
+            for item in unshare_items:
+                unshare_data = {'group_id':None, 'filter_name':None}
+                unshare_data['uri'] = f"/api/infosync/file_shared/{item['shared_id']}/"
+                unshare_data['item_id'] = item['id']
+                unshare_items_data.append(unshare_data)
+            if unshare_items_data:
+                res = self.lkf_api.share_form(unshare_items_data, unshare=True)
+
+        user_item_ids = {item['id'] for item in user_item}
+        items_to_share = item_needed - user_item_ids
+        for item_id in items_to_share:
+            share_data["file_shared"]=  f"/api/infosync/item/{item_id}/"
+            res = self.lkf_api.share_form(share_data)
+            if res['status_code'] != 201:
+                self.LKFException(f'Error al compartir scritp: {share_data}')
+        return res
+
+    def set_user_permissions(self):
+        """
+        Comparte las Formas, Catalogos y Scripts necesarios para el usuario tomando en cuenta
+        sus menus asignados.
+        """
+        data = self._labels(self.answers, ids_label_dct=self.menu_form_fields)
+        user_id = data.get('usuario_id')
+        if user_id and isinstance(user_id, list):
+            user_id = user_id[0]
+        permissions = 'can_read_item'
+        share_data = {
+            "owner": f"/api/infosync/user/{user_id}/",
+            "perm": permissions
+        }
+        forms_needed = set()
+        catalogs_needed = set()
+        scripts_needed = set()
+        menus = {i.get('menu', '').lower().replace(' ', '_') for i in data.get('elementos', [])}
+        menus = ['always'] + list(menus)
+        for menu in menus:
+            config = self.module_permits.get(menu, {})
+            if not config:
+                continue
+            forms_needed.update([x for x in config.get('forms',[]) if x])
+            catalogs_needed.update([x for x in config.get('catalogs') if x])
+            scripts_needed.update([x for x in config.get('scripts') if x])
+
+        response_forms = self.set_item_permits(user_id, forms_needed, item_type='form')
+        response_catalog = self.set_item_permits(user_id, catalogs_needed, item_type='catalog')
+        response_scripts = self.set_item_permits(user_id, scripts_needed,  item_type='script')
+
+        return True
+
     def slugify(self, text, sep='-'):
         """
         Convierte un texto en un slug, 
@@ -269,14 +425,17 @@ if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
     script_obj.console_run()
     data = script_obj.data.get('data', {})
+    data_raw = json.loads(sys.argv[2])
     option = data.get("option", '')
+    workflow_option = data_raw.get('option', '')
     platform = data.get("platform", '')
 
     dispatcher = {
         "get_menus": lambda: script_obj.get_user_menus(platform=platform),
+        "set_permissions": lambda: script_obj.set_user_permissions(),
     }
 
-    action = dispatcher.get(option)
+    action = dispatcher.get(option) or dispatcher.get(workflow_option)
     if action:
         response = action()
     else:
