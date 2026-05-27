@@ -46,17 +46,25 @@ class ParticularAction( Produccion_PCI ):
         print(simplejson.dumps(group_conexions, indent=4))
 
     def delete_ocs_and_libs(self):
+        fecha_creacion_ocs = '2026-05-26'
         print('=======================================')
-        print('Borrando OCs y Liberaciones')
+        print(f'[{fecha_creacion_ocs}] Borrando OCs y Liberaciones')
         print('=======================================')
         records_ocs = self.cr.find({
             'form_id': {'$in': [
-                self.FORMA_ORDEN_COMPRA_FIBRA_TELNOR,
-                self.FORMA_ORDEN_COMPRA_FIBRA_OCCIDENTE,
-                self.FORMA_ORDEN_COMPRA_COBRE_OCCIDENTE,
+                self.FORMA_ORDEN_COMPRA_FIBRA, 
+                self.FORMA_ORDEN_COMPRA_FIBRA_SURESTE, 
+                self.FORMA_ORDEN_COMPRA_FIBRA_NORTE, 
+                self.FORMA_ORDEN_COMPRA_FIBRA_OCCIDENTE, 
+                self.FORMA_ORDEN_COMPRA_COBRE, 
+                self.FORMA_ORDEN_COMPRA_COBRE_SURESTE, 
+                self.FORMA_ORDEN_COMPRA_COBRE_NORTE, 
+                self.FORMA_ORDEN_COMPRA_COBRE_OCCIDENTE, 
+                self.FORMA_ORDEN_COMPRA_FIBRA_TELNOR, 
+                self.FORMA_ORDEN_COMPRA_COBRE_TELNOR, 
             ]},
             'deleted_at': {'$exists': False},
-            'created_at': {'$gte': self.str_to_date('2026-03-10 00:00:00', format_to_date='%Y-%m-%d %H:%M:%S')}
+            'created_at': {'$gte': self.str_to_date(f'{fecha_creacion_ocs} 00:00:00', format_to_date='%Y-%m-%d %H:%M:%S')}
         }
         ,{
             'folio': 1, 
@@ -100,9 +108,16 @@ class ParticularAction( Produccion_PCI ):
         """
         query_libs = {
             'form_id': {'$in': [
-                self.FORMA_LIBERACION_FIBRA_TELNOR,
-                self.FORMA_LIBERACION_FIBRA_OCCIDENTE,
-                self.FORMA_LIBERACION_COBRE_OCCIDENTE,
+                self.FORMA_LIBERACION_FIBRA, 
+                self.FORMA_LIBERACION_FIBRA_SURESTE, 
+                self.FORMA_LIBERACION_FIBRA_NORTE, 
+                self.FORMA_LIBERACION_FIBRA_OCCIDENTE, 
+                self.FORMA_LIBERACION_COBRE, 
+                self.FORMA_LIBERACION_COBRE_SURESTE, 
+                self.FORMA_LIBERACION_COBRE_NORTE, 
+                self.FORMA_LIBERACION_COBRE_OCCIDENTE, 
+                self.FORMA_LIBERACION_FIBRA_TELNOR, 
+                self.FORMA_LIBERACION_COBRE_TELNOR, 
             ]},
             'deleted_at': {'$exists': False},
             'folio': {'$in': folios_libs_totales}
@@ -115,8 +130,8 @@ class ParticularAction( Produccion_PCI ):
         """
         Borro las liberaciones que se crearon hoy
         """
-        query_libs['created_at'] = {'$gte': self.str_to_date('2026-03-10 00:00:00', format_to_date='%Y-%m-%d %H:%M:%S')}
-        folios_os_in_libs = []
+        # query_libs['created_at'] = {'$gte': self.str_to_date(f'{fecha_creacion_ocs} 00:00:00', format_to_date='%Y-%m-%d %H:%M:%S')}
+        # folios_os_in_libs = []
 
         
         # Obtener los folios de OS
