@@ -167,6 +167,12 @@ class Accesos(Accesos):
             "form_id": self.BITACORA_FALLAS,
             "field": f"answers.{self.LISTA_FALLAS_CAT_OBJ_ID}.{self.fallas_fields['falla']}"
         }
+    @get_mongo_distinct_list
+    def get_notas_estatus(self):
+        return {
+            "form_id": self.ACCESOS_NOTAS,
+            "field": f"answers.{self.notes_fields['note_status']}"
+        }
     def get_pases_status(self):
         return {
             "form_id": self.PASE_ENTRADA,
@@ -572,10 +578,18 @@ class Accesos(Accesos):
                 "options": [{"label": i, "value": i} for i in areas]
             },
         ]
+        
     def get_filters_notas(self):
         reportado_por = self.get_employees_names()
-        
+        estatus = self.get_notas_estatus()
         return [
+            {
+                "defaultDisplayOpen": True,
+                "key": "estatus",
+                "label": "Estatus",
+                "type": "multiple",
+                "options": [{"label": i.capitalize(), "value": i} for i in estatus]
+            },
             {
                 "defaultDisplayOpen": False,
                 "key": "creador_por",
