@@ -153,7 +153,7 @@ class Accesos(Accesos):
     def get_perdidos_art(self):
         return {
             "form_id": self.BITACORA_OBJETOS_PERDIDOS,
-            "field": f"answers.{self.perdidos_fields['articulo_seleccion_catalog']}.{self.perdidos_fields['nombre_articulo_perdido']}"
+            "field": f"answers.{self.perdidos_fields['articulo_seleccion_catalog']}.{self.fallas_fields['falla_objeto_afectado']}"
         }
     @get_mongo_distinct_list
     def get_perdidos_color(self):
@@ -564,7 +564,6 @@ class Accesos(Accesos):
                 "type": "multiselect",
                 "options": [{"label": i, "value": i} for i in color]
             },
-      
             {
                 "defaultDisplayOpen": False,
                 "key": "area_paqueteria",
@@ -573,6 +572,20 @@ class Accesos(Accesos):
                 "options": [{"label": i, "value": i} for i in areas]
             },
         ]
+    def get_filters_notas(self):
+        reportado_por = self.get_employees_names()
+        
+        return [
+            {
+                "defaultDisplayOpen": False,
+                "key": "creador_por",
+                "label": "Creado por",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in reportado_por]
+            },
+   
+        ]
+
 
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
@@ -591,7 +604,8 @@ if __name__ == "__main__":
         "pases":       lambda: script_obj.get_filters_pases(),
         "paqueteria": lambda:script_obj.get_filters_paqueteria(),
         "concesionados": lambda:script_obj.get_filters_concesionados(),
-        "perdidos": lambda:script_obj.get_filters_perdidos()
+        "perdidos": lambda:script_obj.get_filters_perdidos(),
+        "notas": lambda:script_obj.get_filters_notas()
     }
 
     action = dispatcher.get(option)
