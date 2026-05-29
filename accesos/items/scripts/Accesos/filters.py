@@ -173,6 +173,7 @@ class Accesos(Accesos):
             "form_id": self.ACCESOS_NOTAS,
             "field": f"answers.{self.notes_fields['note_status']}"
         }
+    @get_mongo_distinct_list
     def get_pases_status(self):
         return {
             "form_id": self.PASE_ENTRADA,
