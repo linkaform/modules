@@ -219,11 +219,6 @@ class Accesos(Accesos):
         
         self.IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.heic'}
 
-        self.MENUS_CATALOG = self.lkm.catalog_id('elementos_menu')
-        self.MENUS_CATALOG_ID = self.MENUS_CATALOG.get('id')
-        self.MENUS_CATALOG_OBJ_ID = self.MENUS_CATALOG.get('obj_id')
-        self.MENUS_FORM = self.lkm.form_id('configuracion_menus','id')
-
         self.menu_form_fields = {
             "username": "6759e4a7a9a6e13c7b26da33",
             "usuario_id": "638a9a99616398d2e392a9f5",
