@@ -72,6 +72,7 @@ class Accesos(Accesos):
             hora_fin = partes[1].strip()
 
         answers = {
+            self.pase_entrada_fields['creado_desde']: data.get('creado_desde', ''),
             f['tipo_de_operacion']:              tipo,
             f['transportista']:                  transportista.get('nombre', ''),
             f['placas_del_vehiculo']:            transportista.get('placas_vehiculo', ''),
@@ -81,7 +82,7 @@ class Accesos(Accesos):
             f['hora_inicial']:                   hora_inicio + ":00" if hora_inicio else None,
             f['hora_final']:                     hora_fin + ":00" if hora_fin else None,
             self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
-                f['anden_de_recepcion']: prog.get('anden', '')
+                self.mf['nombre_area']: prog.get('anden', '')
             },
             f['grupo_documentos']: [
                 {
