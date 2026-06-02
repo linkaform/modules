@@ -285,19 +285,19 @@ class GenerarExcelOcs( Produccion_PCI ):
         # Area titulo TOTAL DESCUENTO
         titulo_total_descuento = ws['A13']
         titulo_total_descuento.value = 'TOTAL DESCUENTO'
-        ws.merge_cells('A13:A20')
+        ws.merge_cells('A13:A21')
         titulo_total_descuento.alignment = Alignment(horizontal='center', vertical='center')
         titulo_total_descuento.font = fuente_negrita
         titulo_total_descuento.fill = relleno_purpura
 
         # Celdas donde lleva negrita
         for l in ['A', 'B', 'C', 'D', 'E']:
-            for c in [2, 10, 20, 22, 24, 25, 26, 27, 29]:
+            for c in [2, 10, 21, 23, 25, 26, 27, 28, 30]:
                 ws[ f"{l}{c}" ].font = fuente_negrita
             
             # Renglon titulo del area donde se ponen los renglones de NOMINA
-            ws[ f"{l}29" ].fill = relleno_crema
-            ws[ f"{l}29" ].alignment = centrado
+            ws[ f"{l}30" ].fill = relleno_crema
+            ws[ f"{l}30" ].alignment = centrado
         
         wrkb.save(file_name)
 
@@ -409,7 +409,7 @@ class GenerarExcelOcs( Produccion_PCI ):
         # for name_contratista, data_descuentos in group_Descuentos.items():
         #     print(f'\n === === === {name_contratista} === === ===')
         
-        GRUPOS_NOMINA = ['nómina', 'imss', 'infonavit']
+        GRUPOS_NOMINA = ['nómina', 'imss', 'infonavit', 'ptu']
         GRUPOS_EXTRA = ['prestamo', 'adeudo', 'vehiculo', 'ahorro']
 
         rows_descuentos, rows_tecnicos = [], [['TECNICO', 'TOTAL', 'OBSERVACIONES', 'PERIODO', 'CONCEPTO']]
