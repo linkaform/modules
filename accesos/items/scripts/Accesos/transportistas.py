@@ -40,8 +40,6 @@ class Accesos(Accesos):
 
     def create_pass_transportista(self, data):
         f = self.pass_fields_transportista
-        #TODO: Descargar forma y agregar referencia en Models para utilizarla
-        self.PASE_ENTRADA_TRANSPORTISTA = 154667
         metadata = self.lkf_api.get_metadata(form_id=self.PASE_ENTRADA_TRANSPORTISTA)
         metadata.update({
             'properties': {
@@ -175,7 +173,6 @@ class Accesos(Accesos):
         Nota: cada pase cuenta en todas las horas que abarca su rango
         hora_inicial→hora_final (excluyendo la hora de salida).
         """
-        self.PASE_ENTRADA_TRANSPORTISTA = 154667
         f = self.pass_fields_transportista
 
         from datetime import date
