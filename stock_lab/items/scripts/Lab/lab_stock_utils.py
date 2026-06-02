@@ -1470,7 +1470,7 @@ class Stock(Stock):
             # print('0lot_number', lot_number)
             adjust_lot_by = product.get(self.f['adjust_lot_by'], 'week')
             if adjust_lot_by == 'week':
-                prduction_date = datetime.strptime(f'{year}{cut_week}-1','%Y%W-%w')
+                prduction_date = datetime.fromisocalendar(year, cut_week, 1)
                 # date_yearweek = date.fromisocalendar(int(str(yearWeek)[:4]), int(str(cut_week)[-2:]), 1)
                 lot_number = self.create_proudction_lot_number(prduction_date, group, cycle ,fixed_week=cut_week)
             else:
@@ -2374,7 +2374,6 @@ class Stock(Stock):
             },
             {'$sort': {'product_code': 1}}
             ]
-        # print('query=', simplejson.dumps(query, indent=3))
         res = self.cr.aggregate(query)
         result = 0
         for r in res:
