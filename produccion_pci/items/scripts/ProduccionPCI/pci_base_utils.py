@@ -718,6 +718,7 @@ class PCI_Utils():
                     "imagen_ruta": "$answers.69a860fe7023f5ab79c9b9e3",
                     "foto_os": "$answers.69b1c67ffa41460bb741b502",
                     "material_utilizado": "$answers.69b97a06d07c9f470e935e1d",
+                    "alfanumerico": "$answers.69d52392eec4657da4d7f93b",
                     "folio_record": "$folio"
                 }
             }

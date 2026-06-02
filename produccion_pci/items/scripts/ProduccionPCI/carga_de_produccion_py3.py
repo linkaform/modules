@@ -1850,6 +1850,9 @@ class Produccion_PCI( Produccion_PCI ):
             answers_datos_dist['68826735d9a13878537d7d3f'] = data_integra_mts.get('metraje_total')
             answers_datos_dist['5fff390f68b587d973f1958f'] = data_integra_mts.get('imagen_ruta')
             answers_datos_dist['folio_record_mts'] = data_integra_mts.get('folio_record')
+
+            if data_integra_mts.get('alfanumerico'):
+                answers_datos_dist['68e5920a535224073205c2f3'] = data_integra_mts.get('alfanumerico')
             
             # Campo "Orden de Servicio Escaneada (PDF)"
             img_os = data_integra_mts.get('foto_os')
