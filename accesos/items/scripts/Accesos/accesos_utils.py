@@ -252,3 +252,135 @@ class Accesos(Accesos):
             "catalog_route_mobile": "69f27e8cdf4d7acc80f2e9af",
             "catalog_plataforms": "69f27e8cdf4d7acc80f2e9b0"
         }
+
+        self.pass_fields_transportista = {
+            "tipo_de_operacion": "6a1ddb53f5a36ba1c7dd029c",
+            "proveedor": "6a1ddb53f5a36ba1c7dd029d",
+            "material": "6a1ddb53f5a36ba1c7dd029e",
+            "cantidad": "6a1ddb53f5a36ba1c7dd029f",
+            "orden_de_compra": "6a1ddb53f5a36ba1c7dd02a0",
+            "direccion_de_recoleccion": "6a1ddb53f5a36ba1c7dd02a1",
+            "material_a_recoger": "6a1ddb53f5a36ba1c7dd02a2",
+            "cliente": "6a1e28a397ee5bdd2dba11fa",
+            "direccion_de_entrega": "6a1ddb54f5a36ba1c7dd02a4",
+            "producto": "6a1e28a397ee5bdd2dba11fb",
+            "orden_de_venta": "6a1ddb54f5a36ba1c7dd02a5",
+            "responsable_de_entrega": "6a1ddb54f5a36ba1c7dd02a6",
+            "responsable_de_despacho": "6a1f1b1c5c0c4cacd2fd04ec",
+            "transportista": "6a1ddcba20dadbb04a29b59c",
+            "placas_del_vehiculo": "6a1ddcba20dadbb04a29b59d",
+            "nombre_del_operador": "6a1ddcba20dadbb04a29b59e",
+            "fecha_pase_transportista_desde": "6a1ddcba20dadbb04a29b59f",
+            "fecha_pase_transportista_hasta": "6a1f15aec19e655f79987c34",
+            "hora_inicial": "6a1f15aec19e655f79987c36",
+            "hora_final": "6a1f15aec19e655f79987c37",
+            "anden_de_recepcion": "6a1ddcba20dadbb04a29b5a1",
+            "grupo_documentos": "6a1ddcba20dadbb04a29b5a2",
+            "tipo_de_documento": "6a1dde7b9de82363357088d4",
+            "documento_transportista": "6a1dde7b9de82363357088d5"
+        }
+
+    def create_pass_transportista(self, data):
+        f = self.pass_fields_transportista
+        metadata = self.lkf_api.get_metadata(form_id=self.PASE_ENTRADA_TRANSPORTISTA)
+        metadata.update({
+            'properties': {
+                'device_properties': {
+                    'System': 'Script',
+                    'Module': 'Accesos',
+                    'Process': 'Pase Transportista',
+                    'Action': 'create_pass_transportista',
+                    'File': 'modules/accesos/items/scripts/Accesos/transportistas.py',
+                }
+            }
+        })
+
+        tipo = data.get('tipo_de_operacion', '')
+        transportista = data.get('transportista', {})
+
+        # La clave de programacion varía según el tipo de operación
+        prog = (
+            data.get('programacion') or
+            data.get('programacion_regreso') or
+            data.get('programacion_salida') or
+            {}
+        )
+
+        horario = prog.get('horario_disponible', '')
+        hora_inicio, hora_fin = '', ''
+        if horario and '-' in horario:
+            partes = horario.split('-')
+            hora_inicio = partes[0].strip()
+            hora_fin = partes[1].strip()
+
+        answers = {
+            self.pase_entrada_fields['creado_desde']: data.get('creado_desde', ''),
+            f['tipo_de_operacion']:              tipo,
+            f['transportista']:                  transportista.get('nombre', ''),
+            f['placas_del_vehiculo']:            transportista.get('placas_vehiculo', ''),
+            f['nombre_del_operador']:            transportista.get('nombre_operador', ''),
+            f['fecha_pase_transportista_desde']: prog.get('fecha_pase_transportista_desde', ''),
+            f['fecha_pase_transportista_hasta']: prog.get('fecha_pase_transportista_hasta', ''),
+            f['hora_inicial']:                   hora_inicio + ":00" if hora_inicio else None,
+            f['hora_final']:                     hora_fin + ":00" if hora_fin else None,
+            self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
+                self.mf['nombre_area']: prog.get('anden', '')
+            },
+            f['grupo_documentos']: [
+                {
+                    f['tipo_de_documento']:       doc.get('tipo_de_documento', ''),
+                    f['documento_transportista']: doc.get('documento_transportista', []),
+                }
+                for doc in data.get('documentos', [])
+            ],
+        }
+
+        # Tipo 1: Entrega de materia prima
+        if tipo == 'entrega_de_materia_prima':
+            pym = data.get('proveedor_y_material', {})
+            answers.update({
+                f['proveedor']:       pym.get('proveedor', ''),
+                f['material']:        pym.get('material', ''),
+                f['cantidad']:        pym.get('cantidad', ''),
+                f['orden_de_compra']: pym.get('orden_compra', ''),
+            })
+
+        # Tipo 2: Recoleccion de materia prima
+        elif tipo == 'recoleccion_de_materia_prima':
+            origen = data.get('origen_recoleccion', {})
+            answers.update({
+                f['proveedor']:                origen.get('proveedor', ''),
+                f['direccion_de_recoleccion']: origen.get('direccion_recoleccion', ''),
+                f['material_a_recoger']:       origen.get('material_a_recoger', ''),
+                f['orden_de_compra']:          origen.get('orden_compra', ''),
+            })
+
+        # Tipo 3: Entrega de producto terminado
+        elif tipo == 'entrega_de_producto_terminado':
+            cyp = data.get('cliente_y_producto', {})
+            answers.update({
+                f['cliente']:                cyp.get('cliente', ''),
+                f['direccion_de_entrega']:   cyp.get('direccion_entrega', ''),
+                f['producto']:               cyp.get('producto', ''),
+                f['orden_de_venta']:         cyp.get('orden_venta_remision', ''),
+                f['cantidad']:               cyp.get('cantidad', ''),
+                f['responsable_de_entrega']: cyp.get('responsable_entrega', ''),
+            })
+
+        # Tipo 4: Recoleccion de producto terminado
+        elif tipo == 'recoleccion_de_producto_terminado':
+            cyp = data.get('cliente_y_producto', {})
+            answers.update({
+                f['cliente']:                 cyp.get('cliente', ''),
+                f['producto']:                cyp.get('producto', ''),
+                f['orden_de_venta']:          cyp.get('orden_venta_remision', ''),
+                f['cantidad']:                cyp.get('cantidad', ''),
+                f['responsable_de_despacho']: cyp.get('responsable_despacho', ''),
+            })
+
+        metadata.update({'answers': answers})
+        print(simplejson.dumps(answers, indent=3))
+        res = self.lkf_api.post_forms_answers(metadata)
+        if res.get('status_code') not in [200, 201, 202]:
+            self.LKFException({'title': 'Error al crear pase transportista', 'msg': res})
+        return res
