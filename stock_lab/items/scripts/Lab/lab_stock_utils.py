@@ -2695,7 +2695,8 @@ class Stock(Stock):
         res[self.PRODUCT_RECIPE_OBJ_ID ][self.f['recipe_type']] = recipe['recipe_type']
         res[self.f['set_production_date']] = str(production_date.strftime('%Y-%m-%d'))
         res[self.f['plant_cut_year']] = int(production_date.strftime('%Y'))
-        res[self.f['production_cut_week']] = int(production_date.strftime('%W'))
+        # res[self.f['production_cut_week']] = int(production_date.strftime('%W'))
+        res[self.f['production_cut_week']] = production_date.isocalendar().week
         res[self.f['production_cut_day']] = int(production_date.strftime('%j'))
         res[self.f['plant_group']] = group
         res[self.f['plant_cycle']] = cycle
