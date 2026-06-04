@@ -288,6 +288,7 @@ class Accesos(Accesos):
             "metodo_de_embarque": "6a2079343d463b1222e5d79d",
             "incoterm": "6a2079343d463b1222e5d79e",
 
+            "url_del_pase_transportista": "6a20d4a39ebbf58470fe73b5",
             "qr_del_pase_transportista": "6a20a8e138dff4ad8155c325",
             "estado_transportista": "6a20bb99782fe54a2681fc56",
             "token_transportista": "6a20c1811b6edd566116f483"
@@ -331,8 +332,11 @@ class Accesos(Accesos):
             "recoleccion_de_producto_terminado": "RDPT"
         }
 
+        dominio = data.get('dominio', 'http://localhost:3000')
+        abreviatura_url = tipos_de_operacion_abreviaturas[tipo_de_operacion]
+        url_pase_transportista = f"{dominio}/transportistas/preview/{abreviatura_url}/{pass_id}"
         qr_pase_transportista = self.create_custom_qr(
-            f"{data.get('dominio', 'http://localhost:3000')}/transportistas/preview/{tipos_de_operacion_abreviaturas[tipo_de_operacion]}/{pass_id}",
+            url_pase_transportista,
             f"qr_code_pase_transportista_{pass_id}",
             self.PASE_ENTRADA_TRANSPORTISTA,
             f['qr_del_pase_transportista'])
@@ -361,6 +365,7 @@ class Accesos(Accesos):
             self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
                 self.mf['nombre_area']: lugar.get('anden', ''),
             },
+            f['url_del_pase_transportista']: url_pase_transportista,
             f['qr_del_pase_transportista']: qr_pase_transportista,
             f['estado_transportista']: "pendiente"
         }
