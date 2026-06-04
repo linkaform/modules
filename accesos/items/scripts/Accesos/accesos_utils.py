@@ -361,7 +361,8 @@ class Accesos(Accesos):
             self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
                 self.mf['nombre_area']: lugar.get('anden', ''),
             },
-            f['qr_del_pase_transportista']: qr_pase_transportista
+            f['qr_del_pase_transportista']: qr_pase_transportista,
+            f['estado_transportista']: "pendiente"
         }
 
         # lugar_recoleccion — solo tipos 2 y 3
