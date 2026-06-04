@@ -255,127 +255,137 @@ class Accesos(Accesos):
 
         self.pass_fields_transportista = {
             "tipo_de_operacion": "6a1ddb53f5a36ba1c7dd029c",
+
+            "nombre_crea_el_pase": "6a20741046cc9cdddf3b3c07",
+            "email_crea_el_pase": "6a20741046cc9cdddf3b3c08",
+            "telefono_crea_el_pase": "6a20741046cc9cdddf3b3c09",
+
             "proveedor": "6a1ddb53f5a36ba1c7dd029d",
+            "proveedor_email": "6a207762cd730fb838ce1bb1",
+            "proveedor_telefono": "6a207762cd730fb838ce1bb2",
+
+            "documentos_para_ocr": "6a207762cd730fb838ce1bb3",
+            "proveedor_cliente_material": "6a207762cd730fb838ce1bb4",
             "material": "6a1ddb53f5a36ba1c7dd029e",
             "cantidad": "6a1ddb53f5a36ba1c7dd029f",
             "orden_de_compra": "6a1ddb53f5a36ba1c7dd02a0",
+
             "direccion_de_recoleccion": "6a1ddb53f5a36ba1c7dd02a1",
-            "material_a_recoger": "6a1ddb53f5a36ba1c7dd02a2",
-            "cliente": "6a1e28a397ee5bdd2dba11fa",
-            "direccion_de_entrega": "6a1ddb54f5a36ba1c7dd02a4",
-            "producto": "6a1e28a397ee5bdd2dba11fb",
-            "orden_de_venta": "6a1ddb54f5a36ba1c7dd02a5",
-            "responsable_de_entrega": "6a1ddb54f5a36ba1c7dd02a6",
-            "responsable_de_despacho": "6a1f1b1c5c0c4cacd2fd04ec",
-            "transportista": "6a1ddcba20dadbb04a29b59c",
-            "placas_del_vehiculo": "6a1ddcba20dadbb04a29b59d",
-            "nombre_del_operador": "6a1ddcba20dadbb04a29b59e",
             "fecha_pase_transportista_desde": "6a1ddcba20dadbb04a29b59f",
             "fecha_pase_transportista_hasta": "6a1f15aec19e655f79987c34",
             "hora_inicial": "6a1f15aec19e655f79987c36",
             "hora_final": "6a1f15aec19e655f79987c37",
-            "anden_de_recepcion": "6a1ddcba20dadbb04a29b5a1",
-            "grupo_documentos": "6a1ddcba20dadbb04a29b5a2",
-            "tipo_de_documento": "6a1dde7b9de82363357088d4",
-            "documento_transportista": "6a1dde7b9de82363357088d5"
+
+            "lugar_de_recoleccion": "6a2079343d463b1222e5d794",
+            "direccion_lugar_de_recoleccion": "6a2079343d463b1222e5d795",
+            "fecha_de_recoleccion": "6a2079343d463b1222e5d796",
+            "hora_inicial_recoleccion": "6a2079343d463b1222e5d797",
+            "hora_final_recoleccion": "6a2079343d463b1222e5d798",
+            "anden_recoleccion": "6a2079343d463b1222e5d799",
+            "responsable": "6a2079343d463b1222e5d79a",
+            "responsable_email": "6a2079343d463b1222e5d79b",
+            "responsable_telefono": "6a2079343d463b1222e5d79c",
+            "metodo_de_embarque": "6a2079343d463b1222e5d79d",
+            "incoterm": "6a2079343d463b1222e5d79e",
+
+            "qr_del_pase_transportista": "6a20a8e138dff4ad8155c325",
+            "estado_transportista": "6a20bb99782fe54a2681fc56",
+            "token_transportista": "6a20c1811b6edd566116f483"
         }
 
     def create_pass_transportista(self, data):
+        print(simplejson.dumps(data, indent=3))
         f = self.pass_fields_transportista
         metadata = self.lkf_api.get_metadata(form_id=self.PASE_ENTRADA_TRANSPORTISTA)
         metadata.update({
+            'id': self.object_id(),
             'properties': {
                 'device_properties': {
                     'System': 'Script',
                     'Module': 'Accesos',
                     'Process': 'Pase Transportista',
                     'Action': 'create_pass_transportista',
-                    'File': 'modules/accesos/items/scripts/Accesos/transportistas.py',
+                    'File': 'modules/accesos/items/scripts/Accesos/accesos_utils.py',
                 }
             }
         })
+        pass_id = metadata['id']
 
-        tipo = data.get('tipo_de_operacion', '')
-        transportista = data.get('transportista', {})
+        crea  = data.get('crea_el_pase', {})
+        recibe = data.get('recibe_el_pase', {})
+        mat   = data.get('material', {})
+        lugar = data.get('lugar_entrega_recepcion', {})
 
-        # La clave de programacion varía según el tipo de operación
-        prog = (
-            data.get('programacion') or
-            data.get('programacion_regreso') or
-            data.get('programacion_salida') or
-            {}
-        )
-
-        horario = prog.get('horario_disponible', '')
+        horario = lugar.get('horario_disponible', '') or ''
         hora_inicio, hora_fin = '', ''
-        if horario and '-' in horario:
+        if '-' in horario:
             partes = horario.split('-')
             hora_inicio = partes[0].strip()
-            hora_fin = partes[1].strip()
+            hora_fin    = partes[1].strip()
 
-        answers = {
-            self.pase_entrada_fields['creado_desde']: data.get('creado_desde', ''),
-            f['tipo_de_operacion']:              tipo,
-            f['transportista']:                  transportista.get('nombre', ''),
-            f['placas_del_vehiculo']:            transportista.get('placas_vehiculo', ''),
-            f['nombre_del_operador']:            transportista.get('nombre_operador', ''),
-            f['fecha_pase_transportista_desde']: prog.get('fecha_pase_transportista_desde', ''),
-            f['fecha_pase_transportista_hasta']: prog.get('fecha_pase_transportista_hasta', ''),
-            f['hora_inicial']:                   hora_inicio + ":00" if hora_inicio else None,
-            f['hora_final']:                     hora_fin + ":00" if hora_fin else None,
-            self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
-                self.mf['nombre_area']: prog.get('anden', '')
-            },
-            f['grupo_documentos']: [
-                {
-                    f['tipo_de_documento']:       doc.get('tipo_de_documento', ''),
-                    f['documento_transportista']: doc.get('documento_transportista', []),
-                }
-                for doc in data.get('documentos', [])
-            ],
+        tipo_de_operacion = data.get('tipo_de_operacion', '')
+        tipos_de_operacion_abreviaturas = {
+            "entrega_de_materia_prima": "EDMP",
+            "recoleccion_de_materia_prima": "RDMP",
+            "entrega_de_producto_terminado": "EDPT",
+            "recoleccion_de_producto_terminado": "RDPT"
         }
 
-        # Tipo 1: Entrega de materia prima
-        if tipo == 'entrega_de_materia_prima':
-            pym = data.get('proveedor_y_material', {})
-            answers.update({
-                f['proveedor']:       pym.get('proveedor', ''),
-                f['material']:        pym.get('material', ''),
-                f['cantidad']:        pym.get('cantidad', ''),
-                f['orden_de_compra']: pym.get('orden_compra', ''),
-            })
+        qr_pase_transportista = self.create_custom_qr(
+            f"{data.get('dominio', 'http://localhost:3000')}/transportistas/preview/{tipos_de_operacion_abreviaturas[tipo_de_operacion]}/{pass_id}",
+            f"qr_code_pase_transportista_{pass_id}",
+            self.PASE_ENTRADA_TRANSPORTISTA,
+            f['qr_del_pase_transportista'])
 
-        # Tipo 2: Recoleccion de materia prima
-        elif tipo == 'recoleccion_de_materia_prima':
-            origen = data.get('origen_recoleccion', {})
-            answers.update({
-                f['proveedor']:                origen.get('proveedor', ''),
-                f['direccion_de_recoleccion']: origen.get('direccion_recoleccion', ''),
-                f['material_a_recoger']:       origen.get('material_a_recoger', ''),
-                f['orden_de_compra']:          origen.get('orden_compra', ''),
-            })
+        answers = {
+            self.pase_entrada_fields['creado_desde']: data.get('creado_desde', 'pase_de_entrada_web'),
+            f['tipo_de_operacion']:              data.get('tipo_de_operacion', ''),
+            f['nombre_crea_el_pase']:            crea.get('nombre', ''),
+            f['email_crea_el_pase']:             crea.get('email', ''),
+            f['telefono_crea_el_pase']:          crea.get('telefono', ''),
+            f['proveedor']:                      recibe.get('nombre', ''),
+            f['proveedor_email']:                recibe.get('email', ''),
+            f['proveedor_telefono']:             recibe.get('telefono', ''),
+            f['proveedor_cliente_material']:     mat.get('proveedor_cliente', ''),
+            f['material']:                       mat.get('material', ''),
+            f['cantidad']:                       mat.get('cantidad', ''),
+            f['orden_de_compra']:                mat.get('orden_compra', ''),
+            f['documentos_para_ocr']:            mat.get('documentos', []),
+            self.UBICACIONES_CAT_OBJ_ID: {
+                self.mf['ubicacion']:            lugar.get('ubicacion', ''),
+            },
+            f['fecha_pase_transportista_desde']: lugar.get('fecha_pase_transportista_desde', ''),
+            f['fecha_pase_transportista_hasta']: lugar.get('fecha_pase_transportista_hasta', ''),
+            f['hora_inicial']:                   hora_inicio + ':00' if hora_inicio else '',
+            f['hora_final']:                     hora_fin    + ':00' if hora_fin    else '',
+            self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
+                self.mf['nombre_area']: lugar.get('anden', ''),
+            },
+            f['qr_del_pase_transportista']: qr_pase_transportista
+        }
 
-        # Tipo 3: Entrega de producto terminado
-        elif tipo == 'entrega_de_producto_terminado':
-            cyp = data.get('cliente_y_producto', {})
+        # lugar_recoleccion — solo tipos 2 y 3
+        recoleccion = data.get('lugar_recoleccion', {})
+        if recoleccion:
+            transporte   = recoleccion.get('transporte', {})
+            horario_rec  = recoleccion.get('horario', '') or ''
+            hora_ini_rec, hora_fin_rec = '', ''
+            if '-' in horario_rec:
+                partes       = horario_rec.split('-')
+                hora_ini_rec = partes[0].strip()
+                hora_fin_rec = partes[1].strip()
             answers.update({
-                f['cliente']:                cyp.get('cliente', ''),
-                f['direccion_de_entrega']:   cyp.get('direccion_entrega', ''),
-                f['producto']:               cyp.get('producto', ''),
-                f['orden_de_venta']:         cyp.get('orden_venta_remision', ''),
-                f['cantidad']:               cyp.get('cantidad', ''),
-                f['responsable_de_entrega']: cyp.get('responsable_entrega', ''),
-            })
-
-        # Tipo 4: Recoleccion de producto terminado
-        elif tipo == 'recoleccion_de_producto_terminado':
-            cyp = data.get('cliente_y_producto', {})
-            answers.update({
-                f['cliente']:                 cyp.get('cliente', ''),
-                f['producto']:                cyp.get('producto', ''),
-                f['orden_de_venta']:          cyp.get('orden_venta_remision', ''),
-                f['cantidad']:                cyp.get('cantidad', ''),
-                f['responsable_de_despacho']: cyp.get('responsable_despacho', ''),
+                f['lugar_de_recoleccion']:          recoleccion.get('lugar', ''),
+                f['direccion_lugar_de_recoleccion']: recoleccion.get('direccion', ''),
+                f['fecha_de_recoleccion']:          recoleccion.get('fecha', ''),
+                f['hora_inicial_recoleccion']:      hora_ini_rec + ':00' if hora_ini_rec else '',
+                f['hora_final_recoleccion']:        hora_fin_rec + ':00' if hora_fin_rec else '',
+                f['anden_recoleccion']:             recoleccion.get('anden', ''),
+                f['responsable']:                   transporte.get('responsable', ''),
+                f['responsable_email']:             transporte.get('email', ''),
+                f['responsable_telefono']:          transporte.get('telefono', ''),
+                f['metodo_de_embarque']:            recoleccion.get('metodo_embarque', ''),
+                f['incoterm']:                      recoleccion.get('incoterm', ''),
             })
 
         metadata.update({'answers': answers})
@@ -383,4 +393,10 @@ class Accesos(Accesos):
         res = self.lkf_api.post_forms_answers(metadata)
         if res.get('status_code') not in [200, 201, 202]:
             self.LKFException({'title': 'Error al crear pase transportista', 'msg': res})
+        res['qr_pase_transportista'] = qr_pase_transportista
         return res
+
+    def create_custom_qr(self, url_for_qr, name_qr, form_id, img_field_id):
+        lkf_qr = generar_qr.LKF_QR(self.settings)
+        qr_generado = lkf_qr.procesa_qr(url_for_qr, name_qr, form_id, img_field_id)
+        return qr_generado

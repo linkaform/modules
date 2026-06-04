@@ -1,6 +1,7 @@
 # coding: utf-8
 import dis
 import sys, simplejson
+from bson import ObjectId
 from linkaform_api import settings
 from account_settings import *
 
@@ -124,17 +125,68 @@ class Accesos(Accesos):
         dia_label = DIAS_SEMANA[dia] if dia is not None else 'todos'
         return {'dia': dia_label, 'horarios': resultado}
 
+    def get_pass_transportista(self, record_id=None, token=None):
+        f = self.pass_fields_transportista
+        match = {
+            'form_id': self.PASE_ENTRADA_TRANSPORTISTA,
+            'deleted_at': {'$exists': False},
+        }
+        if record_id:
+            match['_id'] = ObjectId(record_id)
+        elif token:
+            match[f'answers.{f["token_transportista"]}'] = token
+        else:
+            self.LKFException({'title': 'Se requiere record_id o token', 'status_code': 400})
+        query = [
+            {'$match': match},
+            {'$project': {
+                '_id': 1,
+                'folio': '$folio',
+                'tipo_de_operacion': f'$answers.{f["tipo_de_operacion"]}',
+                'ubicacion':  f'$answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.mf["ubicacion"]}',
+                'material':   f'$answers.{f["material"]}',
+                'cantidad':   f'$answers.{f["cantidad"]}',
+                'fecha_desde':  f'$answers.{f["fecha_pase_transportista_desde"]}',
+                'fecha_hasta':  f'$answers.{f["fecha_pase_transportista_hasta"]}',
+                'hora_inicial': f'$answers.{f["hora_inicial"]}',
+                'hora_final':   f'$answers.{f["hora_final"]}',
+                'anden':      f'$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf["nombre_area"]}',
+                'direccion':  f'$answers.{f["direccion_de_recoleccion"]}',
+                'documentos': f'$answers.{f["documentos_para_ocr"]}',
+                'qr':         f'$answers.{f["qr_del_pase_transportista"]}',
+                'estado_transportista':         f'$answers.{f["estado_transportista"]}',
+            }},
+        ]
+        return self.format_cr(self.cr.aggregate(query), get_one=True)
+
+    def generate_submit_token_transportista(self, record_id):
+        f = self.pass_fields_transportista
+        token = str(ObjectId())
+        answers = {f['token_transportista']: token}
+        res = self.lkf_api.patch_multi_record(
+            answers=answers,
+            form_id=self.PASE_ENTRADA_TRANSPORTISTA,
+            record_id=[record_id],
+        )
+        if res.get('status_code') not in [201, 202]:
+            self.LKFException({'title': 'Error al generar token transportista', 'msg': res})
+        return {'token': token, 'record_id': record_id}
+
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
     script_obj.console_run()
     data = script_obj.data.get('data', {})
     option = data.get("option", '')
     payload = data.get("payload", {})
+    record_id = data.get("record_id", None)
+    token = data.get("token", None)
 
     dispatcher = {
         "create_pass_transportista": lambda: script_obj.create_pass_transportista(payload),
         "get_andenes": lambda: script_obj.get_andenes(),
-        "get_horarios_data": lambda: script_obj.get_horarios_data(dia=data.get('dia'))
+        "get_horarios_data": lambda: script_obj.get_horarios_data(dia=data.get('dia')),
+        "get_pass_transportista": lambda: script_obj.get_pass_transportista(record_id, token),
+        "generate_submit_token_transportista": lambda: script_obj.generate_submit_token_transportista(record_id),
     }
 
     action = dispatcher.get(option)
