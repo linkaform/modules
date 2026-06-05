@@ -257,6 +257,6 @@ if __name__ == "__main__":
             extra_instructions=extra_instructions,
         )
     else:
-        response = {'msg': 'Empty', 'valid_options': ['ocr_id', 'ocr_doc', 'ocr_batch','ocr_paquete']}
+        response = {'msg': 'Empty', 'valid_options': ['ocr_id', 'ocr_doc', 'ocr_batch','ocr_paquete','ocr_truck']}
 
     acceso_obj.HttpResponse({'data': response})
