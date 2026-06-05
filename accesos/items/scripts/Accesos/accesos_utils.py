@@ -80,6 +80,7 @@ class Accesos(Accesos):
         self.USUARIOS_FORM = self.lkm.form_id('usuarios', 'id')
         self.ENVIO_DE_NOTIFICACIONES_FORM = self.lkm.form_id('envio_de_notificaciones', 'id')
         self.CONFIGURACION_DE_RECORRIDOS_FORM = self.lkm.form_id('configuracion_de_recorridos','id')
+        self.CONF_MODULO_SEGURIDAD = self.lkm.form_id('configuracion_modulo_seguridad','id')
 
         self.f.update({
             'areas_del_rondin': '66462aa5d4a4af2eea07e0d1',
@@ -119,7 +120,11 @@ class Accesos(Accesos):
             'free_day_type': '55887b7e01a4de2ea71c5ab2',
             'free_day_autorization': '55887b7e01a4de2ea71c5ab8',
             'grupo_incluir': '69974d3806cc6d6a17f8b1fa',
-            'pases_incluir': '69974d55879296015c1cd8d2'
+            'pases_incluir': '69974d55879296015c1cd8d2',
+
+            'prefijo_telefonico':'6a221532db633d0cf4faf12f',
+            'tolerancia_de_entrada':"6a22155492b193f057990682",
+            'grupo_requisitos':"676975321df93a68a609f9ce",
         })
         
         self.checkin_fields.update({
@@ -406,3 +411,7 @@ class Accesos(Accesos):
         lkf_qr = generar_qr.LKF_QR(self.settings)
         qr_generado = lkf_qr.procesa_qr(url_for_qr, name_qr, form_id, img_field_id)
         return qr_generado
+
+    # PRUEBAS
+
+    
