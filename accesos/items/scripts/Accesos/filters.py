@@ -173,6 +173,13 @@ class Accesos(Accesos):
             "form_id": self.ACCESOS_NOTAS,
             "field": f"answers.{self.notes_fields['note_status']}"
         }
+    @get_mongo_distinct_list
+    def get_proveedores(self):
+        return {
+            "form_id": self.PAQUETERIA,
+            "field": f"answers.{self.paquetes_fields['proveedor_cat']}.{self.paquetes_fields['proveedor']}"
+        }
+    @get_mongo_distinct_list
     def get_pases_status(self):
         return {
             "form_id": self.PASE_ENTRADA,
@@ -457,6 +464,7 @@ class Accesos(Accesos):
         reportado_por = self.get_employees_names()
         areas = self.get_areas()
         lockers = self.get_lockers()
+        proveedor = self.get_proveedores()
         return [
             {
                 "defaultDisplayOpen": True,
@@ -478,6 +486,13 @@ class Accesos(Accesos):
                 "label": "Locker ",
                 "type": "multiselect",
                 "options": [{"label": i, "value": i} for i in lockers]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "proveedor",
+                "label": "Proveedor",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in proveedor]
             },
             {
                 "defaultDisplayOpen": False,

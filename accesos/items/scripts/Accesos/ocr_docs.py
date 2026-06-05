@@ -224,6 +224,11 @@ if __name__ == "__main__":
             extra_instructions=extra_instructions,
             form_id=form_id,
         )
+    elif option == 'ocr_articulo_perdido':
+        # OCR genérico — extrae campos específicos de cualquier imagen
+        response = acceso_obj.ocr_articulo_perdido(
+            image_source=image_source
+        )
     elif option == 'ocr_paquete':
         # OCR genérico — extrae campos específicos de cualquier imagen
         response = acceso_obj.ocr_paquete(

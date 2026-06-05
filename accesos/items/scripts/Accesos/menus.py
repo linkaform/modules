@@ -70,6 +70,7 @@ class Accesos(Accesos):
         self.SCRIPT_GOOGLE_WALLET = self.lkm.script_id('create_pass_google_wallet','id')
         self.SCRIPT_RONDINES = self.lkm.script_id('rondines','id')
         self.OFFLINE_SERVICES = self.lkm.script_id('offline_services','id')
+        self.SCRIPT_MENUS = self.lkm.script_id('menus','id')
         self.FILTERS = self.lkm.script_id('filters','id')
 
         self.module_permits = {
@@ -94,9 +95,10 @@ class Accesos(Accesos):
                     self.UBICACIONES_CAT_ID,
                     self.USUARIOS_ID,
                     self.VISITA_AUTORIZADA_CAT_ID,
-                    self.FILTERS             
+                    self.FILTERS,
+                    self.MENUS_CATALOG_ID
                     ],
-                'scripts':[self.OFFLINE_SERVICES]
+                'scripts':[self.OFFLINE_SERVICES, self.SCRIPT_MENUS]
             },
             'accesos':{
                 'forms':[self.CHECKIN_CASETAS, self.REGISTRO_ASISTENCIA, self.BITACORA_GAFETES_LOCKERS, self.CHECK_UBICACIONES, self.BITACORA_ACCESOS],

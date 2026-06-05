@@ -80,6 +80,7 @@ class Accesos(Accesos):
         self.USUARIOS_FORM = self.lkm.form_id('usuarios', 'id')
         self.ENVIO_DE_NOTIFICACIONES_FORM = self.lkm.form_id('envio_de_notificaciones', 'id')
         self.CONFIGURACION_DE_RECORRIDOS_FORM = self.lkm.form_id('configuracion_de_recorridos','id')
+        self.CONF_MODULO_SEGURIDAD = self.lkm.form_id('configuracion_modulo_seguridad','id')
 
         self.f.update({
             'areas_del_rondin': '66462aa5d4a4af2eea07e0d1',
@@ -119,7 +120,11 @@ class Accesos(Accesos):
             'free_day_type': '55887b7e01a4de2ea71c5ab2',
             'free_day_autorization': '55887b7e01a4de2ea71c5ab8',
             'grupo_incluir': '69974d3806cc6d6a17f8b1fa',
-            'pases_incluir': '69974d55879296015c1cd8d2'
+            'pases_incluir': '69974d55879296015c1cd8d2',
+
+            'prefijo_telefonico':'6a221532db633d0cf4faf12f',
+            'tolerancia_de_entrada':"6a22155492b193f057990682",
+            'grupo_requisitos':"676975321df93a68a609f9ce",
         })
         
         self.checkin_fields.update({
@@ -219,11 +224,6 @@ class Accesos(Accesos):
         
         self.IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.heic'}
 
-        self.MENUS_CATALOG = self.lkm.catalog_id('elementos_menu')
-        self.MENUS_CATALOG_ID = self.MENUS_CATALOG.get('id')
-        self.MENUS_CATALOG_OBJ_ID = self.MENUS_CATALOG.get('obj_id')
-        self.MENUS_FORM = self.lkm.form_id('configuracion_menus','id')
-
         self.menu_form_fields = {
             "username": "6759e4a7a9a6e13c7b26da33",
             "usuario_id": "638a9a99616398d2e392a9f5",
@@ -257,3 +257,161 @@ class Accesos(Accesos):
             "catalog_route_mobile": "69f27e8cdf4d7acc80f2e9af",
             "catalog_plataforms": "69f27e8cdf4d7acc80f2e9b0"
         }
+
+        self.pass_fields_transportista = {
+            "tipo_de_operacion": "6a1ddb53f5a36ba1c7dd029c",
+
+            "nombre_crea_el_pase": "6a20741046cc9cdddf3b3c07",
+            "email_crea_el_pase": "6a20741046cc9cdddf3b3c08",
+            "telefono_crea_el_pase": "6a20741046cc9cdddf3b3c09",
+
+            "proveedor": "6a1ddb53f5a36ba1c7dd029d",
+            "proveedor_email": "6a207762cd730fb838ce1bb1",
+            "proveedor_telefono": "6a207762cd730fb838ce1bb2",
+
+            "documentos_para_ocr": "6a207762cd730fb838ce1bb3",
+            "proveedor_cliente_material": "6a207762cd730fb838ce1bb4",
+            "material": "6a1ddb53f5a36ba1c7dd029e",
+            "cantidad": "6a1ddb53f5a36ba1c7dd029f",
+            "orden_de_compra": "6a1ddb53f5a36ba1c7dd02a0",
+
+            "direccion_de_recoleccion": "6a1ddb53f5a36ba1c7dd02a1",
+            "fecha_pase_transportista_desde": "6a1ddcba20dadbb04a29b59f",
+            "fecha_pase_transportista_hasta": "6a1f15aec19e655f79987c34",
+            "hora_inicial": "6a1f15aec19e655f79987c36",
+            "hora_final": "6a1f15aec19e655f79987c37",
+
+            "lugar_de_recoleccion": "6a2079343d463b1222e5d794",
+            "direccion_lugar_de_recoleccion": "6a2079343d463b1222e5d795",
+            "fecha_de_recoleccion": "6a2079343d463b1222e5d796",
+            "hora_inicial_recoleccion": "6a2079343d463b1222e5d797",
+            "hora_final_recoleccion": "6a2079343d463b1222e5d798",
+            "anden_recoleccion": "6a2079343d463b1222e5d799",
+            "responsable": "6a2079343d463b1222e5d79a",
+            "responsable_email": "6a2079343d463b1222e5d79b",
+            "responsable_telefono": "6a2079343d463b1222e5d79c",
+            "metodo_de_embarque": "6a2079343d463b1222e5d79d",
+            "incoterm": "6a2079343d463b1222e5d79e",
+
+            "url_del_pase_transportista": "6a20d4a39ebbf58470fe73b5",
+            "qr_del_pase_transportista": "6a20a8e138dff4ad8155c325",
+            "estado_transportista": "6a20bb99782fe54a2681fc56",
+            "token_transportista": "6a20c1811b6edd566116f483"
+        }
+
+    def create_pass_transportista(self, data):
+        print(simplejson.dumps(data, indent=3))
+        f = self.pass_fields_transportista
+        metadata = self.lkf_api.get_metadata(form_id=self.PASE_ENTRADA_TRANSPORTISTA)
+        metadata.update({
+            'id': self.object_id(),
+            'properties': {
+                'device_properties': {
+                    'System': 'Script',
+                    'Module': 'Accesos',
+                    'Process': 'Pase Transportista',
+                    'Action': 'create_pass_transportista',
+                    'File': 'modules/accesos/items/scripts/Accesos/accesos_utils.py',
+                }
+            }
+        })
+        pass_id = metadata['id']
+
+        crea  = data.get('crea_el_pase', {})
+        recibe = data.get('recibe_el_pase', {})
+        mat   = data.get('material', {})
+        lugar = data.get('lugar_entrega_recepcion', {})
+
+        horario = lugar.get('horario_disponible', '') or ''
+        hora_inicio, hora_fin = '', ''
+        if '-' in horario:
+            partes = horario.split('-')
+            hora_inicio = partes[0].strip()
+            hora_fin    = partes[1].strip()
+
+        tipo_de_operacion = data.get('tipo_de_operacion', '')
+        tipos_de_operacion_abreviaturas = {
+            "entrega_de_materia_prima": "EDMP",
+            "recoleccion_de_materia_prima": "RDMP",
+            "entrega_de_producto_terminado": "EDPT",
+            "recoleccion_de_producto_terminado": "RDPT"
+        }
+
+        dominio = data.get('dominio', 'http://localhost:3000')
+        abreviatura_url = tipos_de_operacion_abreviaturas[tipo_de_operacion]
+        url_pase_transportista = f"{dominio}/transportistas/preview/{abreviatura_url}/{pass_id}"
+        qr_pase_transportista = self.create_custom_qr(
+            url_pase_transportista,
+            f"qr_code_pase_transportista_{pass_id}",
+            self.PASE_ENTRADA_TRANSPORTISTA,
+            f['qr_del_pase_transportista'])
+
+        answers = {
+            self.pase_entrada_fields['creado_desde']: data.get('creado_desde', 'pase_de_entrada_web'),
+            f['tipo_de_operacion']:              data.get('tipo_de_operacion', ''),
+            f['nombre_crea_el_pase']:            crea.get('nombre', ''),
+            f['email_crea_el_pase']:             crea.get('email', ''),
+            f['telefono_crea_el_pase']:          crea.get('telefono', ''),
+            f['proveedor']:                      recibe.get('nombre', ''),
+            f['proveedor_email']:                recibe.get('email', ''),
+            f['proveedor_telefono']:             recibe.get('telefono', ''),
+            f['proveedor_cliente_material']:     mat.get('proveedor_cliente', ''),
+            f['material']:                       mat.get('material', ''),
+            f['cantidad']:                       mat.get('cantidad', ''),
+            f['orden_de_compra']:                mat.get('orden_compra', ''),
+            f['documentos_para_ocr']:            mat.get('documentos', []),
+            self.UBICACIONES_CAT_OBJ_ID: {
+                self.mf['ubicacion']:            lugar.get('ubicacion', ''),
+            },
+            f['fecha_pase_transportista_desde']: lugar.get('fecha_pase_transportista_desde', ''),
+            f['fecha_pase_transportista_hasta']: lugar.get('fecha_pase_transportista_hasta', ''),
+            f['hora_inicial']:                   hora_inicio + ':00' if hora_inicio else '',
+            f['hora_final']:                     hora_fin    + ':00' if hora_fin    else '',
+            self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
+                self.mf['nombre_area']: lugar.get('anden', ''),
+            },
+            f['url_del_pase_transportista']: url_pase_transportista,
+            f['qr_del_pase_transportista']: qr_pase_transportista,
+            f['estado_transportista']: "pendiente"
+        }
+
+        # lugar_recoleccion — solo tipos 2 y 3
+        recoleccion = data.get('lugar_recoleccion', {})
+        if recoleccion:
+            transporte   = recoleccion.get('transporte', {})
+            horario_rec  = recoleccion.get('horario', '') or ''
+            hora_ini_rec, hora_fin_rec = '', ''
+            if '-' in horario_rec:
+                partes       = horario_rec.split('-')
+                hora_ini_rec = partes[0].strip()
+                hora_fin_rec = partes[1].strip()
+            answers.update({
+                f['lugar_de_recoleccion']:          recoleccion.get('lugar', ''),
+                f['direccion_lugar_de_recoleccion']: recoleccion.get('direccion', ''),
+                f['fecha_de_recoleccion']:          recoleccion.get('fecha', ''),
+                f['hora_inicial_recoleccion']:      hora_ini_rec + ':00' if hora_ini_rec else '',
+                f['hora_final_recoleccion']:        hora_fin_rec + ':00' if hora_fin_rec else '',
+                f['anden_recoleccion']:             recoleccion.get('anden', ''),
+                f['responsable']:                   transporte.get('responsable', ''),
+                f['responsable_email']:             transporte.get('email', ''),
+                f['responsable_telefono']:          transporte.get('telefono', ''),
+                f['metodo_de_embarque']:            recoleccion.get('metodo_embarque', ''),
+                f['incoterm']:                      recoleccion.get('incoterm', ''),
+            })
+
+        metadata.update({'answers': answers})
+        print(simplejson.dumps(answers, indent=3))
+        res = self.lkf_api.post_forms_answers(metadata)
+        if res.get('status_code') not in [200, 201, 202]:
+            self.LKFException({'title': 'Error al crear pase transportista', 'msg': res})
+        res['qr_pase_transportista'] = qr_pase_transportista
+        return res
+
+    def create_custom_qr(self, url_for_qr, name_qr, form_id, img_field_id):
+        lkf_qr = generar_qr.LKF_QR(self.settings)
+        qr_generado = lkf_qr.procesa_qr(url_for_qr, name_qr, form_id, img_field_id)
+        return qr_generado
+
+    # PRUEBAS
+
+    
