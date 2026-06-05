@@ -172,6 +172,78 @@ class Accesos(Accesos):
             self.LKFException({'title': 'Error al generar token transportista', 'msg': res})
         return {'token': token, 'record_id': record_id}
 
+    def get_users_data(self, locations=None):
+        locations = ["Planta Monterrey"]
+        match = {
+            'form_id': self.CONF_AREA_EMPLEADOS,
+            'deleted_at': {'$exists': False},
+        }
+        if locations:
+            if isinstance(locations, str):
+                locations = [locations]
+            match[f'answers.{self.mf["areas_grupo"]}'] = {
+                '$elemMatch': {
+                    f'{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f["location"]}': {'$in': locations}
+                }
+            }
+        query = [
+            {'$match': match},
+            {'$project': {
+                'nombre':   f'$answers.{self.EMPLOYEE_OBJ_ID}.{self.mf["nombre_empleado"]}',
+                'email':    {'$first': f'$answers.{self.EMPLOYEE_OBJ_ID}.{self.f["new_user_email"]}'},
+                'telefono': {'$first': f'$answers.{self.EMPLOYEE_OBJ_ID}.{self.mf["telefono_visita_a"]}'},
+            }},
+            {'$group': {
+                '_id': '$nombre',
+                'email':    {'$first': '$email'},
+                'telefono': {'$first': '$telefono'},
+            }},
+            {'$project': {
+                '_id': 0,
+                'nombre':   '$_id',
+                'email':    1,
+                'telefono': 1,
+            }},
+            {'$sort': {'nombre': 1}},
+        ]
+        return self.format_cr(self.cr.aggregate(query))
+
+    def get_location_data(self, location):
+        location = "Planta Monterrey"
+        areas_query = [
+            {'$match': {
+                'form_id': self.AREAS_DE_LAS_UBICACIONES,
+                'deleted_at': {'$exists': False},
+                f'answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.f["location"]}': location,
+            }},
+            {'$project': {
+                '_id': 0,
+                'area': f'$answers.{self.mf["nombre_area"]}',
+            }},
+            {'$sort': {'area': 1}},
+        ]
+        areas = [r['area'] for r in self.format_cr(self.cr.aggregate(areas_query)) if r.get('area')]
+
+        ubicacion_query = [
+            {'$match': {
+                'form_id': self.UBICACIONES,
+                'deleted_at': {'$exists': False},
+                f'answers.{self.f["location"]}': location,
+            }},
+            {'$project': {
+                '_id': 0,
+                'direccion': {'$first': f'$answers.{self.CONTACTO_CAT_OBJ_ID}.{self.mf["direccion"]}'},
+            }},
+            {'$limit': 1},
+        ]
+        ubicacion = self.format_cr(self.cr.aggregate(ubicacion_query), get_one=True)
+
+        return {
+            'ubicacion': location,
+            'direccion': ubicacion.get('direccion', '') if ubicacion else '',
+            'areas': areas,
+        }
+
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
     script_obj.console_run()
@@ -180,13 +252,17 @@ if __name__ == "__main__":
     payload = data.get("payload", {})
     record_id = data.get("record_id", None)
     token = data.get("token", None)
+    locations = data.get("locations", None)
+    location = data.get("location", None)
 
     dispatcher = {
         "create_pass_transportista": lambda: script_obj.create_pass_transportista(payload),
+        "generate_submit_token_transportista": lambda: script_obj.generate_submit_token_transportista(record_id),
         "get_andenes": lambda: script_obj.get_andenes(),
         "get_horarios_data": lambda: script_obj.get_horarios_data(dia=data.get('dia')),
         "get_pass_transportista": lambda: script_obj.get_pass_transportista(record_id, token),
-        "generate_submit_token_transportista": lambda: script_obj.generate_submit_token_transportista(record_id),
+        "get_users_data": lambda: script_obj.get_users_data(locations),
+        "get_location_data": lambda: script_obj.get_location_data(location),
     }
 
     action = dispatcher.get(option)
