@@ -95,10 +95,9 @@ class Accesos(Accesos):
                     self.UBICACIONES_CAT_ID,
                     self.USUARIOS_ID,
                     self.VISITA_AUTORIZADA_CAT_ID,
-                    self.FILTERS,
                     self.MENUS_CATALOG_ID
                     ],
-                'scripts':[self.OFFLINE_SERVICES, self.SCRIPT_MENUS]
+                'scripts':[self.OFFLINE_SERVICES, self.SCRIPT_MENUS, self.FILTERS]
             },
             'accesos':{
                 'forms':[self.CHECKIN_CASETAS, self.REGISTRO_ASISTENCIA, self.BITACORA_GAFETES_LOCKERS, self.CHECK_UBICACIONES, self.BITACORA_ACCESOS],
@@ -111,7 +110,7 @@ class Accesos(Accesos):
                 'scripts':[self.SCRIPT_RONDINES, self.FALLAS]
             },
             'activos':{
-                'forms':[self.CONCESSIONED_ARTICULOS, self.BITACORA_OBJETOS_PERDIDOS, self.PAQUETERIA],
+                'forms':[self.CONCESSIONED_ARTICULOS, self.BITACORA_OBJETOS_PERDIDOS],
                 'catalogs':[self.ACTIVOS_FIJOS_CAT_ID, ],
                 'scripts':[self.PAQUETERIA, self.GET_STATS, self.GAFETES_LOCKERS, self.FALLAS, self.ARTICULOS_PERDIDOS, self.ARTICULOS_CONSECIONADOS]
             },
@@ -126,9 +125,9 @@ class Accesos(Accesos):
                 'scripts':[self.SCRIPT_PASE_ACCESO, self.GET_STATS, self.SCRIPT_PASE_ACCESO_API]
             },
             'caseta':{
-                'forms':[self.CHECKIN_CASETAS, self.REGISTRO_ASISTENCIA, self.FORMATO_VACACIONES, self.SCRIPT_TURNOS],
+                'forms':[self.CHECKIN_CASETAS, self.REGISTRO_ASISTENCIA, self.FORMATO_VACACIONES],
                 'catalogs':[],
-                'scripts':[]
+                'scripts':[self.SCRIPT_TURNOS]
             },
         }
 
