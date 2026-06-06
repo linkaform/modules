@@ -4,7 +4,7 @@ Script que se ejecuta al terminar el proceso de Liberaciones de Orden de Compra
 para generar el archivo Excel de OCS y enviarlo por correo a los contratistas
 """
 import sys, simplejson
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import openpyxl
 from openpyxl.utils import get_column_letter
@@ -39,6 +39,8 @@ class GenerarExcelOcs( Produccion_PCI ):
         return None
     
     def get_query_ocs(self):
+        # periodo_fin para buscar desde el periodo de ejecucion hasta dos dias después
+        periodo_fin = ( datetime.strptime(self.fecha_periodo, '%Y-%m-%d') + timedelta(days=2) ).strftime("%Y-%m-%d")
         query = [
             {
                 '$match': {
@@ -51,7 +53,7 @@ class GenerarExcelOcs( Produccion_PCI ):
                     'deleted_at': { '$exists': False },
                     'created_at': { 
                         '$gte': datetime.strptime(f"{self.fecha_periodo} 00:00:00", '%Y-%m-%d %H:%M:%S') ,
-                        '$lt': datetime.strptime(f"{self.fecha_periodo} 23:59:59", '%Y-%m-%d %H:%M:%S') 
+                        '$lt': datetime.strptime(f"{periodo_fin} 23:59:59", '%Y-%m-%d %H:%M:%S') 
                     },
 
                     # 'connection_id': 29125 # Test!
