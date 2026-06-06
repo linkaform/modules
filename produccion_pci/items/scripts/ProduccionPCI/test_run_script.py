@@ -46,7 +46,7 @@ class ParticularAction( Produccion_PCI ):
         print(simplejson.dumps(group_conexions, indent=4))
 
     def delete_ocs_and_libs(self):
-        fecha_creacion_ocs = '2026-05-26'
+        fecha_creacion_ocs = '2026-06-02'
         print('=======================================')
         print(f'[{fecha_creacion_ocs}] Borrando OCs y Liberaciones')
         print('=======================================')
