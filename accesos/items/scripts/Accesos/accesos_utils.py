@@ -413,5 +413,3 @@ class Accesos(Accesos):
         return qr_generado
 
     # PRUEBAS
-
-    

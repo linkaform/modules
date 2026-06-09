@@ -9,7 +9,112 @@ from accesos_utils import Accesos
 class Accesos(Accesos):
     pass
 
+    def ocr_vehiculo(self, image_source, fields: dict = {},
+                     extra_instructions: str = None,
+                     model: str = 'google/gemini-2.5-flash-lite') -> dict:
+        """
+        Extrae los datos de una foto de un vehículo:
+        tipo, marca, modelo, año estimado, color, placas,
+        número económico, condición y observaciones.
 
+        Args:
+            image_source:        URL remota, ruta local, o lista de imágenes del vehículo.
+            fields:              Campos adicionales a extraer (opcional).
+            extra_instructions:  Instrucciones extra al modelo (opcional).
+            model:               Modelo OpenRouter a usar.
+                                 Opciones recomendadas:
+                                   'google/gemini-2.5-flash-lite'   ← default, rápido y barato
+                                   'google/gemini-2.5-flash'        ← mejor OCR, más caro
+                                   'anthropic/claude-haiku-4-5'     ← excelente para placas
+
+        Returns:
+            dict con:
+                - status_code : 200 OK / 206 advertencias / 400 config / 500 error
+                - data        : campos extraídos
+                - msg         : mensaje de resultado
+
+        Ejemplo de uso:
+            response = acceso_obj.ocr_vehiculo(
+                image_source="https://s3.../auto.jpg",
+            )
+            # o varias fotos del mismo vehículo:
+            response = acceso_obj.ocr_vehiculo(
+                image_source=[
+                    "https://s3.../frente.jpg",
+                    "https://s3.../lateral.jpg",
+                    "https://s3.../placa.jpg",
+                ],
+            )
+        """
+        if not self.ai:
+            return {'status_code': 400, 'msg': 'OpenRouter no configurado'}
+
+        system = (
+            "You are a vehicle identification specialist with expertise in "
+            "reading license plates, identifying car makes and models, and "
+            "assessing vehicle condition from photographs. "
+            "You analyze images of cars, trucks, motorcycles, and commercial vehicles. "
+            "Always respond with a single valid JSON object and nothing else — "
+            "no markdown, no backticks, no explanation, no preamble."
+        )
+
+        prompt = (
+            "Analyze all provided vehicle images as a single combined inspection. "
+            "Images may show: front, sides, rear, license plate close-ups, or interior. "
+            "All inputs refer to ONE vehicle. Extract every available field. "
+            "If a field cannot be determined from the provided material, use null. "
+            "\n\n"
+            "Return ONLY a JSON object with this exact structure:\n"
+            "{\n"
+            '  "tipo_vehiculo": "string — sedan, SUV, pickup, camion, motocicleta, van, autobus, trailer, etc.",\n'
+            '  "marca": "string — vehicle brand (Toyota, Ford, Nissan, Chevrolet, Honda, Kia, etc.)",\n'
+            '  "modelo": "string — vehicle model name (Corolla, F-150, Sentra, Aveo, etc.)",\n'
+            '  "anio_estimado": "string — model year or range if inferable (e.g. 2019 or 2018-2020)",\n'
+            '  "color_principal": "string — main body color in Spanish (rojo, blanco, gris, negro, etc.)",\n'
+            '  "color_secundario": "string — secondary color or trim if applicable, else null",\n'
+            '  "placa": "string — license plate number exactly as visible, preserving spacing/hyphens",\n'
+            '  "estado_placa": "string — Mexican state or country of the plate if identifiable",\n'
+            '  "no_economico": "string — fleet or unit number painted on the vehicle if visible, else null",\n'
+            '  "num_serie_vin": "string — VIN or chassis number if visible (e.g. on windshield sticker), else null",\n'
+            '  "condicion": "string — bueno / regular / malo — overall visible condition of the vehicle",\n'
+            '  "danios_visibles": "string — describe any dents, scratches, broken parts, or damage, else null",\n'
+            '  "observaciones": "string — any notable features, modifications, stickers, cargo, or distinguishing marks",\n'
+            '  "confianza": "string — alto / medio / bajo — overall confidence based on image clarity and angle"\n'
+            "}"
+        )
+
+        if extra_instructions:
+            prompt += f"\n\nAdditional instructions: {extra_instructions}"
+
+        # 1. Llamar al LLM
+        raw_text = self.ai.ocr_general(image_source, system, prompt, model=model, max_tokens=1000)
+
+        # 2. Extraer el contenido de texto
+        datos = {}
+        if raw_text.get('choices'):
+            choices = raw_text['choices']
+            if isinstance(choices, list) and len(choices) > 0:
+                content = choices[0].get('message', {}).get('content')
+                if content:
+                    datos = content
+
+        print('ocr_vehiculo datos=', datos)
+
+        # 3. Normalizar (limpia markdown fences, parsea JSON, etc.)
+        datos = self._ocr_normalizar(datos)
+
+        # 4. Validar campos básicos
+        errores = self._ocr_validar_id(datos)
+        if errores:
+            return {
+                'status_code': 206,
+                'msg': 'Extracción con advertencias',
+                'data': datos,
+                'warnings': errores,
+            }
+
+        return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
+        
     def ocr_truck(self, image_source: list, fields: dict = {},
                            extra_instructions: str = None,
                            model: str = 'google/gemini-2.5-flash-lite') -> dict:
@@ -261,7 +366,13 @@ if __name__ == "__main__":
             fields=fields,
             extra_instructions=extra_instructions,
         )
+    elif option == 'ocr_vehiculo':
+        response = acceso_obj.ocr_vehiculo(
+            image_source=image_source,
+            fields=fields,
+            extra_instructions=extra_instructions,
+        )
     else:
-        response = {'msg': 'Empty', 'valid_options': ['ocr_id', 'ocr_doc', 'ocr_batch','ocr_paquete','ocr_truck']}
+        response = {'msg': 'Empty', 'valid_options': ['ocr_id', 'ocr_doc', 'ocr_batch','ocr_paquete','ocr_truck', 'ocr_vehiculo']}
 
     acceso_obj.HttpResponse({'data': response})
