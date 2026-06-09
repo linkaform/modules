@@ -123,7 +123,6 @@ class Accesos(Accesos):
             'pases_incluir': '69974d55879296015c1cd8d2',
 
             'prefijo_telefonico':'6a221532db633d0cf4faf12f',
-            'tolerancia_de_entrada':"6a22155492b193f057990682",
             'grupo_requisitos':"676975321df93a68a609f9ce",
         })
         
@@ -413,8 +412,8 @@ class Accesos(Accesos):
                 f['responsable']:                   transporte.get('responsable', ''),
                 f['responsable_email']:             transporte.get('email', ''),
                 f['responsable_telefono']:          transporte.get('telefono', ''),
-                f['metodo_de_embarque']:            recoleccion.get('metodo_embarque', ''),
-                f['incoterm']:                      recoleccion.get('incoterm', ''),
+                # f['metodo_de_embarque']:            recoleccion.get('metodo_embarque', '').lower(),
+                # f['incoterm']:                      recoleccion.get('incoterm', '').lower(),
             })
 
         metadata.update({'answers': answers})
