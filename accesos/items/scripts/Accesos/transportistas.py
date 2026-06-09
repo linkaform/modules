@@ -219,7 +219,6 @@ class Accesos(Accesos):
         return self.format_cr(self.cr.aggregate(query))
 
     def get_location_data(self, location):
-        location = "Planta Monterrey"
         areas_query = [
             {'$match': {
                 'form_id': self.AREAS_DE_LAS_UBICACIONES,
