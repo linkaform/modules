@@ -271,9 +271,14 @@ class Accesos(Accesos):
 
             "documentos_para_ocr": "6a207762cd730fb838ce1bb3",
             "proveedor_cliente_material": "6a207762cd730fb838ce1bb4",
-            "material": "6a1ddb53f5a36ba1c7dd029e",
-            "cantidad": "6a1ddb53f5a36ba1c7dd029f",
             "orden_de_compra": "6a1ddb53f5a36ba1c7dd02a0",
+            "grupo_materiales": "6a2714954a54077ffa2394e6",
+            "contenedor": "6a2714eeca6ac6897ef55d92",
+            "sello":      "6a2714eeca6ac6897ef55d93",
+            "tipo":       "6a2714eeca6ac6897ef55d94",
+            "cantidad":   "6a2714eeca6ac6897ef55d95",
+            "peso":       "6a2714eeca6ac6897ef55d96",
+            "volumen":    "6a2714eeca6ac6897ef55d97",
 
             "direccion_de_recoleccion": "6a1ddb53f5a36ba1c7dd02a1",
             "fecha_pase_transportista_desde": "6a1ddcba20dadbb04a29b59f",
@@ -356,12 +361,25 @@ class Accesos(Accesos):
             f['proveedor_email']:                recibe.get('email', ''),
             f['proveedor_telefono']:             recibe.get('telefono', ''),
             f['proveedor_cliente_material']:     mat.get('proveedor_cliente', ''),
-            f['material']:                       mat.get('material', ''),
-            f['cantidad']:                       mat.get('cantidad', ''),
             f['orden_de_compra']:                mat.get('orden_compra', ''),
             f['documentos_para_ocr']:            mat.get('documentos', []),
+            f['grupo_materiales']:               [
+                {
+                    f['tipo']:       item.get('tipo', ''),
+                    f['cantidad']:   item.get('cantidad', ''),
+                    f['volumen']:    item.get('volumen', ''),
+                    f['peso']:       item.get('peso', ''),
+                    f['sello']:      item.get('sello', ''),
+                    f['contenedor']: item.get('contenedor', ''),
+                }
+                for item in mat.get('items', [])
+            ],
             self.UBICACIONES_CAT_OBJ_ID: {
                 self.mf['ubicacion']:            lugar.get('ubicacion', ''),
+                self.f['address_name']:          [lugar.get('direccion', '')],
+            },
+            self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID: {
+                self.mf['nombre_area_salida']:   lugar.get('area', '')
             },
             f['fecha_pase_transportista_desde']: lugar.get('fecha_pase_transportista_desde', ''),
             f['fecha_pase_transportista_hasta']: lugar.get('fecha_pase_transportista_hasta', ''),
