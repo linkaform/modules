@@ -85,6 +85,14 @@ class Accesos(Accesos):
 
         if extra_instructions:
             prompt += f"\n\nAdditional instructions: {extra_instructions}"
+        # 1. Sanitizar image_source — asegurar que sea lista de strings
+        if isinstance(image_source, str):
+            image_source = [image_source]
+        elif isinstance(image_source, list):
+            image_source = [
+                img['file_url'] if isinstance(img, dict) else img
+                for img in image_source
+            ]
 
         # 1. Llamar al LLM
         raw_text = self.ai.ocr_general(image_source, system, prompt, model=model, max_tokens=1000)
@@ -285,7 +293,7 @@ if __name__ == "__main__":
     image_source = data.get('image_source', '')
     # form_id destino donde se creará el registro (opcional)
     # Si no se manda, solo extrae y retorna el JSON sin crear registro
-
+    print('data=', data)
     # Campos extra a extraer en modo ocr genérico (opcional)
     # Ejemplo: ["numero_factura", "total", "fecha", "rfc_emisor"]
     fields = data.get('fields', [])
