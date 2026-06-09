@@ -163,10 +163,10 @@ class Accesos(Accesos):
             "\n\n"
             "Return ONLY a JSON object with this exact structure:\n"
             "{\n"
-            '  "tipo_vehiculo": "string — pick up, camión, bicicleta, remolque , moto, van, autobús, trailer, automóvil.",\n'
+            '  "tipo_vehiculo": "string — MUST be exactly one of: pick up, camión, bicicleta, remolque, moto, van, autobús, trailer, automóvil. No other values allowed.",\n'
             '  "marca": "string — vehicle brand (Toyota, Ford, Nissan, Chevrolet, Honda, Kia, etc.)",\n'
             '  "modelo": "string — vehicle model name (Corolla, F-150, Sentra, Aveo, etc.)",\n'
-            '  "color_principal": "string — main body color in Spanish (rojo, blanco, gris, negro, etc.)",\n'
+            '  "color_principal": "string — MUST be exactly one of: Amarillo, Azul, Beige, Blanco, Cafe, Crema, Dorado, Gris, Morado, Naranja, Negro, Plateado, Rojo, Rosa, Verde, Violeta, Otro. No other values allowed. Pick the closest match.",\n'
             '  "placa": "string — license plate number exactly as visible, preserving spacing/hyphens",\n'
             '  "estado_placa": "string — Mexican state or country of the plate if identifiable",\n'
             '  "num_serie_vin": "string — VIN or chassis number if visible (e.g. on windshield sticker), else null",\n'
@@ -176,7 +176,7 @@ class Accesos(Accesos):
             '  "confianza": "string — alto / medio / bajo — overall confidence based on image clarity and angle"\n'
             "}"
         )
-
+        
         if extra_instructions:
             prompt += f"\n\nAdditional instructions: {extra_instructions}"
         # 1. Sanitizar image_source — asegurar que sea lista de strings
