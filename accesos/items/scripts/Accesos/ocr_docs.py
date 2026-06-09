@@ -8,7 +8,90 @@ from accesos_utils import Accesos
 
 class Accesos(Accesos):
     pass
+    def ocr_equipo(self, image_source,
+                   extra_instructions: str = None,
+                   model: str = 'google/gemini-2.5-flash-lite') -> dict:
+        """
+        Extrae los datos de una foto de un equipo/herramienta:
+        tipo, marca, modelo, número de serie y color.
 
+        Args:
+            image_source: URL remota, ruta local, o lista de imágenes.
+            model:        Modelo OpenRouter a usar.
+
+        Returns:
+            dict con:
+                - status_code : 200 OK / 206 advertencias / 400 config / 500 error
+                - data        : campos extraídos
+                - msg         : mensaje de resultado
+        """
+        if not self.ai:
+            return {'status_code': 400, 'msg': 'OpenRouter no configurado'}
+
+        system = (
+            "You are an asset identification specialist trained to analyze images "
+            "of equipment, tools, computers, tablets, and electronic devices. "
+            "You extract identifying information such as brand, model, serial number, "
+            "and color from photographs. "
+            "Always respond with a single valid JSON object and nothing else — "
+            "no markdown, no backticks, no explanation, no preamble."
+        )
+
+        prompt = (
+            "Analyze the provided image and extract all visible identifying information "
+            "about the equipment or device shown. "
+            "If a field cannot be determined from the image, use null. "
+            "\n\n"
+            "Return ONLY a JSON object with this exact structure:\n"
+            "{\n"
+            '  "tipo": "string — MUST be exactly one of: herramienta, computo, tablet, otro. No other values allowed.",\n'
+            '  "marca": "string — brand name visible on the device (Apple, Dell, HP, Lenovo, Samsung, Makita, Dewalt, etc.), or null",\n'
+            '  "modelo": "string — model name or number if visible (e.g. MacBook Pro, ThinkPad X1, iPad Pro, etc.), or null",\n'
+            '  "num_serie": "string — serial number exactly as visible on label or sticker, or null",\n'
+            '  "color": "string — MUST be exactly one of: Amarillo, Azul, Beige, Blanco, Cafe, Crema, Dorado, Gris, Morado, Naranja, Negro, Plateado, Rojo, Rosa, Verde, Violeta, Otro. Pick the closest match.",\n'
+            '  "observaciones": "string — any notable features, damage, stickers, or distinguishing marks, or null",\n'
+            '  "confianza": "string — alto / medio / bajo — overall confidence based on image clarity"\n'
+            "}"
+        )
+
+        if extra_instructions:
+            prompt += f"\n\nAdditional instructions: {extra_instructions}"
+
+        # Sanitizar image_source
+        if isinstance(image_source, str):
+            image_source = [image_source]
+        elif isinstance(image_source, list):
+            image_source = [
+                img['file_url'] if isinstance(img, dict) else img
+                for img in image_source
+            ]
+
+        print('>>> ocr_equipo image_source=', image_source)
+
+        raw_text = self.ai.ocr_general(image_source, system, prompt, model=model, max_tokens=1000)
+
+        datos = {}
+        if raw_text.get('choices'):
+            choices = raw_text['choices']
+            if isinstance(choices, list) and len(choices) > 0:
+                content = choices[0].get('message', {}).get('content')
+                if content:
+                    datos = content
+
+        print('ocr_equipo datos=', datos)
+
+        datos = self._ocr_normalizar(datos)
+
+        errores = self._ocr_validar_id(datos)
+        if errores:
+            return {
+                'status_code': 206,
+                'msg': 'Extracción con advertencias',
+                'data': datos,
+                'warnings': errores,
+            }
+
+        return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
     def ocr_persona(self, image_source,
                     extra_instructions: str = None,
                     model: str = 'google/gemini-2.5-flash-lite') -> dict:
@@ -176,7 +259,7 @@ class Accesos(Accesos):
             '  "confianza": "string — alto / medio / bajo — overall confidence based on image clarity and angle"\n'
             "}"
         )
-        
+
         if extra_instructions:
             prompt += f"\n\nAdditional instructions: {extra_instructions}"
         # 1. Sanitizar image_source — asegurar que sea lista de strings
@@ -479,7 +562,12 @@ if __name__ == "__main__":
             image_source=image_source,
             extra_instructions=extra_instructions,
         )
+    elif option == 'ocr_equipo':
+        response = acceso_obj.ocr_equipo(
+            image_source=image_source,
+            extra_instructions=extra_instructions,
+        )
     else:
-        response = {'msg': 'Empty', 'valid_options': ['ocr_id', 'ocr_doc', 'ocr_batch','ocr_paquete','ocr_truck', 'ocr_vehiculo','ocr_persona']}
+        response = {'msg': 'Empty', 'valid_options': ['ocr_id', 'ocr_doc', 'ocr_batch', 'ocr_paquete', 'ocr_truck', 'ocr_vehiculo', 'ocr_persona', 'ocr_equipo']}
 
     acceso_obj.HttpResponse({'data': response})
