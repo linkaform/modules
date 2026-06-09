@@ -9,6 +9,103 @@ from accesos_utils import Accesos
 class Accesos(Accesos):
     pass
 
+    def ocr_persona(self, image_source,
+                    extra_instructions: str = None,
+                    model: str = 'google/gemini-2.5-flash-lite') -> dict:
+        """
+        Analiza una foto para detectar si hay una persona visible
+        y extrae sus características físicas descriptivas.
+
+        Args:
+            image_source: URL remota, ruta local, o lista de imágenes.
+            model:        Modelo OpenRouter a usar.
+
+        Returns:
+            dict con:
+                - status_code : 200 OK / 206 advertencias / 400 config / 500 error
+                - data        : campos extraídos
+                - msg         : mensaje de resultado
+        """
+        if not self.ai:
+            return {'status_code': 400, 'msg': 'OpenRouter no configurado'}
+
+        system = (
+            "You are a security system specialist trained to analyze images "
+            "and determine whether a person is present, and describe their "
+            "visible physical characteristics for identification purposes. "
+            "You are objective and descriptive. Never make assumptions about "
+            "identity, ethnicity, or personal data beyond what is visually evident. "
+            "Always respond with a single valid JSON object and nothing else — "
+            "no markdown, no backticks, no explanation, no preamble."
+        )
+
+        prompt = (
+            "Analyze the provided image and determine if a person is visible. "
+            "If a person is present, extract all visible physical characteristics. "
+            "If no person is detected, return es_persona: false and all other fields as null. "
+            "\n\n"
+            "Return ONLY a JSON object with this exact structure:\n"
+            "{\n"
+            '  "es_persona": true,\n'
+            '  "cantidad_personas": "integer — number of people visible in the image",\n'
+            '  "rostro_visible": "boolean — true if face is clearly visible",\n'
+            '  "genero_aparente": "string — masculino / femenino / no determinado",\n'
+            '  "edad_estimada": "string — estimated age range e.g. 20-30",\n'
+            '  "complexion": "string — delgado / normal / robusto / corpulento",\n'
+            '  "estatura_estimada": "string — bajo / mediano / alto based on context clues",\n'
+            '  "color_piel": "string — descriptive skin tone in Spanish",\n'
+            '  "color_cabello": "string — hair color in Spanish, or null if not visible",\n'
+            '  "tipo_cabello": "string — corto / mediano / largo / calvo, or null",\n'
+            '  "color_ojos": "string — eye color if visible, else null",\n'
+            '  "rasgos_faciales": "string — notable facial features: beard, glasses, mustache, etc., or null",\n'
+            '  "ropa_superior": "string — describe upper garment color and type, or null",\n'
+            '  "ropa_inferior": "string — describe lower garment color and type, or null",\n'
+            '  "accesorios": "string — hat, backpack, bag, jewelry, or null",\n'
+            '  "postura": "string — de pie / sentado / en movimiento / acostado, or null",\n'
+            '  "calidad_imagen": "string — buena / regular / mala",\n'
+            '  "observaciones": "string — anything unusual, suspicious behavior, or notable context",\n'
+            '  "confianza": "string — alto / medio / bajo"\n'
+            "}"
+        )
+
+        if extra_instructions:
+            prompt += f"\n\nAdditional instructions: {extra_instructions}"
+
+        # Sanitizar image_source
+        if isinstance(image_source, str):
+            image_source = [image_source]
+        elif isinstance(image_source, list):
+            image_source = [
+                img['file_url'] if isinstance(img, dict) else img
+                for img in image_source
+            ]
+
+        print('>>> ocr_persona image_source=', image_source)
+
+        raw_text = self.ai.ocr_general(image_source, system, prompt, model=model, max_tokens=1000)
+
+        datos = {}
+        if raw_text.get('choices'):
+            choices = raw_text['choices']
+            if isinstance(choices, list) and len(choices) > 0:
+                content = choices[0].get('message', {}).get('content')
+                if content:
+                    datos = content
+
+        print('ocr_persona datos=', datos)
+
+        datos = self._ocr_normalizar(datos)
+
+        errores = self._ocr_validar_id(datos)
+        if errores:
+            return {
+                'status_code': 206,
+                'msg': 'Extracción con advertencias',
+                'data': datos,
+                'warnings': errores,
+            }
+
+        return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
     def ocr_vehiculo(self, image_source, fields: dict = {},
                      extra_instructions: str = None,
                      model: str = 'google/gemini-2.5-flash-lite') -> dict:
@@ -66,19 +163,16 @@ class Accesos(Accesos):
             "\n\n"
             "Return ONLY a JSON object with this exact structure:\n"
             "{\n"
-            '  "tipo_vehiculo": "string — sedan, SUV, pickup, camion, motocicleta, van, autobus, trailer, etc.",\n'
+            '  "tipo_vehiculo": "string — pick up, camión, bicicleta, remolque , moto, van, autobús, trailer, automóvil.",\n'
             '  "marca": "string — vehicle brand (Toyota, Ford, Nissan, Chevrolet, Honda, Kia, etc.)",\n'
             '  "modelo": "string — vehicle model name (Corolla, F-150, Sentra, Aveo, etc.)",\n'
-            '  "anio_estimado": "string — model year or range if inferable (e.g. 2019 or 2018-2020)",\n'
             '  "color_principal": "string — main body color in Spanish (rojo, blanco, gris, negro, etc.)",\n'
-            '  "color_secundario": "string — secondary color or trim if applicable, else null",\n'
             '  "placa": "string — license plate number exactly as visible, preserving spacing/hyphens",\n'
             '  "estado_placa": "string — Mexican state or country of the plate if identifiable",\n'
-            '  "no_economico": "string — fleet or unit number painted on the vehicle if visible, else null",\n'
             '  "num_serie_vin": "string — VIN or chassis number if visible (e.g. on windshield sticker), else null",\n'
             '  "condicion": "string — bueno / regular / malo — overall visible condition of the vehicle",\n'
             '  "danios_visibles": "string — describe any dents, scratches, broken parts, or damage, else null",\n'
-            '  "observaciones": "string — any notable features, modifications, stickers, cargo, or distinguishing marks",\n'
+            '  "observaciones": "string — small description, any notable features, modifications, stickers, cargo, or distinguishing marks",\n'
             '  "confianza": "string — alto / medio / bajo — overall confidence based on image clarity and angle"\n'
             "}"
         )
@@ -93,7 +187,7 @@ class Accesos(Accesos):
                 img['file_url'] if isinstance(img, dict) else img
                 for img in image_source
             ]
-
+        print('>>> image_source sanitizado=', image_source)
         # 1. Llamar al LLM
         raw_text = self.ai.ocr_general(image_source, system, prompt, model=model, max_tokens=1000)
 
@@ -380,7 +474,12 @@ if __name__ == "__main__":
             fields=fields,
             extra_instructions=extra_instructions,
         )
+    elif option == 'ocr_persona':
+        response = acceso_obj.ocr_persona(
+            image_source=image_source,
+            extra_instructions=extra_instructions,
+        )
     else:
-        response = {'msg': 'Empty', 'valid_options': ['ocr_id', 'ocr_doc', 'ocr_batch','ocr_paquete','ocr_truck', 'ocr_vehiculo']}
+        response = {'msg': 'Empty', 'valid_options': ['ocr_id', 'ocr_doc', 'ocr_batch','ocr_paquete','ocr_truck', 'ocr_vehiculo','ocr_persona']}
 
     acceso_obj.HttpResponse({'data': response})

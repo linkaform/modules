@@ -54,12 +54,7 @@ if __name__ == "__main__":
     elif option == 'enviar_correo':
         response = acceso_obj.create_enviar_correo(folio=folio, envio=envio)
     elif option == 'catalago_vehiculo':
-        if tipo and marca:
-            response = acceso_obj.vehiculo_modelo(tipo, marca)
-        elif tipo:
-            response = acceso_obj.vehiculo_marca(tipo)
-        else:
-            response = acceso_obj.vehiculo_tipo()
+        response = acceso_obj.catalogo_vehiculos()
     elif option == 'catalago_estados':
         response = acceso_obj.catalogo_estados()
     elif option == 'get_pass':
