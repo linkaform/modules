@@ -254,6 +254,28 @@ class Accesos(Accesos):
             'areas': areas,
         }
 
+    def validate_token(self, record_id=None, token=None):
+        f = self.pass_fields_transportista
+        match = {
+            'form_id': self.PASE_ENTRADA_TRANSPORTISTA,
+            'deleted_at': {'$exists': False},
+        }
+        if record_id and token:
+            match['_id'] = ObjectId(record_id)
+            match[f'answers.{f["token_transportista"]}'] = token
+        else:
+            self.LKFException({'title': 'Se requiere record_id y token para validar el pase', 'status_code': 400})
+        query = [
+            {'$match': match},
+            {'$project': {
+                '_id': 1,
+            }},
+        ]
+        data = self.format_cr(self.cr.aggregate(query), get_one=True)
+        if data:
+            return True
+        return False
+
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
     script_obj.console_run()
@@ -273,6 +295,7 @@ if __name__ == "__main__":
         "get_pass_transportista": lambda: script_obj.get_pass_transportista(record_id, token),
         "get_users_data": lambda: script_obj.get_users_data(locations),
         "get_location_data": lambda: script_obj.get_location_data(location),
+        "validate_token": lambda: script_obj.validate_token(record_id, token)
     }
 
     action = dispatcher.get(option)
