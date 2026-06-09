@@ -254,6 +254,22 @@ class Accesos(Accesos):
             'areas': areas,
         }
 
+    def get_proveedores_transportista(self):
+        query = [
+            {'$match': {
+                'form_id': self.PROVEEDORES_FORM,
+                'deleted_at': {'$exists': False},
+                'answers.6a18e4086423e82150aa527c': 'recoleccion',
+            }},
+            {'$project': {
+                '_id': 0,
+                'nombre':    '$answers.667468e3e577b8b98c852aaa',
+                'direccion': {'$first': f'$answers.{self.CONTACTO_CAT_OBJ_ID}.663a7e0fe48382c5b1230902'},
+            }},
+            {'$sort': {'nombre': 1}},
+        ]
+        return self.format_cr(self.cr.aggregate(query))
+
     def validate_token(self, record_id=None, token=None):
         f = self.pass_fields_transportista
         match = {
@@ -295,6 +311,7 @@ if __name__ == "__main__":
         "get_pass_transportista": lambda: script_obj.get_pass_transportista(record_id, token),
         "get_users_data": lambda: script_obj.get_users_data(locations),
         "get_location_data": lambda: script_obj.get_location_data(location),
+        "get_proveedores_transportista": lambda: script_obj.get_proveedores_transportista(),
         "validate_token": lambda: script_obj.validate_token(record_id, token)
     }
 
