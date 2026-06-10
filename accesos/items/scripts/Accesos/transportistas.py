@@ -141,10 +141,25 @@ class Accesos(Accesos):
             {'$match': match},
             {'$project': {
                 '_id': 1,
-                'folio': '$folio',
+                'created_at': 1,
+                'folio':          '$folio',
+                'creado_desde':   f'$answers.{self.pase_entrada_fields["creado_desde"]}',
                 'tipo_de_operacion': f'$answers.{f["tipo_de_operacion"]}',
-                'ubicacion':  f'$answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.mf["ubicacion"]}',
-                'direccion':  {'$first': f'$answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.f["address_name"]}'},
+
+                # quien crea el pase
+                'nombre_crea_el_pase':   f'$answers.{f["nombre_crea_el_pase"]}',
+                'email_crea_el_pase':    f'$answers.{f["email_crea_el_pase"]}',
+                'telefono_crea_el_pase': f'$answers.{f["telefono_crea_el_pase"]}',
+
+                # transportista que recibe
+                'proveedor':          f'$answers.{f["proveedor"]}',
+                'proveedor_email':    f'$answers.{f["proveedor_email"]}',
+                'proveedor_telefono': f'$answers.{f["proveedor_telefono"]}',
+
+                # material
+                'proveedor_cliente_material': f'$answers.{f["proveedor_cliente_material"]}',
+                'orden_de_compra':            f'$answers.{f["orden_de_compra"]}',
+                'documentos': f'$answers.{f["documentos_para_ocr"]}',
                 'materiales': {'$map': {
                     'input': f'$answers.{f["grupo_materiales"]}',
                     'as':    'item',
@@ -157,14 +172,34 @@ class Accesos(Accesos):
                         'contenedor': f'$$item.{f["contenedor"]}',
                     },
                 }},
+
+                # lugar entrega / recepción
+                'ubicacion':    f'$answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.mf["ubicacion"]}',
+                'direccion':    {'$first': f'$answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.f["address_name"]}'},
+                'anden':        f'$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf["nombre_area"]}',
                 'fecha_desde':  f'$answers.{f["fecha_pase_transportista_desde"]}',
                 'fecha_hasta':  f'$answers.{f["fecha_pase_transportista_hasta"]}',
                 'hora_inicial': f'$answers.{f["hora_inicial"]}',
                 'hora_final':   f'$answers.{f["hora_final"]}',
-                'anden':      f'$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf["nombre_area"]}',
-                'documentos': f'$answers.{f["documentos_para_ocr"]}',
-                'qr':         f'$answers.{f["qr_del_pase_transportista"]}',
-                'estado_transportista':         f'$answers.{f["estado_transportista"]}',
+
+                # lugar recolección (tipos 2 y 3)
+                'lugar_recoleccion':         f'$answers.{f["lugar_de_recoleccion"]}',
+                'direccion_recoleccion':     f'$answers.{f["direccion_lugar_de_recoleccion"]}',
+                'fecha_recoleccion':         f'$answers.{f["fecha_de_recoleccion"]}',
+                'hora_inicial_recoleccion':  f'$answers.{f["hora_inicial_recoleccion"]}',
+                'hora_final_recoleccion':    f'$answers.{f["hora_final_recoleccion"]}',
+                'anden_recoleccion':         f'$answers.{f["anden_recoleccion"]}',
+                'responsable':               f'$answers.{f["responsable"]}',
+                'responsable_email':         f'$answers.{f["responsable_email"]}',
+                'responsable_telefono':      f'$answers.{f["responsable_telefono"]}',
+                'metodo_de_embarque':        f'$answers.{f["metodo_de_embarque"]}',
+                'incoterm':                  f'$answers.{f["incoterm"]}',
+
+                # control
+                'estado_transportista': f'$answers.{f["estado_transportista"]}',
+                'url_del_pase':         f'$answers.{f["url_del_pase_transportista"]}',
+                'qr':                   f'$answers.{f["qr_del_pase_transportista"]}',
+                'token':                f'$answers.{f["token_transportista"]}',
             }},
         ]
         return self.format_cr(self.cr.aggregate(query), get_one=True)
@@ -219,7 +254,6 @@ class Accesos(Accesos):
         return self.format_cr(self.cr.aggregate(query))
 
     def get_location_data(self, location):
-        location = "Planta Monterrey"
         areas_query = [
             {'$match': {
                 'form_id': self.AREAS_DE_LAS_UBICACIONES,
@@ -253,6 +287,22 @@ class Accesos(Accesos):
             'direccion': ubicacion.get('direccion', '') if ubicacion else '',
             'areas': areas,
         }
+
+    def get_proveedores_transportista(self):
+        query = [
+            {'$match': {
+                'form_id': self.PROVEEDORES_FORM,
+                'deleted_at': {'$exists': False},
+                'answers.6a18e4086423e82150aa527c': 'recoleccion',
+            }},
+            {'$project': {
+                '_id': 0,
+                'nombre':    '$answers.667468e3e577b8b98c852aaa',
+                'direccion': {'$first': f'$answers.{self.CONTACTO_CAT_OBJ_ID}.663a7e0fe48382c5b1230902'},
+            }},
+            {'$sort': {'nombre': 1}},
+        ]
+        return self.format_cr(self.cr.aggregate(query))
 
     def validate_token(self, record_id=None, token=None):
         f = self.pass_fields_transportista
@@ -295,6 +345,7 @@ if __name__ == "__main__":
         "get_pass_transportista": lambda: script_obj.get_pass_transportista(record_id, token),
         "get_users_data": lambda: script_obj.get_users_data(locations),
         "get_location_data": lambda: script_obj.get_location_data(location),
+        "get_proveedores_transportista": lambda: script_obj.get_proveedores_transportista(),
         "validate_token": lambda: script_obj.validate_token(record_id, token)
     }
 
