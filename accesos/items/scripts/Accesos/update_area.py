@@ -1,6 +1,6 @@
 # coding: utf-8
 #####
-# Script para actualizar 
+# Script para actualizar
 #####
 import sys, simplejson, json
 
@@ -13,7 +13,7 @@ class Accesos(Accesos):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
         self.load(module='Location', **self.kwargs)
 
-       
+
 
         self.area_update = {
             'foto_area': '6763096aa99cee046ba766ad',
@@ -30,7 +30,7 @@ class Accesos(Accesos):
             'geolocalizacion_area': '663e5c8cf5b8a7ce8211ed0c',
             'geolocalizacion_area_ubicacion': '688bac1ecfdcf8b16eb209b5'
         }
-        
+
         self.f.update({
             'status_details': '689a46342038ded0e949be07',
             'status_details_message': '689a46342038ded0e949be08',
@@ -179,9 +179,9 @@ class Accesos(Accesos):
                 'properties': {
                     "device_properties":{
                         "system": "Addons",
-                        "process":"Actualizacion de Area", 
-                        "accion":'update_area', 
-                        "folio": folio, 
+                        "process":"Actualizacion de Area",
+                        "accion":'update_area',
+                        "folio": folio,
                         "archive": "incidencias.py"
                     }
                 },
@@ -190,32 +190,42 @@ class Accesos(Accesos):
             })
 
             response = self.net.patch_forms_answers(metadata)
-            response = self.detail_response(response.get('status_code', 0))
+            response = self.detail_response(response)
             return response
-            
-    def detail_response(self, status_code: int):
+
+    def detail_response(self, response: dict):
         """Devuelve un mensaje detallado según el código de estado HTTP.
         Args:
             status_code (int): El código de estado HTTP devuelto por la API.
         Returns:
             dict: Un diccionario con el estado y el mensaje correspondiente.
         """
+        status_code = response.get('statu_code',0)
+        msg = response.get('json', response.get('data'))
         if status_code in [200, 201, 202]:
-            return {"status": "success", "message": "Operation completed successfully."}
+            if not msg:
+                msg = "Operation completed successfully."
+            return {"status": "success", "message": msg}
         elif status_code in [400, 404]:
-            return {"status": "error", "message": "Bad request or resource not found."}
+            if not msg:
+                msg = "Bad format."
+            return {"status": "error", "message": msg}
         elif status_code in [500, 502, 503]:
-            return {"status": "error", "message": "Server error, please try again later."}
+            if not msg:
+                msg = "Server error, please try again later."
+            return {"status": "error", "message":msg }
         else:
-            return {"status": "error", "message": "Unexpected error occurred."}
+            if not msg:
+                msg = "Unexpected error occurred."
+            return {"status": "error", "message": msg}
 
     def get_contact_details(self, direccion):
         selector = {}
-        
+
         selector.update({
             f"answers.{self.area_update['nombre_direccion']}": direccion, # type: ignore
         })
-            
+
         fields = [
             "_id",
             f"answers.{self.area_update['nombre_direccion']}", # type: ignore
@@ -225,7 +235,7 @@ class Accesos(Accesos):
             f"answers.{self.area_update['geolocalizacion_area']}",
             f"answers.{self.area_update['ciudad_area']}",
         ]
-        
+
         mango_query = {
             "selector": selector,
             "fields": fields,
@@ -239,7 +249,7 @@ class Accesos(Accesos):
             res.pop('created_at', None)
             res.pop('updated_at', None)
         return res if res else {}
-    
+
     def exists_area(self, ubicacion, area):
         query = [
             {'$match': {
@@ -267,9 +277,7 @@ class Accesos(Accesos):
         if exists_area:
             self.status_comment = 'El area ya existe. Solo se actualizo la informacion rellenada.'
             return
-        
         contact_details = self.get_contact_details(data.get('ubicacion', {}))
-        
         answers = {
             self.mf['nombre_area']: data.get('nombre_nueva_area'),
             self.Location.UBICACIONES_CAT_OBJ_ID: {
@@ -291,15 +299,14 @@ class Accesos(Accesos):
             form_id=self.AREAS_DE_LAS_UBICACIONES,
             answers=answers
         )
-
         if response is None or response.get('status', 'unknown') != 'success':
-            msg = 'Hubo un error al crear el area. Contacta a soporte'
+            msg = response.get('message', 'Hubo un error al crear el area. Contacta a soporte')
             acceso_obj.LKFException({'msg': msg, 'title': 'Error al crear area'})
             self.statuss = 'error'
             self.status_comment = 'Hubo un error al crear el area.'
-        
+
         return response
-    
+
     def create_register(self, module: str, process: str, action: str, file: str, form_id: int, answers: dict):
         """Crea un registro en Linkaform con los metadatos y respuestas proporcionadas.
 
@@ -310,7 +317,7 @@ class Accesos(Accesos):
             file (str): La ruta del archivo donde se encuentra el app del modulo utilizado(Ej. jit/app.py).
             form_id (str): El ID de la forma en Linkaform.
             answers (dict): El diccionario de respuestas ya formateado.
-            
+
         Returns:
             response: La respuesta de la API de Linkaform al crear el registro.
         """
@@ -334,7 +341,7 @@ class Accesos(Accesos):
         })
         metadata.update({'answers':answers})
         response = self.lkf_api.post_forms_answers(metadata)
-        response = self.detail_response(response.get('status_code', 0))
+        response = self.detail_response(response)
         return response
 
 if __name__ == "__main__":
@@ -363,7 +370,7 @@ if __name__ == "__main__":
         if qr_data:
             data['ubicacion'] = qr_data.get('ubicacion', '')
             data['area'] = qr_data.get('area', '')
-            
+
 
     if data.get('area'):
             search_area = acceso_obj.get_record_ubicacion(ubicacion=data.get('ubicacion'), area=data.get('area'))
@@ -419,7 +426,7 @@ if __name__ == "__main__":
         if response is None or response.get('status', 'unknown') != 'success':
             acceso_obj.statuss = 'error'
             acceso_obj.status_comment = 'No se pudo actualizar el area.'
-        
+
     #! Ajuste de respuestas
     acceso_obj.answers[acceso_obj.f['status_details']] = acceso_obj.statuss
     acceso_obj.answers[acceso_obj.f['status_details_message']] = acceso_obj.status_comment
