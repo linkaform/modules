@@ -44,7 +44,7 @@ class Accesos(Accesos):
             "\n\n"
             "Return ONLY a JSON object with this exact structure:\n"
             "{\n"
-            '  "tipo": "string — MUST be exactly one of: herramienta, computo, tablet, otro. No other values allowed.",\n'
+            '  "tipo": "string — MUST be exactly one of: herramienta, computadora, equipo de limpieza, escalera, impresora, monitor, tablet, otro. No other values allowed.",\n'
             '  "marca": "string — brand name visible on the device (Apple, Dell, HP, Lenovo, Samsung, Makita, Dewalt, etc.), or null",\n'
             '  "modelo": "string — model name or number if visible (e.g. MacBook Pro, ThinkPad X1, iPad Pro, etc.), or null",\n'
             '  "num_serie": "string — serial number exactly as visible on label or sticker, or null",\n'
