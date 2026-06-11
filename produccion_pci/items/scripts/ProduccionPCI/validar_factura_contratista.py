@@ -4,9 +4,6 @@ Script para validar el xml de la factura de contratistas
 """
 import sys, simplejson, re
 
-import urllib.request
-import xml.etree.ElementTree as ET
-
 import warnings
 from cryptography.utils import CryptographyDeprecationWarning
 
@@ -26,17 +23,6 @@ class ValidarFacturaContratista( Produccion_PCI ):
 
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
-
-    def notify_error(self, field_id, lbl, msg):
-        """
-        Marca error al enviar el registro
-
-        Args:
-            field_id (str): Id del campo donde se marca el error
-            lbl (str): Label del campo en la forma
-            msg (str): Mensaje de error que se presenta al usuario
-        """
-        raise Exception( simplejson.dumps({field_id: {'msg': [msg], 'label': lbl, 'error': []}}) )
 
     def monto_valido(self, monto, total, variacion):
         """
@@ -138,72 +124,6 @@ class ValidarFacturaContratista( Produccion_PCI ):
                     })
         return metaDataXml
 
-    def get_xml_root(self, file_url, get_all_root=False, xml_downloaded=False):
-        """
-        Obtiene la raíz de un archivo XML, ya sea desde una URL o desde un objeto XML ya descargado.
-
-        Args:
-            file_url (str): URL o ruta del archivo XML. Si `xml_downloaded` es True, se espera que sea el objeto XML.
-            get_all_root (bool, optional): Si True, retorna también el objeto raíz del XML. Default es False.
-            xml_downloaded (bool, optional): Si True, indica que `file_url` ya es un archivo abierto u objeto similar. Default es False.
-
-        Returns:
-            Atributos y objeto raíz (si get_all_root es True)
-        """
-        xmlobj = file_url if xml_downloaded else urllib.request.urlopen(file_url)
-        
-        try:
-            tree = ET.parse(xmlobj)
-            root = tree.getroot()
-            dict_attribs = {a.lower():b for a,b  in root.attrib.items()}
-            
-            if get_all_root:
-                return dict_attribs, root
-            return dict_attribs
-        
-        except Exception as e:
-            error_msg = f'XML dañado, favor de revisar: {e}'
-            return (error_msg, None) if get_all_root else error_msg
-
-    def integration_get_dict_node(self, node_to_process):
-        """
-        Se procesan los elementos que componen el xml de la factura para regresar un diccionario con el nombre y valor del elemento
-
-        Args:
-            node_to_process : Nodos del xml de la factura
-
-        Return:
-            Diccionario de elementos y valor
-        """
-        dict_attribs = {a.lower():b for a,b  in node_to_process.attrib.items()}
-        for r in node_to_process:
-            name_tag = r.tag.lower().replace('{http://www.sat.gob.mx/cfd/3}', '')
-            name_tag = name_tag.replace('{http://www.sat.gob.mx/cfd/4}', '')
-
-            list_nodes = []
-            if 'pagos' in name_tag:
-                dict_info_pago = {a.lower():b for a,b  in r.attrib.items()}
-                if dict_info_pago:
-                    list_nodes.append(dict_info_pago)
-            for rr in r:
-                dict_parent = {a.lower():b for a,b  in r.attrib.items()}
-                dict_node = self.integration_get_dict_node(rr)
-                dict_node.update({'info_parent': dict_parent})
-                list_nodes.append(dict_node)
-            if not list_nodes:
-                list_nodes = {a.lower():b for a,b  in r.attrib.items()}
-            if 'percepciones' in name_tag:
-                dict_list_nodes = {a.lower():b for a,b  in r.attrib.items()}
-                dict_list_nodes.update({
-                    'percepciones': list_nodes
-                })
-                list_nodes = dict_list_nodes
-            if dict_attribs.get(name_tag) and type(dict_attribs.get(name_tag)) == list and type(list_nodes) == list:
-                dict_attribs[name_tag] += list_nodes
-            else:
-                dict_attribs[name_tag] = list_nodes
-        return dict_attribs
-
     def verifica_monto_xml(self, file_url, monto, validate_by_subtotal=False, variacion=1):
         """
         Se valida que el monto de la Orden de Compra corresponda al total de la factura xml
@@ -299,28 +219,6 @@ class ValidarFacturaContratista( Produccion_PCI ):
                     'permiso_facturar': r.get('619e7a46c79af2f6eaf888c5', '')
                 })
         return dict_rs
-
-    def get_contratista_complemento( self, id_contratista ):
-        """
-        Consulta en la forma Contratistas para Complementos de Pago filtrando por el id del contratista
-        se obtiene el dato para Contratista formato de complemento
-
-        Args:
-            id_contratista (int): ID de la conexion
-
-        Return:
-            lista de formato de complemento segun los registros encontrados
-        """
-        record_contratistas_complemento = self.get_records(
-            self.FORMA_COMPLEMENTOS_PAGO, 
-            query_answers={ f'answers.62d071173eeb3a67815c74fe.{self.CATALOGO_CONTRATISTAS_OBJ_ID}.5f344a0476c82e1bebc991d6': [ str(id_contratista) ] },
-            select_columns=['folio', 'answers.62d071930a1b1ff9eaa3c0f4']
-        )
-        contratista_complemento = []
-        for r in record_contratistas_complemento:
-            print('Contratista complemento',r['folio'])
-            contratista_complemento.append(r['answers'].get('62d071930a1b1ff9eaa3c0f4', ''))
-        return contratista_complemento
 
     def get_monto_complemento_pendiente( self, id_contratista ):
         """

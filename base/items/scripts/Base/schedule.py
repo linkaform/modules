@@ -15,7 +15,6 @@ if __name__ == "__main__":
     lkf_api = schedule_obj.lkf_api
     res = schedule_obj.schedule_task()
     data = res.get('data')
-    print('res', res)
     if res.get('status_code') == 0:
         print('Ningun cambio')
     elif res.get('status_code') == 200:
@@ -34,8 +33,6 @@ if __name__ == "__main__":
             'replace_ans': schedule_obj.answers,
         }))
     else:
-        print('res===0',res)
-
         msg_error_app = "Something went wrong!!!"
         if res.get('json',{}).get('error') or res.get('status_code') == 400:
             if res.get('json',{}).get('error'):

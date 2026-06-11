@@ -20,8 +20,8 @@ if __name__ == "__main__":
 
     data_notes = data.get("data_notes",{})
     data_update = data.get("data_update",{})
-    location = data.get("location",'Planta Monterrey')
-    area = data.get("area",'Caseta Principal')
+    location = data.get("location", '')
+    area = data.get("area", '')
     status = data.get("status",'abierto')
     folio = data.get("folio",'588-10')
     #-FUNCTIONS

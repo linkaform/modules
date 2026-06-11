@@ -89,6 +89,15 @@ class Accesos(Accesos):
             response = requests.post(API_URL, json=data, headers=headers)
 
             if response.status_code == 200:
+                message_data = {
+                    "phone_to": phone_to,
+                    "body": message,
+                    "status": "enviado desde alprotel",
+                    "created_at": datetime.now(),
+                }
+                message_record = self.create(_object=message_data, is_json=True, collection="messages")
+                message_id = message_record.get('_id')
+                print('message_id in collection messages', message_id)
                 print('SMS enviado correctamente')
                 return response.json()
             

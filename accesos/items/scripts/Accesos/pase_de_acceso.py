@@ -11,10 +11,10 @@ class Accesos(Accesos):
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
     acceso_obj.console_run()
-    #-FILTROS
     data = acceso_obj.data.get('data',{})
     option = data.get("option",'')
     location = data.get("location",'')
+    locations = data.get("locations", [])
     folio = data.get("folio",'')
     access_pass = data.get("access_pass",{})
     data_msj=data.get("data_msj", {})
@@ -28,14 +28,18 @@ if __name__ == "__main__":
     pre_sms = data.get("enviar_pre_sms",{})
     update_obj = data.get("update_obj",{})
     envio = data.get("envio",[])
-    limit = data.get("limit", 10)
+    limit = data.get("limit", 25)
     skip = data.get("skip", 0)
     search_name = data.get("search_name", None)
+    dynamic_filters = data.get("dynamic_filters", {})
+    dateFrom = data.get("dateFrom", "")
+    dateTo = data.get("dateTo", "")
+    filterDate = data.get("filterDate", "")
     
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
     elif option == 'create_access_pass' or option == 'crear_pase':
-        response = acceso_obj.create_access_pass(location, access_pass)
+        response = acceso_obj.create_access_pass(access_pass)
         folio_msj = response.get('json', {}).get('id', '')
     elif option == 'update_pass':
         response = acceso_obj.update_pass(access_pass,folio)
@@ -65,13 +69,17 @@ if __name__ == "__main__":
     elif option == 'get_pass':
         response = acceso_obj.get_pass_custom(qr_code)
     elif option == 'get_my_pases':
-        response = acceso_obj.get_my_pases(tab_status=tab_status, limit=limit, skip=skip, search_name=search_name)
+        response = acceso_obj.get_my_pases(tab_status=tab_status, limit=limit, skip=skip, search_name=search_name, location=location, dynamic_filters=dynamic_filters, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, locations=locations)
     elif option == 'get_pdf':
         response = acceso_obj.get_pdf(qr_code)
     elif option == 'get_user_contacts':
         response = acceso_obj.get_user_contacts()
     elif option == 'get_config_modulo_seguridad':
         response = acceso_obj.get_config_modulo_seguridad(location)
+    elif option == 'get_areas_by_locations':
+        response = acceso_obj.get_areas_by_locations(locations)
+    elif option == 'extends_date_of_pass':
+        response = acceso_obj.extends_date_of_pass(qr_code, update_obj)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})

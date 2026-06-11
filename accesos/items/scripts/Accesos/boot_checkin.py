@@ -19,6 +19,7 @@ if __name__ == "__main__":
     employee_list = data.get('support_guards',[])
     checkin_id = data.get('checkin_id')
     checkin_type = data.get('checkin_type')
+    nombre_suplente=data.get('nombre_suplente',"")
     if checkin_type:
         if checkin_type not in ('in', 'out'):
             msg = "Checking type can ONLY be 'in' or 'out'"

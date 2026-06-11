@@ -25,15 +25,20 @@ class PCI_Utils():
         self.FORM_ID_CAMBIO_TECNOLOGIA = 120499
         self.FORM_ID_HISTORICO_DE_PAGOS = 19704
         self.FORM_ID_LISTADO_TECNICOS = 12165
+        self.FORM_ID_INTEGRA_MTS = 148306
         self.UPLOAD_PERMISIONS = 21472
         
         self.CATALOG_ID_CONTRATISTAS_1_0_ADMIN = 59273
         self.CATALOG_ID_COPES = 46944
         self.CATALOG_ID_TIPOS_TAREA_FACTIBLES = 56269
 
+        self.max_row_accepted = 5000
+
         self.equivalcens_map = { 
             'Aerea': ['AEREA', 'M. AEREO'],
-            'Alfanumérico':['SERIE ONT ALFANUMÉRICO','ONT ALFANUMÉRICO','SERIE ONT ALFANUMERICO','Serie ONT Alfanumerico', 'Serie ONT Alfanumérico',
+            # 'Alfanumérico':['SERIE ONT ALFANUMÉRICO','ONT ALFANUMÉRICO','SERIE ONT ALFANUMERICO','Serie ONT Alfanumerico', 'Serie ONT Alfanumérico',
+            #     'Serie ONT alfanumerico','Serie ONT alfanumérico','serie ONT alfanumerico', 'serie ONT alfanumérico','serie ONT Alfanumerico', 'serie ONT Alfanumérico'],
+            'Numero de Serie Contratista':['SERIE ONT ALFANUMÉRICO','ONT ALFANUMÉRICO','SERIE ONT ALFANUMERICO','Serie ONT Alfanumerico', 'Serie ONT Alfanumérico',
                 'Serie ONT alfanumerico','Serie ONT alfanumérico','serie ONT alfanumerico', 'serie ONT alfanumérico','serie ONT Alfanumerico', 'serie ONT Alfanumérico'],
             'Clase de Servicio': ['CLASE_SERV', 'Clase', 'Clase Servicio', 'Clase de Servicio'],
             'Created At': ['Fecha Pendiente', 'Fecha de Pendiente', 'FECHA DE PENDIENTES'],
@@ -66,9 +71,10 @@ class PCI_Utils():
             'Cope': ['Cope','COPE','cope'],
             'Motivo de Objecion': ['DETALLE'],
             'usuario_reporta': ['usuario_reporta'],
-            'Num. Serie': ['Num. Serie', 'Num Serie'],
+            'Num. Serie': ['Num. Serie', 'Num Serie', 'ALFANUMERICO'],
             'cambio_tecnologia': ['cambio_tecnologia', 'cambio_tecnología', 'cambio_de_tecnologia', 'cambio_de_tecnología'],
         }
+        self.equivalcens_map['Alfanumérico Contratista'] = self.equivalcens_map['Numero de Serie Contratista']
 
     def add_coma(self, snum):
         return "{:,.2f}".format( float(snum) )
@@ -92,23 +98,39 @@ class PCI_Utils():
         try:
             msg_err_arr = []
             data_str_err = ''
+            
             if response.get('status_code', 0) == 400:
                 data_str_err = "Formato incorrecto:"
-            for msg_fin in response.get('json',{}):
-                info_json = response['json'][msg_fin]
+            
+            for msg_fin, info_json in response.get('json',{}).items():
+                
                 msgs = info_json.get('msg', [])
                 if msgs:
-                    msg_err = str(msgs[0]).encode('utf8')
-                    label_err = info_json.get('label').encode('utf8')
+                    msg_err = str(msgs[0])
+                    label_err = info_json.get('label')
                     msg_err_arr.append(str(msg_err+':'+label_err))
-                else:
-                    for i_err in info_json:
-                        info_i = info_json[i_err]
-                        for id_group in info_i:
-                            info_group = info_i[id_group]
-                            msg_err = str(info_group['msg'][0]).encode('utf8')
-                            label_err = info_group['label'].encode('utf8')
-                            msg_err_arr.append('SET {0}:: {1} - {2}'.format(i_err, msg_err, label_err))
+                    continue
+
+                name_group = info_json.pop('group', None)
+                # Caso donde hay un grupo
+                if name_group:
+                    lbl_group = name_group.get('label', '')
+                    errors_items = []
+                    for pos_item, data_item in info_json.items():
+                        for field_item, data_field_item in data_item.items():
+                            errors_items.append( f"{pos_item}: {data_field_item.get('label')}: {data_field_item['msg'][0]}" )
+                    if errors_items:
+                        data_str_err = f"{lbl_group} :: {self.lkf_obj.list_to_str(errors_items)}"
+                        continue
+                
+                for i_err in info_json:
+                    info_i = info_json[i_err]
+                    for id_group, info_group in info_i.items():
+                        print(f'\n   - {id_group} : {info_group}\n')
+                        msg_err = str(info_group['msg'][0])
+                        label_err = info_group['label']
+                        msg_err_arr.append('SET {0}:: {1} - {2}'.format(i_err, msg_err, label_err))
+            
             if msg_err_arr:
                 data_str_err = self.lkf_obj.list_to_str(msg_err_arr)
         except Exception as e:
@@ -118,6 +140,10 @@ class PCI_Utils():
             error_json = response.get('json',{}).get('error','')
             if error_json:
                 data_str_err = error_json
+        
+        if not data_str_err:
+            data_str_err = 'Ocurrio un error desconocido favor de contactar a soporte'
+
         return data_str_err
 
     def asignar_registro_a_conexion(self, connection_id, record_assign):
@@ -154,10 +180,10 @@ class PCI_Utils():
         }
     
     def create_record_expediente(self, answers_to_expediente, properties_expediente, form_id_expediente, jwt_settings_key=False):
-        metadata_expediente = lkf_api.get_metadata( form_id_expediente )
+        metadata_expediente = self.lkf_api.get_metadata( form_id_expediente )
         metadata_expediente['properties'] = properties_expediente
         metadata_expediente['answers'] = answers_to_expediente
-        resp_create_exp = lkf_api.post_forms_answers(metadata_expediente, jwt_settings_key=jwt_settings_key)
+        resp_create_exp = self.lkf_api.post_forms_answers(metadata_expediente, jwt_settings_key=jwt_settings_key)
         print('resp_create_exp =',resp_create_exp)
         return resp_create_exp
 
@@ -260,7 +286,7 @@ class PCI_Utils():
                 return str(actual_key) + '-' + str(next_key)
         return actual_key
 
-    def check_folio(self, form_id_admin, folio, telefono, area):
+    def check_folio(self, form_id_admin, folio, telefono, area, in_this_account=False):
         # form_id_admin = self.dict_equivalences_forms_id[form_id]
         query_folio_os = {
             'form_id':  form_id_admin, 'deleted_at' : {'$exists':False}, 
@@ -268,8 +294,14 @@ class PCI_Utils():
             'answers.f1054000a010000000000005': telefono,
             'answers.f1054000a0100000000000a2': area
         }
+        if not folio:
+            query_folio_os.pop('folio')
+            query_folio_os['answers.633d9f63eb936fb6ec9bf580'] = 'degradado'
         print('query_folio_os =',query_folio_os)
-        record = self.cr_admin.find_one(query_folio_os, {'folio':1, 'answers':1, 'connection_id':1, 'user_id':1})
+        if not in_this_account:
+            record = self.cr_admin.find_one(query_folio_os, {'folio':1, 'answers':1, 'connection_id':1, 'user_id':1, 'created_at': 1})
+        else:
+            record = self.cr.find_one(query_folio_os, {'folio':1, 'answers':1, 'connection_id':1, 'user_id':1, 'created_at': 1})
         return record
 
     def check_folio_pagado(self, folio):
@@ -301,6 +333,21 @@ class PCI_Utils():
         }
         return self.lkf_api.share_form(objects, jwt_settings_key=jwt_settings_key)
 
+    def complementos_cuentas_contratistas(self, cuentas_contratistas, autorizacion_facturar):
+        for cuenta_contratista in cuentas_contratistas:
+            contratista = cuenta_contratista.get(self.lkf_obj.CATALOGO_CONTRATISTAS_OBJ_ID, {}).get('5f344a0476c82e1bebc991d7', '')
+            mango_query = {"selector": {"answers": {"$and":[ {'5f344a0476c82e1bebc991d7': {'$eq': contratista}} ]} }, "limit": 1, "skip": 0}
+            row_catalog = self.lkf_api.search_catalog( self.lkf_obj.CATALOGO_CONTRATISTAS_ID, mango_query )
+            if row_catalog:
+                info_row = row_catalog[0]
+
+                print('+++ data to update= ', {'619e7a46c79af2f6eaf888c5': autorizacion_facturar} )
+                print('+++ id catalog= ', self.lkf_obj.CATALOGO_CONTRATISTAS_ID )
+                print('+++ record_id= ', info_row[ '_id' ])
+
+                res_update = self.lkf_api.update_catalog_multi_record({'619e7a46c79af2f6eaf888c5': autorizacion_facturar}, self.lkf_obj.CATALOGO_CONTRATISTAS_ID, record_id=[ info_row[ '_id' ], ])
+                print('res_update =',res_update)
+
     def delete_record(self, id_record='', jwt_settings_key=None):
         response_delete = self.lkf_api.patch_record_list({
             "objects": [],
@@ -313,18 +360,39 @@ class PCI_Utils():
         return status_code
 
     def find_folio_autorizado(self, folio, telefono, division, tecnologia):
-        record_autorizacion = self.cr_admin.find_one({
+        query_autorizacion = {
             'form_id': self.FORM_ID_AUTORIZA_CARGA_FOLIOS, 
             'deleted_at': {'$exists': False}, 
             'answers.5f93173c1a0ae8341d543f65': folio, 
-            'answers.5f93173c1a0ae8341d543f66': int(telefono), 
             'answers.5f93173c1a0ae8341d543f67': division, 
             'answers.5f93173c1a0ae8341d543f68': tecnologia
-        }, {'folio':1, 'answers.5fbbdac8a85f5b2ab8bb033e': 1})
-        if not record_autorizacion:
-            return []
-        return record_autorizacion.get('answers',{}).get('5fbbdac8a85f5b2ab8bb033e', [])
+        }
 
+        # Se valida si es un solo folio el que se consulta para devolver el campo de Autorizaciones
+        if not isinstance(folio, list):
+            query_autorizacion['answers.5f93173c1a0ae8341d543f66'] = int(telefono)
+            record_autorizacion = self.cr_admin.find_one(query_autorizacion, {'folio':1, 'answers.5fbbdac8a85f5b2ab8bb033e': 1})
+            if not record_autorizacion:
+                return []
+            return record_autorizacion.get('answers',{}).get('5fbbdac8a85f5b2ab8bb033e', [])
+
+        # Si llega aqui, es un grupo de folios a consultar
+        folios_autorizados = {}
+        query_autorizacion['answers.5f93173c1a0ae8341d543f65'] = { '$in': folio }
+        query_autorizacion['answers.5f93173c1a0ae8341d543f66'] = { '$in': telefono }
+        query_autorizacion.pop('answers.5f93173c1a0ae8341d543f67', None)
+        query_autorizacion.pop('answers.5f93173c1a0ae8341d543f68', None)
+        records_autorizacion = self.cr_admin.find(query_autorizacion, {'folio': 1, 'answers': 1})
+        for rec_autoriza in records_autorizacion:
+            answer_autoriza = rec_autoriza['answers']
+            folio_autorizacion = answer_autoriza['5f93173c1a0ae8341d543f65']
+            telefono_autorizacion = answer_autoriza['5f93173c1a0ae8341d543f66']
+            division_autorizacion = answer_autoriza['5f93173c1a0ae8341d543f67']
+            tecnologia_autorizacion = answer_autoriza['5f93173c1a0ae8341d543f68']
+            full_name_autoriza = f'{folio_autorizacion}_{telefono_autorizacion}_{division_autorizacion}_{tecnologia_autorizacion}'
+            folios_autorizados[ full_name_autoriza ] = answer_autoriza.get('5fbbdac8a85f5b2ab8bb033e', [])
+        return folios_autorizados
+        
     def find_tipo_tarea_catalog(self, tipo_tarea, tecnologia_orden, jwt_settings_key=None):
         mango_query = { 
             "selector": { 
@@ -577,6 +645,122 @@ class PCI_Utils():
 
         # Buscar las formas correspondientes en el diccionario
         return formas.get((division, tecnologia), (None, None))
+    
+    def get_id_field_pdf(self, form_id_os):
+        map_form_fields = {
+            11044: {'type_field_pdf': 'dict', 'field_pdf': '5a8aefa7b43fdd100602f7be'},
+            16343: {'type_field_pdf': 'dict', 'field_pdf': '5ad14051f851c220dd0eb772'},
+            21954: {'type_field_pdf': 'dict', 'field_pdf': '5ad14687f851c23d8a4d95c9'},
+            21953: {'type_field_pdf': 'dict', 'field_pdf': '5ad4b4a9b43fdd7af0f65899'},
+            147977: {'type_field_pdf': 'dict', 'field_pdf': '5ad14051f851c220dd0eb772'},
+            10540: {'type_field_pdf': 'list', 'field_pdf': '5ad13efef851c23d8a4d95af'},
+            25927: {'type_field_pdf': 'dict', 'field_pdf': '5ad13e8cf851c220dd0eb769'},
+            25928: {'type_field_pdf': 'dict', 'field_pdf': '5ad13f49f851c2510b0d210a'},
+            25929: {'type_field_pdf': 'dict', 'field_pdf': '5ad13f95f851c2467770da9e'},
+            147978: {'type_field_pdf': 'dict', 'field_pdf': '5ad13e8cf851c220dd0eb769'},
+        }
+
+        return map_form_fields.get(form_id_os, {})
+
+    def get_integra_mts(self, list_folios, list_telefonos):
+        pipeline = [
+            {"$match": {
+                'form_id': self.FORM_ID_INTEGRA_MTS,
+                'deleted_at': {'$exists': False},
+                '$or':[
+                    {'answers.69a860fe7023f5ab79c9b9e1': {'$in': list_folios}},
+                    {'answers.69a860fe7023f5ab79c9b9e2': {'$in': list_telefonos}},
+                ],
+                'answers.69cc39fbea25a0385de39b64': {'$nin': ['aplicado']}
+            }},
+            {
+                "$project": {
+                    "_id": 0,
+                    "folio": {"$toString": "$answers.69a860fe7023f5ab79c9b9e1"},
+                    "telefono": {"$toString": "$answers.69a860fe7023f5ab79c9b9e2"},
+                    "metraje_total": "$answers.69a860fe7023f5ab79c9b9e4",
+                    "imagen_ruta": "$answers.69a860fe7023f5ab79c9b9e3",
+                    "foto_os": "$answers.69b1c67ffa41460bb741b502",
+                    "material_utilizado": "$answers.69b97a06d07c9f470e935e1d",
+                    "folio_record": "$folio"
+                }
+            }
+        ]
+
+        data, folio_index, telefono_index = {}, {}, {}
+
+        for doc in self.cr_admin.aggregate(pipeline):
+            folio = doc.get("folio")
+            telefono = doc.get("telefono")
+
+            if not folio or not telefono:
+                continue
+
+            key = f"{folio}||{telefono}"
+
+            data.setdefault(key, []).append(doc)
+
+            folio_index.setdefault(folio, set()).add(telefono)
+            telefono_index.setdefault(telefono, set()).add(folio)
+
+        return data, folio_index, telefono_index
+
+    def buscar_integra_mts(self, folio, telefono, data, folio_index, telefono_index):
+        key = f"{folio}||{telefono}"
+
+        #Caso 1: match exacto
+        records_integra_mts = data.get(key)
+        if records_integra_mts:
+            if len(records_integra_mts) > 1:
+                return { "status": "error", "message": "Se encontró más de un registro en HIT. Favor de revisar con soporte." }
+            
+            return { "status": "ok", "data": records_integra_mts[0] }
+
+        # Caso 2: folio existe pero teléfono no coincide
+        if folio in folio_index:
+            telefonos_validos = folio_index[folio]
+
+            # obtener un ejemplo seguro
+            ejemplo = next(iter(telefonos_validos)) if telefonos_validos else None
+
+            return {
+                "folio_posible_match": data[ f"{folio}||{ejemplo}" ][0]["folio_record"],
+                "status": "error",
+                "message": f"[INTEGRA METROS] El folio {folio} existe pero el teléfono {telefono} no coincide. Telefono encontrado: {ejemplo}"
+            }
+
+        # Caso 3: teléfono existe pero folio no coincide
+        str_telefono = str(telefono)
+        if str_telefono in telefono_index:
+            folios_validos = telefono_index[str_telefono]
+
+            ejemplo = next(iter(folios_validos)) if folios_validos else None
+
+            return {
+                "folio_posible_match": data[ f"{ejemplo}||{telefono}" ][0]["folio_record"],
+                "status": "error",
+                "message": f"[INTEGRA METROS] El teléfono {telefono} existe pero con el folio {ejemplo}"
+            }
+
+        #Caso 4: no existe nada
+        return {
+            "status": "not_found",
+            "message": "No se encontró coincidencia"
+        }
+
+    def close_integra_mts(self, folios_to_close):
+        # resp_close_mts = self.lkf_api.patch_multi_record(
+        #     {'69cc39fbea25a0385de39b64': 'aplicado'}, 
+        #     self.FORM_ID_INTEGRA_MTS, 
+        #     folios=folios_to_close, 
+        #     threading=True
+        # )
+
+        print('Cerrando registros de Integra Metros =',folios_to_close)
+        resp_close_mts = self.cr_admin.update_many({
+            'form_id': self.FORM_ID_INTEGRA_MTS,
+            'folio': {'$in': folios_to_close}
+        }, {'$set': {'answers.69cc39fbea25a0385de39b64': 'aplicado'}})
 
     def get_info_user_from_catalog( self, folio_o_idUser, id_catalogo, filter_by_name={} ):
         # Asignar field_id basado en el catálogo
@@ -619,21 +803,21 @@ class PCI_Utils():
 
     def get_metadata_for_create_record(self, form_id, name_script, process='', folio_carga='', accion='Crear Registro'):
         metadata = self.lkf_api.get_metadata(form_id)
-        metadata.update({ 'properties': self.get_metadata_properties(name_script, accion, process=process, folio_carga=folio_carga) })
+        metadata.update({ 'properties': self.lkf_obj.get_metadata_properties(name_script, accion, process=process, folio_carga=folio_carga) })
         return metadata
 
-    def get_metadata_properties(self, name_script, accion, process='', folio_carga=''):
-        dict_properties = {
-            'device_properties': {
-                'system': 'SCRIPT',
-                'process': process,
-                'accion': accion,
-                'archive': name_script
-            }
-        }
-        if folio_carga:
-            dict_properties['device_properties']['folio carga'] = folio_carga
-        return dict_properties
+    # def get_metadata_properties(self, name_script, accion, process='', folio_carga=''):
+    #     dict_properties = {
+    #         'device_properties': {
+    #             'system': 'SCRIPT',
+    #             'process': process,
+    #             'accion': accion,
+    #             'archive': name_script
+    #         }
+    #     }
+    #     if folio_carga:
+    #         dict_properties['device_properties']['folio carga'] = folio_carga
+    #     return dict_properties
 
     def get_nombre_tecnico(self, folio_tecnico, id_lkf=None):
         query = {'form_id':self.FORM_ID_LISTADO_TECNICOS, 'deleted_at' : {'$exists':False}, 'folio': str(folio_tecnico)}
@@ -663,8 +847,8 @@ class PCI_Utils():
             tec = record[col]
         return tec
 
-    def get_parent_id(self, user_id, all_info=False):
-        info_user = self.lkf_api.get_user_by_id(user_id, jwt_settings_key='USER_JWT_KEY')
+    def get_parent_id(self, user_id, all_info=False, jwt_settings_key='USER_JWT_KEY'):
+        info_user = self.lkf_api.get_user_by_id(user_id, jwt_settings_key=jwt_settings_key)
         parent_info = info_user.get('parent_info',{})
         if all_info:
             return parent_info
@@ -744,6 +928,8 @@ class PCI_Utils():
             forms_dict[ form_id ] = self.lkf_api.get_form_id_fields(form_id)
         
         form_fields = forms_dict[form_id]
+
+
         if not form_fields:
             return False
         
@@ -765,6 +951,10 @@ class PCI_Utils():
                     pos_field_id[pos_key] = { 'scritp_type': name_to_type.get( name_field_to_process, name_field_to_process.lower().replace(' ', '_') ) }
                     if name_field_to_process == 'usuario_reporta':
                         pos_field_id[pos_key]['field_id'] = 'f1054000a030000000000111'
+
+                    # Forzar que si es num_serie apunte al campo del Contratista
+                    if name_field_to_process == 'Num. Serie':
+                        pos_field_id[pos_key]['field_id'] = lkf_obj.f['field_no_serie_contratista']
 
         for title_field in ['Folio', 'Etapa', 'Tipo', 'Clase de Servicio', 'Tipo de Tarea', 'Aerea', 'Subterranea', 'Created At', 'Contratista', 'Tecnico', \
         'Fecha de Liquidacion', 'Fecha de Asignacion', 'Cope', 'Num. Serie', 'cambio_tecnologia', 'usuario_reporta']:
@@ -998,14 +1188,45 @@ class PCI_Utils():
             header (list): Primer renglon del excel que se toma como cabecera
             all_records (list): Renglones del excel
         """
-        max_row_accepted = 5000
-        if self.get_num_rows_in_xls(file_url) > max_row_accepted:
-            return {'error': f'El excel rebasa el límite de renglones permitidos {max_row_accepted}. Favor de revisar'}, None
+        # Descargar el archivo
+        response = requests.get(file_url)
+        response.raise_for_status()
+
+        # Cargar el archivo excel desde la memoria
+        excel_file = BytesIO(response.content)
+        wb = openpyxl.load_workbook(excel_file)
+
+        # Accedemos a la hoja
+        hoja = wb.active
+
+        # Numero de lineas
+        num_rows = hoja.max_row
+        if num_rows > self.max_row_accepted:
+            return {'error': f'El excel rebasa el límite de renglones permitidos {self.max_row_accepted}. Favor de revisar'}, None
+
+        # Obtener el header (primera fila)
+        header = [
+            celda.value.lower().replace('\xa0', ' ').strip().replace(' ', '_') if celda.value else '' 
+            for celda in next(hoja.iter_rows(min_row=1, max_row=1))
+        ]
+
+        # Obtener los records (todas las filas a partir de la segunda)
+        records = [
+            [celda.value or '' for celda in fila]
+            for fila in hoja.iter_rows(min_row=2, values_only=False)
+        ]
+
+        return header, records
+        # max_row_accepted = 5000
+        # num_rows_found = self.get_num_rows_in_xls(file_url)
+        # if num_rows_found > max_row_accepted:
+        #     print('[ERROR] numero de renglones =',num_rows_found)
+        #     return {'error': f'El excel rebasa el límite de renglones permitidos {max_row_accepted}. Favor de revisar'}, None
         
-        sheet = pyexcel.get_sheet(url = file_url)
-        all_records = sheet.array
-        header = [h.lower().strip().replace(' ', '_') for h in all_records.pop(0)]
-        return header, all_records
+        # sheet = pyexcel.get_sheet(url = file_url)
+        # all_records = sheet.array
+        # header = [h.lower().strip().replace(' ', '_') for h in all_records.pop(0)]
+        # return header, all_records
 
     def rename_file_extract( self, actual_name ):
         # actual_name = actual_name.decode('latin-1')
@@ -1091,7 +1312,7 @@ class PCI_Utils():
 
     def send_notification_email(self, name_process, msg, name_script='', folio_carga='', jwt_settings_key=None):
         metadata_email_error = self.lkf_api.get_metadata( form_id=self.FORM_ID_EMAIL_ERRORES )
-        metadata_email_error['properties'] = self.get_metadata_properties(name_script, '', process=name_process, folio_carga=folio_carga)
+        metadata_email_error['properties'] = self.lkf_obj.get_metadata_properties(name_script, '', process=name_process, folio_carga=folio_carga)
         metadata_email_error['answers'] = {
             '668ff5ef62f58d0b8dca8ba7': name_process,
             '668ff5ef62f58d0b8dca8ba8': msg
@@ -1250,16 +1471,12 @@ class PCI_Utils():
     def uploaded_by_other_connection(self, record, connection_id):
         #Verifica q no haya sido cargada por otra conexion
         if record.get('connection_id'):
-            return 'update' if connection_id == record['connection_id'] else 'by_other'
+            return 'cuenta_padre' if connection_id == record['connection_id'] else 'by_other'
         return 'assigne'
 
     def validate_record_status(self, record):
-        if record['answers'].get('f1054000a030000000000012'):
-            if record['answers'].get('f1054000a030000000000012', '') in ('pendiente', 'reintento'):
-                return True
-            if record['answers'].get('f1054000a030000000000012', '') == 'estimacion' and record['answers'].get('5fc9269ce5363f7e3b9e3867', 'no') != 'no':
-                return True
-            return False
-        if record['answers'].get('f1054000a030000000000002', '') == 'liquidada':
+        if not record.get('connection_id'):
+            return True
+        if record['answers'].get('f1054000a030000000000012', '') in ['pendiente', 'reintento']:
             return True
         return False
