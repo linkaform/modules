@@ -382,7 +382,7 @@ class Accesos(Accesos):
         answers = {}
 
         if conductor:
-            foto = conductor.get('foto', {})
+            foto = conductor.get('foto') or {}
             answers.update({
                 f['conductor_nombre']:           conductor.get('nombre', ''),
                 f['conductor_no_licencia']:      conductor.get('licencia', ''),
@@ -392,7 +392,7 @@ class Accesos(Accesos):
             })
 
         if ayudante:
-            foto = ayudante.get('foto', {})
+            foto = ayudante.get('foto') or {}
             answers.update({
                 f['ayudante_nombre']:            ayudante.get('nombre', ''),
                 f['ayudante_no_licencia']:       ayudante.get('licencia', ''),
@@ -402,7 +402,7 @@ class Accesos(Accesos):
             })
 
         if vehiculo:
-            foto = vehiculo.get('foto', {})
+            foto = vehiculo.get('foto') or {}
             answers.update({
                 f['vehiculo_linea']:               vehiculo.get('linea', ''),
                 f['vehiculo_tipo_unidad']:         vehiculo.get('tipo', ''),
@@ -421,7 +421,6 @@ class Accesos(Accesos):
         if contenedores:
             answers[f['grupo_contenedores']] = {
                 -(i + 1): {
-                    f['contenedor_foto']:   [{'file_name': c.get('foto', {}).get('file_name', ''), 'file_url': c['foto']['file_url']}] if c.get('foto', {}).get('file_url') else [],
                     f['contenedor_numero']: c.get('numero', ''),
                     f['contenedor_sello']:  c.get('sello', ''),
                     f['contenedor_tipo']:   c.get('tipo', ''),
@@ -440,7 +439,7 @@ class Accesos(Accesos):
         return res
 
 if __name__ == "__main__":
-    script_obj = Accesos(settings, sys_argv=sys.argv)
+    script_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
     script_obj.console_run()
     data = script_obj.data.get('data', {})
     option = data.get("option", '')

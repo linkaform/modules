@@ -363,7 +363,8 @@ class Accesos(Accesos):
             hora_fin    = partes[1].strip()
 
         dominio = data.get('dominio', 'http://localhost:3000')
-        url_pase_transportista = f"{dominio}/transportistas/preview/transportista/{pass_id}"
+        parent_id = self.user.get('parent_id')
+        url_pase_transportista = f"{dominio}/transportistas/preview/transportista/{pass_id}?p_id={parent_id}"
         qr_pase_transportista = self.create_custom_qr(
             url_pase_transportista,
             f"qr_code_pase_transportista_{pass_id}",
