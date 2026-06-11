@@ -268,7 +268,11 @@ class Accesos(Accesos):
             "proveedor_email": "6a207762cd730fb838ce1bb1",
             "proveedor_telefono": "6a207762cd730fb838ce1bb2",
 
-            "documentos_para_ocr": "6a207762cd730fb838ce1bb3",
+            "grupo_documentos_para_ocr": "6a2ae394b8e5ca8fd73705dc",
+            "tipo_de_documento": "6a2ae3d8cf0be6f60c19f85d",
+            "no_de_documento": "6a2ae3d8cf0be6f60c19f85e",
+            "documento_para_ocr": "6a2ae3d8cf0be6f60c19f85f",
+            
             "proveedor_cliente_material": "6a207762cd730fb838ce1bb4",
             "orden_de_compra": "6a1ddb53f5a36ba1c7dd02a0",
             "grupo_materiales": "6a2714954a54077ffa2394e6",
@@ -361,7 +365,14 @@ class Accesos(Accesos):
             f['proveedor_telefono']:             recibe.get('telefono', ''),
             f['proveedor_cliente_material']:     mat.get('proveedor_cliente', ''),
             f['orden_de_compra']:                mat.get('orden_compra', ''),
-            f['documentos_para_ocr']:            mat.get('documentos', []),
+            f['grupo_documentos_para_ocr']:       [
+                {
+                    f['tipo_de_documento']:  doc.get('tipo', ''),
+                    f['no_de_documento']:    doc.get('no_doc', ''),
+                    f['documento_para_ocr']: [{'file_name': doc.get('file_name', ''), 'file_url': doc.get('file_url', '')}] if doc.get('file_url') else [],
+                }
+                for doc in mat.get('documentos', [])
+            ],
             f['grupo_materiales']:               [
                 {
                     f['tipo']:       item.get('tipo', ''),
