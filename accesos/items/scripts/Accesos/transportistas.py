@@ -372,49 +372,62 @@ class Accesos(Accesos):
 
     def update_information_transportista(self, data):
         f = self.pass_fields_transportista
-        record_id = data.get('record_id')
-        conductor  = data.get('conductor', {})
-        ayudante   = data.get('ayudante', {})
-        vehiculo   = data.get('vehiculo', {})
-        foto_cont      = data.get('foto_contenedores', {})
-        foto_conductor = conductor.get('foto', {})
-        foto_ayudante  = ayudante.get('foto', {})
-        foto_vehiculo  = vehiculo.get('foto', {})
+        record_id  = data.get('record_id')
+        conductor  = data.get('conductor')
+        ayudante   = data.get('ayudante')
+        vehiculo   = data.get('vehiculo')
+        foto_cont  = data.get('foto_contenedores')
+        contenedores = data.get('contenedores')
 
-        answers = {
-            f['conductor_nombre']:           conductor.get('nombre', ''),
-            f['conductor_no_licencia']:      conductor.get('licencia', ''),
-            f['conductor_lugar_expedicion']: conductor.get('lugar_expedicion', ''),
-            f['conductor_vigencia']:         conductor.get('vigencia', ''),
-            f['conductor_foto_licencia']:    [{'file_name': foto_conductor.get('file_name', ''), 'file_url': foto_conductor['file_url']}] if foto_conductor.get('file_url') else [],
+        answers = {}
 
-            f['ayudante_nombre']:            ayudante.get('nombre', ''),
-            f['ayudante_no_licencia']:       ayudante.get('licencia', ''),
-            f['ayudante_lugar_expedicion']:  ayudante.get('lugar_expedicion', ''),
-            f['ayudante_vigencia']:          ayudante.get('vigencia', ''),
-            f['ayudante_foto_licencia']:     [{'file_name': foto_ayudante.get('file_name', ''), 'file_url': foto_ayudante['file_url']}] if foto_ayudante.get('file_url') else [],
+        if conductor:
+            foto = conductor.get('foto', {})
+            answers.update({
+                f['conductor_nombre']:           conductor.get('nombre', ''),
+                f['conductor_no_licencia']:      conductor.get('licencia', ''),
+                f['conductor_lugar_expedicion']: conductor.get('lugar_expedicion', ''),
+                f['conductor_vigencia']:         conductor.get('vigencia', ''),
+                f['conductor_foto_licencia']:    [{'file_name': foto.get('file_name', ''), 'file_url': foto['file_url']}] if foto.get('file_url') else [],
+            })
 
-            f['vehiculo_linea']:             vehiculo.get('linea', ''),
-            f['vehiculo_tipo_unidad']:       vehiculo.get('tipo', ''),
-            f['vehiculo_marca']:             vehiculo.get('marca', ''),
-            f['vehiculo_modelo']:            vehiculo.get('modelo', ''),
-            f['vehiculo_year']:              vehiculo.get('año', ''),
-            f['vehiculo_placas']:            vehiculo.get('placas', ''),
-            f['vehiculo_no_economico']:      vehiculo.get('economico', ''),
-            f['vehiculo_niv']:               vehiculo.get('niv', ''),
-            f['vehiculo_tarjeta_circulacion']: [{'file_name': foto_vehiculo.get('file_name', ''), 'file_url': foto_vehiculo['file_url']}] if foto_vehiculo.get('file_url') else [],
+        if ayudante:
+            foto = ayudante.get('foto', {})
+            answers.update({
+                f['ayudante_nombre']:            ayudante.get('nombre', ''),
+                f['ayudante_no_licencia']:       ayudante.get('licencia', ''),
+                f['ayudante_lugar_expedicion']:  ayudante.get('lugar_expedicion', ''),
+                f['ayudante_vigencia']:          ayudante.get('vigencia', ''),
+                f['ayudante_foto_licencia']:     [{'file_name': foto.get('file_name', ''), 'file_url': foto['file_url']}] if foto.get('file_url') else [],
+            })
 
-            f['foto_contenedores']:          [{'file_name': foto_cont.get('file_name', ''), 'file_url': foto_cont['file_url']}] if foto_cont.get('file_url') else [],
+        if vehiculo:
+            foto = vehiculo.get('foto', {})
+            answers.update({
+                f['vehiculo_linea']:               vehiculo.get('linea', ''),
+                f['vehiculo_tipo_unidad']:         vehiculo.get('tipo', ''),
+                f['vehiculo_marca']:               vehiculo.get('marca', ''),
+                f['vehiculo_modelo']:              vehiculo.get('modelo', ''),
+                f['vehiculo_year']:                vehiculo.get('año', ''),
+                f['vehiculo_placas']:              vehiculo.get('placas', ''),
+                f['vehiculo_no_economico']:        vehiculo.get('economico', ''),
+                f['vehiculo_niv']:                 vehiculo.get('niv', ''),
+                f['vehiculo_tarjeta_circulacion']: [{'file_name': foto.get('file_name', ''), 'file_url': foto['file_url']}] if foto.get('file_url') else [],
+            })
 
-            f['grupo_contenedores']:         {
+        if foto_cont:
+            answers[f['foto_contenedores']] = [{'file_name': foto_cont.get('file_name', ''), 'file_url': foto_cont['file_url']}] if foto_cont.get('file_url') else []
+
+        if contenedores:
+            answers[f['grupo_contenedores']] = {
                 -(i + 1): {
+                    f['contenedor_foto']:   [{'file_name': c.get('foto', {}).get('file_name', ''), 'file_url': c['foto']['file_url']}] if c.get('foto', {}).get('file_url') else [],
                     f['contenedor_numero']: c.get('numero', ''),
                     f['contenedor_sello']:  c.get('sello', ''),
                     f['contenedor_tipo']:   c.get('tipo', ''),
                 }
-                for i, c in enumerate(data.get('contenedores', []))
-            },
-        }
+                for i, c in enumerate(contenedores)
+            }
 
         print(simplejson.dumps(answers, indent=3))
         res = self.lkf_api.patch_multi_record(
