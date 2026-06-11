@@ -333,6 +333,62 @@ class Accesos(Accesos):
             return True
         return False
 
+    def update_information_transportista(self, data):
+        f = self.pass_fields_transportista
+        record_id = data.get('record_id')
+        conductor  = data.get('conductor', {})
+        ayudante   = data.get('ayudante', {})
+        vehiculo   = data.get('vehiculo', {})
+        foto_cont      = data.get('foto_contenedores', {})
+        foto_conductor = conductor.get('foto', {})
+        foto_ayudante  = ayudante.get('foto', {})
+        foto_vehiculo  = vehiculo.get('foto', {})
+
+        answers = {
+            f['conductor_nombre']:           conductor.get('nombre', ''),
+            f['conductor_no_licencia']:      conductor.get('licencia', ''),
+            f['conductor_lugar_expedicion']: conductor.get('lugar_expedicion', ''),
+            f['conductor_vigencia']:         conductor.get('vigencia', ''),
+            f['conductor_foto_licencia']:    [{'file_name': foto_conductor.get('file_name', ''), 'file_url': foto_conductor['file_url']}] if foto_conductor.get('file_url') else [],
+
+            f['ayudante_nombre']:            ayudante.get('nombre', ''),
+            f['ayudante_no_licencia']:       ayudante.get('licencia', ''),
+            f['ayudante_lugar_expedicion']:  ayudante.get('lugar_expedicion', ''),
+            f['ayudante_vigencia']:          ayudante.get('vigencia', ''),
+            f['ayudante_foto_licencia']:     [{'file_name': foto_ayudante.get('file_name', ''), 'file_url': foto_ayudante['file_url']}] if foto_ayudante.get('file_url') else [],
+
+            f['vehiculo_linea']:             vehiculo.get('linea', ''),
+            f['vehiculo_tipo_unidad']:       vehiculo.get('tipo', ''),
+            f['vehiculo_marca']:             vehiculo.get('marca', ''),
+            f['vehiculo_modelo']:            vehiculo.get('modelo', ''),
+            f['vehiculo_year']:              vehiculo.get('año', ''),
+            f['vehiculo_placas']:            vehiculo.get('placas', ''),
+            f['vehiculo_no_economico']:      vehiculo.get('economico', ''),
+            f['vehiculo_niv']:               vehiculo.get('niv', ''),
+            f['vehiculo_tarjeta_circulacion']: [{'file_name': foto_vehiculo.get('file_name', ''), 'file_url': foto_vehiculo['file_url']}] if foto_vehiculo.get('file_url') else [],
+
+            f['foto_contenedores']:          [{'file_name': foto_cont.get('file_name', ''), 'file_url': foto_cont['file_url']}] if foto_cont.get('file_url') else [],
+
+            f['grupo_contenedores']:         {
+                -(i + 1): {
+                    f['contenedor_numero']: c.get('numero', ''),
+                    f['contenedor_sello']:  c.get('sello', ''),
+                    f['contenedor_tipo']:   c.get('tipo', ''),
+                }
+                for i, c in enumerate(data.get('contenedores', []))
+            },
+        }
+
+        print(simplejson.dumps(answers, indent=3))
+        res = self.lkf_api.patch_multi_record(
+            answers=answers,
+            form_id=self.PASE_ENTRADA_TRANSPORTISTA,
+            record_id=[record_id],
+        )
+        if res.get('status_code') not in [201, 202]:
+            self.LKFException({'title': 'Error al actualizar información del transportista', 'msg': res})
+        return res
+
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
     script_obj.console_run()
@@ -353,7 +409,8 @@ if __name__ == "__main__":
         "get_users_data": lambda: script_obj.get_users_data(locations),
         "get_location_data": lambda: script_obj.get_location_data(location),
         "get_proveedores_transportista": lambda: script_obj.get_proveedores_transportista(),
-        "validate_token": lambda: script_obj.validate_token(record_id, token)
+        "validate_token": lambda: script_obj.validate_token(record_id, token),
+        "update_information_transportista": lambda: script_obj.update_information_transportista(payload),
     }
 
     action = dispatcher.get(option)

@@ -304,7 +304,32 @@ class Accesos(Accesos):
             "url_del_pase_transportista": "6a20d4a39ebbf58470fe73b5",
             "qr_del_pase_transportista": "6a20a8e138dff4ad8155c325",
             "estado_transportista": "6a20bb99782fe54a2681fc56",
-            "token_transportista": "6a20c1811b6edd566116f483"
+            "token_transportista": "6a20c1811b6edd566116f483",
+
+            "conductor_foto_licencia": "6a2add8342320b4d1b66db84",
+            "conductor_nombre": "6a2adc08877c6087f9c2326b",
+            "conductor_no_licencia": "6a2adc08877c6087f9c2326c",
+            "conductor_lugar_expedicion": "6a2adc08877c6087f9c2326d",
+            "conductor_vigencia": "6a2adc08877c6087f9c2326e",
+            "ayudante_foto_licencia": "6a2add8342320b4d1b66db85",
+            "ayudante_nombre": "6a2adc08877c6087f9c2326f",
+            "ayudante_no_licencia": "6a2adc08877c6087f9c23270",
+            "ayudante_lugar_expedicion": "6a2adc08877c6087f9c23271",
+            "ayudante_vigencia": "6a2adc08877c6087f9c23272",
+            "vehiculo_tarjeta_circulacion": "6a2add8342320b4d1b66db86",
+            "vehiculo_linea": "6a2add8342320b4d1b66db87",
+            "vehiculo_tipo_unidad": "6a2add8342320b4d1b66db88",
+            "vehiculo_marca": "6a2add8342320b4d1b66db89",
+            "vehiculo_modelo": "6a2add8342320b4d1b66db8a",
+            "vehiculo_year": "6a2add8342320b4d1b66db8b",
+            "vehiculo_placas": "6a2add8342320b4d1b66db8c",
+            "vehiculo_no_economico": "6a2add8342320b4d1b66db8d",
+            "vehiculo_niv": "6a2add8342320b4d1b66db8e",
+            "foto_contenedores": "6a2b045ed8034654f212c1bc",
+            "grupo_contenedores": "6a2add8342320b4d1b66db8f",
+            "contenedor_numero": "6a2addcfcee6b93e39ab8a51",
+            "contenedor_sello": "6a2addcfcee6b93e39ab8a52",
+            "contenedor_tipo": "6a2addcfcee6b93e39ab8a53",
         }
 
     def create_pass_transportista(self, data):
