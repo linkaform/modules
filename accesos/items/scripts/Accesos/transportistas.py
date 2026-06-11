@@ -159,7 +159,15 @@ class Accesos(Accesos):
                 # material
                 'proveedor_cliente_material': f'$answers.{f["proveedor_cliente_material"]}',
                 'orden_de_compra':            f'$answers.{f["orden_de_compra"]}',
-                'documentos': f'$answers.{f["documentos_para_ocr"]}',
+                'documentos': {'$map': {
+                    'input': f'$answers.{f["grupo_documentos_para_ocr"]}',
+                    'as':    'doc',
+                    'in': {
+                        'tipo':      f'$$doc.{f["tipo_de_documento"]}',
+                        'no_doc':    f'$$doc.{f["no_de_documento"]}',
+                        'archivo':   f'$$doc.{f["documento_para_ocr"]}',
+                    },
+                }},
                 'materiales': {'$map': {
                     'input': f'$answers.{f["grupo_materiales"]}',
                     'as':    'item',
