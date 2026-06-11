@@ -63,6 +63,20 @@ class Custom(Custom):
     def str_to_date(self, val):
         return datetime.strptime(val, '%Y-%m-%d %H:%M:%S')
 
+    def split_data_value(self, texto):
+        """
+        Divide un string por comas, excepto aquellas usadas como separador de miles.
+        texto: string que se va a desarmar
+        Retorna una lista de segmentos limpios.
+        """
+        # Divide solo en comas que NO sean separador de miles (p. ej. 1,234.56)
+        pattern = r",(?!\d{3}\.)"
+        
+        partes = re.split(pattern, texto)
+
+        # Limpieza: quitar strings vacíos y recortar espacios
+        return [p.strip() for p in partes if p.strip()]
+
     def process_variables(self, dict_variables, data_config, answers_to_get_values, value_as_str, processing_catalog_values=False):
         """
         Procesa el diccionario de variables y las compara con las configuraciones que tiene en el catalogo
@@ -75,6 +89,7 @@ class Custom(Custom):
         Return:
             lista de sets que se van a integrar al grupo repetitivo de resultados
         """
+
         list_items_to_group = []
         most_recent_date = None
         for var_field_id, var_data in dict_variables.items():
@@ -89,28 +104,52 @@ class Custom(Custom):
             min_var = data_config.get(field_min)
             max_var = data_config.get(field_max)
 
+            value_field = answers_to_get_values.get(var_field_id)
+
             # se obtiene el valor en el answers
-            value_var = self.unlist( answers_to_get_values.get(var_field_id) )
+            value_var = self.unlist( value_field )
 
             # Si se están procesando los valors de los campos de Catalogo hay que revisar que venga la leyenda "Ultimo Valor" para considerarlo
             if processing_catalog_values:
-                # Hago el if value_var por casos donde el valor viene como []
-                fecha_resultado = self.validate_start_date(value_var)
-                # if not value_var or not fecha_resultado: # "ultimo valor" not in value_var.lower():
-                if "⭐" not in value_var:
-                    continue
-                
-                # if most_recent_date is not None and str_to_date(fecha_resultado) > most_recent_date:
-                #     most_recent_date = str_to_date(fecha_resultado)
-                # elif most_recent_date is None:
-                #     most_recent_date = str_to_date(fecha_resultado)
-                # else:
-                #     continue
 
-                
-                # value_var = value_var.split(':')[1].strip()
-                value_var = value_var.split(fecha_resultado)[1].replace(':', '').strip()
-                value_var = value_var.replace('⭐', '')
+                if isinstance( value_field, list ):
+
+                    # es una lista pero de un solo elemento, probablemente sea desde la App, por tanto, hay que descomponer el valor
+                    if len(value_field) == 1:
+                        value_field = self.split_data_value( value_field[0] )
+
+                    for item_value in value_field:
+                        # Hago el if item_value por casos donde el valor viene como []
+                        fecha_resultado = self.validate_start_date(item_value)
+                        # print('++ ++ ++ fecha_resultado =',fecha_resultado)
+
+                        if not fecha_resultado:
+                            continue
+
+                        # print('.... evaluando ', item_value)
+
+                        # if not item_value or not fecha_resultado: # "ultimo valor" not in item_value.lower():
+                        if "⭐" not in item_value:
+                            continue
+                        
+                        print('     .... se encuentra ultimo valor en ', item_value)
+
+                        # if most_recent_date is not None and str_to_date(fecha_resultado) > most_recent_date:
+                        #     most_recent_date = str_to_date(fecha_resultado)
+                        # elif most_recent_date is None:
+                        #     most_recent_date = str_to_date(fecha_resultado)
+                        # else:
+                        #     continue
+                        
+                        # value_var = value_var.split(':')[1].strip()
+                        value_var = item_value.split(fecha_resultado)[1].replace(':', '').strip()
+                        value_var = value_var.replace('⭐', '')
+                        value_var = value_var.strip().replace(',', '')
+                elif isinstance( value_var, str ):
+                    # Cachar exepcion donde viene el texto separado por puras comas y además sin valor
+                    # ',,,,,,,,'
+                    if not [ vv for vv in value_var.split(',') if vv ]:
+                        continue
             
             # Si no hay informacion capturada por el usuario, o no hay minimos y maximos definidos se continúa con el siguiente campo
             if not value_var or not any( [min_var, max_var] ):
@@ -147,6 +186,18 @@ class Custom(Custom):
                 value_var = Fraction( numerador_val, denominador_val )
 
             if isinstance(value_var, str):
+
+                # Cachar exepcion donde viene el texto separado por puras comas y además sin valor
+                # ',,,,,,,,'
+                if not [ vv for vv in value_var.split(',') if vv ]:
+                    continue
+
+                # Cachar excepcion donde viene texto con espacios intermedios para tomar la ultima parte
+                # '00 1.66'
+                value_var = value_var.strip()
+                if ' ' in value_var:
+                    value_var = value_var.split(' ')[-1]
+
                 value_var = float(value_var)
 
             value_help_text = var_data.get('help_text') or ""
@@ -170,6 +221,9 @@ class Custom(Custom):
                 str_rango = f"{min_var} - {max_var} {str_unidad_medida}"
                 # Si llega hasta acá, hay minimo y maximo definido, se evalua que el valor esté dentro del rango
                 list_items_to_group.append( self.prepare_data_to_group(var_data, value_var, str_rango, value_as_str) )
+
+        # if processing_catalog_values:
+            # print('\n... ... ... list_items_to_group =',list_items_to_group)
 
         return list_items_to_group
 
@@ -290,7 +344,7 @@ class Custom(Custom):
 
 if __name__ == '__main__':
     lkf_obj = Custom(settings, sys_argv=sys.argv)
-    # lkf_obj.console_run()
+    lkf_obj.console_run()
 
     answers = lkf_obj.answers
 
