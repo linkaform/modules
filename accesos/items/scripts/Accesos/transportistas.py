@@ -203,6 +203,43 @@ class Accesos(Accesos):
                 'metodo_de_embarque':        f'$answers.{f["metodo_de_embarque"]}',
                 'incoterm':                  f'$answers.{f["incoterm"]}',
 
+                # conductor
+                'conductor_nombre':           f'$answers.{f["conductor_nombre"]}',
+                'conductor_no_licencia':      f'$answers.{f["conductor_no_licencia"]}',
+                'conductor_lugar_expedicion': f'$answers.{f["conductor_lugar_expedicion"]}',
+                'conductor_vigencia':         f'$answers.{f["conductor_vigencia"]}',
+                'conductor_foto_licencia':    f'$answers.{f["conductor_foto_licencia"]}',
+
+                # ayudante
+                'ayudante_nombre':            f'$answers.{f["ayudante_nombre"]}',
+                'ayudante_no_licencia':       f'$answers.{f["ayudante_no_licencia"]}',
+                'ayudante_lugar_expedicion':  f'$answers.{f["ayudante_lugar_expedicion"]}',
+                'ayudante_vigencia':          f'$answers.{f["ayudante_vigencia"]}',
+                'ayudante_foto_licencia':     f'$answers.{f["ayudante_foto_licencia"]}',
+
+                # vehículo
+                'vehiculo_linea':               f'$answers.{f["vehiculo_linea"]}',
+                'vehiculo_tipo_unidad':         f'$answers.{f["vehiculo_tipo_unidad"]}',
+                'vehiculo_marca':               f'$answers.{f["vehiculo_marca"]}',
+                'vehiculo_modelo':              f'$answers.{f["vehiculo_modelo"]}',
+                'vehiculo_year':                f'$answers.{f["vehiculo_year"]}',
+                'vehiculo_placas':              f'$answers.{f["vehiculo_placas"]}',
+                'vehiculo_no_economico':        f'$answers.{f["vehiculo_no_economico"]}',
+                'vehiculo_niv':                 f'$answers.{f["vehiculo_niv"]}',
+                'vehiculo_tarjeta_circulacion': f'$answers.{f["vehiculo_tarjeta_circulacion"]}',
+
+                # contenedores
+                'foto_contenedores': f'$answers.{f["foto_contenedores"]}',
+                'contenedores': {'$map': {
+                    'input': {'$ifNull': [f'$answers.{f["grupo_contenedores"]}', []]},
+                    'as':    'row',
+                    'in': {
+                        'numero': f'$$row.{f["contenedor_numero"]}',
+                        'sello':  f'$$row.{f["contenedor_sello"]}',
+                        'tipo':   f'$$row.{f["contenedor_tipo"]}',
+                    },
+                }},
+
                 # control
                 'estado_transportista': f'$answers.{f["estado_transportista"]}',
                 'url_del_pase':         f'$answers.{f["url_del_pase_transportista"]}',
