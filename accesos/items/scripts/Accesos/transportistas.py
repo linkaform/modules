@@ -218,7 +218,6 @@ class Accesos(Accesos):
         return {'token': token, 'record_id': record_id}
 
     def get_users_data(self, locations=None):
-        locations = ["Planta Monterrey"]
         match = {
             'form_id': self.CONF_AREA_EMPLEADOS,
             'deleted_at': {'$exists': False},
