@@ -337,17 +337,8 @@ class Accesos(Accesos):
             hora_inicio = partes[0].strip()
             hora_fin    = partes[1].strip()
 
-        tipo_de_operacion = data.get('tipo_de_operacion', '')
-        tipos_de_operacion_abreviaturas = {
-            "entrega_de_materia_prima": "EDMP",
-            "recoleccion_de_materia_prima": "RDMP",
-            "entrega_de_producto_terminado": "EDPT",
-            "recoleccion_de_producto_terminado": "RDPT"
-        }
-
         dominio = data.get('dominio', 'http://localhost:3000')
-        abreviatura_url = tipos_de_operacion_abreviaturas[tipo_de_operacion]
-        url_pase_transportista = f"{dominio}/transportistas/preview/{abreviatura_url}/{pass_id}"
+        url_pase_transportista = f"{dominio}/transportistas/preview/transportista/{pass_id}"
         qr_pase_transportista = self.create_custom_qr(
             url_pase_transportista,
             f"qr_code_pase_transportista_{pass_id}",
