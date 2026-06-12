@@ -636,6 +636,7 @@ if __name__ == "__main__":
         last_update = now.date()
     last_update = last_update.strftime('%Y-%m-%d 00:00:00')
     #-FUNCTIONS
+    data = False
     if option == 'read':
         # print('module_obj.views.keys()', module_obj.views)
         views = list(module_obj.views.keys())
@@ -725,15 +726,20 @@ if __name__ == "__main__":
                             ORDER BY c.FECHA ASC"""
 
             print('query=',query)
-            header, response = module_obj.sync_db_catalog(db_name=v, query=query)
-            print('header=',header)
-            print('response=',response)
+            try:
+                header, response = module_obj.sync_db_catalog(db_name=v, query=query)
+                print('header=',header)
+                print('response=',response)
+            except:
+                print('ERROR A LA CONEXION DE ORACLE')
             view = module_obj.views[v]
             schema = view['schema']
             catalog_id = view.get('catalog_id')
             form_id = view.get('form_id')
-            data = module_obj.load_data(v, view, response, schema, catalog_id, form_id)
+            table_data = module_obj.load_data(v, view, response, schema, catalog_id, form_id)
+            if table_data and not data:
+                data = True
         
         if data:
-            print('if data update values')
+            print('if at least on table response with data')
             module_obj.update_values(v, view, form_id)
