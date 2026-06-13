@@ -18,11 +18,17 @@ class ValidarXLSDescuentos( Produccion_PCI ):
             "vehículo": "vehiculo"
         }.get(desc, desc)
 
+    def get_all_emails_connections(self):
+        all_connections = p_utils.get_all_connections()
+        return [ c['username'] for c in all_connections if c.get('username') ]
+
     def validar_xls(self, file_url):
         header, records_descuentos = self.upfile.get_file_to_upload(file_url=file_url, form_id=self.form_id)
         if not records_descuentos:
             return {}
         
+        list_connections = self.get_all_emails_connections()
+
         dict_emails_descuentos, error_descuentos, dict_descripciones_by_connection = {}, [], {}
         descuentos_aceptados = set(p_utils.map_descuentos_by_xls.keys()) | {"bono"}
         dict_subtotales_default = { str(rec_des[1]).lower().strip(): rec_des[6] for rec_des in records_descuentos if rec_des[6] }
@@ -57,6 +63,10 @@ class ValidarXLSDescuentos( Produccion_PCI ):
             descripcion_descuento = rec_des[5]
             if not descripcion_descuento and not subtotal_default:
                 error_descuentos.append(f"RENGLON {num_row}: Se requiere la Descripción del descuento")
+                continue
+
+            if email_rec not in list_connections:
+                error_descuentos.append(f"RENGLON {num_row}: No se encontró el email {email_rec}")
                 continue
             
             dict_descripciones_by_connection.setdefault(email_rec, {}).setdefault(tecnologia_rec, {'descripciones': [], 'montos': 0, 'porcentajes': 0})
@@ -126,7 +136,7 @@ class ValidarXLSDescuentos( Produccion_PCI ):
             }))
         
 if __name__ == '__main__':
-    lkf_obj = ValidarXLSDescuentos( settings, sys_argv=sys.argv )
+    lkf_obj = ValidarXLSDescuentos( settings, sys_argv=sys.argv, use_api=True )
     lkf_obj.console_run()
     
     current_record = lkf_obj.current_record
@@ -135,6 +145,6 @@ if __name__ == '__main__':
     print(f"+++ usuario = {user_id}")
 
     from pci_base_utils import PCI_Utils
-    p_utils = PCI_Utils()
+    p_utils = PCI_Utils(net=lkf_obj.net, settings=settings)
 
     lkf_obj.validate_xls_descuentos()
