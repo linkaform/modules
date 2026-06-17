@@ -38,6 +38,19 @@ class Custom(Custom):
         print(f"... ultimo registro encontrado = {last_record['folio']}")
         return last_record.get('answers', {})
 
+    def fix_comentarios(self, comentarios):
+        if isinstance(comentarios, list):
+            # Se iteran los campos para devolver los comentarios por el caso donde vienen en grupo repetitivo
+            list_comentarios = []
+            for set_comentarios in comentarios:
+                for field_id_set, field_value in set_comentarios.items():
+                    if isinstance(field_value, str):
+                        list_comentarios.append( f"- {field_value}" )
+
+            return self.list_to_str(list_comentarios, separator='\n')
+
+        return comentarios
+
     def add_hallazgos(self):
         print('... ... Calculando grupo repetitivo Hallazgos ... ...')
         
@@ -54,7 +67,7 @@ class Custom(Custom):
             if self.answers.get(field_id_ponderable) == 'no_cumple':
                 list_hallazgos.append({
                     self.field_referencia: data_ponderable['label_field'],
-                    self.field_observaciones: self.answers.get( data_ponderable['field_comentarios'], '' ),
+                    self.field_observaciones: self.fix_comentarios( self.answers.get( data_ponderable['field_comentarios'], '' ) ),
                     self.field_reincidencia: 'sí' if (answers_last_record.get(field_id_ponderable) == 'no_cumple') else 'no'
                 })
         
