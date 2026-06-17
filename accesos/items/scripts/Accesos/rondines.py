@@ -155,6 +155,11 @@ class Accesos(Accesos):
                         self.Location.f['location']: value,
                         self.f['address_geolocation']: []
                     }
+            elif key == 'area':
+                if value:
+                    answers[self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID] = {
+                        self.mf['nombre_area_salida']: value
+                    }
             elif key == 'grupo_asignado':
                 answers[self.GRUPOS_CAT_OBJ_ID] = {
                     self.rondin_keys[key]: value
@@ -200,7 +205,7 @@ class Accesos(Accesos):
                 answers[self.rondin_keys['grupo_asignado_a']] = self.rondin_asignado_a(value)
             else:
                 answers[self.rondin_keys[key]] = value
-        print('creando rondin...', answers)
+        print('creando rondin...', simplejson.dumps(answers, indent=4))
         # print(stop)
         response = self.create_register(
             module='Accesos',
