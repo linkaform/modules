@@ -332,6 +332,32 @@ class Accesos(Accesos):
             "contenedor_tipo": "6a2addcfcee6b93e39ab8a53",
         }
 
+        self.bitacora_transportista_fields = {
+            'estatus': '6a31921f07fb9cb5840d1f22',
+            'num_de_pase': '6a31921f07fb9cb5840d1f23',
+            'empresa_transportista': '6a31929d0bf8c5fc715d7424',
+            'tipo_de_operacion': '6a31929d0bf8c5fc715d7425',
+            'procedencia': '6a3193dccf1326ad4b7a9a52',
+            'tipo_de_vehiculo': '6a3193dccf1326ad4b7a9a53',
+            'placas_de_vehiculo': '6a31921f07fb9cb5840d1f24',
+            'foto_de_placa': '6a3193dccf1326ad4b7a9a54',
+            'material': '6a3193dccf1326ad4b7a9a55',
+            'num_eco_num_rotulo': '6a3193dccf1326ad4b7a9a56',
+            'conductor': '6a3193dccf1326ad4b7a9a57',
+            'num_licencia': '6a3193dccf1326ad4b7a9a58',
+            'foto_conductor': '6a3193dccf1326ad4b7a9a59',
+            'foto_licencia': '6a3193dccf1326ad4b7a9a5a',
+            'firma_conductor': '6a3193dccf1326ad4b7a9a5b',
+            'tiempo_etapa_actual': '6a31929d0bf8c5fc715d7426',
+            'anden_asignado': '6a31929d0bf8c5fc715d7427',
+            'grupo_remolques': '6a31959ed11ece87f2b0052d',
+            'tipo_remolque': '6a319693884bec802c94fa44',
+            'num_sello': '6a319693884bec802c94fa45',
+            'num_caja_contenedor': '6a319693884bec802c94fa46',
+            'placas_de_caja': '6a319693884bec802c94fa47',
+            'comentarios': '6a319693884bec802c94fa48',
+        }
+
     def create_pass_transportista(self, data):
         print(simplejson.dumps(data, indent=3))
         f = self.pass_fields_transportista
@@ -450,6 +476,63 @@ class Accesos(Accesos):
         if res.get('status_code') not in [200, 201, 202]:
             self.LKFException({'title': 'Error al crear pase transportista', 'msg': res})
         res['qr_pase_transportista'] = qr_pase_transportista
+        return res
+
+    def create_visit_transportista(self, data):
+        f = self.bitacora_transportista_fields
+        metadata = self.lkf_api.get_metadata(form_id=156329)
+        metadata.update({
+            'properties': {
+                'device_properties': {
+                    'System': 'Script',
+                    'Module': 'Accesos',
+                    'Process': 'Bitácora Transportista',
+                    'Action': 'create_visit_transportista',
+                    'File': 'modules/accesos/items/scripts/Accesos/accesos_utils.py',
+                }
+            }
+        })
+
+        vehiculo  = data.get('vehiculo', {}) or {}
+        conductor = data.get('conductor', {}) or {}
+
+        foto_placa     = vehiculo.get('foto_placa') or {}
+        foto_conductor = conductor.get('foto_conductor') or {}
+        foto_licencia  = conductor.get('foto_licencia') or {}
+        firma          = conductor.get('firma') or {}
+
+        answers = {
+            f['estatus']:               'arribo',
+            f['tipo_de_operacion']:     data.get('tipo_operacion', '').lower().replace(' ', '_'),
+            f['empresa_transportista']: vehiculo.get('transportista', ''),
+            f['procedencia']:           vehiculo.get('procedencia', ''),
+            f['tipo_de_vehiculo']:      vehiculo.get('tipo_vehiculo', ''),
+            f['placas_de_vehiculo']:    vehiculo.get('placa', ''),
+            f['foto_de_placa']:         [{'file_name': foto_placa.get('file_name', ''), 'file_url': foto_placa['file_url']}] if foto_placa.get('file_url') else [],
+            f['material']:              vehiculo.get('material', ''),
+            f['num_eco_num_rotulo']:    vehiculo.get('no_economico', ''),
+            f['conductor']:             conductor.get('nombre', ''),
+            f['num_licencia']:          conductor.get('no_licencia', ''),
+            f['foto_conductor']:        [{'file_name': foto_conductor.get('file_name', ''), 'file_url': foto_conductor['file_url']}] if foto_conductor.get('file_url') else [],
+            f['foto_licencia']:         [{'file_name': foto_licencia.get('file_name', ''), 'file_url': foto_licencia['file_url']}] if foto_licencia.get('file_url') else [],
+            f['firma_conductor']:       {'file_name': firma.get('file_name', ''), 'file_url': firma['file_url']} if firma.get('file_url') else {},
+            f['grupo_remolques']: [
+                {
+                    f['tipo_remolque']:          r.get('tipo_remolque', ''),
+                    f['num_sello']:              r.get('no_sello', ''),
+                    f['num_caja_contenedor']:    r.get('no_caja', ''),
+                    f['placas_de_caja']:         r.get('placas_caja', ''),
+                    f['comentarios']:            r.get('comentarios', ''),
+                }
+                for r in data.get('remolques', [])
+            ],
+        }
+
+        print(simplejson.dumps(answers, indent=3))
+        metadata.update({'answers': answers})
+        res = self.lkf_api.post_forms_answers(metadata)
+        if res.get('status_code') not in [200, 201, 202]:
+            self.LKFException({'title': 'Error al crear visita de transportista', 'msg': res})
         return res
 
     def create_custom_qr(self, url_for_qr, name_qr, form_id, img_field_id):
