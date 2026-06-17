@@ -43,6 +43,40 @@ class Accesos(Accesos):
             'url_rondin':'690cefdca2dff2f469da17e0',
             'nombre_emp':'638a9a7767c332f5d459fc81'
         })
+    def rondin_asignado_a(self, asignado_a):
+        """
+        Crea grupo repetitivo de personas asignadas a un rondin.
+        args:
+            asignado_a (str): 'responsable_en_turno' o nombre de un empleado
+        return:
+            lista con elementos para el grupo asignado a del rondin
+        """
+        employee = {}
+        visita_set = {}
+
+        if not asignado_a or asignado_a == 'responsable_en_turno':
+            # Usa el empleado del usuario actual (igual que access_pass_vista_a)
+            employee = self.Employee.get_employee_data(
+                user_id=self.user['user_id'], get_one=True
+            )
+            self.employee = employee
+            visita_set = self.visita_a_set_format(employee)
+            return [visita_set] if visita_set else []
+
+        # Es un nombre de persona específica
+        employee = self.Employee.get_employee_data(name=asignado_a, get_one=True)
+        self.employee = employee
+        visita_set = self.visita_a_set_format(employee)
+
+        if visita_set and self.employee:
+            return [visita_set]
+        else:
+            # Fallback: inserta solo el nombre si no encuentra en catálogo
+            return [{
+                self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID: {
+                    self.mf['nombre_empleado']: asignado_a
+                }
+            }]
 
     def create_rondin(self, rondin_data: dict = {}):
         """Crea un rondin con los datos proporcionados.
@@ -104,17 +138,23 @@ class Accesos(Accesos):
             'accion_recurrencia': 'programar' # 'programar', 'pausar' o 'eliminar'
         }
         answers = {}
-        rondin_data['ubicacion'] = self.get_ubicacion_geolocation(location=rondin_data.get('ubicacion', ''))
-        rondin_data['areas'] = self.get_areas_details(areas_list=rondin_data.get('areas', []))
-
+        ubicacion_result = self.get_ubicacion_geolocation(location=rondin_data.get('ubicacion', ''))
+        rondin_data['ubicacion'] = ubicacion_result if ubicacion_result else rondin_data.get('ubicacion', '')
+        areas_result = self.get_areas_details(areas_list=rondin_data.get('areas', []))
+        rondin_data['areas'] = areas_result if areas_result else rondin_data.get('areas', [])
         for key, value in rondin_data.items():
-            print('key=', key)
-            print('value=', value)
             if key == 'ubicacion':
-                answers[self.Location.UBICACIONES_CAT_OBJ_ID] = {
-                    self.Location.f['location']: value.get('location', ''),
-                    self.f['address_geolocation']: value.get('geolocation', [])
-                }
+                if isinstance(value, dict):
+                    answers[self.Location.UBICACIONES_CAT_OBJ_ID] = {
+                        self.Location.f['location']: value.get('location', ''),
+                        self.f['address_geolocation']: value.get('geolocation', [])
+                    }
+                else:
+                    # Llegó como string directo (geolocation no encontró nada)
+                    answers[self.Location.UBICACIONES_CAT_OBJ_ID] = {
+                        self.Location.f['location']: value,
+                        self.f['address_geolocation']: []
+                    }
             elif key == 'grupo_asignado':
                 answers[self.GRUPOS_CAT_OBJ_ID] = {
                     self.rondin_keys[key]: value
@@ -122,17 +162,28 @@ class Accesos(Accesos):
             elif key == 'areas':
                 areas_list = []
                 for area in value:
-                    area_dict = {
-                        self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
-                            self.Location.f['area']: area.get('area', ''),
-                            self.f['geolocalizacion_area_ubicacion']: [{
-                                'latitude': area.get('latitude', 0),
-                                'longitude': area.get('longitude', 0)
-                            }],
-                            self.f['foto_area']: area.get('image', []),
-                            self.f['area_tag_id']: [area.get('tag_id', [])]
+                    if isinstance(area, dict):
+                        area_dict = {
+                            self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
+                                self.Location.f['area']: area.get('area', ''),
+                                self.f['geolocalizacion_area_ubicacion']: [{
+                                    'latitude': area.get('latitude', 0),
+                                    'longitude': area.get('longitude', 0)
+                                }],
+                                self.f['foto_area']: area.get('image', []),
+                                self.f['area_tag_id']: [area.get('tag_id', [])]
+                            }
                         }
-                    }
+                    else:
+                        # Llegó como string directo (get_areas_details no encontró nada)
+                        area_dict = {
+                            self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
+                                self.Location.f['area']: area,
+                                self.f['geolocalizacion_area_ubicacion']: [],
+                                self.f['foto_area']: [],
+                                self.f['area_tag_id']: []
+                            }
+                        }
                     areas_list.append(area_dict)
                 answers[self.rondin_keys[key]] = areas_list
             elif key == "cron_id":
@@ -145,9 +196,12 @@ class Accesos(Accesos):
                 pass
             elif key == 'tipo_rondin':
                 answers[self.rondin_keys[key]] = value.lower()
+            elif key == 'asignado_a':
+                answers[self.rondin_keys['grupo_asignado_a']] = self.rondin_asignado_a(value)
             else:
                 answers[self.rondin_keys[key]] = value
-        print('creando rondin...')
+        print('creando rondin...', answers)
+        # print(stop)
         response = self.create_register(
             module='Accesos',
             process='Creacion de un rondin',
@@ -2147,6 +2201,33 @@ class Accesos(Accesos):
 
         return False, {}
 
+    def asignar_recorrido(self, folio, asignado_a):
+        if not folio:
+            return self.LKFException({'title': 'Error', 'msg': 'No se proporciono el folio'})
+        if not asignado_a:
+            return self.LKFException({'title': 'Error', 'msg': 'No se proporciono el asignado_a'})
+
+        answers = {}
+        grupo = {}
+
+        for index, nombre in enumerate(asignado_a):
+            empleado_set = self.rondin_asignado_a(nombre)
+            if empleado_set:
+                grupo[(index + 1) * -1] = empleado_set[0]
+
+        if grupo:
+            answers[self.rondin_keys['grupo_asignado_a']] = {'0': list(grupo.values())[0]}
+        print("answers", simplejson.dumps(answers, indent=4))
+
+        res = self.lkf_api.patch_multi_record(
+            answers=answers,
+            form_id=self.CONFIGURACION_RECORRIDOS_FORM,
+            record_id=[folio]
+        )
+        print("response", res)
+        return res
+
+
 if __name__ == "__main__":
     class_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
     class_obj.console_run()
@@ -2169,6 +2250,7 @@ if __name__ == "__main__":
     areas = data.get("areas", [])
     dag_id = data.get("dag_id", [])
     area_details = data.get("area_details", False)
+    asignado_a = data.get("asignado_a", [])
     user_to_assign = data.get("user_to_assign", {})
     data_script = class_obj.current_record
     class_obj.timezone = data_script.get('timezone', 'America/Mexico_City')
@@ -2210,6 +2292,8 @@ if __name__ == "__main__":
         response = class_obj.update_rondin(folio=folio,rondin_data=rondin_data)
     elif option == 'assign_rondin':
         response = class_obj.assign_rondin(record_id=record_id, user_to_assign=user_to_assign)
+    elif option == 'asignar_recorrido':
+        response = class_obj.asignar_recorrido(folio=folio, asignado_a=asignado_a)
     elif option in ('run_rondin','run_cron'):
         response = class_obj.run_cron(dag_id=dag_id)
     else:
