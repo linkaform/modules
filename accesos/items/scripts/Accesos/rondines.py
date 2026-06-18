@@ -41,7 +41,8 @@ class Accesos(Accesos):
             'comentario_general':'69149dcec7b3ec9f2b9395b2',
             'comentarios_generales':'6927a0cdc03f0f8e5355437a',
             'url_rondin':'690cefdca2dff2f469da17e0',
-            'nombre_emp':'638a9a7767c332f5d459fc81'
+            'nombre_emp':'638a9a7767c332f5d459fc81',
+            'area':f"{self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.mf['nombre_area_salida']}",
         })
     def rondin_asignado_a(self, asignado_a):
         """
@@ -1170,6 +1171,7 @@ class Accesos(Accesos):
                 "dag_id":{"$ifNull": [f"$answers.{self.rondin_keys['dag_id']}", ""]},
                 "fecha1":f"$answers.{self.rondin_keys['fecha1']}",
                 "fecha2":f"$answers.{self.rondin_keys['fecha2']}",
+                "area":f"$answers.{self.f['area']}",
             }},
             {"$sort": {"folio": -1}},
             {"$skip": offset},
@@ -2130,32 +2132,75 @@ class Accesos(Accesos):
 
     def update_rondin(self, folio, rondin_data: dict = {}):
         answers = {}
-
         for key, value in rondin_data.items():
             if key == 'ubicacion':
-                answers[self.Location.UBICACIONES_CAT_OBJ_ID] = {
-                    self.Location.f['location']: value
-                }
+                ubicacion_result = self.get_ubicacion_geolocation(location=value)
+                ubicacion = ubicacion_result if ubicacion_result else value
+                if isinstance(ubicacion, dict):
+                    answers[self.Location.UBICACIONES_CAT_OBJ_ID] = {
+                        self.Location.f['location']: ubicacion.get('location', ''),
+                        self.f['address_geolocation']: ubicacion.get('geolocation', [])
+                    }
+                else:
+                    answers[self.Location.UBICACIONES_CAT_OBJ_ID] = {
+                        self.Location.f['location']: ubicacion,
+                        self.f['address_geolocation']: []
+                    }
+            elif key == 'area':
+                if value:
+                    answers[self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID] = {
+                        self.mf['nombre_area_salida']: value
+                    }
             elif key == 'grupo_asignado':
                 answers[self.GRUPOS_CAT_OBJ_ID] = {
                     self.rondin_keys[key]: value
                 }
+            elif key == 'asignado_a':
+                answers[self.rondin_keys['grupo_asignado_a']] = self.rondin_asignado_a(value)
             elif key == 'areas':
                 areas_list = []
                 for area in value:
-                    area_dict = {
-                        self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
-                            self.Location.f['area']: area
+                    if isinstance(area, dict):
+                        area_dict = {
+                            self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
+                                self.Location.f['area']: area.get('area', ''),
+                                self.f['geolocalizacion_area_ubicacion']: [{
+                                    'latitude': area.get('latitude', 0),
+                                    'longitude': area.get('longitude', 0)
+                                }],
+                                self.f['foto_area']: area.get('image', []),
+                                self.f['area_tag_id']: [area.get('tag_id', [])]
+                            }
                         }
-                    }
+                    else:
+                        area_dict = {
+                            self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
+                                self.Location.f['area']: area,
+                                self.f['geolocalizacion_area_ubicacion']: [],
+                                self.f['foto_area']: [],
+                                self.f['area_tag_id']: []
+                            }
+                        }
                     areas_list.append(area_dict)
                 answers[self.rondin_keys["grupo_areas"]] = areas_list
-            elif value == '':
+            elif key == 'sucede_recurrencia' and value and ('dia_del_mes' in value or 'mes' in value):
+                actual_day = datetime.now().day
+                answers[self.rondin_keys['que_dia_del_mes']] = int(actual_day)
+                answers[self.rondin_keys[key]] = value
+            elif key == 'tipo_rondin':
+                if value:
+                    answers[self.rondin_keys[key]] = value.lower()
+            elif value == '' or value is None:
                 pass
             else:
                 answers[self.rondin_keys[key]] = value
-        response = self.lkf_api.patch_multi_record( answers=answers,
-            form_id=self.CONFIGURACION_RECORRIDOS_FORM, folios=[folio])
+
+        print('actualizando rondin...', simplejson.dumps(answers, indent=4))
+        response = self.lkf_api.patch_multi_record(
+            answers=answers,
+            form_id=self.CONFIGURACION_RECORRIDOS_FORM,
+            folios=[folio]
+        )
         return response
 
     def _verificar_bitacora_programada(self, dia, year, month, hora_valida, bitacora_rondines):
