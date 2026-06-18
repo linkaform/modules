@@ -451,6 +451,7 @@ if __name__ == "__main__":
 
     dispatcher = {
         "create_pass_transportista": lambda: script_obj.create_pass_transportista(payload),
+        "create_visit_transportista": lambda: script_obj.create_visit_transportista(payload),
         "generate_submit_token_transportista": lambda: script_obj.generate_submit_token_transportista(record_id),
         "get_andenes": lambda: script_obj.get_andenes(),
         "get_horarios_data": lambda: script_obj.get_horarios_data(dia=data.get('dia')),
