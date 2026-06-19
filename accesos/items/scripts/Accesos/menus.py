@@ -72,6 +72,7 @@ class Accesos(Accesos):
         self.OFFLINE_SERVICES = self.lkm.script_id('offline_services','id')
         self.SCRIPT_MENUS = self.lkm.script_id('menus','id')
         self.FILTERS = self.lkm.script_id('filters','id')
+        self.SCRIPT_INCIDENCIAS = self.lkm.script_id('incidencias','id')
 
         self.module_permits = {
             'always':{
@@ -107,7 +108,7 @@ class Accesos(Accesos):
             'seguridad':{
                 'forms':[self.CONFIGURACION_RECORRIDOS_FORM, self.BITACORA_RONDINES, self.BITACORA_FALLAS, self.BITACORA_INCIDENCIAS],
                 'catalogs':[],
-                'scripts':[self.SCRIPT_RONDINES, self.FALLAS]
+                'scripts':[self.SCRIPT_RONDINES, self.FALLAS, self.SCRIPT_INCIDENCIAS]
             },
             'activos':{
                 'forms':[self.CONCESSIONED_ARTICULOS, self.BITACORA_OBJETOS_PERDIDOS],
