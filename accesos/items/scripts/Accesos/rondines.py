@@ -44,6 +44,30 @@ class Accesos(Accesos):
             'nombre_emp':'638a9a7767c332f5d459fc81',
             'area':f"{self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.mf['nombre_area_salida']}",
         })
+
+    def _extract_record_id_from_url(self, registro_padre_value):
+        """
+        registro_padre puede ser URL completa:
+        https://host/#/records/detail/6612abc123...
+        o directo el _id. Retorna solo el ID.
+        """
+        if not registro_padre_value:
+            return None
+        if '/' in str(registro_padre_value):
+            return registro_padre_value.rstrip('/').split('/')[-1]
+        return registro_padre_value
+
+    def _get_child_records(self, registro_padre):
+        """
+        Busca en MongoDB todos los hijos que apunten a este parent_id en registro_padre.
+        """
+        query = {
+            'form_id': self.BITACORA_RONDINES,
+            'deleted_at': {'$exists': False},
+            f'answers.{self.rondin_keys["registro_padre"]}': registro_padre,
+        }
+        return list(self.cr.find(query))
+
     def rondin_asignado_a(self, asignado_a):
         """
         Crea grupo repetitivo de personas asignadas a un rondin.
@@ -78,6 +102,106 @@ class Accesos(Accesos):
                     self.mf['nombre_empleado']: asignado_a
                 }
             }]
+
+    def claim_rondin(self, record_id):
+        """
+        El usuario actual reclama este rondin.
+        1. Determina si es padre o hijo
+        2. Obtiene todos los registros relacionados (padre + hermanos, o hijos)
+        3. Borra el inbox de CouchDB de los otros usuarios
+        """
+        # --- 1. Obtener el registro actual desde MongoDB ---
+        record = self.get_record_by_id(record_id)
+        if not record:
+            return False, "Registro no encontrado"
+
+        answers = record.get('answers', {})
+        registro_padre = answers.get(self.rondin_keys['registro_padre'])
+
+        # --- 2. Determinar familia de registros ---
+        if registro_padre:
+            # Es un hijo → buscar padre y todos los hermanos
+            parent_id = self._extract_record_id_from_url(registro_padre)
+            siblings = self._get_child_records(registro_padre)
+            related_records = [r for r in siblings if str(r['_id']) != str(record_id)]
+            parent_record = self.get_record_by_id(parent_id)
+            if parent_record:
+                related_records.append(parent_record)
+        else:
+            # Es padre → buscar todos sus hijos
+            children = self._get_child_records(record_id)
+            related_records = [r for r in children if str(r['_id']) != str(record_id)]
+
+        # --- 3. Bloqueo atómico ---
+        STATUS_FIELD = f'answers.{self.mf["estatus_del_recorrido"]}'
+        
+        related_ids = [r['_id'] for r in related_records]
+        all_ids = related_ids + [record['_id']]
+
+        if related_ids:
+            # TODO utilizar session de mongo para que sea una transaccion ACID
+            # Paso 1: Obtener exactamente cuáles están en 'programado'
+            programados = list(self.cr.find(
+                {'_id': {'$in': all_ids}, STATUS_FIELD: 'programado'},
+                {'_id': 1}  # solo necesitamos el _id
+            ))
+            programados_ids = [r['_id'] for r in programados]
+
+            if len(programados_ids) != len(all_ids):
+                return False, "El rondin ya fue reclamado por otro usuario"
+
+            #Paso 2: update_many solo sobre los que YO encontré en 'programado'
+            result = self.cr.update_many(
+                {'_id': {'$in': programados_ids}, STATUS_FIELD: 'programado'},
+                {'$set': {STATUS_FIELD: 'reclamado'}}
+            )
+
+
+        # --- 4. El registro reclamado pasa a en_proceso ---
+        self.cr.update_one(
+            {'_id': ObjectId(record['_id'])},
+            {'$set': {STATUS_FIELD: 'en_proceso'}}
+        )
+
+
+        if related_records:
+            related_ids = [str(r['_id']) for r in related_records]
+            # related_ids.append(str(record_id))  # incluir el que se está reclamando
+            self.lkf_api.patch_multi_record(
+                answers={self.rondin_keys['status']: 'reclamado'},
+                form_id=self.BITACORA_RONDINES,
+                record_id=related_ids,
+            )
+        
+        self.lkf_api.patch_multi_record(
+            answers={self.mf['estatus_del_recorrido']: 'en_proceso'},
+            form_id=self.BITACORA_RONDINES,
+            record_id=[str(record['_id'])],
+        )
+
+
+        return True, {'claimed': record_id, 'unassinged_records': len(related_ids)}
+
+    def delete_claimed_record(self):
+        #TODO HAY QUE LLEVAR ESTO A UNA OPCION DE PARA QUE EL WORKFLOW LO BORRE
+        usuario_obj = self.answers.get(self.USUARIOS_OBJ_ID, {})
+
+        user_id = self.unlist(usuario_obj.get(self.mf['id_usuario'], []))
+
+        if not user_id:
+            return True
+
+        rel_record_id = str(self.current_record['_id'])
+        try:
+            db_name = f"clave_{user_id}"
+            couch_db = self.get_couch_user_db(db_name)
+            couch_record = couch_db.get(rel_record_id)
+            if couch_record:
+                couch_db.delete(couch_record)
+        except Exception as e:
+            errors.append({'user_id': user_id, 'record_id': rel_record_id, 'error': str(e)})
+        return True
+
 
     def create_rondin(self, rondin_data: dict = {}):
         """Crea un rondin con los datos proporcionados.
@@ -1120,6 +1244,7 @@ class Accesos(Accesos):
         match = {
             "form_id": self.CONFIGURACION_DE_RECORRIDOS_FORM,
             "deleted_at": {"$exists": False},
+            f"answers.{self.f['status_cron']}":{'$ne':'eliminado'}
         }
 
         if date_from:
@@ -2305,9 +2430,10 @@ if __name__ == "__main__":
     data_script = class_obj.current_record
     class_obj.timezone = data_script.get('timezone', 'America/Mexico_City')
     tz = pytz.timezone(class_obj.timezone)
-
     if option == 'create_rondin':
         response = class_obj.create_rondin(rondin_data=rondin_data)
+    elif option == 'claim_rondin':
+        response = class_obj.claim_rondin(record_id)
     elif option == 'create_incidencia_by_rondin':
         response = class_obj.create_incidencia_by_rondin(data=rondin_data)
     elif option == 'delete_rondin':
