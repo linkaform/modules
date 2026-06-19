@@ -139,6 +139,7 @@ class Accesos(Accesos):
             'accion_recurrencia': 'programar' # 'programar', 'pausar' o 'eliminar'
         }
         answers = {}
+        tipo_asignacion = rondin_data.get('tipo_asignacion', 'responsable_en_turno')
         ubicacion_result = self.get_ubicacion_geolocation(location=rondin_data.get('ubicacion', ''))
         rondin_data['ubicacion'] = ubicacion_result if ubicacion_result else rondin_data.get('ubicacion', '')
         areas_result = self.get_areas_details(areas_list=rondin_data.get('areas', []))
@@ -202,12 +203,26 @@ class Accesos(Accesos):
                 pass
             elif key == 'tipo_rondin':
                 answers[self.rondin_keys[key]] = value.lower()
+            elif key == 'tipo_asignacion':
+                answers[self.rondin_keys['tipo_asignacion']] = value
             elif key == 'asignado_a':
-                answers[self.rondin_keys['grupo_asignado_a']] = self.rondin_asignado_a(value)
+                if not value:
+                    pass
+                elif tipo_asignacion == 'grupo':
+                    print("aqui andamos")
+                    grupo_nombre = value[0] if isinstance(value, list) else value
+                    answers[self.GRUPOS_CAT_OBJ_ID] = {
+                        self.rondin_keys['grupo_nombre']: grupo_nombre,
+                    }
+                elif tipo_asignacion == 'persona_especifica':
+                    nombre = value[0] if isinstance(value, list) else value
+                    answers[self.rondin_keys['grupo_asignado_a']] = self.rondin_asignado_a(nombre)
+                else:
+                    # responsable_en_turno
+                    answers[self.rondin_keys['grupo_asignado_a']] = self.rondin_asignado_a(value)
             else:
                 answers[self.rondin_keys[key]] = value
         print('creando rondin...', simplejson.dumps(answers, indent=4))
-        # print(stop)
         response = self.create_register(
             module='Accesos',
             process='Creacion de un rondin',
