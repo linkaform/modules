@@ -1469,6 +1469,11 @@ class Accesos(Accesos):
         else:
             raise Exception("Ubicacion is required.")
 
+    def catalago_grupos_recorridos(self):
+        catalog_id = self.GRUPOS_CAT_ID
+        form_id = self.CONFIGURACION_RECORRIDOS_FORM
+        return self.catalogo_view(catalog_id, form_id)
+    
     def get_catalog_areas_formatted(self, ubicacion=""):
         #Obtener areas disponibles para rondin
         if ubicacion:
@@ -2462,6 +2467,8 @@ if __name__ == "__main__":
         response = class_obj.get_bitacora_by_id(record_id=record_id)
     elif option == 'get_catalog_areas_formatted':
         response = class_obj.get_catalog_areas_formatted(ubicacion=ubicacion)
+    elif option == 'catalago_grupos_recorridos':
+        response = class_obj.catalago_grupos_recorridos()
     elif option == 'pause_or_play_rondin':
         response = class_obj.pause_or_play_rondin(record_id=record_id, paused=paused)
     elif option == 'update_rondin':
