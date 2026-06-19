@@ -45,6 +45,7 @@ class Accesos(Accesos):
             'area':f"{self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.mf['nombre_area_salida']}",
         })
 
+
     def _extract_record_id_from_url(self, registro_padre_value):
         """
         registro_padre puede ser URL completa:
@@ -202,7 +203,6 @@ class Accesos(Accesos):
             errors.append({'user_id': user_id, 'record_id': rel_record_id, 'error': str(e)})
         return True
 
-
     def create_rondin(self, rondin_data: dict = {}):
         """Crea un rondin con los datos proporcionados.
         Args:
@@ -334,9 +334,9 @@ class Accesos(Accesos):
                     pass
                 elif tipo_asignacion == 'grupo':
                     print("aqui andamos")
-                    grupo_nombre = value[0] if isinstance(value, list) else value
+                    grupo_asignado = value[0] if isinstance(value, list) else value
                     answers[self.GRUPOS_CAT_OBJ_ID] = {
-                        self.rondin_keys['grupo_nombre']: grupo_nombre,
+                        self.rondin_keys['grupo_asignado']: grupo_asignado,
                     }
                 elif tipo_asignacion == 'persona_especifica':
                     nombre = value[0] if isinstance(value, list) else value
@@ -1369,35 +1369,44 @@ class Accesos(Accesos):
             {"$project": {
                 "_id": 0,
                 "folio": 1,
-                "nombre_del_rondin": f"$answers.{self.rondin_keys['nombre_rondin']}",
-                "recurrencia": {"$ifNull": [f"$answers.{self.rondin_keys['la_tarea_es_de']}", 'No Recurrente']},
-                "asignado_a": {"$ifNull": [f"$answers.{self.GRUPOS_CAT_OBJ_ID}.{self.rondin_keys['grupo_asignado']}", 'No Asignado']},
-                "ubicacion": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}",
-                "ubicacion_geolocation": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.f['address_geolocation']}",
-                "estatus_rondin": f"$answers.{self.f['status_cron']}",
-                "fecha_inicio_rondin": f"$answers.{self.f['fecha_primer_evento']}",
-                "duracion_esperada_rondin": {"$ifNull": [f"$answers.{self.rondin_keys['duracion_estimada']}", "No especificada"]},
-                "fecha_final_rondin": {"$ifNull": [f"$answers.{self.f['fecha_final_recurrencia']}", "Sin fecha final"]},
-                "cantidad_de_puntos": {"$size": {"$ifNull": [f"$answers.{self.rondin_keys['areas']}", []]}},
+                "accion_recurrencia": f"$answers.{self.rondin_keys['accion_recurrencia']}",
                 "areas": f"$answers.{self.rondin_keys['areas']}",
-                "la_recurrencia_cuenta_con_fecha_final":f"$answers.{self.rondin_keys['la_recurrencia_cuenta_con_fecha_final']}",
-                "grupo_asignado_rondin":f"$answers.{self.rondin_keys['grupo_asignado_rondin']}",
-                "id_grupo":f"$answers.{self.rondin_keys['id_grupo']}",
-                "cron_id":f"$answers.{self.rondin_keys['cron_id']}",
-                "programar_anticipacion":f"$answers.{self.rondin_keys['programar_anticipacion']}",
-                "accion_recurrencia":f"$answers.{self.rondin_keys['accion_recurrencia']}",
-                "en_que_mes":f"$answers.{self.rondin_keys['en_que_mes']}",
-                "en_que_semana_sucede":f"$answers.{self.rondin_keys['en_que_semana_sucede']}",
-                "que_dias_de_la_semana":f"$answers.{self.rondin_keys['que_dias_de_la_semana']}",
-                "sucede_recurrencia":f"$answers.{self.rondin_keys['sucede_recurrencia']}",
-                "sucede_cada":f"$answers.{self.rondin_keys['sucede_cada']}",
-                "se_repite_cada":f"$answers.{self.rondin_keys['se_repite_cada']}",
-                "tiempo_para_ejecutar_tarea_expresado_en":f"$answers.{self.rondin_keys['tiempo_para_ejecutar_tarea_expresado_en']}",
-                "tiempo_para_ejecutar_tarea":f"$answers.{self.rondin_keys['tiempo_para_ejecutar_tarea']}",
-                "fecha_hora_programada":f"$answers.{self.rondin_keys['fecha_hora_programada']}",
-                "tipo_rondin":{"$ifNull": [f"$answers.{self.rondin_keys['tipo_rondin']}", "qr"]},
-                "fecha1":f"$answers.{self.rondin_keys['fecha1']}",
-                "fecha2":f"$answers.{self.rondin_keys['fecha2']}",
+                "cantidad_de_puntos": {"$size": {"$ifNull": [f"$answers.{self.rondin_keys['areas']}", []]}},
+                "cron_id": f"$answers.{self.rondin_keys['cron_id']}",
+                "dag_id": f"$answers.{self.rondin_keys['dag_id']}",
+                "duracion_esperada_rondin": {"$ifNull": [f"$answers.{self.rondin_keys['duracion_estimada']}", "No especificada"]},
+                "empleados_asignado": {
+                    "$map": {
+                        "input": {"$ifNull": [f"$answers.{self.rondin_keys['grupo_asignado_a']}", []]},
+                        "as": "emp",
+                        "in": f"$$emp.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_empleado']}"
+                    }
+                },                
+                "en_que_mes": f"$answers.{self.rondin_keys['en_que_mes']}",
+                "en_que_semana_sucede": f"$answers.{self.rondin_keys['en_que_semana_sucede']}",
+                "estatus_rondin": f"$answers.{self.f['status_cron']}",
+                "fecha1": f"$answers.{self.rondin_keys['fecha1']}",
+                "fecha2": f"$answers.{self.rondin_keys['fecha2']}",
+                "fecha_final_rondin": {"$ifNull": [f"$answers.{self.f['fecha_final_recurrencia']}", "Sin fecha final"]},
+                "fecha_hora_programada": f"$answers.{self.rondin_keys['fecha_hora_programada']}",
+                "fecha_inicio_rondin": f"$answers.{self.f['fecha_primer_evento']}",
+                "id_grupo": {"$arrayElemAt": [f"$answers.{self.GRUPOS_CAT_OBJ_ID}.{self.rondin_keys['id_grupo']}", 0]},
+                "grupo_asignado": {"$ifNull": [f"$answers.{self.GRUPOS_CAT_OBJ_ID}.{self.rondin_keys['grupo_asignado']}",None]},
+                "la_recurrencia_cuenta_con_fecha_final": f"$answers.{self.rondin_keys['la_recurrencia_cuenta_con_fecha_final']}",
+                "nombre_del_rondin": f"$answers.{self.rondin_keys['nombre_rondin']}",
+                "programar_anticipacion": f"$answers.{self.rondin_keys['programar_anticipacion']}",
+                "que_dias_de_la_semana": f"$answers.{self.rondin_keys['que_dias_de_la_semana']}",
+                "recurrencia": {"$ifNull": [f"$answers.{self.rondin_keys['la_tarea_es_de']}", 'No Recurrente']},
+                "se_repite_cada": f"$answers.{self.rondin_keys['se_repite_cada']}",
+                "sucede_cada": f"$answers.{self.rondin_keys['sucede_cada']}",
+                "sucede_recurrencia": f"$answers.{self.rondin_keys['sucede_recurrencia']}",
+                "tiempo_para_ejecutar_tarea": f"$answers.{self.rondin_keys['tiempo_para_ejecutar_tarea']}",
+                "tiempo_para_ejecutar_tarea_expresado_en": f"$answers.{self.rondin_keys['tiempo_para_ejecutar_tarea_expresado_en']}",
+                "tipo_asignacion": f"$answers.{self.rondin_keys['tipo_asignacion']}",
+                "tipo_rondin": {"$ifNull": [f"$answers.{self.rondin_keys['tipo_rondin']}", "qr"]},
+                "ubicacion": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}",
+                "ubicacion_area": f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.Location.f['area_salida']}",
+                "ubicacion_geolocation": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.f['address_geolocation']}",
             }},
         ]
 
@@ -1411,8 +1420,6 @@ class Accesos(Accesos):
             duracion_promedio = self.get_average_rondin_duration(location=location, rondin_name=rondin_name)
             format_response['duracion_promedio'] = duracion_promedio
         return format_response
-
-        return data
 
     def get_ubicacion_geolocation(self, location: str):
         """

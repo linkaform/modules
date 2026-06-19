@@ -226,7 +226,7 @@ class Accesos(Accesos):
         self.menu_form_fields = {
             "username": "6759e4a7a9a6e13c7b26da33",
             "usuario_id": "638a9a99616398d2e392a9f5",
-            "grupo_nombre": "638a9ab3616398d2e392a9fa",
+            "grupo_asignado": "638a9ab3616398d2e392a9fa",
             "grupo_id": "639b65dfaf316bacfc551ba2",
             "elementos": "69efaf4c4a59aa2591074f45",
             "menu": "69efaf883bcb25ed1458465d",
