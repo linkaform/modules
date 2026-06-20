@@ -37,6 +37,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             self.FORMA_LIBERACION_COBRE_TELNOR, 
         ]
         self.SCRIPT_ID_ENVIAR_EMAIL = 149873
+        self.error_al_crear_ocs = False
 
     def get_descuentos_form_nomina(self):
         records_nomina = self.get_records(
@@ -1236,8 +1237,10 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
             contratista_error = email_of_connection if email_of_connection else connection_id
             msg_error_back = response_oc.get('json', {}).get('error', '')#.encode('utf-8')
             errors_to_create.append(f'No se pudo crear la OC para el contratista: {contratista_error} {msg_error_back}')
+            self.error_al_crear_ocs = True
         else:
             errors_to_create.append( f'Ocurrió un error al crear la OC: {response_oc}' )
+            self.error_al_crear_ocs = True
         return errors_to_create
 
     def ordenar_por_expediente(self, lista_folios, fecha_inicio_bono, fecha_fin_bono):
@@ -1717,10 +1720,12 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
                     except Exception as e:
                         print('------------ error en el precio para el folio {} msg: {}'.format(folio_lib, str(e)))
                         print(f'tipo_trabajo= {tipo_trabajo} year= {year} infra={infra} nivel={nivel} valor_del_campo={valor_del_campo} map_field_id={map_field_id} map_product_name={map_product_name_encode} FOLIO={folio_lib}')
+                        self.error_al_crear_ocs = True
                         return 'Ocurrió un error al obtener el precio para el folio: {}'.format(folio_lib)
                     if columna_total < 0:
                         print('XXXXX PRECIO NEGATIVO XXXXX')
                         print(f'tipo_trabajo= {tipo_trabajo} year= {year} infra={infra} nivel={nivel} valor_del_campo={valor_del_campo} map_field_id={map_field_id} map_product_name={map_product_name_encode} FOLIO={folio_lib}')
+                        self.error_al_crear_ocs = True
                         return False
                         return 'Ocurrió un error al obtener el precio para el folio: {}'.format(folio_lib)
                     arr_detalle[idx] = columna_total
