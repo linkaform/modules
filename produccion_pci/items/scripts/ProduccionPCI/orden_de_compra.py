@@ -2554,7 +2554,8 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         self.run_script_set_folio_oc()
 
         # Se ejecuta script para enviar los correos con el excel de OCs a cada contratista
-        self.run_script_enviar_emails()
+        if not self.error_al_crear_ocs:
+            self.run_script_enviar_emails()
     
     def orden_de_compra(self):
         """ Se inicia el proceso para generar las Ordenes de Compra """
