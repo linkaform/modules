@@ -139,7 +139,7 @@ class Custom(Custom):
 
     def create_record_molino(self, data_programacion, data_fecha):
         answers_recorrido_molino = self.similar_fields(data_fecha, data_programacion)
-        answers_recorrido_molino[ self.obj_usuarios ].pop( self.field_username, None )
+        # answers_recorrido_molino[ self.obj_usuarios ].pop( self.field_username, None )
         self.create_records_recorridos(self.FORM_ID_MOLINOS, answers_recorrido_molino)
 
     def delete_record_from_inbox(self, str_record_id, user_id_inbox):
