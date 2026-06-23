@@ -1415,11 +1415,15 @@ class Accesos(Accesos):
         response = self.unlist(response)
         format_response = {}
         if response:
+            # format_response['tipo_asignacion'] = response.get('tipo_asignacion', '')
+            print(simplejson.dumps(response, indent=4))
             format_response = self.format_rondin_by_id(response)
+            # print("ALLALALALALALA",simplejson.dumps(response, indent=4))
             location = response.get('ubicacion', '')
             rondin_name = response.get('nombre_del_rondin', '')
             duracion_promedio = self.get_average_rondin_duration(location=location, rondin_name=rondin_name)
             format_response['duracion_promedio'] = duracion_promedio
+        # print(simplejson.dumps(format_response, indent=4))
         return format_response
 
     def get_ubicacion_geolocation(self, location: str):
@@ -1496,7 +1500,12 @@ class Accesos(Accesos):
         catalog_id = self.GRUPOS_CAT_ID
         form_id = self.CONFIGURACION_RECORRIDOS_FORM
         return self.catalogo_view(catalog_id, form_id)
-    
+
+    def catalogo_inspecciones(self): 
+        catalog_id = self.INSPECCIONES_CAT_ID
+        form_id = self.CONFIGURACION_RECORRIDOS_FORM
+        return self.catalogo_view(catalog_id, form_id)
+
     def get_catalog_areas_formatted(self, ubicacion=""):
         #Obtener areas disponibles para rondin
         if ubicacion:
@@ -2323,7 +2332,11 @@ class Accesos(Accesos):
                                 }],
                                 self.f['foto_area']: area.get('image', []),
                                 self.f['area_tag_id']: [area.get('tag_id', [])]
-                            }
+                            },
+                            self.CATALOGO_FORMAS_OBJ_ID: {
+                                self.f['nombre_forma']: area.get('inspeccion', '')
+                            },
+                            self.f['prompt_inspeccion']: area.get('prompt_inspeccion', '')
                         }
                     else:
                         area_dict = {
@@ -2332,7 +2345,9 @@ class Accesos(Accesos):
                                 self.f['geolocalizacion_area_ubicacion']: [],
                                 self.f['foto_area']: [],
                                 self.f['area_tag_id']: []
-                            }
+                            },
+                            self.CATALOGO_FORMAS_OBJ_ID: {},
+                            self.f['prompt_inspeccion']: ''
                         }
                     areas_list.append(area_dict)
                 answers[self.rondin_keys["grupo_areas"]] = areas_list
@@ -2492,6 +2507,8 @@ if __name__ == "__main__":
         response = class_obj.get_catalog_areas_formatted(ubicacion=ubicacion)
     elif option == 'catalago_grupos_recorridos':
         response = class_obj.catalago_grupos_recorridos()
+    elif option == 'catalogo_inspecciones':
+        response = class_obj.catalogo_inspecciones()
     elif option == 'pause_or_play_rondin':
         response = class_obj.pause_or_play_rondin(record_id=record_id, paused=paused)
     elif option == 'update_rondin':
