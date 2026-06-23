@@ -1502,7 +1502,7 @@ class Accesos(Accesos):
         return self.catalogo_view(catalog_id, form_id)
 
     def catalogo_inspecciones(self): 
-        catalog_id = self.INSPECCIONES_CAT_ID
+        catalog_id = self.CATALOGO_FORMAS_CAT_ID
         form_id = self.CONFIGURACION_RECORRIDOS_FORM
         return self.catalogo_view(catalog_id, form_id)
 
