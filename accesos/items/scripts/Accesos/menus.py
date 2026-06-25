@@ -311,7 +311,7 @@ class Accesos(Accesos):
             {"$match": {
                 "form_id": self.MENUS_FORM,
                 "deleted_at": {"$exists": False},
-                f"answers.{self.USUARIOS_OBJ_ID}.{self.menu_form_fields['username']}": self.user.get('username')
+                f"answers.{self.USUARIOS_OBJ_ID}.{self.menu_form_fields['usuario_id']}": self.user.get('user_id')
             }},
             {"$project": {
                 "_id": 0,

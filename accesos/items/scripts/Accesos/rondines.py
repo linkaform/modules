@@ -1275,11 +1275,15 @@ class Accesos(Accesos):
             {"$match": match},
             {"$project": {
                 "_id": 1,
+                "folio":1,
                 "accion_recurrencia": f"$answers.{self.rondin_keys['accion_recurrencia']}",
                 "areas": f"$answers.{self.rondin_keys['areas']}",
+                "areas_name": f"$answers.{self.rondin_keys['areas']}.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area']}",  
                 "cantidad_de_puntos": {"$size": {"$ifNull": [f"$answers.{self.rondin_keys['areas']}", []]}},
+                "checkpoints": {"$size": {"$ifNull": [f"$answers.{self.rondin_keys['areas']}", []]}},  
                 "cron_id": f"$answers.{self.rondin_keys['cron_id']}",
-                "dag_id": f"$answers.{self.rondin_keys['dag_id']}",
+                "dag_id": {"$ifNull": [f"$answers.{self.rondin_keys['dag_id']}", ""]},
+                "duracion_estimada": f"$answers.{self.rondin_keys['duracion_estimada']}",  
                 "duracion_esperada_rondin": {"$ifNull": [f"$answers.{self.rondin_keys['duracion_estimada']}", "No especificada"]},
                 "empleados_asignado": {
                     "$map": {
@@ -1297,6 +1301,7 @@ class Accesos(Accesos):
                 "fecha_hora_programada": f"$answers.{self.rondin_keys['fecha_hora_programada']}",
                 "fecha_inicio_rondin": f"$answers.{self.f['fecha_primer_evento']}",
                 "grupo_asignado": {"$ifNull": [f"$answers.{self.GRUPOS_CAT_OBJ_ID}.{self.rondin_keys['grupo_asignado']}", None]},
+                # "grupo_asignado_rondin": f"$answers.{self.rondin_keys['grupo_asignado_rondin']}",
                 "id_grupo": {"$arrayElemAt": [f"$answers.{self.GRUPOS_CAT_OBJ_ID}.{self.rondin_keys['id_grupo']}", 0]},
                 "la_recurrencia_cuenta_con_fecha_final": f"$answers.{self.rondin_keys['la_recurrencia_cuenta_con_fecha_final']}",
                 "nombre_del_rondin": f"$answers.{self.rondin_keys['nombre_rondin']}",
@@ -1313,8 +1318,10 @@ class Accesos(Accesos):
                 "ubicacion": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}",
                 "ubicacion_area": f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.Location.f['area_salida']}",
                 "ubicacion_geolocation": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.f['address_geolocation']}",
+                "area": f"$answers.{self.f['area']}", 
+                "cada_cuantos_dias_se_repite": f"$answers.{self.rondin_keys['cada_cuantos_dias_se_repite']}", 
             }},
-            {"$sort": {"folio": -1}},
+            {"$sort": {"_id": -1}}, 
             {"$skip": offset},
             {"$limit": limit}
         ]
@@ -1503,7 +1510,7 @@ class Accesos(Accesos):
         return self.catalogo_view(catalog_id, form_id)
 
     def catalogo_inspecciones(self): 
-        catalog_id = self.INSPECCIONES_CAT_ID
+        catalog_id = self.CATALOGO_FORMAS_CAT_ID
         form_id = self.CONFIGURACION_RECORRIDOS_FORM
         return self.catalogo_view(catalog_id, form_id)
 
@@ -2292,7 +2299,53 @@ class Accesos(Accesos):
         response = self.lkf_api.run_cron(dag_id)
         print('response', response)
         return response
+    
+    def update_inspeccion(self, folio, rondin_data: dict = {}):
+        answers = {}
+        existing_record = self.get_rondin_by_id(folio)
+        folio = existing_record.get("folio", "")
+        existing_areas = existing_record.get("areas", [])
+        if existing_areas and isinstance(existing_areas[0], list):
+            existing_areas = existing_areas[0]
 
+        inspeccion = rondin_data.get('inspeccion', '')
+        prompt_inspeccion = rondin_data.get('prompt_inspeccion', '')
+        areas_targets = rondin_data.get('areas', [])
+
+        updated_areas = []
+        for i, area_item in enumerate(existing_areas):
+            area_nombre = area_item.get('rondin_area', '')
+            should_update = (
+                not areas_targets or
+                areas_targets == ["todas"] or
+                area_nombre in areas_targets
+            )
+            area_dict = {
+                self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
+                    self.Location.f['area']: area_nombre,
+                    self.f['area_tag_id']: area_item.get('area_tag_id', []),
+                    self.f['foto_area']: area_item.get('foto_area', []),
+                    self.f['geolocalizacion_area_ubicacion']: area_item.get('geolocalizacion_area_ubicacion', []),
+                },
+                self.CATALOGO_FORMAS_OBJ_ID: {
+                    self.mf['nombre_forma']: inspeccion if should_update else area_item.get(self.CATALOGO_FORMAS_OBJ_ID, {}).get(self.mf['nombre_forma'], ''),
+                    self.rondin_keys['grupo_id']: area_item.get(self.CATALOGO_FORMAS_OBJ_ID, {}).get(self.rondin_keys['grupo_id'], ['129870'])
+                },
+                self.rondin_keys['prompt_inspeccion']: prompt_inspeccion if should_update else area_item.get(self.rondin_keys['prompt_inspeccion'], '')
+            }
+            updated_areas.append(area_dict)
+
+        answers[self.rondin_keys["areas"]] = {str(i): area for i, area in enumerate(updated_areas)}
+
+        print('actualizando inspeccion...', simplejson.dumps(answers, indent=4))
+
+        response = self.lkf_api.patch_multi_record(
+            answers=answers,
+            form_id=self.CONFIGURACION_RECORRIDOS_FORM,
+            folios=[folio,]
+        )
+        return response
+    
     def update_rondin(self, folio, rondin_data: dict = {}):
         answers = {}
         for key, value in rondin_data.items():
@@ -2334,10 +2387,8 @@ class Accesos(Accesos):
                                 self.f['foto_area']: area.get('image', []),
                                 self.f['area_tag_id']: [area.get('tag_id', [])]
                             },
-                            self.CATALOGO_FORMAS_OBJ_ID: {
-                                self.f['nombre_forma']: area.get('inspeccion', '')
-                            },
-                            self.f['prompt_inspeccion']: area.get('prompt_inspeccion', '')
+                            self.CATALOGO_FORMAS_OBJ_ID: {},
+                            self.rondin_keys['prompt_inspeccion']: ''
                         }
                     else:
                         area_dict = {
@@ -2348,10 +2399,11 @@ class Accesos(Accesos):
                                 self.f['area_tag_id']: []
                             },
                             self.CATALOGO_FORMAS_OBJ_ID: {},
-                            self.f['prompt_inspeccion']: ''
+                            self.rondin_keys['prompt_inspeccion']: ''
                         }
                     areas_list.append(area_dict)
-                answers[self.rondin_keys["grupo_areas"]] = areas_list
+                answers[self.rondin_keys["areas"]] = areas_list
+           
             elif key == 'sucede_recurrencia' and value and ('dia_del_mes' in value or 'mes' in value):
                 actual_day = datetime.now().day
                 answers[self.rondin_keys['que_dia_del_mes']] = int(actual_day)
@@ -2365,6 +2417,8 @@ class Accesos(Accesos):
                 answers[self.rondin_keys[key]] = value
 
         print('actualizando rondin...', simplejson.dumps(answers, indent=4))
+        print("grupoooo", folio)
+
         response = self.lkf_api.patch_multi_record(
             answers=answers,
             form_id=self.CONFIGURACION_RECORRIDOS_FORM,
@@ -2514,6 +2568,8 @@ if __name__ == "__main__":
         response = class_obj.pause_or_play_rondin(record_id=record_id, paused=paused)
     elif option == 'update_rondin':
         response = class_obj.update_rondin(folio=folio,rondin_data=rondin_data)
+    elif option == 'update_inspeccion':
+        response = class_obj.update_inspeccion(folio=folio,rondin_data=rondin_data)
     elif option == 'assign_rondin':
         response = class_obj.assign_rondin(record_id=record_id, user_to_assign=user_to_assign)
     elif option == 'asignar_recorrido':
