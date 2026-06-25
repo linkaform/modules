@@ -1372,6 +1372,7 @@ class Accesos(Accesos):
                 "folio": 1,
                 "accion_recurrencia": f"$answers.{self.rondin_keys['accion_recurrencia']}",
                 "areas": f"$answers.{self.rondin_keys['areas']}",
+                "cada_cuantas_horas_se_repite": f"$answers.{self.rondin_keys['cada_cuantas_horas_se_repite']}",
                 "cantidad_de_puntos": {"$size": {"$ifNull": [f"$answers.{self.rondin_keys['areas']}", []]}},
                 "cron_id": f"$answers.{self.rondin_keys['cron_id']}",
                 "dag_id": f"$answers.{self.rondin_keys['dag_id']}",
