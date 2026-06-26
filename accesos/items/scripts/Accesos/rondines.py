@@ -1382,7 +1382,6 @@ class Accesos(Accesos):
                 "areas": f"$answers.{self.rondin_keys['areas']}",
                 "cada_cuantas_horas_se_repite": f"$answers.{self.rondin_keys['cada_cuantas_horas_se_repite']}",
                 "cantidad_de_puntos": {"$size": {"$ifNull": [f"$answers.{self.rondin_keys['areas']}", []]}},
-                "cada_cuantas_horas_se_repite": f'$answers.{self.rondin_keys['cada_cuantas_horas_se_repite']}',
                 "cron_id": f"$answers.{self.rondin_keys['cron_id']}",
                 "dag_id": f"$answers.{self.rondin_keys['dag_id']}",
                 "duracion_esperada_rondin": {"$ifNull": [f"$answers.{self.rondin_keys['duracion_estimada']}", "No especificada"]},
