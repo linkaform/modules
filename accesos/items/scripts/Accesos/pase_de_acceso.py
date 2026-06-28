@@ -25,7 +25,6 @@ if __name__ == "__main__":
     option = data.get("option","")
     qr_code=data.get("qr_code")
     tab_status=data.get("tab_status")
-    pre_sms = data.get("enviar_pre_sms",{})
     update_obj = data.get("update_obj",{})
     envio = data.get("envio",[])
     limit = data.get("limit", 25)
