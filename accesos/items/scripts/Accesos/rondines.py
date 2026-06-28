@@ -1280,6 +1280,7 @@ class Accesos(Accesos):
                 "areas": f"$answers.{self.rondin_keys['areas']}",
                 "areas_name": f"$answers.{self.rondin_keys['areas']}.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area']}",  
                 "cantidad_de_puntos": {"$size": {"$ifNull": [f"$answers.{self.rondin_keys['areas']}", []]}},
+                "cada_cuantas_horas_se_repite": f"$answers.{self.rondin_keys['cada_cuantas_horas_se_repite']}",
                 "checkpoints": {"$size": {"$ifNull": [f"$answers.{self.rondin_keys['areas']}", []]}},  
                 "cron_id": f"$answers.{self.rondin_keys['cron_id']}",
                 "dag_id": {"$ifNull": [f"$answers.{self.rondin_keys['dag_id']}", ""]},
