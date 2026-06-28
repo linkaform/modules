@@ -209,7 +209,6 @@ if __name__ == "__main__":
         acceso_obj.record_id = str(ObjectId())
     acceso_obj.calcluta_tiempo_traslados()
 
-
     # Revisa si este registro es creado por un registro padre
     # Si es creado por un registro padre, no asinga registro ni busca areas, es una copia
     is_child_record = acceso_obj.answers.get(acceso_obj.rondin_keys['registro_padre'])
@@ -224,7 +223,9 @@ if __name__ == "__main__":
     sys.stdout.write(simplejson.dumps({
         'status': 101,
         'replace_ans': acceso_obj.answers,
-        'id': acceso_obj.record_id
+        "metadata":{
+                'id': acceso_obj.record_id
+            }
 
     }))
 
