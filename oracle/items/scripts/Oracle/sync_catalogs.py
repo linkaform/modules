@@ -8,6 +8,79 @@ from account_settings import *
 
 from oracle import Oracle
 
+
+schema_valiables_criticas ={
+    'BASE_DE_DATOS_ORACLE':'68ae9831a113d169e05af40d',
+    'FECHA':'683753204328adb3fa0bfd2b',
+    'LECBRIXSOLUT2': 'ccaaa5b15ad84734fae92bae',
+    '%BRIXJARABE': 'ccaaa548cf22411a910aabf2',
+    'SODAAPLICADCALD': 'ccaaa864c62694640f0c69c7',
+    'FOSFATOSKITCAL5': 'ccaaa864c62694640f0c69ca',
+    'FOSFATOSKITCAL6': 'ccaaa864c62694640f0c69cd',
+    'CONDAGPURGCALD7': 'ccaaa864c62694640f0c69ce',
+    'FOSFATOSKITCAL7': 'ccaaa864c62694640f0c69d0',
+    'CONDTANQEB3': 'ccaaa864c62694640f0c69d1',
+    '%BRIXJARABE': 'ccaaa548cf22411a910aabf2',
+    '%BRIXLICORFUN': 'ccaaa548cf22411a910aabf5',
+    '%BRIXMIELA': 'ccaaa548cf22411a910aabf3',
+    '%BRIXMIELENVPAC': 'ccaaa548cf22411a910aabf4',
+    '%HUMBZOT2': 'ccaaa864c62694640f0c69d2',
+    '%HUMCACHAMEZ': 'ccaaa548cf22411a910aabfa',
+    '%PUREZAJARABE': 'ccaaa548cf22411a910aabf6',
+    '%PUREZAJUFILMEZ': 'ccaaa5b15ad84734fae92bb4',
+    '%PUREZAMAGMAB': 'ccaaa548cf22411a910aabf7',
+    '%PUREZAMIELA': 'ccaaa548cf22411a910aabf8', 
+    '%PZAMIELENVIPAC': 'ccaaa548cf22411a910aabf9',
+    '%SACBZOT2': 'ccaaa5f5c7289512fa3f646a',
+    '02.fit_08_008.daca_pv': 'ccaaa864c62694640f0c69d4',
+    '04.fit_08_001.daca_pv': 'ccaaa864c62694640f0c69d5',
+    '08.fit_08_010.daca_pv': 'ccaaa864c62694640f0c69d3',
+    'calent.ait2260.daca_pv': 'ccaaa5b15ad84734fae92bac',
+    'calent.ait2280.daca_pv': 'ccaaa5b15ad84734fae92bad',
+    'COLORJARABE': 'ccaaa548cf22411a910aabfd',
+    'COLORJUGOCLARO': 'ccaaa548cf22411a910aabfc',
+    'COLORJUGODILT2': 'ccaaa548cf22411a910aabfb',
+    'COLORLICDECOL': 'ccaaa548cf22411a910aac01',
+    'COLORLICLARIF': 'ccaaa548cf22411a910aac00',
+    'COLORLICORFUND': 'ccaaa548cf22411a910aabff',
+    'COLORMAGMAB': 'ccaaa548cf22411a910aabfe',
+    'CONDAGCONDCALDE': 'ccaaa864c62694640f0c69c6',
+    'CONDAGPURGCALD5': 'ccaaa864c62694640f0c69c8',
+    'CONDAGPURGCALD6': 'ccaaa864c62694640f0c69cb',
+    'CONDAGPURGCALD7': 'ccaaa864c62694640f0c69ce',
+    'CONDTANQEB3': 'ccaaa864c62694640f0c69d1',
+    'FOSFATOSJDILT2': 'ccaaaab67a5f67619b7097cb',
+    'FOSFATOSKITCAL5': 'ccaaa864c62694640f0c69ca',
+    'FOSFATOSKITCAL6': 'ccaaa864c62694640f0c69cd',
+    'FOSFATOSKITCAL7': 'ccaaa864c62694640f0c69d0',
+    'LECBRIXJCLARO': 'ccaaa5b15ad84734fae92baf',
+    '%BRIXNIRJFILMEZ': 'ccaaa5b15ad84734fae92bb1',
+    'LECBRIXSOLUT2': 'ccaaa5b15ad84734fae92bae',
+    'LECPOLCACHAZAMZ': 'ccaaa5b15ad84734fae92bb6',
+    'LECPOLCAFILPREN': 'ccaaa5b15ad84734fae92bb5',
+    'PHAGPURGACAL5': 'ccaaa864c62694640f0c69c9',
+    'PHAGPURGACAL6': 'ccaaa864c62694640f0c69cc',
+    'PHAGPURGACAL7': 'ccaaa864c62694640f0c69cf',
+    'PUREZAJUGCLARO': 'ccaaa5b15ad84734fae92bb3',
+    'PUREZAJUGDILT2': 'ccaaabf038a9fab9950dba60',
+    'TIPO_REGISTRO': '68ae9831a113d169e05af40e',
+    'LECBRIXJCLARO': 'ccaaa5b15ad84734fae92baf',
+    'LECBRIXSOLUT2': 'ccaaa5b15ad84734fae92bae',
+    'LECPOLCACHAZAMZ': 'ccaaa5b15ad84734fae92bb6',
+    'PHAGPURGACAL5': 'ccaaa864c62694640f0c69c9',
+    'PHAGPURGACAL6': 'ccaaa864c62694640f0c69cc',
+    'PHAGPURGACAL7': 'ccaaa864c62694640f0c69cf',
+    'PHLICORCLARIF': 'ccaaa548cf22411a910aabf1',
+    'PUREZAJUGCLARO': 'ccaaa5b15ad84734fae92bb3',
+    'TURBILICLARIFIC': 'ccaaa548cf22411a910aac04',
+    'TURBILICFUNDI':   'ccaaa548cf22411a910aac03',
+    'TURBIEDADJCLARO': 'ccaaa5b15ad84734fae92bb7',
+    'TURBIEDADJDILT2': 'ccaaa548cf22411a910aac02',
+    'TURBILIDECOLORA': 'ccaaa548cf22411a910aac05',
+    '21.wt_tch.tch_pv': 'ccaaa5f5c7289512fa3f646c',
+    }
+
+
 class Oracle(Oracle):
 
     def __init__(self, settings, folio_solicitud=None, sys_argv=None, use_api=False, **kwargs):
@@ -33,7 +106,7 @@ class Oracle(Oracle):
         translated_dict.update({'form_id':form_id})
         return translated_dict
 
-    def create_last_variable_value_record(self):
+    def create_last_variable_value_record(self, view):
         """
         Busca el ultimo valor de las variables criticas y crea un registro en el catalogo de LinkaForm
         """
@@ -353,6 +426,7 @@ class Oracle(Oracle):
         returns:
         metadata: dict modelo de la forma / libre de agregar los parametros necesarios en params
         """
+        view['form_id']
         metadata = self.lkf_api.get_metadata(view['form_id'])
         properties = {
                 "device_properties":{
@@ -434,26 +508,6 @@ class Oracle(Oracle):
         #         res = self.create(sync_data)
         return res
 
-    def set_oracle_server(self, view_name):
-        """
-        Set the oracle server
-        """
-        if view_name == 'REPORTES.vw_linkaform_fab':
-            print('serivce 2')
-            self.ORACLE_HOST = self.settings.config.get('ORACLE_HOST_2')
-            self.ORACLE_SERVICE_NAME = self.settings.config.get('ORACLE_SERVICE_NAME_2')
-            self.ORACLE_SID = self.settings.config.get('ORACLE_SID_2')
-            self.ORACLE_USERNAME = self.settings.config.get('ORACLE_USERNAME_2')
-            self.ORACLE_PASSWORD = self.settings.config.get('ORACLE_PASSWORD_2')
-            self.oracle = self.connect_to_oracle()
-        else:
-            self.ORACLE_HOST = self.settings.config.get('ORACLE_HOST')
-            self.ORACLE_SERVICE_NAME = self.settings.config.get('ORACLE_SERVICE_NAME_1')
-            self.ORACLE_SID = self.settings.config.get('ORACLE_SID_1')
-            self.ORACLE_USERNAME = self.settings.config.get('ORACLE_USERNAME_1')
-            self.ORACLE_PASSWORD = self.settings.config.get('ORACLE_PASSWORD_1')
-        return True
-
     def update_records(self, data):
         """
         Obtienen la fecha de los registros y busca dicha fecha en la base de datos de linkaform.
@@ -472,14 +526,18 @@ class Oracle(Oracle):
         update_records = []
         create_records = []
         for rec in data:
+            print('rec', rec)
             if rec['answers'][self.f['fecha']] in list(records.keys()):
+                print('ya hay algo en esa fecha' )
                 rec['_id'] = records[rec['answers'][self.f['fecha']]]
                 update_records.append(rec)
             else:
+                print('ya hay algo en esa fecha NUEVO...' )
                 create_records.append(rec)
         # update_records = [rec for rec in data if rec['answers'][self.f['fecha']] in existing_date]
         # create_records = [rec for rec in data if rec['answers'][self.f['fecha']] not in existing_date]
-        res = self.lkf_api.patch_record_list(update_records)
+        if update_records:
+            res = self.lkf_api.patch_record_list(update_records)
         return create_records
 
     def update_and_sync_db(self, db_name, catalog_id, form_id, data, update=False):
@@ -541,7 +599,7 @@ class Oracle(Oracle):
         form_id: Id del formulario
         """
         
-        last_value_res = self.create_last_variable_value_record()
+        last_value_res = self.create_last_variable_value_record(view)
         return last_value_res
 
     def ultima_fecha(self, ultima_fecha, record_type):
@@ -614,127 +672,177 @@ class Oracle(Oracle):
             raise self.LKFException('No se sincronizaron todos los registros, creados: actualizados: {} data: {} '.format(len(created_records) + len(updated_records), len(data)))
         return created_records, updated_records
 
+
+def get_view_configuration(view_name):
+    """
+    Set the oracle server
+    pONE YSER Y PASSOWRD SEGUN SE EL view_name 
+    """
+    if view_name == 'REPORTES.vw_linkaform_fab':
+        print('serivce 2')
+        settings.config['ORACLE_HOST'] = settings.config.get('ORACLE_HOST_2')
+        settings.config['ORACLE_SERVICE_NAME'] = settings.config.get('ORACLE_SERVICE_NAME_2')
+        settings.config['ORACLE_SID'] = settings.config.get('ORACLE_SID_2')
+        settings.config['ORACLE_USERNAME'] = settings.config.get('ORACLE_USERNAME_2')
+        settings.config['ORACLE_PASSWORD'] = settings.config.get('ORACLE_PASSWORD_2')
+        if settings.config.get('ORACLE_PORT_2'):
+            settings.config['ORACLE_PORT'] = settings.config.get('ORACLE_PORT_2')
+    else:
+        print('serivce 1')
+        settings.config['ORACLE_PORT'] =  settings.config.get('ORACLE_PORT_1')
+        settings.config['ORACLE_SERVICE_NAME'] = settings.config.get('ORACLE_SERVICE_NAME_1')
+        settings.config['ORACLE_SID'] = settings.config.get('ORACLE_SID_1')
+        settings.config['ORACLE_USERNAME'] = settings.config.get('ORACLE_USERNAME_1')
+        settings.config['ORACLE_PASSWORD'] = settings.config.get('ORACLE_PASSWORD_1')
+
+
+    return True
 if __name__ == "__main__":
     """
     Formato last_update_date = '2025-08-25 15:00'
     """
     oo  = settings.config['ORACLE_HOST']
-    module_obj = Oracle(settings, sys_argv=sys.argv)
-    module_obj.console_run()
-    module_obj.db_updated_at = time.time()
-    #gg = module_obj.search_views()
-    # print('account settings', module_obj.settings.config)
-    data = module_obj.data.get('data',{})
-    option = data.get("option",'read')
 
-    timezone = module_obj.user.get('timezone','America/Bogota')
-    tz = pytz.timezone(timezone)
-    now = datetime.datetime.now(tz)
-    if now.hour < 6:
-        last_update = (now - timedelta(days=1)).date()
-    else:
-        last_update = now.date()
-    last_update = last_update.strftime('%Y-%m-%d 00:00:00')
-    #-FUNCTIONS
-    data = False
-    if option == 'read':
-        # print('module_obj.views.keys()', module_obj.views)
-        views = list(module_obj.views.keys())
-        for v in views:
+    views = {
+            'PRODUCCION.VW_LinkAForm_Hora':{
+                'catalog_id': 134148,
+                'form_id': 139471,
+                'schema':schema_valiables_criticas
+            },
+            'REPORTES.vw_linkaform_fab':{
+                'catalog_id': 134148,
+                'form_id': 139471,
+                'schema':schema_valiables_criticas
+                },
+            # 'PRODUCCION.VW_LinkAForm_Dia':{
+            #     'catalog_id': self.VARIABLES_CRITICAS_PRODUCCION,
+            #     'form_id': self.VARIABLES_CRITICAS_PRODUCCION_FORM,
+            #     'schema':schema_valiables_criticas
+            #     },
+            }
+
+
+
+    for v, v_data in views.items():
+        try:
             print('-----------------------------------------------------------',v)
-            # last_update = module_obj.get_last_db_update_data(v)
-            # last_update = '2025-11-10 23:00:00'
-            print('last_update', last_update)
-            module_obj.set_oracle_server(v)
-            update = False
-            query = None
-            # last_update = None
-            if last_update:
-                if len(last_update) == 19:
-                    last_update = last_update[:-3]
-                if v == 'PRODUCCION.VW_LinkAForm_Hora':
-                    query = f"""
-                        WITH base AS (
-                        SELECT
-                            TRUNC(DATA) + (TO_DATE(HORA, 'HH24:MI') - TRUNC(TO_DATE(HORA, 'HH24:MI'))) AS fecha_hora,
-                            VARIA,
-                            VALOR_N
-                        FROM {v}
-                        WHERE TRUNC(DATA) + (TO_DATE(HORA, 'HH24:MI') - TRUNC(TO_DATE(HORA, 'HH24:MI')))
-                        > TO_DATE('{last_update}', 'YYYY-MM-DD HH24:MI')
-                        ),
-                        ranked AS (
-                        SELECT
-                            fecha_hora, VARIA, VALOR_N,
-                            ROW_NUMBER() OVER (
-                            PARTITION BY fecha_hora, VARIA
-                            ORDER BY fecha_hora DESC
-                            ) AS rn
-                        FROM base
-                        )
-                        SELECT
-                        fecha_hora,
-                        JSON_OBJECTAGG(VARIA VALUE VALOR_N) AS answers
-                        FROM ranked
-                        WHERE rn = 1
-                        GROUP BY fecha_hora
-                        ORDER BY fecha_hora
-                """
-                elif v == 'PRODUCCION.VW_LinkAForm_Dia':
-                    #last_update = '2025-09-09 23:59'
-                    query = f"""SELECT DATA AS fecha_hora, JSON_OBJECTAGG(VARIA VALUE VALOR_DIA) AS answers
-                        FROM {v}
-                        WHERE DATA > TO_DATE('{last_update[:10]}', 'YYYY-MM-DD')
-                        GROUP BY DATA
-                        ORDER BY DATA ASC"""
-                elif v == 'REPORTES.vw_linkaform_fab':
-                    query = f"""
-                        SELECT 
-                        FECHA,
-                        JSON_OBJECTAGG(VARIABLENOMBRE VALUE VALOR RETURNING VARCHAR2(32767)) AS ANSWERS
-                        FROM {v}
-                        WHERE FECHA >= {last_update}
-                        GROUP BY FECHA
-                        ORDER BY FECHA ASC
-                    """
-                    query =f"""
-                            WITH cand AS (
+            get_view_configuration(v)
+            module_obj = Oracle(settings, sys_argv=sys.argv)
+            module_obj.console_run()
+            module_obj.db_updated_at = time.time()
+            #gg = module_obj.search_views()
+            # print('account settings', module_obj.settings.config)
+            data = module_obj.data.get('data',{})
+            option = data.get("option",'read')
+
+            timezone = module_obj.user.get('timezone','America/Bogota')
+            tz = pytz.timezone(timezone)
+            now = datetime.datetime.now(tz)
+            if now.hour < 6:
+                last_update = (now - timedelta(days=1)).date()
+            else:
+                last_update = now.date()
+            last_update = last_update.strftime('%Y-%m-%d 00:00:00')
+            #-FUNCTIONS
+            data = False
+            if option == 'read':
+                # print('module_obj.views.keys()', module_obj.views)
+                # last_update = module_obj.get_last_db_update_data(v)
+                # last_update = '2025-11-10 23:00:00'
+                # AQUI DEFINE QUE VISTA ES Y DECIDE QUE PARAMETROS DE ORACLE VA A UTILIZAR
+                update = False
+                query = None
+                # last_update = None
+                if last_update:
+                    if len(last_update) == 19:
+                        last_update = last_update[:-3]
+                    if v == 'PRODUCCION.VW_LinkAForm_Hora':
+                        query = f"""
+                            WITH base AS (
                             SELECT
-                                FECHA,
-                                VARIABLENOMBRE,
-                                VALOR,
-                                TO_CHAR(FECHA, 'MI') AS min_mark
+                                TRUNC(DATA) + (TO_DATE(HORA, 'HH24:MI') - TRUNC(TO_DATE(HORA, 'HH24:MI'))) AS fecha_hora,
+                                VARIA,
+                                VALOR_N
                             FROM {v}
-                            WHERE FECHA > TO_DATE('{last_update}', 'YYYY-MM-DD HH24:MI')
-                            AND TO_CHAR(FECHA, 'MI') IN ('30','59')
+                            WHERE TRUNC(DATA) + (TO_DATE(HORA, 'HH24:MI') - TRUNC(TO_DATE(HORA, 'HH24:MI')))
+                            > TO_DATE('{last_update}', 'YYYY-MM-DD HH24:MI')
                             ),
-                            ultimos AS (
+                            ranked AS (
                             SELECT
-                                min_mark,
-                                MAX(FECHA) AS max_fecha
-                            FROM cand
-                            GROUP BY min_mark
+                                fecha_hora, VARIA, VALOR_N,
+                                ROW_NUMBER() OVER (
+                                PARTITION BY fecha_hora, VARIA
+                                ORDER BY fecha_hora DESC
+                                ) AS rn
+                            FROM base
                             )
                             SELECT
-                            c.FECHA,
-                            JSON_OBJECTAGG(c.VARIABLENOMBRE VALUE c.VALOR RETURNING VARCHAR2(32767)) AS ANSWERS
-                            FROM cand c
-                            JOIN ultimos u
-                            ON c.min_mark = u.min_mark
-                            AND c.FECHA     = u.max_fecha
-                            GROUP BY c.FECHA
-                            ORDER BY c.FECHA ASC"""
+                            fecha_hora,
+                            JSON_OBJECTAGG(VARIA VALUE VALOR_N) AS answers
+                            FROM ranked
+                            WHERE rn = 1
+                            GROUP BY fecha_hora
+                            ORDER BY fecha_hora
+                    """
+                    elif v == 'PRODUCCION.VW_LinkAForm_Dia':
+                        #last_update = '2025-09-09 23:59'
+                        query = f"""SELECT DATA AS fecha_hora, JSON_OBJECTAGG(VARIA VALUE VALOR_DIA) AS answers
+                            FROM {v}
+                            WHERE DATA > TO_DATE('{last_update[:10]}', 'YYYY-MM-DD')
+                            GROUP BY DATA
+                            ORDER BY DATA ASC"""
+                    elif v == 'REPORTES.vw_linkaform_fab':
+                        query = f"""
+                            SELECT 
+                            FECHA,
+                            JSON_OBJECTAGG(VARIABLENOMBRE VALUE VALOR RETURNING VARCHAR2(32767)) AS ANSWERS
+                            FROM {v}
+                            WHERE FECHA >= {last_update}
+                            GROUP BY FECHA
+                            ORDER BY FECHA ASC
+                        """
+                        query =f"""
+                                WITH cand AS (
+                                SELECT
+                                    FECHA,
+                                    VARIABLENOMBRE,
+                                    VALOR,
+                                    TO_CHAR(FECHA, 'MI') AS min_mark
+                                FROM {v}
+                                WHERE FECHA > TO_DATE('{last_update}', 'YYYY-MM-DD HH24:MI')
+                                AND TO_CHAR(FECHA, 'MI') IN ('30','59')
+                                ),
+                                ultimos AS (
+                                SELECT
+                                    min_mark,
+                                    MAX(FECHA) AS max_fecha
+                                FROM cand
+                                GROUP BY min_mark
+                                )
+                                SELECT
+                                c.FECHA,
+                                JSON_OBJECTAGG(c.VARIABLENOMBRE VALUE c.VALOR RETURNING VARCHAR2(32767)) AS ANSWERS
+                                FROM cand c
+                                JOIN ultimos u
+                                ON c.min_mark = u.min_mark
+                                AND c.FECHA     = u.max_fecha
+                                GROUP BY c.FECHA
+                                ORDER BY c.FECHA ASC"""
 
-            print('query=',query)
-            header, response = module_obj.sync_db_catalog(db_name=v, query=query)
-            view = module_obj.views[v]
-            schema = view['schema']
-            catalog_id = view.get('catalog_id')
-            form_id = view.get('form_id')
-            table_data = module_obj.load_data(v, view, response, schema, catalog_id, form_id)
-            if table_data and not data:
-                data = True
-        
-        if data:
-            print('if at least on table response with data')
-            module_obj.update_values(v, view, form_id)
+                print('query=',query)
+                header, response = module_obj.sync_db_catalog(db_name=v, query=query)
+                schema = v_data['schema']
+                catalog_id = v_data.get('catalog_id')
+                form_id = v_data.get('form_id')
+                try:
+                    table_data = module_obj.load_data(v, v_data, response, schema, catalog_id, form_id)
+                except:
+                    print('no se sicnoinzaron todos los datos......')
+                    data = False
+                    table_data = False
+                if table_data and not data:
+                    data = True
+                
+            module_obj.update_values(v, v_data, form_id)
+        except:
+            print('va a la siguiete vista')
