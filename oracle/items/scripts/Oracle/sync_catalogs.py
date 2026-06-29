@@ -726,12 +726,7 @@ if __name__ == "__main__":
                             ORDER BY c.FECHA ASC"""
 
             print('query=',query)
-            try:
-                header, response = module_obj.sync_db_catalog(db_name=v, query=query)
-                print('header=',header)
-                print('response=',response)
-            except:
-                print('ERROR A LA CONEXION DE ORACLE')
+            header, response = module_obj.sync_db_catalog(db_name=v, query=query)
             view = module_obj.views[v]
             schema = view['schema']
             catalog_id = view.get('catalog_id')
