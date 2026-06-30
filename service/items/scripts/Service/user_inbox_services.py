@@ -24,6 +24,17 @@ class Service(Service):
                     del_user_inbox[user_id] = inbox_to_delete
         del_res = self.delete_inboxes(del_user_inbox)
         return del_res
+
+    def delete_error_inbox(self, user_id, inboxes):
+        """
+        Todos los días a las 11 PM se borran los inbox que tuvieron error
+        """
+        dt_mx = datetime.fromtimestamp(time.time(), tz=ZoneInfo("America/Mexico_City"))
+        if dt_mx.hour == 23:
+            print('Searching inbox error')
+            error_inbox = self.get_inbox_by_status(user_id, inboxes, status='error')
+            print( 'Inbox error found =', len(error_inbox) )
+            self.to_delete.extend( error_inbox )
    
     def delete_inboxes(self, user_id):
         inboxes = self.to_delete
@@ -139,6 +150,9 @@ class Service(Service):
             new_inbox = self.get_inbox_by_status(user_id, inboxes, status=['new','seen'])
             for inbox in new_inbox:
                 self.eval_inbox(inbox)
+            
+            self.delete_error_inbox(user_id, inboxes)
+
             self.delete_inboxes(user_id)
             print('TO DELETE: ', len(self.to_delete))
             print('TO send_1_hr_notification: ', len(self.send_1_hr_notification))
