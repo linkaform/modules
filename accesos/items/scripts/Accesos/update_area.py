@@ -190,7 +190,6 @@ class Accesos(Accesos):
             })
 
             response = self.net.patch_forms_answers(metadata)
-            response = self.detail_response(response)
             return response
 
     def detail_response(self, response: dict):
@@ -200,6 +199,7 @@ class Accesos(Accesos):
         Returns:
             dict: Un diccionario con el estado y el mensaje correspondiente.
         """
+        return response
         status_code = response.get('statu_code',0)
         msg = response.get('json', response.get('data'))
         if status_code in [200, 201, 202]:
@@ -341,7 +341,6 @@ class Accesos(Accesos):
         })
         metadata.update({'answers':answers})
         response = self.lkf_api.post_forms_answers(metadata)
-        response = self.detail_response(response)
         return response
 
 if __name__ == "__main__":
