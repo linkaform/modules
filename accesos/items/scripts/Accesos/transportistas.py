@@ -28,6 +28,79 @@ class Accesos(Accesos):
         resultado = self.format_cr(self.cr.aggregate(query))
         return [r['area'] for r in resultado if r.get('area')]
 
+    def get_bitac_transportista_record(self, record_id):
+        f = self.bitacora_transportista_fields
+        query = [
+            {'$match': {
+                'form_id': self.BITACORA_TRANSPORTISTAS,
+                'deleted_at': {'$exists': False},
+                '_id': ObjectId(record_id),
+            }},
+            {'$project': {
+                '_id': 1,
+                'folio': 1,
+                'created_at': 1,
+                'estatus':               f'$answers.{f["estatus"]}',
+                'fecha_hora_ingreso':    f'$answers.{f["fecha_hora_ingreso"]}',
+                'fecha_hora_descarga':   f'$answers.{f["fecha_hora_descarga"]}',
+                'num_de_pase':           f'$answers.{f["num_de_pase"]}',
+                'empresa_transportista': f'$answers.{f["empresa_transportista"]}',
+                'tipo_de_operacion':     f'$answers.{f["tipo_de_operacion"]}',
+                'procedencia':           f'$answers.{f["procedencia"]}',
+                'tipo_de_vehiculo':      f'$answers.{f["tipo_de_vehiculo"]}',
+                'placas_de_vehiculo':    f'$answers.{f["placas_de_vehiculo"]}',
+                'num_eco_num_rotulo':    f'$answers.{f["num_eco_num_rotulo"]}',
+                'conductor':             f'$answers.{f["conductor"]}',
+                'ayudante':              f'$answers.{f["ayudante"]}',
+                'num_licencia':          f'$answers.{f["num_licencia"]}',
+                'firma_conductor':       f'$answers.{f["firma_conductor"]}',
+                'anden_asignado':        f'$answers.{f["anden_asignado"]}',
+                'proveedor_cliente':     f'$answers.{f["proveedor_cliente"]}',
+                'orden_de_compra':       f'$answers.{f["orden_de_compra"]}',
+                'documentos': {'$map': {
+                    'input': {'$ifNull': [f'$answers.{f["grupo_fotos_y_documentos"]}', []]},
+                    'as': 'doc',
+                    'in': {
+                        'tipo':      f'$$doc.{f["tipo_de_documento"]}',
+                        'documento': f'$$doc.{f["documento"]}',
+                    },
+                }},
+                'materiales': {'$map': {
+                    'input': {'$ifNull': [f'$answers.{f["grupo_materiales"]}', []]},
+                    'as': 'm',
+                    'in': {
+                        'tipo':          f'$$m.{f["tipo_material"]}',
+                        'cantidad':      f'$$m.{f["cantidad_material"]}',
+                        'peso':          f'$$m.{f["peso_material"]}',
+                        'volumen':       f'$$m.{f["volumen_material"]}',
+                        'sello':         f'$$m.{f["sello_material"]}',
+                        'lugar':         f'$$m.{f["lugar_material"]}',
+                        'no_referencia': f'$$m.{f["no_referencia_material"]}',
+                    },
+                }},
+                'remolques': {'$map': {
+                    'input': {'$ifNull': [f'$answers.{f["grupo_remolques"]}', []]},
+                    'as': 'r',
+                    'in': {
+                        'tipo_remolque': f'$$r.{f["tipo_remolque"]}',
+                        'no_sello':      f'$$r.{f["num_sello"]}',
+                        'no_caja':       f'$$r.{f["num_caja_contenedor"]}',
+                        'placas_caja':   f'$$r.{f["placas_de_caja"]}',
+                        'comentarios':   f'$$r.{f["comentarios"]}',
+                    },
+                }},
+                'inspecciones': {'$map': {
+                    'input': {'$ifNull': [f'$answers.{f["grupo_inspecciones"]}', []]},
+                    'as': 'i',
+                    'in': {
+                        'tipo': f'$$i.{f["tipo_inspeccion"]}',
+                        'url':  f'$$i.{f["url_inspeccion"]}',
+                    },
+                }},
+            }},
+        ]
+        return self.format_cr(self.cr.aggregate(query), get_one=True)
+
     def get_horarios_data(self, dia=None):
         """
         Devuelve la concurrencia por hora del día para graficar horarios de mayor
@@ -454,6 +527,7 @@ if __name__ == "__main__":
         "create_visit_transportista": lambda: script_obj.create_visit_transportista(payload),
         "generate_submit_token_transportista": lambda: script_obj.generate_submit_token_transportista(record_id),
         "get_andenes": lambda: script_obj.get_andenes(),
+        "get_bitac_transportista_record": lambda: script_obj.get_bitac_transportista_record(record_id),
         "get_horarios_data": lambda: script_obj.get_horarios_data(dia=data.get('dia')),
         "get_pass_transportista": lambda: script_obj.get_pass_transportista(record_id, token),
         "get_users_data": lambda: script_obj.get_users_data(locations),
@@ -461,6 +535,7 @@ if __name__ == "__main__":
         "get_proveedores_transportista": lambda: script_obj.get_proveedores_transportista(),
         "validate_token": lambda: script_obj.validate_token(record_id, token),
         "update_information_transportista": lambda: script_obj.update_information_transportista(payload),
+        "save_data_transportista": lambda: script_obj.save_data_transportista(payload),
     }
 
     action = dispatcher.get(option)

@@ -567,6 +567,11 @@ if __name__ == "__main__":
             image_source=image_source,
             extra_instructions=extra_instructions,
         )
+    elif option == 'ocr_acceso_transportista':
+        response = acceso_obj.ocr_acceso_transportista(
+            image_source=image_source,
+            extra_instructions=extra_instructions,
+        )
     else:
         response = {'msg': 'Empty', 'valid_options': ['ocr_id', 'ocr_doc', 'ocr_batch', 'ocr_paquete', 'ocr_truck', 'ocr_vehiculo', 'ocr_persona', 'ocr_equipo']}
 

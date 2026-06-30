@@ -81,6 +81,7 @@ class Accesos(Accesos):
         self.ENVIO_DE_NOTIFICACIONES_FORM = self.lkm.form_id('envio_de_notificaciones', 'id')
         self.CONFIGURACION_DE_RECORRIDOS_FORM = self.lkm.form_id('configuracion_de_recorridos','id')
         self.CONF_MODULO_SEGURIDAD = self.lkm.form_id('configuracion_modulo_seguridad','id')
+        self.BITACORA_TRANSPORTISTAS = self.lkm.form_id('bitacora_de_transportistas','id')
 
         self.f.update({
             'areas_del_rondin': '66462aa5d4a4af2eea07e0d1',
@@ -334,28 +335,52 @@ class Accesos(Accesos):
 
         self.bitacora_transportista_fields = {
             'estatus': '6a31921f07fb9cb5840d1f22',
+            'fecha_hora_ingreso': '6a3bee0a7829a4ca9572d39e',
+            'fecha_hora_descarga': '6a3bee0a7829a4ca9572d39f',
+
+            'grupo_fotos_y_documentos': '6a3bee0a7829a4ca9572d3a0',
+            'tipo_de_documento': '6a3bee394a7a0748a6fc9a56',
+            'documento': '6a3bee394a7a0748a6fc9a57',
+
             'num_de_pase': '6a31921f07fb9cb5840d1f23',
             'empresa_transportista': '6a31929d0bf8c5fc715d7424',
             'tipo_de_operacion': '6a31929d0bf8c5fc715d7425',
             'procedencia': '6a3193dccf1326ad4b7a9a52',
             'tipo_de_vehiculo': '6a3193dccf1326ad4b7a9a53',
             'placas_de_vehiculo': '6a31921f07fb9cb5840d1f24',
-            'foto_de_placa': '6a3193dccf1326ad4b7a9a54',
-            'material': '6a3193dccf1326ad4b7a9a55',
             'num_eco_num_rotulo': '6a3193dccf1326ad4b7a9a56',
             'conductor': '6a3193dccf1326ad4b7a9a57',
+            'ayudante': '6a42cd6385b4d5aa41c2a922',
             'num_licencia': '6a3193dccf1326ad4b7a9a58',
-            'foto_conductor': '6a3193dccf1326ad4b7a9a59',
-            'foto_licencia': '6a3193dccf1326ad4b7a9a5a',
+            'vigencia_licencia': '6a42e2eab55463ad9f31abf3',
+            'rfc_conductor': '6a42e5143f8adeaa55ef9a4a',
             'firma_conductor': '6a3193dccf1326ad4b7a9a5b',
-            'tiempo_etapa_actual': '6a31929d0bf8c5fc715d7426',
             'anden_asignado': '6a31929d0bf8c5fc715d7427',
+
+            'proveedor_cliente': '6a42dfd48e70db919887e4b0',
+            'orden_de_compra': '6a42dfd48e70db919887e4b1',
+
+            'grupo_materiales': '6a42c5e02196461994770602',
+            'lugar_material': '6a42c7a7a1555d53d6b9194c', # Opciones: vehiculo, remolque, contenedor
+            'no_referencia_material': '6a42c7a7a1555d53d6b9194d',
+            'sello_material': '6a42c7a7a1555d53d6b9194e',
+            'tipo_material': '6a42c7a7a1555d53d6b9194f',
+            'cantidad_material': '6a42c7a7a1555d53d6b91950',
+            'peso_material': '6a42c7a7a1555d53d6b91951',
+            'volumen_material': '6a42c7a7a1555d53d6b91952',
+
             'grupo_remolques': '6a31959ed11ece87f2b0052d',
             'tipo_remolque': '6a319693884bec802c94fa44',
             'num_sello': '6a319693884bec802c94fa45',
             'num_caja_contenedor': '6a319693884bec802c94fa46',
             'placas_de_caja': '6a319693884bec802c94fa47',
             'comentarios': '6a319693884bec802c94fa48',
+
+            'grupo_sellos': '6a42c65c03f125df7ad28601',
+
+            'grupo_inspecciones': '6a42a7068dcfbf362329a972',
+            'tipo_inspeccion': '6a42c80b03f125df7ad2862b',
+            'url_inspeccion': '6a42a71aec3f7153a3d2aea3',
         }
 
     def create_pass_transportista(self, data):
@@ -480,7 +505,8 @@ class Accesos(Accesos):
 
     def create_visit_transportista(self, data):
         f = self.bitacora_transportista_fields
-        metadata = self.lkf_api.get_metadata(form_id=156329)
+        print(simplejson.dumps(data, indent=3))
+        metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_TRANSPORTISTAS)
         metadata.update({
             'properties': {
                 'device_properties': {
@@ -495,40 +521,68 @@ class Accesos(Accesos):
 
         vehiculo  = data.get('vehiculo', {}) or {}
         conductor = data.get('conductor', {}) or {}
+        embarque  = data.get('embarque', {}) or {}
+        firma     = conductor.get('firma') or {}
 
-        foto_placa     = vehiculo.get('foto_placa') or {}
-        foto_conductor = conductor.get('foto_conductor') or {}
-        foto_licencia  = conductor.get('foto_licencia') or {}
-        firma          = conductor.get('firma') or {}
+        tz_name = self.user.get('timezone', 'America/Mexico_City')
+        tz = pytz.timezone(tz_name)
+        fecha_ingreso = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
 
         answers = {
             f['estatus']:               'arribo',
+            f['fecha_hora_ingreso']:    fecha_ingreso,
             f['tipo_de_operacion']:     data.get('tipo_operacion', '').lower().replace(' ', '_'),
             f['empresa_transportista']: vehiculo.get('transportista', ''),
             f['procedencia']:           vehiculo.get('procedencia', ''),
             f['tipo_de_vehiculo']:      vehiculo.get('tipo_vehiculo', ''),
             f['placas_de_vehiculo']:    vehiculo.get('placa', ''),
-            f['foto_de_placa']:         [{'file_name': foto_placa.get('file_name', ''), 'file_url': foto_placa['file_url']}] if foto_placa.get('file_url') else [],
-            f['material']:              vehiculo.get('material', ''),
             f['num_eco_num_rotulo']:    vehiculo.get('no_economico', ''),
             f['conductor']:             conductor.get('nombre', ''),
+            f['ayudante']:              conductor.get('acompanante', ''),
             f['num_licencia']:          conductor.get('no_licencia', ''),
-            f['foto_conductor']:        [{'file_name': foto_conductor.get('file_name', ''), 'file_url': foto_conductor['file_url']}] if foto_conductor.get('file_url') else [],
-            f['foto_licencia']:         [{'file_name': foto_licencia.get('file_name', ''), 'file_url': foto_licencia['file_url']}] if foto_licencia.get('file_url') else [],
-            f['firma_conductor']:       {'file_name': firma.get('file_name', ''), 'file_url': firma['file_url']} if firma.get('file_url') else {},
-            f['grupo_remolques']: [
-                {
-                    f['tipo_remolque']:          r.get('tipo_remolque', ''),
-                    f['num_sello']:              r.get('no_sello', ''),
-                    f['num_caja_contenedor']:    r.get('no_caja', ''),
-                    f['placas_de_caja']:         r.get('placas_caja', ''),
-                    f['comentarios']:            r.get('comentarios', ''),
-                }
-                for r in data.get('remolques', [])
-            ],
+            f['vigencia_licencia']:     conductor.get('vigencia_licencia', ''),
+            f['rfc_conductor']:         conductor.get('rfc', ''),
+            f['firma_conductor']:       firma,
+            f['proveedor_cliente']:     embarque.get('proveedor_cliente', ''),
+            f['orden_de_compra']:       embarque.get('no_orden_compra', ''),
         }
 
-        print(simplejson.dumps(answers, indent=3))
+        remolques = data.get('remolques', []) or []
+        if remolques:
+            answers[f['grupo_remolques']] = [
+                {
+                    f['tipo_remolque']:       r.get('tipo_remolque', ''),
+                    f['num_sello']:           r.get('no_sello', ''),
+                    f['num_caja_contenedor']: r.get('no_caja', ''),
+                    f['placas_de_caja']:      r.get('placas_caja', ''),
+                    f['comentarios']:         r.get('comentarios', ''),
+                }
+                for r in remolques
+            ]
+
+        docs = data.get('documentos_adicionales', []) or []
+        if docs:
+            answers[f['grupo_fotos_y_documentos']] = [
+                {
+                    f['tipo_de_documento']: doc.get('tipo', '').upper().replace('_', ' '),
+                    f['documento']:         [{'file_name': doc.get('file_name', ''), 'file_url': doc['file_url']}] if doc.get('file_url') else [],
+                }
+                for doc in docs
+            ]
+
+        materiales = data.get('materiales', []) or []
+        if materiales:
+            answers[f['grupo_materiales']] = [
+                {
+                    f['tipo_material']:     m.get('tipo', ''),
+                    f['cantidad_material']: m.get('cantidad', ''),
+                    f['peso_material']:     m.get('peso', ''),
+                    f['volumen_material']:  m.get('volumen', ''),
+                    f['sello_material']:    m.get('sello', ''),
+                }
+                for m in materiales
+            ]
+
         metadata.update({'answers': answers})
         res = self.lkf_api.post_forms_answers(metadata)
         if res.get('status_code') not in [200, 201, 202]:
@@ -539,5 +593,186 @@ class Accesos(Accesos):
         lkf_qr = generar_qr.LKF_QR(self.settings)
         qr_generado = lkf_qr.procesa_qr(url_for_qr, name_qr, form_id, img_field_id)
         return qr_generado
+
+    def ocr_acceso_transportista(self, image_source,
+                                  extra_instructions: str = None,
+                                  model: str = 'google/gemini-2.5-flash') -> dict:
+        """
+        Analiza uno o varios archivos de un acceso de transportista.
+        Acepta mezcla de imágenes y documentos (PDFs, JPGs, PNGs).
+
+        Tipos de archivos soportados:
+          - Foto de placas / vehículo
+          - Foto del conductor
+          - Licencia de conducir
+          - Tarjeta de circulación (tractor o remolque)
+          - Bill of Lading (BL) / conocimiento de embarque
+          - Pedimento de importación temporal
+          - Orden de compra / factura / manifiesto de carga
+          - Documento de autorización de salida de puerto
+          - Foto o documento del contenedor
+
+        Args:
+            image_source: URL, ruta local, o lista. Acepta imágenes y PDFs remotos.
+            model:        Modelo OpenRouter ('google/gemini-2.5-flash' recomendado para docs).
+
+        Returns:
+            dict con status_code, data, msg.
+        """
+        if not self.ai:
+            return {'status_code': 400, 'msg': 'OpenRouter no configurado'}
+
+        system = (
+            "You are a certified security supervisor and CTPAT compliance specialist at an industrial facility. "
+            "You process transport access events by analyzing any combination of: vehicle photos, license plates, "
+            "driver photos, driver licenses, vehicle registration cards (tarjeta de circulación), "
+            "Bills of Lading, temporary import permits (pedimentos), port release documents, "
+            "purchase orders, cargo manifests, and container photos. "
+            "All inputs refer to ONE transport access event. "
+            "You ONLY extract information that is clearly visible or printed in the provided files. "
+            "You NEVER invent, estimate, or hallucinate data. "
+            "If a field is not present in any document, return null — never guess. "
+            "Always respond with a single valid JSON object and nothing else — "
+            "no markdown, no backticks, no explanation, no preamble."
+        )
+
+        prompt = (
+            "Analyze all provided files (images and/or documents) as a single transport access event. "
+            "The files are provided in order: the first is imagen_1, the second is imagen_2, and so on. "
+            "Files may include vehicle photos, driver photos, driver licenses, vehicle registration cards, "
+            "Bills of Lading, pedimentos, port documents, purchase orders, or container photos. "
+            "Extract every field you can find. If a field is absent from all provided files, use null. "
+            "\n\n"
+            "Return ONLY a JSON object with this exact structure:\n"
+            "{\n"
+
+            # ── VEHÍCULO ──────────────────────────────────────────────────
+            '  "vehiculo": {\n'
+            '    "transportista": "string — carrier company name (e.g. TRAMO TRANSPORTES MONTERREY SA DE CV), or null",\n'
+            '    "tipo_vehiculo": "string — one of: torton, trailer, caja seca, caja refrigerada, plataforma, volteo, van, pick up, camión, pipa, contenedor, or null",\n'
+            '    "marca": "string — truck/tractor brand (Kenworth, Freightliner, International, Volvo, etc.), or null",\n'
+            '    "modelo": "string — truck model or year if visible, or null",\n'
+            '    "color": "string — main cab color. PRIORITY: extract visually from vehicle/plate photos if provided. Fall back to text on registration card only if no vehicle photo is present. Use Spanish color names (Blanco, Negro, Rojo, Azul, Gris, Verde, Amarillo, Naranja, Cafe, Plateado, etc.), or null",\n'
+            '    "placa": "string — tractor/cab license plate exactly as printed, or null",\n'
+            '    "estado_placa": "string — Mexican state or country of the tractor plate, or null",\n'
+            '    "no_economico": "string — carrier economic number / rótulo on the vehicle, or null",\n'
+            '    "no_serie": "string — chassis/VIN if visible on registration card or document, or null"\n'
+            '  },\n'
+
+            # ── CONDUCTOR ─────────────────────────────────────────────────
+            '  "conductor": {\n'
+            '    "nombre": "string — driver full name from license or permit document, or null",\n'
+            '    "no_licencia": "string — driver license number exactly as printed, or null",\n'
+            '    "vigencia_licencia": "string — license expiration date (YYYY-MM-DD if possible), or null",\n'
+            '    "rfc": "string — RFC if shown on any document, or null"\n'
+            '  },\n'
+
+            # ── REMOLQUES ─────────────────────────────────────────────────
+            '  "remolques": [\n'
+            '    {\n'
+            '      "tipo_remolque": "string — caja seca, caja refrigerada, plataforma, contenedor, tanque, etc., or null",\n'
+            '      "marca": "string — trailer brand (Wabash, Hyundai, etc.) from registration card, or null",\n'
+            '      "modelo": "string — trailer model/year from registration card, or null",\n'
+            '      "placa_caja": "string — trailer license plate exactly as printed, or null",\n'
+            '      "no_economico": "string — trailer economic number / RTI number, or null",\n'
+            '      "no_serie": "string — trailer serial number from registration card, or null"\n'
+            '    }\n'
+            '  ],\n'
+
+            # ── CARGA / MATERIALES ────────────────────────────────────────
+            '  "carga": [\n'
+            '    {\n'
+            '      "no_contenedor": "string — container number (e.g. ECMU7740351), or null",\n'
+            '      "no_sello": "string — seal number, or null",\n'
+            '      "tipo_contenedor": "string — 40HC, 20GP, 40GP, tank, etc., or null",\n'
+            '      "descripcion": "string — cargo description (e.g. 1305 CAJAS CON CERVEZAS), or null",\n'
+            '      "cantidad": "string — quantity and unit if stated, or null",\n'
+            '      "peso_bruto": "string — gross weight with unit (e.g. 19,603.50 KGS), or null",\n'
+            '      "volumen": "string — volume with unit if stated, or null"\n'
+            '    }\n'
+            '  ],\n'
+
+            # ── EMBARQUE / DOCUMENTOS ─────────────────────────────────────
+            '  "embarque": {\n'
+            '    "no_bl": "string — Bill of Lading number, or null",\n'
+            '    "no_orden_compra": "string — purchase order / OC number, or null",\n'
+            '    "proveedor": "string — shipper/supplier company name, or null",\n'
+            '    "cliente": "string — consignee/buyer company name, or null",\n'
+            '    "origen": "string — place/port of loading or origin, or null",\n'
+            '    "destino": "string — place/port of discharge or delivery, or null",\n'
+            '    "naviera": "string — shipping line name (CMA CGM, MSC, etc.), or null",\n'
+            '    "vessel": "string — vessel/ship name, or null",\n'
+            '    "fecha_embarque": "string — on-board or shipment date, or null",\n'
+            '    "no_pedimento": "string — pedimento or customs document number, or null",\n'
+            '    "no_autorizacion_puerto": "string — port release authorization number, or null"\n'
+            '  },\n'
+
+            # ── METADATA ──────────────────────────────────────────────────
+            '  "documentos_detectados": [\n'
+            '    {\n'
+            '      "fuente": "string — imagen_1 / imagen_2 / imagen_3 ... (position of the file in the input list)",\n'
+            '      "tipo": "string — document type: bill_of_lading, tarjeta_circulacion_tractor, tarjeta_circulacion_remolque, licencia_conducir, pedimento, autorizacion_puerto, orden_compra, foto_vehiculo, foto_placa, foto_conductor, foto_contenedor, manifiesto_carga, otro"\n'
+            '    }\n'
+            '  ],\n'
+            '  "observaciones": "string — CTPAT flags, anomalies, damage, incomplete docs, or anything security-relevant, or null",\n'
+            '  "confianza": "string — alto / medio / bajo — overall confidence based on document/image quality"\n'
+            "}"
+        )
+
+        if extra_instructions:
+            prompt += f"\n\nAdditional instructions: {extra_instructions}"
+
+        if isinstance(image_source, str):
+            image_source = [image_source]
+        elif isinstance(image_source, list):
+            image_source = [
+                img['file_url'] if isinstance(img, dict) else img
+                for img in image_source
+            ]
+
+        sources = []
+        for src in image_source:
+            if isinstance(src, str) and src.lower().endswith('.pdf') and src.startswith('http'):
+                r = requests.get(src, timeout=30)
+                r.raise_for_status()
+                b64 = base64.b64encode(r.content).decode('utf-8')
+                sources.append(f'data:application/pdf;base64,{b64}')
+            else:
+                sources.append(src)
+
+        source_index = {f'imagen_{i+1}': src for i, src in enumerate(image_source)}
+        print('>>> ocr_acceso_transportista sources=', [s[:80] for s in sources])
+
+        raw_text = self.ai.ocr_general(sources, system, prompt, model=model, max_tokens=2000)
+
+        datos = {}
+        if raw_text.get('choices'):
+            choices = raw_text['choices']
+            if isinstance(choices, list) and len(choices) > 0:
+                content = choices[0].get('message', {}).get('content')
+                if content:
+                    datos = content
+
+        print('ocr_acceso_transportista datos=', simplejson.dumps(datos, indent=3))
+
+        datos = self._ocr_normalizar(datos)
+
+        # Enriquecer documentos_detectados con la URL original de cada fuente
+        if isinstance(datos, dict) and isinstance(datos.get('documentos_detectados'), list):
+            for doc in datos['documentos_detectados']:
+                fuente = doc.get('fuente', '')
+                if fuente in source_index:
+                    doc['url'] = source_index[fuente]
+
+        errores = self._ocr_validar_id(datos)
+        if errores:
+            return {
+                'status_code': 206,
+                'msg': 'Extracción con advertencias',
+                'data': datos,
+                'warnings': errores,
+            }
+
+        return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
 
     # PRUEBAS
