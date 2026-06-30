@@ -192,33 +192,6 @@ class Accesos(Accesos):
             response = self.net.patch_forms_answers(metadata)
             return response
 
-    def detail_response(self, response: dict):
-        """Devuelve un mensaje detallado según el código de estado HTTP.
-        Args:
-            status_code (int): El código de estado HTTP devuelto por la API.
-        Returns:
-            dict: Un diccionario con el estado y el mensaje correspondiente.
-        """
-        return response
-        status_code = response.get('statu_code',0)
-        msg = response.get('json', response.get('data'))
-        if status_code in [200, 201, 202]:
-            if not msg:
-                msg = "Operation completed successfully."
-            return {"status": "success", "message": msg}
-        elif status_code in [400, 404]:
-            if not msg:
-                msg = "Bad format."
-            return {"status": "error", "message": msg}
-        elif status_code in [500, 502, 503]:
-            if not msg:
-                msg = "Server error, please try again later."
-            return {"status": "error", "message":msg }
-        else:
-            if not msg:
-                msg = "Unexpected error occurred."
-            return {"status": "error", "message": msg}
-
     def get_contact_details(self, direccion):
         selector = {}
 
@@ -299,11 +272,12 @@ class Accesos(Accesos):
             form_id=self.AREAS_DE_LAS_UBICACIONES,
             answers=answers
         )
-        if response is None or response.get('status', 'unknown') != 'success':
-            msg = response.get('message', 'Hubo un error al crear el area. Contacta a soporte')
-            acceso_obj.LKFException({'msg': msg, 'title': 'Error al crear area'})
-            self.statuss = 'error'
-            self.status_comment = 'Hubo un error al crear el area.'
+        # breakpoint()
+        # if response is None or response.get('status', 'unknown') != 'success':
+        #     msg = response.get('message', 'Hubo un error al crear el area. Contacta a soporte')
+        #     acceso_obj.LKFException({'msg': msg, 'title': 'Error al crear area'})
+        #     self.statuss = 'error'
+        #     self.status_comment = 'Hubo un error al crear el area.'
 
         return response
 
@@ -415,16 +389,15 @@ if __name__ == "__main__":
             exists_qr = True
 
     #! Actualiza el area si ya existe
+    print('exists_qr=',exists_qr)
+    print('is_a_different_area=',is_a_different_area)
     if exists_qr and is_a_different_area:
         msg = 'Ya se ha registrado este QR en otra area.'
         acceso_obj.LKFException({'msg': msg, 'title': 'QR ya asignado'})
-        acceso_obj.statuss = 'error'
+        acceso_obj.status = 'error'
         acceso_obj.status_comment = 'El QR ya esta asignado a un area diferente.'
     elif data.get('area'):
         response = acceso_obj.update_area(data)
-        if response is None or response.get('status', 'unknown') != 'success':
-            acceso_obj.statuss = 'error'
-            acceso_obj.status_comment = 'No se pudo actualizar el area.'
 
     #! Ajuste de respuestas
     acceso_obj.answers[acceso_obj.f['status_details']] = acceso_obj.statuss
