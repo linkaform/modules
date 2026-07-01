@@ -22,7 +22,7 @@ class Custom(Custom):
 
         # Antes del primer lunes
         if f < primer_lunes:
-            return 0, None, None
+            return 0, None, None, None
 
         numero_semana = ((f - primer_lunes).days // 7) + 1
 
@@ -142,20 +142,28 @@ class Custom(Custom):
         # answers_recorrido_molino[ self.obj_usuarios ].pop( self.field_username, None )
         self.create_records_recorridos(self.FORM_ID_MOLINOS, answers_recorrido_molino)
 
-    def delete_record_from_inbox(self, str_record_id, user_id_inbox):
-        print('... Borrando de inbox =',str_record_id)
-        url = self.host_lkf + '/api/infosync/scripts/run/'
-        data = json.dumps({
-            "script_id": self.script_id_delete_inbox, 
-            "record_id": str_record_id, 
-            "user_id": user_id_inbox
-        })
-        resp_run = self.net.do_post(url, data, use_jwt=True, jwt_settings_key='JWT_KEY')
-        print('resp delete inbox',resp_run)
+    def delete_record_from_inbox(self, records_delete_inbox):
+        cr_couch = self.lkf_api.couch
+        for user_id, list_records in records_delete_inbox.items():
+            print(f'... Borrando inbox user= {user_id} records= {list_records}',)
+            cr_db = cr_couch.set_db(f'user_inbox_{user_id}')
+            mango_query = {
+                "selector": {"record_json._id": {"$in": list_records}},
+                "limit":20,"skip":0
+            }
+            records = cr_db.find(mango_query)
+
+            records_inbox = [rec_inbox for rec_inbox in records]
+            if not records_inbox:
+                continue
+
+            # print('records_inbox =',records_inbox)
+            res = self.lkf_api.delete_users_inbox(user_id, records_inbox, threading=False)
+            print(f"-- -- -- resp_delete_inbox = {res}")
 
     def get_records_to_unbox(self, fecha_inicio, fecha_semana_anterior):
         print(f'buscando registros desde {fecha_semana_anterior} hasta {fecha_inicio}')
-        return self.get_records(
+        records_to_outbox = self.get_records(
             form_id=[self.FORM_ID_CONVERSION, self.FORM_ID_MOLINOS],
             query_answers={
                 "answers.fffff0001000000000000002": {
@@ -167,30 +175,24 @@ class Custom(Custom):
             select_columns=['folio', '_id', 'user_id']
         )
 
+        group_inbox = {}
+        for rec in records_to_outbox:
+            group_inbox.setdefault( rec['user_id'], [] ).append( str(rec['_id']) )
+        return group_inbox
+
     def ejecuta_programacion(self):
         # Se obtienen los datos de la fecha actual. anio, mes y semana
         data_fecha = self.semana_del_mes_lunes()
         print('++ data_fecha =', simplejson.dumps(data_fecha, indent=4))
         
-
         # forzando fechas nomas para mis pruebas
         # data_fecha['fecha_inicio'] = "2026-05-04 00:00:00"
         # data_fecha['fecha_semana_anterior'] = "2026-04-27 00:00:00"
-
-        
-        # QUITAR DE INBOX TEMPORALMENTE DESACTIVADO HASTA REVISAR CON PATO
         
         # Se borran los registros de Inbox si ya pasó la fecha limite
-        """
         records_unboxing = self.get_records_to_unbox(data_fecha['fecha_inicio'], data_fecha['fecha_semana_anterior'])
-        # print('records_unboxing =',list(records_unboxing))
-        for record_unbox in records_unboxing:
-            self.delete_record_from_inbox( str(record_unbox['_id']), record_unbox['user_id'] )
-        """
-
-        
-
-        # stop
+        # print('records_unboxing =', records_unboxing)
+        self.delete_record_from_inbox( records_unboxing )
         
         # Se consultan los registros de programacion
         records_programacion = self.get_records_programacion(data_fecha)
