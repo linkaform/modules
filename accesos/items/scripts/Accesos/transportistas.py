@@ -50,6 +50,9 @@ class Accesos(Accesos):
                 'tipo_de_vehiculo':      f'$answers.{f["tipo_de_vehiculo"]}',
                 'placas_de_vehiculo':    f'$answers.{f["placas_de_vehiculo"]}',
                 'num_eco_num_rotulo':    f'$answers.{f["num_eco_num_rotulo"]}',
+                'marca_vehiculo':        f'$answers.{f["marca_vehiculo"]}',
+                'year_vehiculo':         f'$answers.{f["year_vehiculo"]}',
+                'color_vehiculo':        f'$answers.{f["color_vehiculo"]}',
                 'conductor':             f'$answers.{f["conductor"]}',
                 'ayudante':              f'$answers.{f["ayudante"]}',
                 'num_licencia':          f'$answers.{f["num_licencia"]}',
@@ -69,13 +72,14 @@ class Accesos(Accesos):
                     'input': {'$ifNull': [f'$answers.{f["grupo_materiales"]}', []]},
                     'as': 'm',
                     'in': {
-                        'tipo':          f'$$m.{f["tipo_material"]}',
-                        'cantidad':      f'$$m.{f["cantidad_material"]}',
-                        'peso':          f'$$m.{f["peso_material"]}',
-                        'volumen':       f'$$m.{f["volumen_material"]}',
-                        'sello':         f'$$m.{f["sello_material"]}',
-                        'lugar':         f'$$m.{f["lugar_material"]}',
-                        'no_referencia': f'$$m.{f["no_referencia_material"]}',
+                        'lugar':             f'$$m.{f["lugar_material"]}',
+                        'no_referencia':     f'$$m.{f["no_referencia_material"]}',
+                        'producto':          f'$$m.{f["producto_material"]}',
+                        'lote':              f'$$m.{f["lote_material"]}',
+                        'cantidad':          f'$$m.{f["cantidad_material"]}',
+                        'cantidad_fisica':   f'$$m.{f["cantidad_fisica_material"]}',
+                        'peso':              f'$$m.{f["peso_material"]}',
+                        'volumen':           f'$$m.{f["volumen_material"]}',
                     },
                 }},
                 'remolques': {'$map': {
@@ -83,9 +87,11 @@ class Accesos(Accesos):
                     'as': 'r',
                     'in': {
                         'tipo_remolque': f'$$r.{f["tipo_remolque"]}',
+                        'no_referencia_remolque': f'$$r.{f["no_referencia_remolque"]}',
                         'no_sello':      f'$$r.{f["num_sello"]}',
                         'no_caja':       f'$$r.{f["num_caja_contenedor"]}',
                         'placas_caja':   f'$$r.{f["placas_de_caja"]}',
+                        'color':         f'$$r.{f["color_remolque_contenedor"]}',
                         'comentarios':   f'$$r.{f["comentarios"]}',
                     },
                 }},
@@ -511,6 +517,139 @@ class Accesos(Accesos):
             self.LKFException({'title': 'Error al actualizar información del transportista', 'msg': res})
         return res
 
+    def save_bitac_transportista_record(self, record_id, data):
+        print(simplejson.dumps(data, indent=3))
+        # breakpoint()
+        f = self.bitacora_transportista_fields
+        answers = {}
+
+        vehiculo = data.get('vehiculo') or {}
+        if vehiculo:
+            answers.update({
+                f['placas_de_vehiculo']: vehiculo.get('placas_de_vehiculo', ''),
+                f['num_eco_num_rotulo']: vehiculo.get('num_eco_num_rotulo', ''),
+                f['tipo_de_vehiculo']:   vehiculo.get('tipo_de_vehiculo', ''),
+                f['marca_vehiculo']:     vehiculo.get('marca', ''),
+                f['year_vehiculo']:      vehiculo.get('modelo', ''),
+                f['color_vehiculo']:     vehiculo.get('color', ''),
+            })
+
+        embarque = data.get('embarque') or {}
+        if embarque:
+            answers.update({
+                f['empresa_transportista']: embarque.get('procedencia', ''),
+                f['proveedor_cliente']:     embarque.get('proveedor_cliente', ''),
+                f['orden_de_compra']:       embarque.get('no_orden_compra', ''),
+            })
+
+        # contenedores y remolques van al mismo grupo
+        remolques    = data.get('remolques', []) or []
+        contenedores = data.get('contenedores', []) or []
+        grupo = remolques + contenedores
+        if grupo:
+            answers[f['grupo_remolques']] = {
+                (item['index'] if item.get('index') is not None else -(i + 1)): {
+                    f['tipo_remolque']:            item.get('tipo', ''),
+                    f['num_caja_contenedor']:      item.get('no_caja', ''),
+                    f['num_sello']:                item.get('no_sello', ''),
+                    f['placas_de_caja']:           item.get('placas', ''),
+                    f['color_remolque_contenedor']: item.get('color', ''),
+                    f['no_referencia_remolque']:   item.get('ref_remolque', ''),
+                    f['comentarios']:              item.get('comentarios', ''),
+                }
+                for i, item in enumerate(grupo)
+            }
+
+        materiales = data.get('materiales', []) or []
+        if materiales:
+            answers[f['grupo_materiales']] = {
+                (m['index'] if m.get('index') is not None else -(i + 1)): {
+                    f['producto_material']:        m.get('producto', ''),
+                    f['lote_material']:            m.get('lote', ''),
+                    f['cantidad_material']:        m.get('cant_esperada', ''),
+                    f['cantidad_fisica_material']: m.get('cant_fisica', ''),
+                    f['peso_material']:            m.get('peso', ''),
+                    f['volumen_material']:         m.get('volumen', ''),
+                    f['no_referencia_material']:   m.get('ref', ''),
+                    f['lugar_material']:           'contenedor' if str(m.get('ref', '')).startswith('contenedor') else 'remolque' if str(m.get('ref', '')).startswith('remolque') else 'vehiculo',
+                }
+                for i, m in enumerate(materiales)
+            }
+
+        if data.get('delete_remolques') or data.get('delete_contenedores') or data.get('delete_materiales'):
+            self.delete_bitac_transportista_items(record_id, data)
+
+        if answers:
+            print(simplejson.dumps(answers, indent=3))
+            res = self.lkf_api.patch_multi_record(
+                answers=answers,
+                form_id=self.BITACORA_TRANSPORTISTAS,
+                record_id=[record_id],
+            )
+            print('ressssssssssss', res)
+            if res.get('status_code') not in [201, 202, 203]:
+                self.LKFException({'title': 'Error al guardar registro de bitácora', 'msg': res})
+            return res
+
+        return {'status_code': 200, 'msg': 'OK'}
+
+    def delete_bitac_transportista_items(self, record_id, data):
+        print(simplejson.dumps(data, indent=3))
+        f = self.bitacora_transportista_fields
+        current = None
+
+        delete_remolques    = data.get('delete_remolques', []) or []
+        delete_contenedores = data.get('delete_contenedores', []) or []
+        delete_materiales   = data.get('delete_materiales', []) or []
+
+        if delete_remolques or delete_contenedores:
+            current = self.get_bitac_transportista_record(record_id)
+            indexes_borrar = set(delete_remolques + delete_contenedores)
+            nuevo_grupo = [
+                {
+                    f['tipo_remolque']:             r.get('tipo_remolque', ''),
+                    f['num_caja_contenedor']:       r.get('no_caja', ''),
+                    f['num_sello']:                 r.get('no_sello', ''),
+                    f['placas_de_caja']:            r.get('placas_caja', ''),
+                    f['color_remolque_contenedor']: r.get('color', ''),
+                    f['no_referencia_remolque']:    r.get('no_referencia_remolque', ''),
+                    f['comentarios']:               r.get('comentarios', ''),
+                }
+                for i, r in enumerate(current.get('remolques', []))
+                if i not in indexes_borrar
+            ]
+            print('nuevo grupo_remolques=', simplejson.dumps(nuevo_grupo, indent=3))
+            self.cr.update_one(
+                {'_id': ObjectId(record_id), 'form_id': self.BITACORA_TRANSPORTISTAS, 'deleted_at': {'$exists': False}},
+                {'$set': {f'answers.{f["grupo_remolques"]}': nuevo_grupo}}
+            )
+
+        if delete_materiales:
+            if current is None:
+                current = self.get_bitac_transportista_record(record_id)
+            indexes_borrar = set(delete_materiales)
+            nuevo_grupo = [
+                {
+                    f['lugar_material']:           m.get('lugar', ''),
+                    f['no_referencia_material']:   m.get('no_referencia', ''),
+                    f['producto_material']:        m.get('producto', ''),
+                    f['lote_material']:            m.get('lote', ''),
+                    f['cantidad_material']:        m.get('cantidad', ''),
+                    f['cantidad_fisica_material']: m.get('cantidad_fisica', ''),
+                    f['peso_material']:            m.get('peso', ''),
+                    f['volumen_material']:         m.get('volumen', ''),
+                }
+                for i, m in enumerate(current.get('materiales', []))
+                if i not in indexes_borrar
+            ]
+            print('nuevo grupo_materiales=', simplejson.dumps(nuevo_grupo, indent=3))
+            self.cr.update_one(
+                {'_id': ObjectId(record_id), 'form_id': self.BITACORA_TRANSPORTISTAS, 'deleted_at': {'$exists': False}},
+                {'$set': {f'answers.{f["grupo_materiales"]}': nuevo_grupo}}
+            )
+
+        return {'status_code': 200, 'msg': 'OK'}
+
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
     script_obj.console_run()
@@ -535,7 +674,8 @@ if __name__ == "__main__":
         "get_proveedores_transportista": lambda: script_obj.get_proveedores_transportista(),
         "validate_token": lambda: script_obj.validate_token(record_id, token),
         "update_information_transportista": lambda: script_obj.update_information_transportista(payload),
-        "save_data_transportista": lambda: script_obj.save_data_transportista(payload),
+        "save_bitac_transportista_record": lambda: script_obj.save_bitac_transportista_record(record_id, payload),
+        "delete_bitac_transportista_items": lambda: script_obj.delete_bitac_transportista_items(record_id, payload),
     }
 
     action = dispatcher.get(option)
