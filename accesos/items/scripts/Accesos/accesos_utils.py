@@ -82,6 +82,10 @@ class Accesos(Accesos):
         self.CONFIGURACION_DE_RECORRIDOS_FORM = self.lkm.form_id('configuracion_de_recorridos','id')
         self.CONF_MODULO_SEGURIDAD = self.lkm.form_id('configuracion_modulo_seguridad','id')
         self.BITACORA_TRANSPORTISTAS = self.lkm.form_id('bitacora_de_transportistas','id')
+        
+        self.INSPECCION_ENTRADA_CTPAT_TRACTOR = self.lkm.form_id('inspeccion_de_entrada_ctpat_tractor_cabezal','id')
+        self.INSPECCION_ENTRADA_CTPAT_REMOLQUE = self.lkm.form_id('inspeccion_de_entrada_ctpat_remolque','id')
+        self.INSPECCION_ENTRADA_CTPAT_CONTENEDOR = self.lkm.form_id('inspeccion_de_entrada_ctpat_contenedor','id')
 
         self.f.update({
             'areas_del_rondin': '66462aa5d4a4af2eea07e0d1',
@@ -387,6 +391,139 @@ class Accesos(Accesos):
             'grupo_inspecciones': '6a42a7068dcfbf362329a972',
             'tipo_inspeccion': '6a42c80b03f125df7ad2862b',
             'url_inspeccion': '6a42a71aec3f7153a3d2aea3',
+        }
+
+        self.inspeccion_entrada_tractor_fields = {
+            'defensa': '20e7950eaac0054dbb8ca133',  # 1. Defensa (Si/No/N.A)
+            'defensa_comentarios': '7aa52ec9ded1f199a3bfa307',
+            'defensa_evidencia': '529623abe2be9e64816dec78',
+
+            'motor_caja_de_la_bateria_caja_y_filtros_de_aire': '2aa45df8132536520b2a2bdd',  # 2. Motor, caja de la bateria, caja y filtros de aire (Si/No/N.A)
+            'motor_caja_de_la_bateria_caja_y_filtros_de_aire_comentarios': '4604526acf0bf06c658add75',
+            'motor_caja_de_la_bateria_caja_y_filtros_de_aire_evidencia': '8f12a402e6094434d6028246',
+
+            'llantas_y_rines_tractor_y_remolque': '4b58a0007c1730a1ff9cc56f',  # 3. Llantas y rines (tractor y remolque) (Si/No/N.A)
+            'llantas_y_rines_tractor_y_remolque_comentarios': '8e2645d9b0117869c0b93bc1',
+            'llantas_y_rines_tractor_y_remolque_evidencia': 'a9be932860ceeb9face9b24d',
+
+            'piso_tractor': 'acba826a28a8d1d48b743b53',  # 4. Piso (tractor) (Si/No/N.A)
+            'piso_tractor_comentarios': '5e5cc9112d6c74a8c0d96c6b',
+            'piso_tractor_evidencia': '5e0e635e8e5e7788793dc632',
+
+            'tanque_de_combustible': '72e1fe8cf4fad9736fbb141c',  # 5. Tanque de combustible (Si/No/N.A)
+            'tanque_de_combustible_comentarios': 'ddd7b180bcb8a98c556c67ef',
+            'tanque_de_combustible_evidencia': 'cef55b76f55eed057cf64cad',
+
+            'cabina_dormitorio_puertas_y_compartimientos_de_herramientas_seccion_de_pasajero_y_techo': '83ceff5fda79787b48219268',  # 6. Cabina, dormitorio, puertas y compartimientos de herramientas, seccion de pasajero y techo (Si/No/N.A)
+            'cabina_dormitorio_puertas_y_compartimientos_de_herramientas_seccion_de_pasajero_y_techo_comentarios': '700d1c62d264a6c3039f65c1',
+            'cabina_dormitorio_puertas_y_compartimientos_de_herramientas_seccion_de_pasajero_y_techo_evidencia': '6cb1dd20ae67dff1e20b08bd',
+
+            'tanque_de_aire': 'ac82529cb6081ee6327ee04f',  # 7. Tanque de aire (Si/No/N.A)
+            'tanque_de_aire_comentarios': '9cdc267b92fe4c144de7c370',
+            'tanque_de_aire_evidencia': 'e01e5ac0be30514b35bd3d13',
+
+            'ejes_de_transmision': 'bcb4e55eddda4821b9db0304',  # 8. Ejes de transmision (Si/No/N.A)
+            'ejes_de_transmision_comentarios': '8e5bc150c3791c9917314b92',
+            'ejes_de_transmision_evidencia': '5b72adefa1c7c716e0f24941',
+
+            'quinta_rueda': '3ad0cca2f6449042ad664cfd',  # 9. Quinta rueda (Si/No/N.A)
+            'quinta_rueda_comentarios': 'cedf4d6e6f7120c152d9c0fb',
+            'quinta_rueda_evidencia': '35ccd51789e6260465d17ea7',
+
+            'chasis': 'd08cc0f655036b4fb2a09056',  # 10. Chasis (Si/No/N.A)
+            'chasis_comentarios': 'db0dd2a781343effa2a7153d',
+            'chasis_evidencia': 'e957e4cb96e1ef8f999a5938',
+
+            'puertas_externa': '5c100788b4211b8122e4395c',  # 11. Puertas externa (Si/No/N.A)
+            'puertas_externa_comentarios': '87fffff1f65ef97ddc4d23bf',
+            'puertas_externa_evidencia': '666ce737007a5ccc57c9f369',
+
+            'piso_externo_trailer_contenedor_caja': 'f87fd7be1133ee21cc723f7c',  # 12. Piso externo (trailer, contenedor, caja) (Si/No/N.A)
+            'piso_externo_trailer_contenedor_caja_comentarios': 'de6dffa1def019fe589a329a',
+            'piso_externo_trailer_contenedor_caja_evidencia': 'e7c54e4187ee035e6bb3be7b',
+
+            'paredes_externa': 'fc63e8996ccf5c91a80c0e2f',  # 13. Paredes externa (Si/No/N.A)
+            'paredes_externa_comentarios': '531d51796e724cc7f14cb496',
+            'paredes_externa_evidencia': 'b2d3aaf29aa9374130881632',
+
+            'pared_frontal_externa': '731b4abf0672038c57d8d516',  # 14. Pared frontal externa (Si/No/N.A)
+            'pared_frontal_externa_comentarios': '1f3c15fb61a4a143f773809d',
+            'pared_frontal_externa_evidencia': '56d9b00ce47ae297a64aa90b',
+
+            'techo_externo': '8b18d4aa1d62615cacf2776f',  # 15. Techo externo (Si/No/N.A)
+            'techo_externo_comentarios': '85df5aa6a444e9490f14ce86',
+            'techo_externo_evidencia': '5b82b568466ceebc18d49dd3',
+
+            'unidad_de_refrigeracion': '8b4e8a6dec2392c9f267e179',  # 16. Unidad de refrigeracion (Si/No/N.A)
+            'unidad_de_refrigeracion_comentarios': '747090a5b505163130df82e4',
+            'unidad_de_refrigeracion_evidencia': '5544eaaccb74e9d09b7e2f77',
+
+            'escape_mofles': '48de45705387f226f6551c1b',  # 17. Escape / Mofles (Si/No/N.A)
+            'escape_mofles_comentarios': '0307abb04ee4f8b3786cca23',
+            'escape_mofles_evidencia': '32f0559232cbc31f5cc6a472',
+        }
+
+        self.inspeccion_entrada_ctpat_contenedor_fields = {
+            'altura_interior': 'd412fb9f428dfc231c9bc3f0',  # Altura interior (text)
+            'ancho_interior': '6477c73222d9b7e8dd1de3b9',  # Ancho interior (text)
+            'longitud_interior': 'd7c19cbd2cfe6b19f848d697',  # Longitud interior (text)
+            'exterior_parte_inferior_del_contenedor_bastidor_o_chasis': '4a819aa25c6e76080f76317a',  # Exterior / parte inferior del contenedor (bastidor o chasis) (checkbox: Todos/Suciedad/Plagas/Fauna)
+            'puertas_interiores_exteriores': 'b4f2b497790d8fa30739ab05',  # Puertas interiores / exteriores (checkbox: Todos/Suciedad/Plagas/Fauna)
+            'pared_interior_lado_derecho': 'c334bc2360c643779bdcd495',  # Pared interior lado derecho (checkbox: Todos/Suciedad/Plagas/Fauna)
+            'pared_interior_lado_izquierdo': '4c90dcc67f8e9f029878502c',  # Pared interior lado izquierdo (checkbox: Todos/Suciedad/Plagas/Fauna)
+            'pared_interior_frontal': '14aea746aadf15c99edb8592',  # Pared interior frontal (checkbox: Todos/Suciedad/Plagas/Fauna)
+            'techo_cubierta_superior': 'bc75ab3fdb2258286b0b41c0',  # Techo / cubierta superior (checkbox: Todos/Suciedad/Plagas/Fauna)
+            'piso_interior': '371a7d9c3ae8a40a32b3762a',  # Piso (interior) (checkbox: Todos/Suciedad/Plagas/Fauna)
+        }
+
+        self.inspeccion_entrada_ctpat_remolque_fields = {
+            'altura_interior': '6703c4acd45242ffb0eb0839',  # Altura interior (text)
+            'ancho_interior': '7bfa6fe868c1cbec93a051e5',  # Ancho interior (text)
+            'longitud_interior': '2624dc82316e99315084d385',  # Longitud interior (text)
+
+            'tanque_de_aire': 'd1fae4d0b2ec9569fbcf8770',  # 1. Tanque de aire (Si/No)
+            'tanque_de_aire_comentarios': 'd2bacb536ead1a15f56bbe6c',
+            'tanque_de_aire_evidencia': '28538bb0340a0eccc15e150b',
+
+            'ejes_de_transmision': 'd57c0e9a92f8b3b552f2b66a',  # 2. Ejes de transmision (Si/No)
+            'ejes_de_transmision_comentarios': '9f6a0733c5c36bcc4e6051de',
+            'ejes_de_transmision_evidencia': '089e40849794b1edbe667291',
+
+            'quinta_rueda': 'aeed49c20dd20d18904ac28f',  # 3. Quinta rueda (Si/No)
+            'quinta_rueda_comentarios': '481f00fd61a55c0b9aef99e4',
+            'quinta_rueda_evidencia': 'c86cf900756ed0667122d999',
+
+            'chasis': '9a6743b2e92e16e2b727e667',  # 4. Chasis (Si/No)
+            'chasis_comentarios': '6aa6dabeb1430c92bf9c36a9',
+            'chasis_evidencia': 'c420045f52f188fcbd616165',
+
+            'puertas_externa': 'b0dca85ed86edd92560f634c',  # 5. Puertas externa (Si/No)
+            'puertas_externa_comentarios': '3b85b7104be1df0dbe8762e7',
+            'puertas_externa_evidencia': '608def717f6c6f14e1f8ab6e',
+
+            'piso_externo_trailer_contenedor_caja': '2cb78278523b502800a47e2e',  # 6. Piso externo (trailer, contenedor, caja) (Si/No)
+            'piso_externo_trailer_contenedor_caja_comentarios': '7bc7a9a7a58d45946c2e70a6',
+            'piso_externo_trailer_contenedor_caja_evidencia': 'c16b8d4dfc22709c7785cc63',
+
+            'paredes_externa': '198cf876dc13d7bd658a4cbd',  # 7. Paredes externa (Si/No)
+            'paredes_externa_comentarios': '8a9af06c2c1045f46dfa44d2',
+            'paredes_externa_evidencia': '8af47b03f950e87661b5835b',
+
+            'pared_frontal_externa': '36b4b172e38a3dc1b8b226d1',  # 8. Pared frontal externa (Si/No)
+            'pared_frontal_externa_comentarios': 'bb279c901f91c114d1220452',
+            'pared_frontal_externa_evidencia': 'ddff798b400d03d48b9ef808',
+
+            'techo_externo': 'bbc21e44dec3040d81e005f2',  # 9. Techo externo (Si/No)
+            'techo_externo_comentarios': 'e2e3ae0dbf920b1c44502fbb',
+            'techo_externo_evidencia': '59bf2262a664e2b16ba1a299',
+
+            'unidad_de_refrigeracion': 'cbb1c127c08011c3d7d4c344',  # 10. Unidad de refrigeracion (Si/No)
+            'unidad_de_refrigeracion_comentarios': '80ad083a0f6319e6fd63d681',
+            'unidad_de_refrigeracion_evidencia': 'd0240215edecf39a02c5a891',
+
+            'escape_mofles': '545c0b134ab1d2f11cef90a9',  # 11. Escape / Mofles (Si/No)
+            'escape_mofles_comentarios': '736b1fe2e2609d47beef2a03',
+            'escape_mofles_evidencia': 'b7618c209a113ef54ec2b58b',
         }
 
     def create_pass_transportista(self, data):

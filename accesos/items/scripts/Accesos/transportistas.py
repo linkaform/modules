@@ -649,12 +649,183 @@ class Accesos(Accesos):
             )
 
         return {'status_code': 200, 'msg': 'OK'}
+    
+    def save_inspecciones(self, record_id, data):
+        print(simplejson.dumps(data, indent=3))
+        f_bit = self.bitacora_transportista_fields
+
+        TRACTOR_CAMPOS = [
+            'defensa',
+            'motor_caja_de_la_bateria_caja_y_filtros_de_aire',
+            'llantas_y_rines_tractor_y_remolque',
+            'piso_tractor',
+            'tanque_de_combustible',
+            'cabina_dormitorio_puertas_y_compartimientos_de_herramientas_seccion_de_pasajero_y_techo',
+            'tanque_de_aire',
+            'ejes_de_transmision',
+            'quinta_rueda',
+            'chasis',
+            'puertas_externa',
+            'piso_externo_trailer_contenedor_caja',
+            'paredes_externa',
+            'pared_frontal_externa',
+            'techo_externo',
+            'unidad_de_refrigeracion',
+            'escape_mofles',
+        ]
+
+        REMOLQUE_CAMPOS = [
+            'tanque_de_aire',
+            'ejes_de_transmision',
+            'quinta_rueda',
+            'chasis',
+            'puertas_externa',
+            'piso_externo_trailer_contenedor_caja',
+            'paredes_externa',
+            'pared_frontal_externa',
+            'techo_externo',
+            'unidad_de_refrigeracion',
+            'escape_mofles',
+        ]
+
+        CONTENEDOR_PUNTO_MAP = {
+            'Exterior / parte inferior del contenedor (bastidor o chasis)': 'exterior_parte_inferior_del_contenedor_bastidor_o_chasis',
+            'Puertas interiores / exteriores':  'puertas_interiores_exteriores',
+            'Pared interior lado derecho':       'pared_interior_lado_derecho',
+            'Pared interior lado izquierdo':     'pared_interior_lado_izquierdo',
+            'Pared interior frontal':            'pared_interior_frontal',
+            'Techo / cubierta superior':         'techo_cubierta_superior',
+            'Piso (interior)':                   'piso_interior',
+        }
+
+        inspecciones_creadas = []
+
+        for inspeccion in data:
+            tipo   = inspeccion.get('tipo', '')
+            unidad = inspeccion.get('unidad')
+            tipo_label = f'{tipo}_{unidad}' if unidad else tipo
+
+            if tipo == 'tractor':
+                puntos = inspeccion.get('puntos', [])
+                if not any(p.get('resultado') for p in puntos):
+                    continue
+                form_id = self.INSPECCION_ENTRADA_CTPAT_TRACTOR
+                f_ins   = self.inspeccion_entrada_tractor_fields
+                answers = {}
+                for punto in puntos:
+                    num = punto.get('numero', 0) - 1
+                    if 0 <= num < len(TRACTOR_CAMPOS):
+                        campo = TRACTOR_CAMPOS[num]
+                        resultado = (punto.get('resultado') or '').lower().replace('í', 'i')
+                        if resultado:
+                            answers[f_ins[campo]] = resultado
+                        if punto.get('comentario'):
+                            answers[f_ins[f'{campo}_comentarios']] = punto['comentario']
+                        if punto.get('fotos'):
+                            answers[f_ins[f'{campo}_evidencia']] = punto['fotos']
+
+            elif tipo == 'remolque':
+                puntos = inspeccion.get('puntos', [])
+                if not any(p.get('resultado') for p in puntos):
+                    continue
+                form_id = self.INSPECCION_ENTRADA_CTPAT_REMOLQUE
+                f_ins   = self.inspeccion_entrada_ctpat_remolque_fields
+                answers = {}
+                medidas = inspeccion.get('medidas', {}) or {}
+                if medidas.get('longitud'):
+                    answers[f_ins['longitud_interior']] = medidas['longitud']
+                if medidas.get('ancho'):
+                    answers[f_ins['ancho_interior']] = medidas['ancho']
+                if medidas.get('altura'):
+                    answers[f_ins['altura_interior']] = medidas['altura']
+                for punto in puntos:
+                    num = punto.get('numero', 0) - 1
+                    if 0 <= num < len(REMOLQUE_CAMPOS):
+                        campo = REMOLQUE_CAMPOS[num]
+                        resultado = (punto.get('resultado') or '').lower().replace('í', 'i')
+                        if resultado:
+                            answers[f_ins[campo]] = resultado
+                        if punto.get('comentario'):
+                            answers[f_ins[f'{campo}_comentarios']] = punto['comentario']
+                        if punto.get('fotos'):
+                            answers[f_ins[f'{campo}_evidencia']] = punto['fotos']
+
+            elif tipo == 'contenedor':
+                filas   = inspeccion.get('filas', [])
+                medidas = inspeccion.get('medidas', {}) or {}
+                has_data = (
+                    any(fila.get('valores') for fila in filas)
+                    or any(medidas.get(k) for k in ['longitud', 'ancho', 'altura'])
+                )
+                if not has_data:
+                    continue
+                form_id = self.INSPECCION_ENTRADA_CTPAT_CONTENEDOR
+                f_ins   = self.inspeccion_entrada_ctpat_contenedor_fields
+                answers = {}
+                if medidas.get('longitud'):
+                    answers[f_ins['longitud_interior']] = medidas['longitud']
+                if medidas.get('ancho'):
+                    answers[f_ins['ancho_interior']] = medidas['ancho']
+                if medidas.get('altura'):
+                    answers[f_ins['altura_interior']] = medidas['altura']
+                for fila in filas:
+                    campo = CONTENEDOR_PUNTO_MAP.get(fila.get('punto', ''))
+                    if not campo:
+                        continue
+                    valores = fila.get('valores') or []
+                    if valores:
+                        answers[f_ins[campo]] = [v.lower() for v in valores]
+            else:
+                continue
+
+            metadata = self.lkf_api.get_metadata(form_id=form_id)
+            inspeccion_id = self.object_id()
+            metadata.update({
+                'id': inspeccion_id,
+                'properties': {
+                    'device_properties': {
+                        'System':  'Script',
+                        'Module':  'Accesos',
+                        'Process': 'Inspección CTPAT',
+                        'Action':  'save_inspecciones',
+                        'File':    'modules/accesos/items/scripts/Accesos/transportistas.py',
+                    }
+                },
+                'answers': answers,
+            })
+            print(simplejson.dumps(answers, indent=3))
+            res = self.lkf_api.post_forms_answers(metadata)
+            print(f'save_inspecciones [{tipo_label}] res=', res.get('status_code'))
+            if res.get('status_code') not in [200, 201, 202]:
+                self.LKFException({'title': f'Error al crear inspección {tipo_label}', 'msg': res})
+            inspecciones_creadas.append((tipo_label, inspeccion_id))
+
+        if inspecciones_creadas:
+            answers_bitacora = {
+                f_bit['grupo_inspecciones']: {
+                    -(i + 1): {
+                        f_bit['tipo_inspeccion']: tipo_label,
+                        f_bit['url_inspeccion']:  f'https://app.linkaform.com/#/records/detail/{inspeccion_id}',
+                    }
+                    for i, (tipo_label, inspeccion_id) in enumerate(inspecciones_creadas)
+                }
+            }
+            res_bit = self.lkf_api.patch_multi_record(
+                answers=answers_bitacora,
+                form_id=self.BITACORA_TRANSPORTISTAS,
+                record_id=[record_id],
+            )
+            if res_bit.get('status_code') not in [201, 202, 203]:
+                self.LKFException({'title': 'Error al actualizar inspecciones en bitácora', 'msg': res_bit})
+
+        return {'status_code': 200, 'msg': 'OK', 'inspecciones_creadas': [t for t, _ in inspecciones_creadas]}
 
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
     script_obj.console_run()
     data = script_obj.data.get('data', {})
     option = data.get("option", '')
+    inspecciones = data.get("inspecciones", [])
     payload = data.get("payload", {})
     record_id = data.get("record_id", None)
     token = data.get("token", None)
@@ -676,6 +847,7 @@ if __name__ == "__main__":
         "update_information_transportista": lambda: script_obj.update_information_transportista(payload),
         "save_bitac_transportista_record": lambda: script_obj.save_bitac_transportista_record(record_id, payload),
         "delete_bitac_transportista_items": lambda: script_obj.delete_bitac_transportista_items(record_id, payload),
+        "save_inspecciones": lambda: script_obj.save_inspecciones(record_id, inspecciones),
     }
 
     action = dispatcher.get(option)
