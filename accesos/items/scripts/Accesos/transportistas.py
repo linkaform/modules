@@ -604,6 +604,17 @@ class Accesos(Accesos):
                 for i, m in enumerate(materiales)
             }
 
+        documento = data.get('documentos_adicionales') or {}
+        if documento:
+            idx = documento.get('index')
+            key = idx if idx is not None else -1
+            answers[f['grupo_fotos_y_documentos']] = {
+                key: {
+                    f['tipo_de_documento']: documento.get('tipo', ''),
+                    f['documento']: [{'file_name': documento['file_name'], 'file_url': documento['file_url']}],
+                }
+            }
+
         if data.get('delete_remolques') or data.get('delete_contenedores') or data.get('delete_materiales'):
             self.delete_bitac_transportista_items(record_id, data)
 
