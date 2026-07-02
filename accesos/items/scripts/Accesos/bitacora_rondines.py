@@ -69,14 +69,20 @@ class Accesos(Accesos):
     
     def get_and_set_areas_recorrido(self):
         location = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], '')
+        area = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['area'], '')
         name_rondin = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.mf['nombre_del_recorrido'], '')
-        query = [
-            {"$match": {
+        match = {"$match": {
                 "deleted_at": {"$exists": False},
                 "form_id": self.CONFIGURACION_DE_RECORRIDOS_FORM,
                 f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": location,
                 f"answers.{self.mf['nombre_del_recorrido']}": name_rondin
-            }},
+            }}
+        if area:
+            match["$match"].update(
+                {f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.Location.f['area_salida']}": area}
+                )
+        query = [
+            match,
             {"$project": {
                 "_id": 0,
                 "rondin_areas": f"$answers.{self.f['grupo_de_areas_recorrido']}",
@@ -106,7 +112,7 @@ class Accesos(Accesos):
                 f"answers.{self.Employee.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.f['ubicacion']}": location,
             }}
         if area:
-            match.update(
+            match["$match"].update(
                 {f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.Location.f['area_salida']}":area}
                 )
         query = [
@@ -178,9 +184,8 @@ class Accesos(Accesos):
                     res = self.lkf_api.post_forms_answers(new_metadata)
         else:
             location = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'])
-            area = self.answers.get(self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID, {}).get(self.Location.f['area_salida'])
+            area = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['area'])
             user_info = self.get_active_guards_in_location(location, area)
-
             if not user_info:
                 return False
             

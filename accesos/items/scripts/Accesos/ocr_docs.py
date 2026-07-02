@@ -462,6 +462,7 @@ if __name__ == "__main__":
     form_id   = acceso_obj.data.get('form_id')
     option = data.get('option', '')
     nombre = data.get('nombre', data.get('name'))
+    is_employee = data.get('is_employee', data.get('is_employee'))
 
     # image_source: URL remota o ruta local de la imagen
     # Ejemplos:
@@ -482,6 +483,8 @@ if __name__ == "__main__":
 
     # ── Router de opciones ────────────────────────────────────
     print('option=', option)
+    is_employee = True
+    
     if not acceso_obj.ai:
         # El usuario no configuró OPENROUTER_API_KEY en account_settings.py
         response = {
@@ -504,6 +507,7 @@ if __name__ == "__main__":
             image_source=image_source,
             form_id=form_id,
             name=nombre,
+            is_employee=is_employee
         )
 
     elif option == 'ocr_doc':
