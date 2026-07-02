@@ -106,6 +106,34 @@ class Accesos(Accesos):
             }},
         ]
         return self.format_cr(self.cr.aggregate(query), get_one=True)
+    
+    def get_bitac_transportista_records(self):
+        f = self.bitacora_transportista_fields
+        query = [
+            {'$match': {
+                'form_id': self.BITACORA_TRANSPORTISTAS,
+                'deleted_at': {'$exists': False},
+            }},
+            {'$project': {
+                '_id': 1,
+                'folio':              1,
+                'placas':             f'$answers.{f["placas_de_vehiculo"]}',
+                'proveedor_cliente':  f'$answers.{f["proveedor_cliente"]}',
+                'conductor':          f'$answers.{f["conductor"]}',
+                'tipo_de_operacion':  f'$answers.{f["tipo_de_operacion"]}',
+                'estatus':            f'$answers.{f["estatus"]}',
+                'num_de_pase':        f'$answers.{f["num_de_pase"]}',
+                'fecha_hora_ingreso': f'$answers.{f["fecha_hora_ingreso"]}',
+                'material': {
+                    '$let': {
+                        'vars': {'primer': {'$arrayElemAt': [f'$answers.{f["grupo_materiales"]}', 0]}},
+                        'in': f'$$primer.{f["producto_material"]}',
+                    }
+                },
+            }},
+            {'$sort': {'_id': -1}},
+        ]
+        return self.format_cr(self.cr.aggregate(query))
 
     def get_horarios_data(self, dia=None):
         """
@@ -838,6 +866,7 @@ if __name__ == "__main__":
         "generate_submit_token_transportista": lambda: script_obj.generate_submit_token_transportista(record_id),
         "get_andenes": lambda: script_obj.get_andenes(),
         "get_bitac_transportista_record": lambda: script_obj.get_bitac_transportista_record(record_id),
+        "get_bitac_transportista_records": lambda: script_obj.get_bitac_transportista_records(),
         "get_horarios_data": lambda: script_obj.get_horarios_data(dia=data.get('dia')),
         "get_pass_transportista": lambda: script_obj.get_pass_transportista(record_id, token),
         "get_users_data": lambda: script_obj.get_users_data(locations),
