@@ -610,12 +610,12 @@ class Accesos(Accesos):
             key = idx if idx is not None else -1
             answers[f['grupo_fotos_y_documentos']] = {
                 key: {
-                    f['tipo_de_documento']: documento.get('tipo', ''),
+                    f['tipo_de_documento']: documento.get('tipo', '').lower().replace(' ', '_'),
                     f['documento']: [{'file_name': documento['file_name'], 'file_url': documento['file_url']}],
                 }
             }
 
-        if data.get('delete_remolques') or data.get('delete_contenedores') or data.get('delete_materiales'):
+        if data.get('delete_remolques') or data.get('delete_contenedores') or data.get('delete_materiales') or data.get('delete_documentos'):
             self.delete_bitac_transportista_items(record_id, data)
 
         if answers:
@@ -640,6 +640,7 @@ class Accesos(Accesos):
         delete_remolques    = data.get('delete_remolques', []) or []
         delete_contenedores = data.get('delete_contenedores', []) or []
         delete_materiales   = data.get('delete_materiales', []) or []
+        delete_documentos   = data.get('delete_documentos', []) or []
 
         if delete_remolques or delete_contenedores:
             current = self.get_bitac_transportista_record(record_id)
@@ -685,6 +686,24 @@ class Accesos(Accesos):
             self.cr.update_one(
                 {'_id': ObjectId(record_id), 'form_id': self.BITACORA_TRANSPORTISTAS, 'deleted_at': {'$exists': False}},
                 {'$set': {f'answers.{f["grupo_materiales"]}': nuevo_grupo}}
+            )
+
+        if delete_documentos:
+            if current is None:
+                current = self.get_bitac_transportista_record(record_id)
+            indexes_borrar = set(delete_documentos)
+            nuevo_grupo = [
+                {
+                    f['tipo_de_documento']: d.get('tipo', ''),
+                    f['documento']:         d.get('documento', []),
+                }
+                for i, d in enumerate(current.get('documentos', []))
+                if i not in indexes_borrar
+            ]
+            print('nuevo grupo_fotos_y_documentos=', simplejson.dumps(nuevo_grupo, indent=3))
+            self.cr.update_one(
+                {'_id': ObjectId(record_id), 'form_id': self.BITACORA_TRANSPORTISTAS, 'deleted_at': {'$exists': False}},
+                {'$set': {f'answers.{f["grupo_fotos_y_documentos"]}': nuevo_grupo}}
             )
 
         return {'status_code': 200, 'msg': 'OK'}
