@@ -774,7 +774,7 @@ class Accesos(Accesos):
                     num = punto.get('numero', 0) - 1
                     if 0 <= num < len(TRACTOR_CAMPOS):
                         campo = TRACTOR_CAMPOS[num]
-                        resultado = (punto.get('resultado') or '').lower().replace('í', 'i')
+                        resultado = (punto.get('resultado') or '').lower()
                         if resultado:
                             answers[f_ins[campo]] = resultado
                         if punto.get('comentario'):
@@ -860,6 +860,7 @@ class Accesos(Accesos):
 
         if inspecciones_creadas:
             answers_bitacora = {
+                f_bit['estatus']: 'inspeccion_entrada',
                 f_bit['grupo_inspecciones']: {
                     -(i + 1): {
                         f_bit['tipo_inspeccion']: tipo_label,
