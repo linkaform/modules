@@ -218,25 +218,27 @@ class Accesos(Accesos):
                     'order':      item.get('seccion_order') or len(submodules) + 1,
                     'icon':       item.get('seccion_icon'),
                     'iconBgColor': item.get('seccion_icon_color'),
-                    'items':      []
+                    'items':      {}
                 }
 
-            item_data = {
-                'key':   item.get('key') or self.slugify(item.get('elemento', ''), '_'),
-                'label': item.get('elemento', ''),
-                'type':  item.get('type', 'link'),
-                'order': item.get('item_order') or len(submodules[seccion_key]['items']) + 1,
-            }
-            item_route = item.get('route_mobile')
-            if item_route:
-                item_data['route'] = item_route
-            submodules[seccion_key]['items'].append(item_data)
+            item_key = item.get('key') or self.slugify(item.get('elemento', ''), '_')
+            if item_key not in submodules[seccion_key]['items']:
+                item_data = {
+                    'key':   item_key,
+                    'label': item.get('elemento', ''),
+                    'type':  item.get('type', 'link'),
+                    'order': item.get('item_order') or len(submodules[seccion_key]['items']) + 1,
+                }
+                item_route = item.get('route_mobile')
+                if item_route:
+                    item_data['route'] = item_route
+                submodules[seccion_key]['items'][item_key] = item_data
 
         modules = []
         for module in modules_dict.values():
             submodules = sorted(module['submodules'].values(), key=lambda s: s['order'])
             for s in submodules:
-                s['items'] = sorted(s['items'], key=lambda i: i['order'])
+                s['items'] = sorted(s['items'].values(), key=lambda i: i['order'])
             modules.append({**module, 'submodules': submodules})
 
         return {'menu': sorted(modules, key=lambda m: m['order'])}
@@ -276,28 +278,30 @@ class Accesos(Accesos):
                     'label':  item.get('seccion', ''),
                     'order':  item.get('seccion_order') or len(sections) + 1,
                     'column': item.get('seccion_column') or len(sections) + 1,
-                    'items':  []
+                    'items':  {}
                 }
                 if seccion_href:
                     seccion_data['href'] = seccion_href
                 sections[seccion_key] = seccion_data
 
             item_href = item.get('href_web')
-            item_data = {
-                'key':   item.get('key') or self.slugify(item.get('elemento', ''), '_'),
-                'label': item.get('elemento', ''),
-                'type':  item.get('type', 'link'),
-                'order': item.get('item_order') or len(sections[seccion_key]['items']) + 1,
-            }
-            if item_href:
-                item_data['href'] = item_href
-            sections[seccion_key]['items'].append(item_data)
+            item_key = item.get('key') or self.slugify(item.get('elemento', ''), '_')
+            if item_key not in sections[seccion_key]['items']:
+                item_data = {
+                    'key':   item_key,
+                    'label': item.get('elemento', ''),
+                    'type':  item.get('type', 'link'),
+                    'order': item.get('item_order') or len(sections[seccion_key]['items']) + 1,
+                }
+                if item_href:
+                    item_data['href'] = item_href
+                sections[seccion_key]['items'][item_key] = item_data
 
         modules = []
         for module in modules_dict.values():
             sections = sorted(module['sections'].values(), key=lambda s: s['order'])
             for s in sections:
-                s['items'] = sorted(s['items'], key=lambda i: i['order'])
+                s['items'] = sorted(s['items'].values(), key=lambda i: i['order'])
             modules.append({**module, 'sections': sections})
 
         return {'modules': sorted(modules, key=lambda m: m['order'])}
