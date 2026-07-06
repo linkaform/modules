@@ -68,17 +68,11 @@ class Accesos(Accesos):
         }
         if ubicacion:
             match_query.update({
-            f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.configuracion_area['ubicacion']}": {
-                    "$regex": f"^{ubicacion}$",
-                    "$options": "i"
-                }
+            f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.configuracion_area['ubicacion']}": ubicacion
             })
         if area:
             match_query.update({
-            f"answers.{self.configuracion_area['area']}": {
-                    "$regex": f"^{area}$",
-                    "$options": "i"
-                }
+            f"answers.{self.configuracion_area['area']}": area
             })
         if tag_id_area:
             match_query.update({
@@ -188,7 +182,6 @@ class Accesos(Accesos):
                 'answers': answers,
                 '_id': record_id
             })
-
             response = self.net.patch_forms_answers(metadata)
             return response
 
@@ -228,14 +221,8 @@ class Accesos(Accesos):
             {'$match': {
                 "deleted_at":{"$exists":False},
                 "form_id": self.AREAS_DE_LAS_UBICACIONES,
-                f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.configuracion_area['ubicacion']}": {
-                    "$regex": f"^{ubicacion}$",
-                    "$options": "i"
-                },
-                f"answers.{self.configuracion_area['area']}": {
-                    "$regex": f"^{area}$",
-                    "$options": "i"
-                }
+                f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.configuracion_area['ubicacion']}": ubicacion,
+                f"answers.{self.configuracion_area['area']}": area
             }},
             {'$project': {
                 '_id': 1,
@@ -253,6 +240,8 @@ class Accesos(Accesos):
         contact_details = self.get_contact_details(data.get('ubicacion', {}))
         answers = {
             self.mf['nombre_area']: data.get('nombre_nueva_area'),
+            self.f['area_foto']: data.get('foto_area'),
+            self.f['area_tag_id']: data.get('qr_area'),
             self.Location.UBICACIONES_CAT_OBJ_ID: {
                 self.mf['nombre_ubicacion_salida']: data.get('ubicacion', ''),
             },
@@ -272,12 +261,6 @@ class Accesos(Accesos):
             form_id=self.AREAS_DE_LAS_UBICACIONES,
             answers=answers
         )
-        # breakpoint()
-        # if response is None or response.get('status', 'unknown') != 'success':
-        #     msg = response.get('message', 'Hubo un error al crear el area. Contacta a soporte')
-        #     acceso_obj.LKFException({'msg': msg, 'title': 'Error al crear area'})
-        #     self.statuss = 'error'
-        #     self.status_comment = 'Hubo un error al crear el area.'
 
         return response
 
@@ -389,8 +372,6 @@ if __name__ == "__main__":
             exists_qr = True
 
     #! Actualiza el area si ya existe
-    print('exists_qr=',exists_qr)
-    print('is_a_different_area=',is_a_different_area)
     if exists_qr and is_a_different_area:
         msg = 'Ya se ha registrado este QR en otra area.'
         acceso_obj.LKFException({'msg': msg, 'title': 'QR ya asignado'})
