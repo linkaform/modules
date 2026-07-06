@@ -88,7 +88,8 @@ class Accesos(Accesos):
                 "rondin_areas": f"$answers.{self.f['grupo_de_areas_recorrido']}",
                 "tipo_asignacion": f"$answers.{self.rondin_keys['tipo_asignacion']}",
                 "grupo_asignado_a": f"$answers.{self.rondin_keys['grupo_asignado_a']}",
-                "id_grupo": f"$answers.{self.GRUPOS_CAT_OBJ_ID}.{self.mf['id_grupo']}"
+                "id_grupo": f"$answers.{self.GRUPOS_CAT_OBJ_ID}.{self.mf['id_grupo']}",
+                "roles": f"$answers.{self.f['grupo_roles']}"
             }}
         ]
         res = self.cr.aggregate(query)
@@ -103,7 +104,7 @@ class Accesos(Accesos):
             return True
         return False
     
-    def get_active_guards_in_location(self, location, area=None):
+    def get_active_guards_in_location(self, location, rol=None):
         match = {"$match": {
                 "deleted_at": {"$exists": False},
                 "form_id": self.REGISTRO_ASISTENCIA,
@@ -111,7 +112,7 @@ class Accesos(Accesos):
                 f"answers.{self.f['end_shift']}": {"$exists": False},
                 f"answers.{self.Employee.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.f['ubicacion']}": location,
             }}
-        if area:
+        if rol:
             match["$match"].update(
                 {f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.Location.f['area_salida']}":area}
                 )
@@ -164,6 +165,7 @@ class Accesos(Accesos):
     def get_and_set_user(self):
         tipo_asignacion = self.answers.get(self.rondin_keys['tipo_asignacion'])
         grupo_asignado_a = self.answers.get(self.rondin_keys['grupo_asignado_a'])
+        breakpoint()
         if tipo_asignacion and tipo_asignacion in ('persona_especifica', 'grupo'):
             if tipo_asignacion == 'grupo':
                 grupo_asignado_a = self.lkf_api.get_group_users(self.unlist(self.answers[self.GRUPOS_CAT_OBJ_ID][self.mf['id_grupo']]))
@@ -184,8 +186,7 @@ class Accesos(Accesos):
                     res = self.lkf_api.post_forms_answers(new_metadata)
         else:
             location = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'])
-            area = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['area'])
-            user_info = self.get_active_guards_in_location(location, area)
+            user_info = self.get_active_guards_in_location(location)
             if not user_info:
                 return False
             
@@ -224,7 +225,7 @@ if __name__ == "__main__":
                 acceso_obj.get_and_set_areas_recorrido()
             if not acceso_obj.answers.get(acceso_obj.USUARIOS_OBJ_ID):
                 acceso_obj.get_and_set_user()
-    
+    print('answers=', simplejson.dumps(acceso_obj.answers, indent=3))
     sys.stdout.write(simplejson.dumps({
         'status': 101,
         'replace_ans': acceso_obj.answers,

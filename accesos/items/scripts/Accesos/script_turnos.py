@@ -49,6 +49,7 @@ if __name__ == "__main__":
     nombre_suplente=data.get("nombre_suplente","")
     guard_id=data.get("guard_id","")
     dynamic_filters=data.get("dynamic_filters",{})
+    roles=data.get("roles",[])
     #-FUNCTIONS
     print('option', option)
     if option == 'load_shift':
@@ -69,7 +70,7 @@ if __name__ == "__main__":
     elif option == 'catalog_location':
         response = acceso_obj.get_catalog_locations(location)
     elif option == 'checkin':
-        response = acceso_obj.do_checkin(location, area, employee_list, fotografia=fotografia ,nombre_suplente=nombre_suplente, checkin_id=checkin_id)
+        response = acceso_obj.do_checkin(location, area, employee_list, fotografia=fotografia ,nombre_suplente=nombre_suplente, checkin_id=checkin_id, roles=[])
     elif option == 'checkout':
         # used
         response = acceso_obj.do_checkout(checkin_id=checkin_id, \

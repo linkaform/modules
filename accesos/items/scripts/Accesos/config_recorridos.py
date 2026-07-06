@@ -190,7 +190,6 @@ class Schedule(Schedule):
                     "answers": {
                         self.Accesos.CONFIGURACION_RECORRIDOS_OBJ_ID: {
                             self.Location.f['location']: self.answers.get(self.Location.UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['location'], ''),
-                            self.Location.f['area']: self.answers.get(self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID, {}).get(self.Location.f['area_salida'], ''),
                             self.Accesos.mf['nombre_del_recorrido']: self.answers.get(self.Accesos.mf['nombre_del_recorrido'], ''),
                         },
                         self.Accesos.f['fecha_programacion']: first_date,
@@ -237,7 +236,7 @@ class Schedule(Schedule):
 
             # for assige_usr in all_user_ids:
             #     body['assign']['assign_users'].append(assige_usr)
-            print('body=', simplejson.dumps(body, indent=3))
+            # print('body=', simplejson.dumps(body, indent=3))
             response.update(self.subscribe_cron(body))
 
         return response
