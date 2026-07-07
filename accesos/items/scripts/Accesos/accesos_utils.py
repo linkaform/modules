@@ -680,6 +680,9 @@ class Accesos(Accesos):
             f['tipo_de_vehiculo']:      vehiculo.get('tipo_vehiculo', ''),
             f['placas_de_vehiculo']:    vehiculo.get('placa', ''),
             f['num_eco_num_rotulo']:    vehiculo.get('no_economico', ''),
+            f['marca_vehiculo']:        vehiculo.get('marca', ''),
+            f['year_vehiculo']:         vehiculo.get('modelo', ''),
+            f['color_vehiculo']:        vehiculo.get('color', ''),
             f['conductor']:             conductor.get('nombre', ''),
             f['ayudante']:              conductor.get('acompanante', ''),
             f['num_licencia']:          conductor.get('no_licencia', ''),
@@ -690,24 +693,28 @@ class Accesos(Accesos):
             f['orden_de_compra']:       embarque.get('no_orden_compra', ''),
         }
 
-        remolques = data.get('remolques', []) or []
-        if remolques:
+        remolques    = data.get('remolques', []) or []
+        contenedores = data.get('contenedores', []) or []
+        grupo = remolques + contenedores
+        if grupo:
             answers[f['grupo_remolques']] = [
                 {
-                    f['tipo_remolque']:       r.get('tipo_remolque', ''),
-                    f['num_sello']:           r.get('no_sello', ''),
-                    f['num_caja_contenedor']: r.get('no_caja', ''),
-                    f['placas_de_caja']:      r.get('placas_caja', ''),
-                    f['comentarios']:         r.get('comentarios', ''),
+                    f['tipo_remolque']:             item.get('tipo', ''),
+                    f['num_caja_contenedor']:        item.get('no_caja', ''),
+                    f['num_sello']:                  item.get('no_sello', ''),
+                    f['placas_de_caja']:             item.get('placas', ''),
+                    f['color_remolque_contenedor']:  item.get('color', ''),
+                    f['no_referencia_remolque']:     item.get('ref_remolque', ''),
+                    f['comentarios']:                item.get('comentarios', ''),
                 }
-                for r in remolques
+                for item in grupo
             ]
 
         docs = data.get('documentos_adicionales', []) or []
         if docs:
             answers[f['grupo_fotos_y_documentos']] = [
                 {
-                    f['tipo_de_documento']: doc.get('tipo', '').upper().replace('_', ' '),
+                    f['tipo_de_documento']: doc.get('tipo', ''),
                     f['documento']:         [{'file_name': doc.get('file_name', ''), 'file_url': doc['file_url']}] if doc.get('file_url') else [],
                 }
                 for doc in docs
@@ -717,11 +724,14 @@ class Accesos(Accesos):
         if materiales:
             answers[f['grupo_materiales']] = [
                 {
-                    f['tipo_material']:     m.get('tipo', ''),
-                    f['cantidad_material']: m.get('cantidad', ''),
-                    f['peso_material']:     m.get('peso', ''),
-                    f['volumen_material']:  m.get('volumen', ''),
-                    f['sello_material']:    m.get('sello', ''),
+                    f['producto_material']:        m.get('producto', ''),
+                    f['lote_material']:            m.get('lote', ''),
+                    f['cantidad_material']:        m.get('cant_esperada', ''),
+                    f['cantidad_fisica_material']: m.get('cant_fisica', ''),
+                    f['peso_material']:            m.get('peso', ''),
+                    f['volumen_material']:         m.get('volumen', ''),
+                    f['no_referencia_material']:   m.get('ref', ''),
+                    f['lugar_material']:           'contenedor' if str(m.get('ref', '')).startswith('contenedor') else 'remolque' if str(m.get('ref', '')).startswith('remolque') else 'vehiculo',
                 }
                 for m in materiales
             ]
