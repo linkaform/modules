@@ -795,6 +795,9 @@ class Accesos(Accesos):
             "Files may include vehicle photos, driver photos, driver licenses, vehicle registration cards, "
             "Bills of Lading, pedimentos, port documents, purchase orders, or container photos. "
             "Extract every field you can find. If a field is absent from all provided files, use null. "
+            "IMPORTANT: remolques are trailers/flatbeds pulled by the truck. "
+            "contenedores are ISO shipping containers (they have an alphanumeric container number like ECMU7740351). "
+            "A remolque may carry a contenedor — if so, list the trailer in remolques and the container in contenedores. "
             "\n\n"
             "Return ONLY a JSON object with this exact structure:\n"
             "{\n"
@@ -802,69 +805,77 @@ class Accesos(Accesos):
             # ── VEHÍCULO ──────────────────────────────────────────────────
             '  "vehiculo": {\n'
             '    "transportista": "string — carrier company name (e.g. TRAMO TRANSPORTES MONTERREY SA DE CV), or null",\n'
-            '    "tipo_vehiculo": "string — one of: torton, trailer, caja seca, caja refrigerada, plataforma, volteo, van, pick up, camión, pipa, contenedor, or null",\n'
+            '    "procedencia": "string — city or state of origin of the vehicle/shipment if visible on any document, or null",\n'
+            '    "tipo_vehiculo": "string — one of: torton, trailer, caja_seca, caja_refrigerada, plataforma, volteo, van, pick_up, camion, pipa, or null",\n'
             '    "marca": "string — truck/tractor brand (Kenworth, Freightliner, International, Volvo, etc.), or null",\n'
-            '    "modelo": "string — truck model or year if visible, or null",\n'
+            '    "modelo": "string — truck model year if visible (e.g. 2019), or null",\n'
             '    "color": "string — main cab color. PRIORITY: extract visually from vehicle/plate photos if provided. Fall back to text on registration card only if no vehicle photo is present. Use Spanish color names (Blanco, Negro, Rojo, Azul, Gris, Verde, Amarillo, Naranja, Cafe, Plateado, etc.), or null",\n'
             '    "placa": "string — tractor/cab license plate exactly as printed, or null",\n'
-            '    "estado_placa": "string — Mexican state or country of the tractor plate, or null",\n'
-            '    "no_economico": "string — carrier economic number / rótulo on the vehicle, or null",\n'
-            '    "no_serie": "string — chassis/VIN if visible on registration card or document, or null"\n'
+            '    "no_economico": "string — carrier economic number / rótulo on the vehicle, or null"\n'
             '  },\n'
 
             # ── CONDUCTOR ─────────────────────────────────────────────────
             '  "conductor": {\n'
             '    "nombre": "string — driver full name from license or permit document, or null",\n'
             '    "no_licencia": "string — driver license number exactly as printed, or null",\n'
-            '    "vigencia_licencia": "string — license expiration date (YYYY-MM-DD if possible), or null",\n'
-            '    "rfc": "string — RFC if shown on any document, or null"\n'
+            '    "vigencia_licencia": "string — license expiration date in YYYY-MM-DD format, or null",\n'
+            '    "rfc": "string — RFC if shown on any document, or null",\n'
+            '    "acompanante": "string — co-driver or helper full name if visible on any document, or null"\n'
             '  },\n'
 
             # ── REMOLQUES ─────────────────────────────────────────────────
             '  "remolques": [\n'
             '    {\n'
-            '      "tipo_remolque": "string — caja seca, caja refrigerada, plataforma, contenedor, tanque, etc., or null",\n'
-            '      "marca": "string — trailer brand (Wabash, Hyundai, etc.) from registration card, or null",\n'
-            '      "modelo": "string — trailer model/year from registration card, or null",\n'
-            '      "placa_caja": "string — trailer license plate exactly as printed, or null",\n'
-            '      "no_economico": "string — trailer economic number / RTI number, or null",\n'
-            '      "no_serie": "string — trailer serial number from registration card, or null"\n'
+            '      "tipo": "string — trailer type: caja_seca, caja_refrigerada, plataforma, tanque, volteo, or null",\n'
+            '      "no_caja": "string — trailer box/unit number (número económico de caja) from registration card or visible on unit, or null",\n'
+            '      "no_sello": "string — seal number on the trailer, or null",\n'
+            '      "placas": "string — trailer license plate exactly as printed, or null",\n'
+            '      "color": "string — trailer color in Spanish (Blanco, Gris, Rojo, etc.), or null",\n'
+            '      "comentarios": "string — any relevant note about this trailer (damage, anomaly, etc.), or null"\n'
             '    }\n'
             '  ],\n'
 
-            # ── CARGA / MATERIALES ────────────────────────────────────────
-            '  "carga": [\n'
+            # ── CONTENEDORES ──────────────────────────────────────────────
+            '  "contenedores": [\n'
             '    {\n'
-            '      "no_contenedor": "string — container number (e.g. ECMU7740351), or null",\n'
-            '      "no_sello": "string — seal number, or null",\n'
-            '      "tipo_contenedor": "string — 40HC, 20GP, 40GP, tank, etc., or null",\n'
-            '      "descripcion": "string — cargo description (e.g. 1305 CAJAS CON CERVEZAS), or null",\n'
-            '      "cantidad": "string — quantity and unit if stated, or null",\n'
-            '      "peso_bruto": "string — gross weight with unit (e.g. 19,603.50 KGS), or null",\n'
+            '      "tipo": "string — ISO container type: 20GP, 40GP, 40HC, 20RF, 40RF, tanque, or null",\n'
+            '      "no_caja": "string — container number exactly as printed (e.g. ECMU7740351), or null",\n'
+            '      "no_sello": "string — seal number on the container, or null",\n'
+            '      "placas": "string — chassis plate if visible, or null",\n'
+            '      "color": "string — container color in Spanish, or null",\n'
+            '      "comentarios": "string — any relevant note about this container (damage, anomaly, etc.), or null"\n'
+            '    }\n'
+            '  ],\n'
+
+            # ── MATERIALES / CARGA ────────────────────────────────────────
+            '  "materiales": [\n'
+            '    {\n'
+            '      "producto": "string — cargo/product description (e.g. CERVEZAS, AUTOPARTES), or null",\n'
+            '      "lote": "string — lot or batch number if stated, or null",\n'
+            '      "cant_esperada": "string — expected quantity with unit if stated (e.g. 1305 CAJAS), or null",\n'
+            '      "peso": "string — gross weight with unit (e.g. 19603.50 KGS), or null",\n'
             '      "volumen": "string — volume with unit if stated, or null"\n'
             '    }\n'
             '  ],\n'
 
-            # ── EMBARQUE / DOCUMENTOS ─────────────────────────────────────
+            # ── EMBARQUE ──────────────────────────────────────────────────
             '  "embarque": {\n'
-            '    "no_bl": "string — Bill of Lading number, or null",\n'
+            '    "proveedor_cliente": "string — shipper, supplier or consignee company name, or null",\n'
             '    "no_orden_compra": "string — purchase order / OC number, or null",\n'
-            '    "proveedor": "string — shipper/supplier company name, or null",\n'
-            '    "cliente": "string — consignee/buyer company name, or null",\n'
+            '    "no_bl": "string — Bill of Lading number, or null",\n'
+            '    "no_pedimento": "string — pedimento or customs document number, or null",\n'
+            '    "no_autorizacion_puerto": "string — port release authorization number, or null",\n'
             '    "origen": "string — place/port of loading or origin, or null",\n'
             '    "destino": "string — place/port of discharge or delivery, or null",\n'
             '    "naviera": "string — shipping line name (CMA CGM, MSC, etc.), or null",\n'
-            '    "vessel": "string — vessel/ship name, or null",\n'
-            '    "fecha_embarque": "string — on-board or shipment date, or null",\n'
-            '    "no_pedimento": "string — pedimento or customs document number, or null",\n'
-            '    "no_autorizacion_puerto": "string — port release authorization number, or null"\n'
+            '    "fecha_embarque": "string — on-board or shipment date (YYYY-MM-DD if possible), or null"\n'
             '  },\n'
 
             # ── METADATA ──────────────────────────────────────────────────
             '  "documentos_detectados": [\n'
             '    {\n'
             '      "fuente": "string — imagen_1 / imagen_2 / imagen_3 ... (position of the file in the input list)",\n'
-            '      "tipo": "string — document type: bill_of_lading, tarjeta_circulacion_tractor, tarjeta_circulacion_remolque, licencia_conducir, pedimento, autorizacion_puerto, orden_compra, foto_vehiculo, foto_placa, foto_conductor, foto_contenedor, manifiesto_carga, otro"\n'
+            '      "tipo": "string — one of: identificacion_chofer, tarjeta_circulacion_vehiculo, carta_porte, factura_orden_compra, foto_placa_vehiculo, evidencia_carga, conocimiento_embarque_bl, otro"\n'
             '    }\n'
             '  ],\n'
             '  "observaciones": "string — CTPAT flags, anomalies, damage, incomplete docs, or anything security-relevant, or null",\n'
