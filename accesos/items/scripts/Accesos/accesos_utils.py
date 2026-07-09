@@ -86,6 +86,7 @@ class Accesos(Accesos):
         self.INSPECCION_ENTRADA_CTPAT_TRACTOR = self.lkm.form_id('inspeccion_de_entrada_ctpat_tractor_cabezal','id')
         self.INSPECCION_ENTRADA_CTPAT_REMOLQUE = self.lkm.form_id('inspeccion_de_entrada_ctpat_remolque','id')
         self.INSPECCION_ENTRADA_CTPAT_CONTENEDOR = self.lkm.form_id('inspeccion_de_entrada_ctpat_contenedor','id')
+        self.INSPECCION_SELLO = self.lkm.form_id('inspeccion_de_sello','id')
 
         self.f.update({
             'areas_del_rondin': '66462aa5d4a4af2eea07e0d1',
@@ -524,6 +525,19 @@ class Accesos(Accesos):
             'escape_mofles': '545c0b134ab1d2f11cef90a9',  # 11. Escape / Mofles (Si/No)
             'escape_mofles_comentarios': '736b1fe2e2609d47beef2a03',
             'escape_mofles_evidencia': 'b7618c209a113ef54ec2b58b',
+        }
+
+        self.inspeccion_de_sello_fields = {
+            'numero_de_sello_fisico': 'ad57d9e43537244dc2f66280',  # Numero de sello fisico (text)
+            'numero_de_sello_esperado_revisado': '22e2974e099b937e4c9c7094',  # Numero de sello esperado (revisado) (text)
+            'tipo_de_sello_clasificacion_iso_17712': '1e534c51db80d867b1922c86',  # Tipo de sello (clasificacion ISO 17712) (radio: Indicative/Security/High Security)
+            'matriz_vttt_marca_cada_accion_verificada': '92ab37dbe06381e6100f88f0',  # Matriz VTTT - Marca cada accion verificada (checkbox: View/Verify/Tug/Twist)
+            '1_foto_del_sello': '1defc3e446a9ebd00c649dbc',  # 1. Foto del sello (images)
+            '2_sello_colocado_en_las_puertas': '26f5f07d55f304e9015ae64d',  # 2. Sello colocado en las puertas (images)
+            '3_puertas_completas_del_remolque': 'be928c48d8a6353077ec5eba',  # 3. Puertas completas del remolque (images)
+            '4_placas_o_economico': 'd7479071e6aabdeaa10ce41b',  # 4. Placas o economico (images)
+            '5_identificacion_del_operador': '718a0a37c5a6965b2127d2c0',  # 5. Identificacion del operador (images)
+            'comentarios': '0e009f7829544463cbf89e1e',  # Comentarios (textarea)
         }
 
     def create_pass_transportista(self, data):
