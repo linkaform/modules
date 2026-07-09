@@ -885,6 +885,12 @@ class Accesos(Accesos):
             '    "fecha_embarque": "string — on-board or shipment date (YYYY-MM-DD if possible), or null"\n'
             '  },\n'
 
+            # ── PLACAS DE TARJETAS ────────────────────────────────────────
+            '  "placas_tarjetas": {\n'
+            '    "vehiculo": "string — license plate extracted EXCLUSIVELY from a tarjeta_circulacion_vehiculo document, exactly as printed, or null",\n'
+            '    "remolque": "string — license plate extracted EXCLUSIVELY from a tarjeta_circulacion_remolque document, exactly as printed, or null"\n'
+            '  },\n'
+
             # ── METADATA ──────────────────────────────────────────────────
             '  "documentos_detectados": [\n'
             '    {\n'
