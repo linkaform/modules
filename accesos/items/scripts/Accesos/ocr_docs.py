@@ -8,6 +8,7 @@ from accesos_utils import Accesos
 
 class Accesos(Accesos):
     pass
+
     def ocr_equipo(self, image_source,
                    extra_instructions: str = None,
                    model: str = 'google/gemini-2.5-flash-lite') -> dict:
@@ -92,6 +93,7 @@ class Accesos(Accesos):
             }
 
         return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
+
     def ocr_persona(self, image_source,
                     extra_instructions: str = None,
                     model: str = 'google/gemini-2.5-flash-lite') -> dict:
@@ -189,6 +191,7 @@ class Accesos(Accesos):
             }
 
         return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
+
     def ocr_vehiculo(self, image_source, fields: dict = {},
                      extra_instructions: str = None,
                      model: str = 'google/gemini-2.5-flash-lite') -> dict:
@@ -299,7 +302,190 @@ class Accesos(Accesos):
             }
 
         return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
-        
+
+    def ocr_articulo_concesionado(self, image_source,
+                                   extra_instructions: str = None,
+                                   model: str = 'google/gemini-2.5-flash-lite') -> dict:
+        """
+        Identifica un artículo concesionado a partir de su foto. Puede tratarse de:
+          - Un artículo genérico identificable a simple vista (guantes, casco, chaleco,
+            lentes de seguridad, herramienta, etc.), donde lo importante es reconocer
+            QUÉ artículo es.
+          - Un artículo con un llavero/etiqueta con un número o ID impreso (ej. "ID-360"
+            o "360"), usado sobre todo en camiones/vehículos (ej. "ID-360 SPRINTER
+            CORTA"). En ese caso el número tiene prioridad para la búsqueda.
+
+        Con lo detectado busca el activo correspondiente en self.ACTIVOS_FIJOS
+        (formulario "activos_fijos") y regresa su categoría, nombre de equipo y demás
+        datos del registro encontrado.
+
+        Args:
+            image_source: URL remota, ruta local, o lista de imágenes del artículo.
+            model:        Modelo OpenRouter a usar.
+
+        Returns:
+            dict con:
+                - status_code : 200 OK / 206 advertencias (no se encontró match) / 400 config
+                - data        : campos leídos de la foto + 'activo_fijo' con el registro
+                                encontrado en activos fijos (o None si no hubo match)
+                - msg         : mensaje de resultado
+        """
+        if not self.ai:
+            return {'status_code': 400, 'msg': 'OpenRouter no configurado'}
+
+        system = (
+            "You are an asset identification specialist at an industrial plant, trained "
+            "to recognize conceded/loaned articles (articulos concesionados). "
+            "These can be generic items identifiable on sight — safety gloves, helmets, "
+            "vests, goggles, harnesses, tools, etc. — or vehicles/equipment identified by "
+            "a physical key tag or label with a printed number/ID (e.g. '360' or "
+            "'ID-360 SPRINTER CORTA'). "
+            "Your priority is to determine WHICH article this is: if a number or ID tag "
+            "is visible, read it as accurately as possible; otherwise identify the article "
+            "by what it visually is. "
+            "Always respond with a single valid JSON object and nothing else — "
+            "no markdown, no backticks, no explanation, no preamble."
+        )
+
+        prompt = (
+            "Analyze the provided image and identify the conceded article shown. "
+            "First check if there is a key tag or label with a printed number/ID visible "
+            "(e.g. '360', 'ID-360', 'ID-360 SPRINTER CORTA') — if so, that identifier takes "
+            "priority. If there is no number/ID visible, identify the article itself from "
+            "what is visually shown (e.g. guantes, casco, chaleco de seguridad, lentes de "
+            "seguridad, arnés, herramienta, camión, van, etc.). "
+            "If a field cannot be determined from the image, use null. "
+            "\n\n"
+            "Return ONLY a JSON object with this exact structure:\n"
+            "{\n"
+            '  "numero_identificador": "string — number/ID read from a key tag or label, e.g. 360 or ID-360, or null",\n'
+            '  "nombre_articulo": "string — full text read from the tag/label if any, e.g. ID-360 SPRINTER CORTA, or null",\n'
+            '  "tipo_articulo": "string — what the article physically is, in Spanish (e.g. guantes, casco, chaleco de seguridad, lentes de seguridad, arnés, herramienta, camión, van, etc.). This should always be filled based on what is visible.",\n'
+            '  "marca": "string — visible brand of the article/vehicle/equipment, or null",\n'
+            '  "modelo": "string — visible model, or null",\n'
+            '  "color": "string — main visible color, or null",\n'
+            '  "observaciones": "string — any relevant detail, damage, or distinguishing marks, or null",\n'
+            '  "confianza": "string — alto / medio / bajo — overall confidence based on image clarity"\n'
+            "}"
+        )
+
+        if extra_instructions:
+            prompt += f"\n\nAdditional instructions: {extra_instructions}"
+
+        # Sanitizar image_source
+        if isinstance(image_source, str):
+            image_source = [image_source]
+        elif isinstance(image_source, list):
+            image_source = [
+                img['file_url'] if isinstance(img, dict) else img
+                for img in image_source
+            ]
+
+        print('>>> ocr_articulo_concesionado image_source=', image_source)
+
+        raw_text = self.ai.ocr_general(image_source, system, prompt, model=model, max_tokens=1000)
+
+        datos = {}
+        if raw_text.get('choices'):
+            choices = raw_text['choices']
+            if isinstance(choices, list) and len(choices) > 0:
+                content = choices[0].get('message', {}).get('content')
+                if content:
+                    datos = content
+
+        print('ocr_articulo_concesionado datos=', datos)
+        datos = self._ocr_normalizar(datos)
+
+        activo = self._buscar_activo_fijo(
+            numero=datos.get('numero_identificador'),
+            nombre=datos.get('nombre_articulo'),
+            tipo=datos.get('tipo_articulo'),
+        )
+        datos['activo_fijo'] = activo or None
+
+        errores = self._ocr_validar_id(datos)
+        if not activo:
+            errores.append('No se encontró el artículo en activos fijos')
+
+        if errores:
+            return {
+                'status_code': 206,
+                'msg': 'Extracción con advertencias',
+                'data': datos,
+                'warnings': errores,
+            }
+
+        return {'status_code': 200, 'msg': 'OK', 'data': datos}
+
+    def _buscar_activo_fijo(self, numero: str = None, nombre: str = None, tipo: str = None) -> dict:
+        """
+        Busca en self.ACTIVOS_FIJOS el activo que corresponde a lo detectado en la foto
+        del artículo concesionado. Prioriza el match por número/ID (ej. "360" contra
+        nombre_equipo "ID-360 SPRINTER CORTA"), y si no hay número usa el nombre leído en
+        la etiqueta o, en su defecto, el tipo de artículo identificado visualmente
+        (ej. "guantes", "casco") contra nombre_equipo, categoria y tipo_equipo.
+        Regresa el registro con categoria, nombre_equipo, marca, modelo, tipo de
+        equipo/vehiculo, numero de serie, placas y estatus.
+        """
+        import re
+
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.ACTIVOS_FIJOS,
+            }},
+            {"$project": {
+                "_id": 0,
+                "folio": {"$ifNull": ["$folio", None]},
+                "categoria": {"$ifNull": [f"$answers.{self.cons_f['categoria_equipo_concesion']}", None]},
+                "nombre_equipo": {"$ifNull": [f"$answers.{self.f['nombre_equipo']}", None]},
+                "marca": {"$ifNull": [f"$answers.{self.TIPO_DE_VEHICULO_OBJ_ID}.{self.mf['marca_vehiculo']}", None]},
+                "modelo": {"$ifNull": [f"$answers.{self.TIPO_DE_VEHICULO_OBJ_ID}.{self.mf['modelo_vehiculo']}", None]},
+                "tipo_vehiculo": {"$ifNull": [f"$answers.{self.TIPO_DE_VEHICULO_OBJ_ID}.{self.mf['tipo_vehiculo']}", None]},
+                "tipo_equipo": {"$ifNull": [f"$answers.{self.f['tipo_equipo']}", None]},
+                "numero_de_serie_chasis": {"$ifNull": [f"$answers.{self.f['numero_de_serie_chasis']}", None]},
+                "placas": {"$ifNull": [f"$answers.{self.f['placas']}", None]},
+                "estado": {"$ifNull": [f"$answers.{self.f['estado']}", None]},
+                "estatus": {"$ifNull": [
+                    f"$answers.{self.f['estatus_vehiculo']}",
+                    f"$answers.{self.f['estatus']}",
+                    None]},
+            }},
+        ]
+        activos = self.format_cr(self.cr.aggregate(query))
+
+        # 1. Match por número/ID — se le da prioridad (ej. llaveros de camiones/vehículos)
+        digitos = re.sub(r'\D', '', numero) if numero else ''
+        if digitos:
+            for activo in activos:
+                digitos_nombre = re.sub(r'\D', '', activo.get('nombre_equipo') or '')
+                if digitos_nombre and digitos_nombre == digitos:
+                    return activo
+
+        # 2. Match por nombre/tipo de artículo leído o identificado visualmente
+        nombres = [a['nombre_equipo'] for a in activos if a.get('nombre_equipo')]
+        for texto in (nombre, tipo):
+            if not texto:
+                continue
+            match = next((a for a in activos if a.get('nombre_equipo') == texto), None)
+            if not match:
+                mejor = self._match_label(texto, nombres, umbral=60)
+                if mejor.get('label'):
+                    match = next((a for a in activos if a.get('nombre_equipo') == mejor['label']), None)
+            if not match:
+                categorias = [a['categoria'] for a in activos if a.get('categoria')]
+                mejor_cat = self._match_label(texto, categorias, umbral=60)
+                if mejor_cat.get('label'):
+                    match = next((a for a in activos if a.get('categoria') == mejor_cat['label']), None)
+            if not match:
+                tipos = [a['tipo_equipo'] for a in activos if a.get('tipo_equipo')]
+                mejor_tipo = self._match_label(texto, tipos, umbral=60)
+                if mejor_tipo.get('label'):
+                    match = next((a for a in activos if a.get('tipo_equipo') == mejor_tipo['label']), None)
+            if match:
+                return match
+        return {}
+
     def ocr_truck(self, image_source: list, fields: dict = {},
                            extra_instructions: str = None,
                            model: str = 'google/gemini-2.5-flash-lite') -> dict:
@@ -523,6 +709,11 @@ if __name__ == "__main__":
         response = acceso_obj.ocr_articulo_perdido(
             image_source=image_source
         )
+    elif option == 'ocr_articulo':
+        # OCR genérico — extrae campos específicos de cualquier imagen
+        response = acceso_obj.ocr_articulo_concesionado(
+            image_source=image_source
+        )
     elif option == 'ocr_paquete':
         # OCR genérico — extrae campos específicos de cualquier imagen
         response = acceso_obj.ocr_paquete(
@@ -577,6 +768,6 @@ if __name__ == "__main__":
             extra_instructions=extra_instructions,
         )
     else:
-        response = {'msg': 'Empty', 'valid_options': ['ocr_id', 'ocr_doc', 'ocr_batch', 'ocr_paquete', 'ocr_truck', 'ocr_vehiculo', 'ocr_persona', 'ocr_equipo']}
+        response = {'msg': 'Empty', 'valid_options': ['ocr_id', 'ocr_doc', 'ocr_batch', 'ocr_paquete', 'ocr_truck', 'ocr_vehiculo', 'ocr_persona', 'ocr_equipo', 'ocr_articulo_perdido', 'ocr_articulo']}
 
     acceso_obj.HttpResponse({'data': response})

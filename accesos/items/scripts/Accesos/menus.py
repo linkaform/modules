@@ -97,7 +97,7 @@ class Accesos(Accesos):
                     self.UBICACIONES_CAT_ID,
                     self.USUARIOS_ID,
                     self.VISITA_AUTORIZADA_CAT_ID,
-                    self.MENUS_CATALOG_ID
+                    self.MENUS_CATALOG_ID,
                     self.OCR_DOCS
                     ],
                 'scripts':[self.OFFLINE_SERVICES, self.SCRIPT_MENUS, self.FILTERS]
