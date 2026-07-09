@@ -895,8 +895,8 @@ class Accesos(Accesos):
         ISO_MAP = {
             'I':  'indicative',
             'S':  'security',
-            'H':  'high security',
-            'HS': 'high security',
+            'H':  'high_security',
+            'HS': 'high_security',
         }
 
         inspecciones_creadas = []
