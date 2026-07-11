@@ -98,7 +98,9 @@ class Accesos(Accesos):
                     self.USUARIOS_ID,
                     self.VISITA_AUTORIZADA_CAT_ID,
                     self.MENUS_CATALOG_ID,
-                    self.OCR_DOCS
+                    self.OCR_DOCS,
+                    self.SCRIPT_PASE_ACCESO,
+                    self.SCRIPT_PASE_ACCESO_API,
                 ],
                 'scripts':[self.OFFLINE_SERVICES, self.SCRIPT_MENUS, self.FILTERS]
             },
@@ -413,7 +415,6 @@ class Accesos(Accesos):
             forms_needed.update([x for x in config.get('forms',[]) if x])
             catalogs_needed.update([x for x in config.get('catalogs') if x])
             scripts_needed.update([x for x in config.get('scripts') if x])
-
         response_forms = self.set_item_permits(user_id, forms_needed, item_type='form')
         response_catalog = self.set_item_permits(user_id, catalogs_needed, item_type='catalog')
         response_scripts = self.set_item_permits(user_id, scripts_needed,  item_type='script')
@@ -437,7 +438,6 @@ if __name__ == "__main__":
     option = data.get("option", '')
     workflow_option = data_raw.get('option', '')
     platform = data.get("platform", '')
-
     dispatcher = {
         "get_menus": lambda: script_obj.get_user_menus(platform=platform),
         "set_permissions": lambda: script_obj.set_user_permissions(),
