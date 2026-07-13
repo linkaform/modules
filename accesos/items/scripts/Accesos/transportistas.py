@@ -552,6 +552,9 @@ class Accesos(Accesos):
         f = self.bitacora_transportista_fields
         answers = {}
 
+        if data.get('estatus'):
+            answers[f['estatus']] = data['estatus']
+
         vehiculo = data.get('vehiculo') or {}
         if vehiculo:
             answers.update({
