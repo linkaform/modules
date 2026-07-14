@@ -527,6 +527,13 @@ class Accesos(Accesos):
             },
             {
                 "defaultDisplayOpen": False,
+                "key": "created_by",
+                "label": "Creado por ",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in reportado_por]
+            },
+            {
+                "defaultDisplayOpen": False,
                 "key": "categoria_equipo_concesion",
                 "label": "Categoría",
                 "type": "multiselect",

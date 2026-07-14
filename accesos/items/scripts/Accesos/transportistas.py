@@ -48,7 +48,8 @@ class Accesos(Accesos):
                 'tipo_de_operacion':     f'$answers.{f["tipo_de_operacion"]}',
                 'procedencia':           f'$answers.{f["procedencia"]}',
                 'tipo_de_vehiculo':      f'$answers.{f["tipo_de_vehiculo"]}',
-                'placas_de_vehiculo':    f'$answers.{f["placas_de_vehiculo"]}',
+                'placas_de_vehiculo':                    f'$answers.{f["placas_de_vehiculo"]}',
+                'placas_de_vehiculo_tarjeta_circulacion': f'$answers.{f["placas_de_vehiculo_tarjeta_circulacion"]}',
                 'num_eco_num_rotulo':    f'$answers.{f["num_eco_num_rotulo"]}',
                 'marca_vehiculo':        f'$answers.{f["marca_vehiculo"]}',
                 'year_vehiculo':         f'$answers.{f["year_vehiculo"]}',
@@ -117,6 +118,7 @@ class Accesos(Accesos):
             {'$project': {
                 '_id': 1,
                 'folio':              1,
+                'anden_asignado':     f'$answers.{f["anden_asignado"]}',
                 'placas':             f'$answers.{f["placas_de_vehiculo"]}',
                 'proveedor_cliente':  f'$answers.{f["proveedor_cliente"]}',
                 'conductor':          f'$answers.{f["conductor"]}',
@@ -551,6 +553,9 @@ class Accesos(Accesos):
         f = self.bitacora_transportista_fields
         answers = {}
 
+        if data.get('estatus'):
+            answers[f['estatus']] = data['estatus']
+
         vehiculo = data.get('vehiculo') or {}
         if vehiculo:
             answers.update({
@@ -561,6 +566,9 @@ class Accesos(Accesos):
                 f['year_vehiculo']:      vehiculo.get('modelo', ''),
                 f['color_vehiculo']:     vehiculo.get('color', ''),
             })
+
+        if data.get('anden'):
+            answers[f['anden_asignado']] = data['anden']
 
         embarque = data.get('embarque') or {}
         if embarque:
@@ -879,6 +887,98 @@ class Accesos(Accesos):
 
         return {'status_code': 200, 'msg': 'OK', 'inspecciones_creadas': [t for t, _ in inspecciones_creadas]}
 
+    def save_inspecciones_sello(self, record_id, data):
+        print(simplejson.dumps(data, indent=3))
+        f_bit = self.bitacora_transportista_fields
+        f     = self.inspeccion_de_sello_fields
+
+        SLOT_MAP = {
+            'foto_sello':              f['1_foto_del_sello'],
+            'sello_puertas':           f['2_sello_colocado_en_las_puertas'],
+            'puertas_completas':       f['3_puertas_completas_del_remolque'],
+            'placas_economico':        f['4_placas_o_economico'],
+            'identificacion_operador': f['5_identificacion_del_operador'],
+        }
+
+        ISO_MAP = {
+            'I':  'indicative',
+            'S':  'security',
+            'H':  'high_security',
+            'HS': 'high_security',
+        }
+
+        inspecciones_creadas = []
+
+        for inspeccion in data:
+            if inspeccion.get('tipo') != 'sello':
+                continue
+
+            answers = {}
+
+            if inspeccion.get('no_sello_revisado'):
+                answers[f['numero_de_sello_fisico']] = inspeccion['no_sello_revisado']
+            if inspeccion.get('no_sello_sistema'):
+                answers[f['numero_de_sello_esperado_revisado']] = inspeccion['no_sello_sistema']
+            if inspeccion.get('clasificacion_iso'):
+                iso_raw = inspeccion['clasificacion_iso']
+                answers[f['tipo_de_sello_clasificacion_iso_17712']] = ISO_MAP.get(iso_raw, iso_raw.lower())
+            if inspeccion.get('comentario'):
+                answers[f['comentarios']] = inspeccion['comentario']
+
+            vvtt = inspeccion.get('vvtt', []) or []
+            acciones_verificadas = [v['punto'].lower() for v in vvtt if v.get('verificado')]
+            if acciones_verificadas:
+                answers[f['matriz_vttt_marca_cada_accion_verificada']] = acciones_verificadas
+
+            for evidencia in inspeccion.get('evidencias', []) or []:
+                field_id = SLOT_MAP.get(evidencia.get('slot', ''))
+                if field_id and evidencia.get('file_url'):
+                    answers[field_id] = [{'file_name': evidencia['file_name'], 'file_url': evidencia['file_url']}]
+
+            metadata = self.lkf_api.get_metadata(form_id=self.INSPECCION_SELLO)
+            inspeccion_id = self.object_id()
+            metadata.update({
+                'id': inspeccion_id,
+                'properties': {
+                    'device_properties': {
+                        'System':  'Script',
+                        'Module':  'Accesos',
+                        'Process': 'Inspección de Sello',
+                        'Action':  'save_inspecciones_sello',
+                        'File':    'modules/accesos/items/scripts/Accesos/transportistas.py',
+                    }
+                },
+                'answers': answers,
+            })
+            print(simplejson.dumps(answers, indent=3))
+            res = self.lkf_api.post_forms_answers(metadata)
+            print(f'save_inspecciones_sello [unidad={inspeccion.get("unidad")}] res=', res.get('status_code'))
+            if res.get('status_code') not in [200, 201, 202]:
+                self.LKFException({'title': f'Error al crear inspección de sello unidad {inspeccion.get("unidad")}', 'msg': res})
+
+            tipo_label = f'sello_{inspeccion.get("unidad", "")}'
+            inspecciones_creadas.append((tipo_label, inspeccion_id))
+
+        if inspecciones_creadas:
+            answers_bitacora = {
+                f_bit['grupo_inspecciones']: {
+                    -(i + 1): {
+                        f_bit['tipo_inspeccion']: tipo_label,
+                        f_bit['url_inspeccion']:  f'https://app.linkaform.com/#/records/detail/{inspeccion_id}',
+                    }
+                    for i, (tipo_label, inspeccion_id) in enumerate(inspecciones_creadas)
+                }
+            }
+            res_bit = self.lkf_api.patch_multi_record(
+                answers=answers_bitacora,
+                form_id=self.BITACORA_TRANSPORTISTAS,
+                record_id=[record_id],
+            )
+            if res_bit.get('status_code') not in [201, 202, 203]:
+                self.LKFException({'title': 'Error al actualizar inspecciones de sello en bitácora', 'msg': res_bit})
+
+        return {'status_code': 200, 'msg': 'OK', 'inspecciones_creadas': [t for t, _ in inspecciones_creadas]}
+
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
     script_obj.console_run()
@@ -908,6 +1008,7 @@ if __name__ == "__main__":
         "save_bitac_transportista_record": lambda: script_obj.save_bitac_transportista_record(record_id, payload),
         "delete_bitac_transportista_items": lambda: script_obj.delete_bitac_transportista_items(record_id, payload),
         "save_inspecciones": lambda: script_obj.save_inspecciones(record_id, inspecciones),
+        "save_inspecciones_sello": lambda: script_obj.save_inspecciones_sello(record_id, inspecciones),
     }
 
     action = dispatcher.get(option)
