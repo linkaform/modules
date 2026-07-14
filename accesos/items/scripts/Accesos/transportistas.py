@@ -118,6 +118,7 @@ class Accesos(Accesos):
             {'$project': {
                 '_id': 1,
                 'folio':              1,
+                'anden_asignado':     f'$answers.{f["anden_asignado"]}',
                 'placas':             f'$answers.{f["placas_de_vehiculo"]}',
                 'proveedor_cliente':  f'$answers.{f["proveedor_cliente"]}',
                 'conductor':          f'$answers.{f["conductor"]}',
