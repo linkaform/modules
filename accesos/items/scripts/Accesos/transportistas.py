@@ -770,8 +770,9 @@ class Accesos(Accesos):
             tipo   = inspeccion.get('tipo', '')
             unidad = inspeccion.get('unidad')
             tipo_label = f'{tipo}_{unidad}' if unidad else tipo
+            tipo_base = tipo.replace('salida_', '')
 
-            if tipo == 'tractor':
+            if tipo_base == 'tractor':
                 puntos = inspeccion.get('puntos', [])
                 if not any(p.get('resultado') for p in puntos):
                     continue
@@ -790,7 +791,7 @@ class Accesos(Accesos):
                         if punto.get('fotos'):
                             answers[f_ins[f'{campo}_evidencia']] = punto['fotos']
 
-            elif tipo == 'remolque':
+            elif tipo_base == 'remolque':
                 puntos = inspeccion.get('puntos', [])
                 if not any(p.get('resultado') for p in puntos):
                     continue
@@ -816,7 +817,7 @@ class Accesos(Accesos):
                         if punto.get('fotos'):
                             answers[f_ins[f'{campo}_evidencia']] = punto['fotos']
 
-            elif tipo == 'contenedor':
+            elif tipo_base == 'contenedor':
                 filas   = inspeccion.get('filas', [])
                 medidas = inspeccion.get('medidas', {}) or {}
                 has_data = (
@@ -867,8 +868,9 @@ class Accesos(Accesos):
             inspecciones_creadas.append((tipo_label, inspeccion_id))
 
         if inspecciones_creadas:
+            es_salida = any(t.startswith('salida_') for t, _ in inspecciones_creadas)
             answers_bitacora = {
-                f_bit['estatus']: 'inspeccion_entrada',
+                f_bit['estatus']: 'inspeccion_salida' if es_salida else 'inspeccion_entrada',
                 f_bit['grupo_inspecciones']: {
                     -(i + 1): {
                         f_bit['tipo_inspeccion']: tipo_label,
