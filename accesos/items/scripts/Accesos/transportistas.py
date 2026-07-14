@@ -566,6 +566,9 @@ class Accesos(Accesos):
                 f['color_vehiculo']:     vehiculo.get('color', ''),
             })
 
+        if data.get('anden'):
+            answers[f['anden_asignado']] = data['anden']
+
         embarque = data.get('embarque') or {}
         if embarque:
             answers.update({
