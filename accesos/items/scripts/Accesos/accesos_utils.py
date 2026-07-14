@@ -127,14 +127,8 @@ class Accesos(Accesos):
             'free_day_autorization': '55887b7e01a4de2ea71c5ab8',
             'grupo_incluir': '69974d3806cc6d6a17f8b1fa',
             'pases_incluir': '69974d55879296015c1cd8d2',
-
             'prefijo_telefonico':'6a221532db633d0cf4faf12f',
             'grupo_requisitos':"676975321df93a68a609f9ce",
-
-            'opcion_condiciones_servicio':"6a4c65bd847c02cf0be63f05",
-            'desc_condiciones_servicio':"6a4c673722f825e7b3e46468",
-            'doc_condiciones_servicio':"6a4c673722f825e7b3e46469",
-            'url_condiciones_servicio':"6a4c673722f825e7b3e4646a",
         })
         
         self.checkin_fields.update({
@@ -967,56 +961,3 @@ class Accesos(Accesos):
         return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
 
     # PRUEBAS
-    def get_config_modulo_seguridad(self, ubicaciones=[]):
-        #TODO Verificar por que se envia asi la lista
-        if isinstance(ubicaciones, list) and ubicaciones and isinstance(ubicaciones[0], dict):
-            ubicaciones = [u.get('name') or u.get('id') for u in ubicaciones]
-        requerimientos = set()
-        envios = set()
-        condiciones_servicio = {}
-        match_query = {
-            "deleted_at": {"$exists": False},
-            "form_id": self.CONF_MODULO_SEGURIDAD,
-        }
-        query = [
-            {'$match': match_query},
-            {'$sort': {'updated_at': -1}},
-            {'$limit': 1},
-            {'$project': {
-                "grupo_requisitos": f"$answers.{self.conf_modulo_seguridad['grupo_requisitos']}",
-            }},
-        ]
-        raw_result = self.format_cr(self.cr.aggregate(query))
-        for raw in raw_result:
-            for grupo in raw.get('grupo_requisitos', []):
-                #---Condiciones de servicio
-                condiciones_servicio["opcion_condiciones_servicio"] = grupo.get('opcion_condiciones_servicio','')
-                condiciones_servicio["desc_condiciones_servicio"] = grupo.get('desc_condiciones_servicio','')
-                condiciones_servicio["doc_condiciones_servicio"] = grupo.get('doc_condiciones_servicio','')
-                condiciones_servicio["url_condiciones_servicio"] = grupo.get('url_condiciones_servicio','')
-
-                #TODO Verficiar el cambio de key
-                ubicacion = grupo.get('incidente_location', grupo.get('ubicacion_recorrido', ''))
-                if ubicacion in ubicaciones:
-                    clave_conf = self.conf_modulo_seguridad.get('datos_requeridos')
-                    reqs = grupo.get('datos_requeridos') or grupo.get(clave_conf, [])
-                    if isinstance(reqs, list):
-                        requerimientos.update(reqs)
-                    envios = set()
-                    envio_por_list = self.conf_modulo_seguridad.get('envio_por', [])
-                    for item in envio_por_list if isinstance(envio_por_list, list) else [envio_por_list]:
-                        envs = grupo.get(item) or grupo.get('envio_por', [])
-                        if envs:
-                            if isinstance(envs, list):
-                                envios.update(envs)
-                            else:
-                                envios.add(envs)
-
-        tipos = self.get_tipos_de_pase(ubicaciones)
-        return {
-            "ubicaciones": ubicaciones,
-            "requerimientos": list(requerimientos),
-            "envios": list(envios),
-            "tipos": tipos,
-            "condiciones_servicio":condiciones_servicio,
-        }
