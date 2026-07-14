@@ -981,6 +981,40 @@ class Accesos(Accesos):
 
         return {'status_code': 200, 'msg': 'OK', 'inspecciones_creadas': [t for t, _ in inspecciones_creadas]}
 
+    def get_inspeccion_record(self, record_id, tipo):
+        FORM_MAP = {
+            'tractor':           (self.INSPECCION_ENTRADA_CTPAT_TRACTOR,    self.inspeccion_entrada_tractor_fields),
+            'remolque':          (self.INSPECCION_ENTRADA_CTPAT_REMOLQUE,   self.inspeccion_entrada_ctpat_remolque_fields),
+            'contenedor':        (self.INSPECCION_ENTRADA_CTPAT_CONTENEDOR, self.inspeccion_entrada_ctpat_contenedor_fields),
+            'sello':             (self.INSPECCION_SELLO,                    self.inspeccion_de_sello_fields),
+        }
+        tipo_base = tipo
+        if tipo_base.startswith('salida_'):
+            tipo_base = tipo_base[len('salida_'):]
+        # strip numeric suffix: contenedor_1 → contenedor
+        if '_' in tipo_base and tipo_base.rsplit('_', 1)[-1].isdigit():
+            tipo_base = tipo_base.rsplit('_', 1)[0]
+        entry = FORM_MAP.get(tipo_base)
+        if not entry:
+            self.LKFException({'title': f'Tipo de inspección no válido: {tipo}', 'status_code': 400})
+
+        form_id, fields = entry
+        query = [
+            {'$match': {
+                'form_id': form_id,
+                'deleted_at': {'$exists': False},
+                '_id': ObjectId(record_id),
+            }},
+            {'$project': {
+                '_id': 1,
+                'folio': 1,
+                'created_at': 1,
+                'answers': 1,
+            }},
+        ]
+        data = self.format_cr(self.cr.aggregate(query), get_one=True)
+        return self._labels(data, ids_label_dct=fields)
+        
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
     script_obj.console_run()
@@ -1011,6 +1045,7 @@ if __name__ == "__main__":
         "delete_bitac_transportista_items": lambda: script_obj.delete_bitac_transportista_items(record_id, payload),
         "save_inspecciones": lambda: script_obj.save_inspecciones(record_id, inspecciones),
         "save_inspecciones_sello": lambda: script_obj.save_inspecciones_sello(record_id, inspecciones),
+        "get_inspeccion_record": lambda: script_obj.get_inspeccion_record(record_id, data.get('tipo', '')),
     }
 
     action = dispatcher.get(option)
