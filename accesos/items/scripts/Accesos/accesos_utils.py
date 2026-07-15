@@ -961,3 +961,186 @@ class Accesos(Accesos):
         return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
 
     # PRUEBAS
+
+    def ocr_persona(self, image_source,
+                    extra_instructions: str = None,
+                    model: str = 'google/gemini-2.5-flash-lite') -> dict:
+        """
+        Analiza una foto para detectar si hay una persona visible
+        y extrae sus características físicas descriptivas.
+
+        Args:
+            image_source: URL remota, ruta local, o lista de imágenes.
+            model:        Modelo OpenRouter a usar.
+
+        Returns:
+            dict con:
+                - status_code : 200 OK / 206 advertencias / 400 config / 500 error
+                - data        : campos extraídos
+                - msg         : mensaje de resultado
+        """
+        if not self.ai:
+            return {'status_code': 400, 'msg': 'OpenRouter no configurado'}
+
+        system = (
+            "You are a security system specialist trained to analyze images "
+            "and determine whether a person is present, and describe their "
+            "visible physical characteristics for identification purposes. "
+            "You are objective and descriptive. Never make assumptions about "
+            "identity, ethnicity, or personal data beyond what is visually evident. "
+            "Always respond with a single valid JSON object and nothing else — "
+            "no markdown, no backticks, no explanation, no preamble."
+        )
+
+        prompt = (
+            "Analyze the provided image and determine if a person is visible. "
+            "If a person is present, extract all visible physical characteristics. "
+            "If no person is detected, return es_persona: false and all other fields as null. "
+            "\n\n"
+            "Return ONLY a JSON object with this exact structure:\n"
+            "{\n"
+            '  "es_persona": true,\n'
+            '  "cantidad_personas": "integer — number of people visible in the image",\n'
+            '  "rostro_visible": "boolean — true if face is clearly visible",\n'
+            '  "genero_aparente": "string — masculino / femenino / no determinado",\n'
+            '  "edad_estimada": "string — estimated age range e.g. 20-30",\n'
+            '  "complexion": "string — delgado / normal / robusto / corpulento",\n'
+            '  "estatura_estimada": "string — bajo / mediano / alto based on context clues",\n'
+            '  "color_piel": "string — descriptive skin tone in Spanish",\n'
+            '  "color_cabello": "string — hair color in Spanish, or null if not visible",\n'
+            '  "tipo_cabello": "string — corto / mediano / largo / calvo, or null",\n'
+            '  "color_ojos": "string — eye color if visible, else null",\n'
+            '  "rasgos_faciales": "string — notable facial features: beard, glasses, mustache, etc., or null",\n'
+            '  "ropa_superior": "string — describe upper garment color and type, or null",\n'
+            '  "ropa_inferior": "string — describe lower garment color and type, or null",\n'
+            '  "accesorios": "string — hat, backpack, bag, jewelry, or null",\n'
+            '  "postura": "string — de pie / sentado / en movimiento / acostado, or null",\n'
+            '  "calidad_imagen": "string — buena / regular / mala",\n'
+            '  "observaciones": "string — anything unusual, suspicious behavior, or notable context",\n'
+            '  "confianza": "string — alto / medio / bajo"\n'
+            "}"
+        )
+
+        if extra_instructions:
+            prompt += f"\n\nAdditional instructions: {extra_instructions}"
+
+        # Sanitizar image_source
+        if isinstance(image_source, str):
+            image_source = [image_source]
+        elif isinstance(image_source, list):
+            image_source = [
+                img['file_url'] if isinstance(img, dict) else img
+                for img in image_source
+            ]
+
+        print('>>> ocr_persona image_source=', image_source)
+
+        raw_text = self.ai.ocr_general(image_source, system, prompt, model=model, max_tokens=1000)
+
+        datos = {}
+        if raw_text.get('choices'):
+            choices = raw_text['choices']
+            if isinstance(choices, list) and len(choices) > 0:
+                content = choices[0].get('message', {}).get('content')
+                if content:
+                    datos = content
+
+        print('ocr_persona datos=', datos)
+
+        datos = self._ocr_normalizar(datos)
+
+        errores = self._ocr_validar_id(datos)
+        if errores:
+            return {
+                'status_code': 206,
+                'msg': 'Extracción con advertencias',
+                'data': datos,
+                'warnings': errores,
+            }
+
+        return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
+
+    def ocr_identificacion(self, image_source: str, form_id: int = None,
+                           model: str = 'google/gemini-2.5-flash-lite', 
+                           name: str = None, is_employee: bool = False) -> dict:
+        """
+        Extrae los datos de una identificación (INE, pasaporte, licencia, etc.)
+        y opcionalmente crea el registro en LinkaForm.
+
+        Args:
+            image_source: URL remota o ruta local de la imagen.
+            form_id:      Si se proporciona, crea el registro en ese formulario.
+            model:        Modelo OpenRouter a usar (opcional).
+            MODEL = "anthropic/claude-haiku-4.5"  # excelente OCR, precio razonable
+            MODEL = "google/gemini-2.5-flash"  # un escalón arriba, más caro pero mejor
+            name:         Si se indica, valida que la identificación pertenezca a esa persona.
+            is_employee:  Si es True, busca a la persona de la identificación en el
+                          catálogo de empleados (self.Employee.get_employee_data por
+                          nombre) y agrega 'es_empleado' (bool) y 'datos_empleado' a
+                          cada identificación extraída.
+
+        Returns:
+            dict con:
+                - status_code: 200/201/400/500
+                - data: campos extraídos por el OCR (incluye 'es_empleado' si is_employee=True)
+                - folio: folio del registro creado (si se pasó form_id)
+                - msg: mensaje de resultado
+
+        Ejemplo de uso en script:
+            response = acceso_obj.ocr_identificacion(
+                image_source="https://s3.../ine.jpg",
+                form_id=self.EMPLEADOS_FORM,
+            )
+        """
+
+        if not self.ai:
+            return {'status_code': 400, 'msg': 'OpenRouter no configurado'}
+
+        # 1. Extraer datos con el LLM
+        try:
+            raw_text = self.ai.ocr_id(image_source, model=model, name=name)
+        except ValueError as e:
+            return {'status_code': 500, 'msg': f'Error OCR: {e}'}
+        except Exception as e:
+            return {'status_code': 500, 'msg': f'Error inesperado: {e}'}
+
+        # 2. Normalizar — esto es código, no LLM
+        datos = {}
+        if raw_text.get('choices'):
+            if isinstance(raw_text['choices'], list) and len(raw_text['choices']) >0:
+                if raw_text['choices'][0].get('message',{}).get('content'):
+                    datos = raw_text['choices'][0]['message']['content']
+
+        datos = self._ocr_normalizar(datos)
+        # 2.5 Verificar si la persona de la identificación es empleado (opcional)
+        if is_employee:
+            datos = self._ocr_verificar_empleado(datos)
+
+        # 3. Validar
+        errores = self._ocr_validar_id(datos)
+        if errores:
+            return {
+                'status_code': 206,  # partial content — extrajo pero hay campos inválidos
+                'msg': 'Extracción con advertencias',
+                'data': datos,
+                'warnings': errores,
+            }
+        # 4. Crear registro en LinkaForm si se solicitó
+        if form_id:
+            try:
+                result = self._ocr_crear_registro(datos, form_id)
+                return {
+                    'status_code': 201,
+                    'msg': 'Registro creado exitosamente',
+                    'data': datos,
+                    'folio': result.get('folio'),
+                }
+            except Exception as e:
+                return {
+                    'status_code': 500,
+                    'msg': f'OCR OK pero error al crear registro: {e}',
+                    'data': datos,
+                }
+
+        status = 200 if isinstance(datos, list) else datos.get('status_code', 200)
+        return {'status_code': status, 'msg': 'OK', 'data': datos}
