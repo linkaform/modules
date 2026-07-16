@@ -928,7 +928,10 @@ class Accesos(Accesos):
         source_index = {f'imagen_{i+1}': src for i, src in enumerate(image_source)}
         print('>>> ocr_acceso_transportista sources=', [s[:80] for s in sources])
 
-        raw_text = self.ai.ocr_general(sources, system, prompt, model=model, max_tokens=2000)
+        try:
+            raw_text = self.ai.ocr_general(sources, system, prompt, model=model, max_tokens=2000)
+        except ValueError as e:
+            return {'status_code': 500, 'msg': f'Error al parsear respuesta del modelo: {e}'}
 
         datos = {}
         if raw_text.get('choices'):
@@ -1035,7 +1038,10 @@ class Accesos(Accesos):
 
         print('>>> ocr_persona image_source=', image_source)
 
-        raw_text = self.ai.ocr_general(image_source, system, prompt, model=model, max_tokens=1000)
+        try:
+            raw_text = self.ai.ocr_general(image_source, system, prompt, model=model, max_tokens=1500)
+        except ValueError as e:
+            return {'status_code': 500, 'msg': f'Error al parsear respuesta del modelo: {e}'}
 
         datos = {}
         if raw_text.get('choices'):
