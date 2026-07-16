@@ -688,7 +688,7 @@ class Accesos(Accesos):
         answers = {
             f['estatus']:               'arribo',
             f['fecha_hora_ingreso']:    fecha_ingreso,
-            f['tipo_de_operacion']:     data.get('tipo_operacion', '').lower().replace(' ', '_'),
+            f['tipo_de_operacion']:     (data.get('tipo_operacion') or '').lower().replace(' ', '_'),
             f['empresa_transportista']: vehiculo.get('transportista', ''),
             f['procedencia']:           vehiculo.get('procedencia', ''),
             f['tipo_de_vehiculo']:      vehiculo.get('tipo_vehiculo', ''),
