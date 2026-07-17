@@ -612,16 +612,24 @@ class Accesos(Accesos):
                 for i, m in enumerate(materiales)
             }
 
-        documento = data.get('documentos_adicionales') or {}
-        if documento:
-            idx = documento.get('index')
-            key = idx if idx is not None else -1
-            answers[f['grupo_fotos_y_documentos']] = {
-                key: {
-                    f['tipo_de_documento']: documento.get('tipo', '').lower().replace(' ', '_'),
-                    f['documento']: [{'file_name': documento['file_name'], 'file_url': documento['file_url']}],
+        documentos_raw = data.get('documentos_adicionales') or []
+        if isinstance(documentos_raw, dict):
+            documentos_raw = [documentos_raw]
+        if documentos_raw:
+            new_counter = -1
+            docs_patch = {}
+            for doc in documentos_raw:
+                idx = doc.get('index')
+                if idx is not None:
+                    key = idx
+                else:
+                    key = new_counter
+                    new_counter -= 1
+                docs_patch[key] = {
+                    f['tipo_de_documento']: doc.get('tipo', '').lower().replace(' ', '_'),
+                    f['documento']: [{'file_name': doc['file_name'], 'file_url': doc['file_url']}],
                 }
-            }
+            answers[f['grupo_fotos_y_documentos']] = docs_patch
 
         if data.get('delete_remolques') or data.get('delete_contenedores') or data.get('delete_materiales') or data.get('delete_documentos'):
             self.delete_bitac_transportista_items(record_id, data)
