@@ -26,12 +26,16 @@ if __name__ == "__main__":
     option = data.get("option","")
     qr_code=data.get("qr_code")
     tab_status=data.get("tab_status")
-    pre_sms = data.get("enviar_pre_sms",{})
     update_obj = data.get("update_obj",{})
     envio = data.get("envio",[])
     account_id = data.get("account_id", "")
     template_id= data.get("template_id")
-    
+    image_source = data.get('image_source', '')
+    extra_instructions = data.get('extra_instructions', '')
+    nombre = data.get('nombre', data.get('name'))
+    form_id   = acceso_obj.data.get('form_id')
+    is_employee = data.get('is_employee', data.get('is_employee'))
+
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
     elif option == 'create_access_pass' or option == 'crear_pase':
@@ -54,12 +58,9 @@ if __name__ == "__main__":
     elif option == 'enviar_correo':
         response = acceso_obj.create_enviar_correo(folio=folio, envio=envio)
     elif option == 'catalago_vehiculo':
-        if tipo and marca:
-            response = acceso_obj.vehiculo_modelo(tipo, marca)
-        elif tipo:
-            response = acceso_obj.vehiculo_marca(tipo)
-        else:
-            response = acceso_obj.vehiculo_tipo()
+        response = acceso_obj.catalogo_vehiculos()
+    elif option == 'catalago_tipo_equipo':
+        response = acceso_obj.catalogo_tipo_equipo()
     elif option == 'catalago_estados':
         response = acceso_obj.catalogo_estados()
     elif option == 'get_pass':
@@ -79,6 +80,20 @@ if __name__ == "__main__":
         response = acceso_obj.get_config_modulo_seguridad(ubicaciones=locations)
     elif option == 'get_pass_img':
         response = acceso_obj.get_pass_img(qr_code)
+    elif option == 'ocr_persona':
+        response = acceso_obj.ocr_persona(
+            image_source=image_source,
+            extra_instructions=extra_instructions,
+        )
+    elif option == 'ocr_id':
+        response = acceso_obj.ocr_identificacion(
+            image_source=image_source,
+            form_id=form_id,
+            name=nombre,
+            is_employee=is_employee
+        )
+    elif option == "log_client_error":
+        acceso_obj.LKFException({"title": "Error", "msg": f"Ocurrio un error"})
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})

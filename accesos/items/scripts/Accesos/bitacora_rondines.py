@@ -1,7 +1,9 @@
 # coding: utf-8
-import datetime
+import datetime, sys, simplejson
+from copy import deepcopy
+from bson import ObjectId
 
-import sys, simplejson
+
 from linkaform_api import settings
 from account_settings import *
 
@@ -67,17 +69,27 @@ class Accesos(Accesos):
     
     def get_and_set_areas_recorrido(self):
         location = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], '')
+        area = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['area'], '')
         name_rondin = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.mf['nombre_del_recorrido'], '')
-        query = [
-            {"$match": {
+        match = {"$match": {
                 "deleted_at": {"$exists": False},
                 "form_id": self.CONFIGURACION_DE_RECORRIDOS_FORM,
                 f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": location,
                 f"answers.{self.mf['nombre_del_recorrido']}": name_rondin
-            }},
+            }}
+        if area:
+            match["$match"].update(
+                {f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.Location.f['area_salida']}": area}
+                )
+        query = [
+            match,
             {"$project": {
                 "_id": 0,
-                "rondin_areas": f"$answers.{self.f['grupo_de_areas_recorrido']}"
+                "rondin_areas": f"$answers.{self.f['grupo_de_areas_recorrido']}",
+                "tipo_asignacion": f"$answers.{self.rondin_keys['tipo_asignacion']}",
+                "grupo_asignado_a": f"$answers.{self.rondin_keys['grupo_asignado_a']}",
+                "id_grupo": f"$answers.{self.GRUPOS_CAT_OBJ_ID}.{self.mf['id_grupo']}",
+                "roles": f"$answers.{self.f['grupo_roles']}"
             }}
         ]
         res = self.cr.aggregate(query)
@@ -85,18 +97,27 @@ class Accesos(Accesos):
         if format_res:
             areas_recorrido = self.unlist(format_res)
             self.answers[self.f['areas_del_rondin']] = areas_recorrido.get('rondin_areas', [])
+            self.answers[self.rondin_keys['tipo_asignacion']] = areas_recorrido.get('tipo_asignacion')
+            self.answers[self.rondin_keys['grupo_asignado_a']] = areas_recorrido.get('grupo_asignado_a', [])
+            if areas_recorrido.get('id_grupo'):
+                self.answers[self.GRUPOS_CAT_OBJ_ID] = {self.mf['id_grupo']:areas_recorrido['id_grupo']} 
             return True
         return False
     
-    def get_active_guards_in_location(self, location):
-        query = [
-            {"$match": {
+    def get_active_guards_in_location(self, location, rol=None):
+        match = {"$match": {
                 "deleted_at": {"$exists": False},
                 "form_id": self.REGISTRO_ASISTENCIA,
                 f"answers.{self.f['start_shift']}": {"$exists": True},
                 f"answers.{self.f['end_shift']}": {"$exists": False},
                 f"answers.{self.Employee.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.f['ubicacion']}": location,
-            }},
+            }}
+        if rol:
+            match["$match"].update(
+                {f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.Location.f['area_salida']}":area}
+                )
+        query = [
+            match,
             {"$project": {
                 "_id": 1,
                 "created_at": 1,
@@ -113,18 +134,67 @@ class Accesos(Accesos):
         response = self.format_cr(self.cr.aggregate(query), get_one=True)
         return response
     
-    def get_and_set_user(self):
-        location = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'], '')
-        user_info = self.get_active_guards_in_location(location)
+    def normalize_user(self, raw_user) -> dict:
+        """
+        Normaliza un usuario independientemente de si viene de:
+        - un catálogo de LinkaForm (keys = field_obj_ids)
+        - la API de grupos (keys = name, email, id, username)
+        """
+        # Caso 1: viene de catálogo LinkaForm
+        # raw_user = { '677ffe8c...': { '62c5ff40...': 'Jose Patricio', '638a9a77...': [...], ... } }
+        # se asume que id_usuario y email_vista_a son una lista
+        if self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID in raw_user:
+            catalog = raw_user[self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID]
+            return {
+                self.mf['nombre_usuario']: catalog.get(self.mf['nombre_empleado']),
+                self.mf['id_usuario']:     catalog.get(self.mf['id_usuario']),
+                self.mf['email_visita_a']: catalog.get(self.mf['email_visita_a']),
+            }
 
-        if not user_info:
-            return False
-        
-        self.answers[self.USUARIOS_OBJ_ID] = {
-            self.mf['nombre_usuario']: user_info.get('created_by_name', ''),
-            self.mf['id_usuario']: [user_info.get('created_by_id', '')],
-            self.mf['email_visita_a']: [user_info.get('created_by_email', '')],
-        }
+        # Caso 2: viene de get_group_users() → { 'name': ..., 'email': ..., 'id': ... }
+        # se configura en lista id_usuario y email
+        if 'name' in raw_user or 'email' in raw_user:
+            return {
+                self.mf['nombre_usuario']: raw_user.get('name'),
+                self.mf['id_usuario']:     [raw_user.get('id')],
+                self.mf['email_visita_a']: [raw_user.get('email')],
+            }
+
+        return {}
+
+    def get_and_set_user(self):
+        tipo_asignacion = self.answers.get(self.rondin_keys['tipo_asignacion'])
+        grupo_asignado_a = self.answers.get(self.rondin_keys['grupo_asignado_a'])
+        print('tipo_asignacion = ', tipo_asignacion)
+        if tipo_asignacion and tipo_asignacion in ('persona_especifica', 'grupo'):
+            if tipo_asignacion == 'grupo':
+                grupo_asignado_a = self.lkf_api.get_group_users(self.unlist(self.answers[self.GRUPOS_CAT_OBJ_ID][self.mf['id_grupo']]))
+            new_metadata = deepcopy(self.current_record)
+            new_metadata.pop('answers')
+            new_metadata.pop('_id')
+            for raw_user in grupo_asignado_a:
+                user = self.normalize_user(raw_user)
+                child_anwers = deepcopy(self.answers)
+                child_anwers[self.rondin_keys['registro_padre']] = self.record_id
+                if not self.answers.get(self.USUARIOS_OBJ_ID):
+                    self.answers[self.USUARIOS_OBJ_ID] = user
+                else:
+                    child_anwers[self.USUARIOS_OBJ_ID] = user
+                    parent_record = f"{self.settings.config['PROTOCOL']}://{self.settings.config['HOST']}/#/records/detail/" + self.record_id
+                    child_anwers[self.rondin_keys['registro_padre']] = parent_record
+                    new_metadata['answers'] = child_anwers
+                    res = self.lkf_api.post_forms_answers(new_metadata)
+        else:
+            location = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'])
+            user_info = self.get_active_guards_in_location(location)
+            if not user_info:
+                return False
+            
+            self.answers[self.USUARIOS_OBJ_ID] = {
+                self.mf['nombre_usuario']: user_info.get('created_by_name', ''),
+                self.mf['id_usuario']: [user_info.get('created_by_id', '')],
+                self.mf['email_visita_a']: [user_info.get('created_by_email', '')],
+            }
         return True
 
 if __name__ == "__main__":
@@ -136,16 +206,32 @@ if __name__ == "__main__":
         acceso_obj.answers = acceso_obj.current_record.get('answers', {})
     
     #-FILTROS
+    if acceso_obj.current_record.get('_id'):
+        if isinstance(acceso_obj.current_record.get('_id'), dict):
+            acceso_obj.record_id = acceso_obj.current_record.get('_id').get('$oid')
+        else:
+            acceso_obj.record_id = acceso_obj.current_record.get('_id')
+    else:
+        acceso_obj.record_id = str(ObjectId())
     acceso_obj.calcluta_tiempo_traslados()
 
-    if acceso_obj.answers.get(acceso_obj.mf['estatus_del_recorrido']) == 'programado':
-        if not acceso_obj.answers.get(acceso_obj.f['areas_del_rondin']):
-            acceso_obj.get_and_set_areas_recorrido()
-        if not acceso_obj.answers.get(acceso_obj.USUARIOS_OBJ_ID):
-            acceso_obj.get_and_set_user()
-    
+    # Revisa si este registro es creado por un registro padre
+    # Si es creado por un registro padre, no asinga registro ni busca areas, es una copia
+    is_child_record = acceso_obj.answers.get(acceso_obj.rondin_keys['registro_padre'])
+    if not is_child_record:
+        # Si no es un registro hijo, es un registro padre, lo que quiere decir que es el orginal
+        if acceso_obj.answers.get(acceso_obj.mf['estatus_del_recorrido']) == 'programado':
+            if not acceso_obj.answers.get(acceso_obj.f['areas_del_rondin']):
+                acceso_obj.get_and_set_areas_recorrido()
+            if not acceso_obj.answers.get(acceso_obj.USUARIOS_OBJ_ID):
+                acceso_obj.get_and_set_user()
+    print('answers=', simplejson.dumps(acceso_obj.answers, indent=3))
     sys.stdout.write(simplejson.dumps({
         'status': 101,
-        'replace_ans': acceso_obj.answers
+        'replace_ans': acceso_obj.answers,
+        "metadata":{
+                'id': acceso_obj.record_id
+            }
+
     }))
 

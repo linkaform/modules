@@ -17,6 +17,7 @@ class Schedule(Schedule):
         self.f.update({
             'status_cron': 'abcde00010000000a0000000',
             'cron_id': 'abcde0001000000000000000',
+            'dag_id': 'abcde0001000000000000000',
             'anticipacion': 'abcde0002000000000010001',
             'timeframe_ant': 'abcde0002000000000010004',
             'timeframe_unit_ant': 'abcde0002000000000010005',
@@ -33,17 +34,17 @@ class Schedule(Schedule):
             'group_field_map': 'abcde0001000000000000008',
             'action': 'abcde00010000000a0000001',
         })
-        
+
     def schedule_task_recorrido(self):
         '''
         start_date: es la fecha con la que se va a porgramar la recurrencia del dag
         ojo si esta fecha aun no pasa, las tareas del dag sencillamente no corren
-        por default el start date es igual a la fecha de la primer ejecucion, a menos de que se 
+        por default el start date es igual a la fecha de la primer ejecucion, a menos de que se
         programe con anticipacion.
         '''
         response = {}
         #TODO obtener el huzo horario del usuario y calcular us tzoffset
-        tz_offset = self.current_record.get('tz_offset', -300) 
+        tz_offset = self.current_record.get('tz_offset', -300)
         dag_id = self.answers.get(self.mf['dag_id'])
         action = self.answers.get(self.f['action'])
         if not self.answers or  action in ('eliminar', 'delete'):
@@ -113,7 +114,7 @@ class Schedule(Schedule):
         body = {}
         item_id = self.Accesos.BITACORA_RONDINES
         item_type = 'form'
-        
+
         if not item_type or not item_id:
             msg_error_app = {
                 "error":{"msg": ["Error al obtener el tipo de recurso (item)"], "label": "Cron Id", "error":["Error al obtener el tipo de recurso (item)"]},
@@ -235,12 +236,12 @@ class Schedule(Schedule):
 
             # for assige_usr in all_user_ids:
             #     body['assign']['assign_users'].append(assige_usr)
-            print('body=', simplejson.dumps(body, indent=3))
+            # print('body=', simplejson.dumps(body, indent=3))
             response.update(self.subscribe_cron(body))
 
-        return response    
-        
- 
+        return response
+
+
 if __name__ == "__main__":
     # print(sys.argv)
     schedule_obj = Schedule(settings, sys_argv=sys.argv, use_api=True)
