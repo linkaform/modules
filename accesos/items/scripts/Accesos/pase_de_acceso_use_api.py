@@ -92,6 +92,8 @@ if __name__ == "__main__":
             name=nombre,
             is_employee=is_employee
         )
+    elif option == "log_client_error":
+        acceso_obj.LKFException({"title": "Error", "msg": f"Ocurrio un error"})
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
