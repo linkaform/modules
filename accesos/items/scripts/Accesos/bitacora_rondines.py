@@ -165,7 +165,7 @@ class Accesos(Accesos):
     def get_and_set_user(self):
         tipo_asignacion = self.answers.get(self.rondin_keys['tipo_asignacion'])
         grupo_asignado_a = self.answers.get(self.rondin_keys['grupo_asignado_a'])
-        breakpoint()
+        print('tipo_asignacion = ', tipo_asignacion)
         if tipo_asignacion and tipo_asignacion in ('persona_especifica', 'grupo'):
             if tipo_asignacion == 'grupo':
                 grupo_asignado_a = self.lkf_api.get_group_users(self.unlist(self.answers[self.GRUPOS_CAT_OBJ_ID][self.mf['id_grupo']]))
