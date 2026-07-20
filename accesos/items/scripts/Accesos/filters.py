@@ -629,14 +629,14 @@ class Accesos(Accesos):
         ]
 
     def get_filters_transportistas(self):
-        reportado_por = self.get_employees_names()
+        estatus = self.get_transportistas_estatus()
         return [
             {
-                "defaultDisplayOpen": False,
-                "key": "creador_por",
-                "label": "Creado por",
-                "type": "multiselect",
-                "options": [{"label": i, "value": i} for i in reportado_por]
+                "defaultDisplayOpen": True,
+                "key": "estatus",
+                "label": "Estatus",
+                "type": "multiple",
+                "options": [{"label": i.capitalize(), "value": i} for i in estatus]
             },
    
         ]
