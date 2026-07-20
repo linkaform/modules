@@ -174,6 +174,12 @@ class Accesos(Accesos):
             "field": f"answers.{self.notes_fields['note_status']}"
         }
     @get_mongo_distinct_list
+    def get_transportistas_estatus(self):
+        return {
+            "form_id": self.BITACORA_TRANSPORTISTAS,
+            "field": f"answers.{self.bitacora_transportista_fields['estatus']}"
+        }
+    @get_mongo_distinct_list
     def get_proveedores(self):
         return {
             "form_id": self.PAQUETERIA,
@@ -622,6 +628,18 @@ class Accesos(Accesos):
    
         ]
 
+    def get_filters_transportistas(self):
+        reportado_por = self.get_employees_names()
+        return [
+            {
+                "defaultDisplayOpen": False,
+                "key": "creador_por",
+                "label": "Creado por",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in reportado_por]
+            },
+   
+        ]
 
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
@@ -637,6 +655,7 @@ if __name__ == "__main__":
         "incidencias": lambda: script_obj.get_filters_incidencias(),
         "fallas":      lambda: script_obj.get_filters_fallas(),
         "in_and_out":  lambda: script_obj.get_filters_in_and_out(),
+        "transportistas": lambda: script_obj.get_filters_transportistas(),
         "pases":       lambda: script_obj.get_filters_pases(),
         "paqueteria": lambda:script_obj.get_filters_paqueteria(),
         "concesionados": lambda:script_obj.get_filters_concesionados(),
