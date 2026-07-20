@@ -132,6 +132,36 @@ class Accesos(Accesos):
                         'in': f'$$primer.{f["producto_material"]}',
                     }
                 },
+                'documentos': {
+                    '$let': {
+                        'vars': {
+                            'grupo': {'$ifNull': [f'$answers.{f["grupo_fotos_y_documentos"]}', []]},
+                        },
+                        'in': {
+                            '$map': {
+                                'input': {
+                                    '$cond': {
+                                        'if': {'$isArray': '$$grupo'},
+                                        'then': '$$grupo',
+                                        'else': {
+                                            '$map': {
+                                                'input': {'$objectToArray': '$$grupo'},
+                                                'as': 'kv',
+                                                'in': '$$kv.v',
+                                            }
+                                        },
+                                    }
+                                },
+                                'as': 'row',
+                                'in': {
+                                    'tipo':      f'$$row.{f["tipo_de_documento"]}',
+                                    'file_url':  {'$arrayElemAt': [f'$$row.{f["documento"]}.file_url', 0]},
+                                    'file_name': {'$arrayElemAt': [f'$$row.{f["documento"]}.file_name', 0]},
+                                },
+                            }
+                        },
+                    }
+                },
             }},
             {'$sort': {'_id': -1}},
         ]
