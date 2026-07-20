@@ -636,7 +636,7 @@ class Accesos(Accesos):
                 "key": "estatus",
                 "label": "Estatus",
                 "type": "multiple",
-                "options": [{"label": i.capitalize(), "value": i} for i in estatus]
+                "options": [{"label": i.capitalize().replace('_', ' '), "value": i} for i in estatus]
             },
    
         ]
