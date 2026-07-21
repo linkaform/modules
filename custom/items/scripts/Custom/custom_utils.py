@@ -23,11 +23,20 @@ class Custom(Custom):
         self.obj_plantas_areas = "696133f0829d117f5e819e8c"
         self.field_planta = "696130ce57ba2b8308adef4d"
         self.field_area = "696133f1829d117f5e819e8d"
+
+        # 20260721 se agrega campo Email Jefe de Area
+        self.field_email_jefe_area = "638a9a7767c332f5d459fc82"
         
-        self.obj_usuarios = "696517d545ba5981006be647"
-        self.field_responsable = "638a9a7767c332f5d459fc81"
-        self.field_email = "638a9a7767c332f5d459fc82"
-        self.field_username = "6759e4a7a9a6e13c7b26da33"
+        # self.obj_usuarios = "696517d545ba5981006be647"
+        # self.field_responsable = "638a9a7767c332f5d459fc81"
+        # self.field_email = "638a9a7767c332f5d459fc82"
+        # self.field_username = "6759e4a7a9a6e13c7b26da33"
+
+        # 20260721 se cambian los IDs
+        self.obj_usuarios = "6a26fffffdf9dcdb9755f8b6"
+        self.field_responsable = "69df18efff8ef345609750ff"
+        self.field_email = "69df18efff8ef34560975101"
+        self.field_username = "69df18efff8ef34560975100"
         
     
     def get_fields_ponderables(self, with_comentarios_field=False):

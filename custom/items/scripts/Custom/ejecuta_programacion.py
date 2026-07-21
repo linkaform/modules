@@ -88,6 +88,9 @@ class Custom(Custom):
             {"$project": {
                 "planta": "$planta",
                 "area": f"$areas_programar.{self.obj_plantas_areas}.{self.field_area}",
+                "email_jefe_area": {
+                    "$arrayElemAt": [f"$areas_programar.{self.obj_plantas_areas}.{self.field_email_jefe_area}", 0]
+                },
                 "usuario_a_asignar_nombre": f"$areas_programar.{self.obj_usuarios}.{self.field_responsable}",
                 "usuario_a_asignar_username": {
                     "$arrayElemAt": [f"$areas_programar.{self.obj_usuarios}.{self.field_username}", 0]
@@ -114,6 +117,7 @@ class Custom(Custom):
             self.obj_plantas_areas: {
                 self.field_planta: data_programacion.get('planta'),
                 self.field_area: data_programacion.get('area'),
+                self.field_email_jefe_area: [data_programacion.get('email_jefe_area')],
             },
             self.obj_usuarios: {
                 self.field_responsable: data_programacion.get('usuario_a_asignar_nombre'),
