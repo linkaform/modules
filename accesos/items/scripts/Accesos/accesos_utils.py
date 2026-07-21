@@ -396,6 +396,9 @@ class Accesos(Accesos):
 
         self.inspeccion_entrada_tractor_fields = {
             'fotos_y_documentos': '6a5fcf869160bd10e1b0b323',
+            'tipo_de_documento': '6a5fe2b0a5af7dac33061ea9',
+            'documento': '6a5fe2b0a5af7dac33061eaa',
+
             'defensa': '20e7950eaac0054dbb8ca133',  # 1. Defensa (Si/No/N.A)
             'defensa_comentarios': '7aa52ec9ded1f199a3bfa307',
             'defensa_evidencia': '529623abe2be9e64816dec78',
@@ -467,6 +470,9 @@ class Accesos(Accesos):
 
         self.inspeccion_entrada_ctpat_contenedor_fields = {
             'fotos_y_documentos': '6a5fde6455cec5f5e85ea2a0',
+            'tipo_de_documento': '6a5fe2b0a5af7dac33061ea9',
+            'documento': '6a5fe2b0a5af7dac33061eaa',
+
             'altura_interior': 'd412fb9f428dfc231c9bc3f0',  # Altura interior (text)
             'ancho_interior': '6477c73222d9b7e8dd1de3b9',  # Ancho interior (text)
             'longitud_interior': 'd7c19cbd2cfe6b19f848d697',  # Longitud interior (text)
@@ -481,6 +487,9 @@ class Accesos(Accesos):
 
         self.inspeccion_entrada_ctpat_remolque_fields = {
             'fotos_y_documentos': '6a5fde3b04fdbbdbcfdfc2a2',
+            'tipo_de_documento': '6a5fe2b0a5af7dac33061ea9',
+            'documento': '6a5fe2b0a5af7dac33061eaa',
+
             'altura_interior': '6703c4acd45242ffb0eb0839',  # Altura interior (text)
             'ancho_interior': '7bfa6fe868c1cbec93a051e5',  # Ancho interior (text)
             'longitud_interior': '2624dc82316e99315084d385',  # Longitud interior (text)

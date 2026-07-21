@@ -883,6 +883,16 @@ class Accesos(Accesos):
             else:
                 continue
 
+            evidencias = inspeccion.get('evidencias', []) or []
+            if evidencias:
+                answers[f_ins['fotos_y_documentos']] = [
+                    {
+                        f_ins['tipo_de_documento']: ev.get('tipo', ''),
+                        f_ins['documento']:         [{'file_name': ev['file_name'], 'file_url': ev['file_url']}],
+                    }
+                    for ev in evidencias
+                ]
+
             metadata = self.lkf_api.get_metadata(form_id=form_id)
             inspeccion_id = self.object_id()
             metadata.update({
