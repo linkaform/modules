@@ -132,6 +132,36 @@ class Accesos(Accesos):
                         'in': f'$$primer.{f["producto_material"]}',
                     }
                 },
+                'documentos': {
+                    '$let': {
+                        'vars': {
+                            'grupo': {'$ifNull': [f'$answers.{f["grupo_fotos_y_documentos"]}', []]},
+                        },
+                        'in': {
+                            '$map': {
+                                'input': {
+                                    '$cond': {
+                                        'if': {'$isArray': '$$grupo'},
+                                        'then': '$$grupo',
+                                        'else': {
+                                            '$map': {
+                                                'input': {'$objectToArray': '$$grupo'},
+                                                'as': 'kv',
+                                                'in': '$$kv.v',
+                                            }
+                                        },
+                                    }
+                                },
+                                'as': 'row',
+                                'in': {
+                                    'tipo':      f'$$row.{f["tipo_de_documento"]}',
+                                    'file_url':  {'$arrayElemAt': [f'$$row.{f["documento"]}.file_url', 0]},
+                                    'file_name': {'$arrayElemAt': [f'$$row.{f["documento"]}.file_name', 0]},
+                                },
+                            }
+                        },
+                    }
+                },
             }},
             {'$sort': {'_id': -1}},
         ]
@@ -853,6 +883,16 @@ class Accesos(Accesos):
             else:
                 continue
 
+            evidencias = inspeccion.get('evidencias', []) or []
+            if evidencias:
+                answers[f_ins['fotos_y_documentos']] = [
+                    {
+                        f_ins['tipo_de_documento']: ev.get('tipo', ''),
+                        f_ins['documento']:         [{'file_name': ev['file_name'], 'file_url': ev['file_url']}],
+                    }
+                    for ev in evidencias
+                ]
+
             metadata = self.lkf_api.get_metadata(form_id=form_id)
             inspeccion_id = self.object_id()
             metadata.update({
@@ -1022,13 +1062,95 @@ class Accesos(Accesos):
         ]
         data = self.format_cr(self.cr.aggregate(query), get_one=True)
         return self._labels(data, ids_label_dct=fields)
-        
+
+    def get_fotografias(self, registros):
+        FORM_MAP = {
+            'bitacora':   (self.BITACORA_TRANSPORTISTAS,            self.bitacora_transportista_fields),
+            'tractor':    (self.INSPECCION_ENTRADA_CTPAT_TRACTOR,    self.inspeccion_entrada_tractor_fields),
+            'remolque':   (self.INSPECCION_ENTRADA_CTPAT_REMOLQUE,   self.inspeccion_entrada_ctpat_remolque_fields),
+            'contenedor': (self.INSPECCION_ENTRADA_CTPAT_CONTENEDOR, self.inspeccion_entrada_ctpat_contenedor_fields),
+            'sello':      (self.INSPECCION_SELLO,                   self.inspeccion_de_sello_fields),
+        }
+
+        FOTO_KEYS = {
+            'bitacora':   ['firma_conductor'],
+            'tractor':    [k for k in self.inspeccion_entrada_tractor_fields if k.endswith('_evidencia')],
+            'remolque':   [k for k in self.inspeccion_entrada_ctpat_remolque_fields if k.endswith('_evidencia')],
+            'contenedor': [],
+            'sello': [
+                '1_foto_del_sello',
+                '2_sello_colocado_en_las_puertas',
+                '3_puertas_completas_del_remolque',
+                '4_placas_o_economico',
+                '5_identificacion_del_operador',
+            ],
+        }
+
+        GRUPO_FOTOS_KEY = {
+            'bitacora':   'grupo_fotos_y_documentos',
+            'tractor':    'fotos_y_documentos',
+            'remolque':   'fotos_y_documentos',
+            'contenedor': 'fotos_y_documentos',
+            'sello':      None,
+        }
+
+        def normaliza_tipo(tipo):
+            tipo = (tipo or '').replace('salida_', '')
+            if '_' in tipo and tipo.rsplit('_', 1)[-1].isdigit():
+                tipo = tipo.rsplit('_', 1)[0]
+            return tipo
+
+        ids_por_tipo = {}
+        for registro in registros:
+            tipo = normaliza_tipo(registro.get('tipo_de_registro'))
+            record_id = registro.get('record_id')
+            if tipo in FORM_MAP and record_id:
+                ids_por_tipo.setdefault(tipo, []).append(record_id)
+
+        fotos_por_record = {}
+        for tipo, ids in ids_por_tipo.items():
+            form_id, fields = FORM_MAP[tipo]
+            query = [
+                {'$match': {
+                    'form_id': form_id,
+                    'deleted_at': {'$exists': False},
+                    '_id': {'$in': [ObjectId(i) for i in ids]},
+                }},
+                {'$project': {'_id': 1, 'answers': 1}},
+            ]
+            for reg_db in self.format_cr(self.cr.aggregate(query)):
+                labeled = self._labels(reg_db, ids_label_dct=fields)
+                fotos = []
+                for key in FOTO_KEYS[tipo]:
+                    if labeled.get(key):
+                        fotos.extend(labeled[key])
+                grupo_key = GRUPO_FOTOS_KEY[tipo]
+                if grupo_key:
+                    grupo = labeled.get(grupo_key) or []
+                    if isinstance(grupo, dict):
+                        grupo = list(grupo.values())
+                    for fila in grupo:
+                        documento = (fila or {}).get('documento')
+                        if documento:
+                            fotos.extend(documento)
+                fotos_por_record[str(reg_db['_id'])] = fotos
+
+        return [
+            {
+                'record_id': registro['record_id'],
+                'tipo_de_registro': registro.get('tipo_de_registro'),
+                'fotografias': fotos_por_record.get(registro['record_id'], []),
+            }
+            for registro in registros
+        ]
+
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
     script_obj.console_run()
     data = script_obj.data.get('data', {})
     option = data.get("option", '')
     inspecciones = data.get("inspecciones", [])
+    registros = data.get("registros", [])
     payload = data.get("payload", {})
     record_id = data.get("record_id", None)
     token = data.get("token", None)
@@ -1054,6 +1176,7 @@ if __name__ == "__main__":
         "save_inspecciones": lambda: script_obj.save_inspecciones(record_id, inspecciones),
         "save_inspecciones_sello": lambda: script_obj.save_inspecciones_sello(record_id, inspecciones),
         "get_inspeccion_record": lambda: script_obj.get_inspeccion_record(record_id, data.get('tipo', '')),
+        "get_fotografias": lambda: script_obj.get_fotografias(registros),
     }
 
     action = dispatcher.get(option)
