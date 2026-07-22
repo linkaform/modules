@@ -108,13 +108,33 @@ class Accesos(Accesos):
         ]
         return self.format_cr(self.cr.aggregate(query), get_one=True)
     
-    def get_bitac_transportista_records(self):
+    def get_bitac_transportista_records(self, date_from=None, date_to=None,
+                                         tipo_de_vehiculo=None, proveedor_cliente=None, anden_asignado=None):
         f = self.bitacora_transportista_fields
+        match_filters = {
+            'form_id': self.BITACORA_TRANSPORTISTAS,
+            'deleted_at': {'$exists': False},
+        }
+        fecha_field = f'answers.{f["fecha_hora_ingreso"]}'
+        if date_from and date_to:
+            match_filters[fecha_field] = {'$gte': date_from, '$lte': date_to}
+        elif date_from:
+            match_filters[fecha_field] = {'$gte': date_from}
+        elif date_to:
+            match_filters[fecha_field] = {'$lte': date_to}
+
+        if tipo_de_vehiculo:
+            values = tipo_de_vehiculo if isinstance(tipo_de_vehiculo, list) else [tipo_de_vehiculo]
+            match_filters[f'answers.{f["tipo_de_vehiculo"]}'] = {'$in': values}
+        if proveedor_cliente:
+            values = proveedor_cliente if isinstance(proveedor_cliente, list) else [proveedor_cliente]
+            match_filters[f'answers.{f["proveedor_cliente"]}'] = {'$in': values}
+        if anden_asignado:
+            values = anden_asignado if isinstance(anden_asignado, list) else [anden_asignado]
+            match_filters[f'answers.{f["anden_asignado"]}'] = {'$in': values}
+
         query = [
-            {'$match': {
-                'form_id': self.BITACORA_TRANSPORTISTAS,
-                'deleted_at': {'$exists': False},
-            }},
+            {'$match': match_filters},
             {'$project': {
                 '_id': 1,
                 'folio':              1,
@@ -123,6 +143,7 @@ class Accesos(Accesos):
                 'proveedor_cliente':  f'$answers.{f["proveedor_cliente"]}',
                 'conductor':          f'$answers.{f["conductor"]}',
                 'tipo_de_operacion':  f'$answers.{f["tipo_de_operacion"]}',
+                'tipo_de_vehiculo':   f'$answers.{f["tipo_de_vehiculo"]}',
                 'estatus':            f'$answers.{f["estatus"]}',
                 'num_de_pase':        f'$answers.{f["num_de_pase"]}',
                 'fecha_hora_ingreso': f'$answers.{f["fecha_hora_ingreso"]}',
@@ -847,7 +868,7 @@ class Accesos(Accesos):
                     num = punto.get('numero', 0) - 1
                     if 0 <= num < len(REMOLQUE_CAMPOS):
                         campo = REMOLQUE_CAMPOS[num]
-                        resultado = (punto.get('resultado') or '').lower().replace('í', 'i')
+                        resultado = (punto.get('resultado') or '').lower()
                         if resultado:
                             answers[f_ins[campo]] = resultado
                         if punto.get('comentario'):
@@ -1156,6 +1177,11 @@ if __name__ == "__main__":
     token = data.get("token", None)
     locations = data.get("locations", None)
     location = data.get("location", None)
+    date_from = data.get("date_from", None)
+    date_to = data.get("date_to", None)
+    tipo_de_vehiculo = data.get("tipo_de_vehiculo", None)
+    proveedor_cliente = data.get("proveedor_cliente", None)
+    anden_asignado = data.get("anden_asignado", None)
 
     dispatcher = {
         "create_pass_transportista": lambda: script_obj.create_pass_transportista(payload),
@@ -1163,7 +1189,10 @@ if __name__ == "__main__":
         "generate_submit_token_transportista": lambda: script_obj.generate_submit_token_transportista(record_id),
         "get_andenes": lambda: script_obj.get_andenes(),
         "get_bitac_transportista_record": lambda: script_obj.get_bitac_transportista_record(record_id),
-        "get_bitac_transportista_records": lambda: script_obj.get_bitac_transportista_records(),
+        "get_bitac_transportista_records": lambda: script_obj.get_bitac_transportista_records(
+            date_from=date_from, date_to=date_to,
+            tipo_de_vehiculo=tipo_de_vehiculo, proveedor_cliente=proveedor_cliente, anden_asignado=anden_asignado,
+        ),
         "get_horarios_data": lambda: script_obj.get_horarios_data(dia=data.get('dia')),
         "get_pass_transportista": lambda: script_obj.get_pass_transportista(record_id, token),
         "get_users_data": lambda: script_obj.get_users_data(locations),

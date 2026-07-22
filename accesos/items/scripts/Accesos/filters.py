@@ -180,6 +180,24 @@ class Accesos(Accesos):
             "field": f"answers.{self.bitacora_transportista_fields['estatus']}"
         }
     @get_mongo_distinct_list
+    def get_transportistas_tipo_vehiculo(self):
+        return {
+            "form_id": self.BITACORA_TRANSPORTISTAS,
+            "field": f"answers.{self.bitacora_transportista_fields['tipo_de_vehiculo']}"
+        }
+    @get_mongo_distinct_list
+    def get_transportistas_empresa(self):
+        return {
+            "form_id": self.BITACORA_TRANSPORTISTAS,
+            "field": f"answers.{self.bitacora_transportista_fields['proveedor_cliente']}"
+        }
+    @get_mongo_distinct_list
+    def get_transportistas_anden(self):
+        return {
+            "form_id": self.BITACORA_TRANSPORTISTAS,
+            "field": f"answers.{self.bitacora_transportista_fields['anden_asignado']}"
+        }
+    @get_mongo_distinct_list
     def get_proveedores(self):
         return {
             "form_id": self.PAQUETERIA,
@@ -630,6 +648,9 @@ class Accesos(Accesos):
 
     def get_filters_transportistas(self):
         estatus = self.get_transportistas_estatus()
+        tipo_vehiculo = self.get_transportistas_tipo_vehiculo()
+        empresa = self.get_transportistas_empresa()
+        anden = self.get_transportistas_anden()
         return [
             {
                 "defaultDisplayOpen": True,
@@ -638,7 +659,27 @@ class Accesos(Accesos):
                 "type": "multiple",
                 "options": [{"label": i.capitalize().replace('_', ' '), "value": i} for i in estatus]
             },
-   
+            {
+                "defaultDisplayOpen": False,
+                "key": "tipo_de_vehiculo",
+                "label": "Tipo de vehículo",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in tipo_vehiculo]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "proveedor_cliente",
+                "label": "Empresa / Transportista",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in empresa]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "anden_asignado",
+                "label": "Andén asignado",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in anden]
+            },
         ]
 
 if __name__ == "__main__":

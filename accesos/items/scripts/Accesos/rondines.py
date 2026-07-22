@@ -327,6 +327,11 @@ class Accesos(Accesos):
                 pass
             elif key == 'tipo_rondin':
                 answers[self.rondin_keys[key]] = value.lower()
+            elif key == 'roles':
+                answers[self.f['grupo_roles']] = [
+                    {self.ROL_CATALOG_OBJ_ID: {self.f['rol']: rol}}
+                    for rol in value
+                ]
             elif key == 'tipo_asignacion':
                 answers[self.rondin_keys['tipo_asignacion']] = value
             elif key == 'asignado_a':
@@ -1321,6 +1326,7 @@ class Accesos(Accesos):
                 "ubicacion_geolocation": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.f['address_geolocation']}",
                 "area": f"$answers.{self.f['area']}", 
                 "cada_cuantos_dias_se_repite": f"$answers.{self.rondin_keys['cada_cuantos_dias_se_repite']}", 
+                "roles": f"$answers.{self.f['grupo_roles']}", 
             }},
             {"$sort": {"_id": -1}}, 
             {"$skip": offset},
@@ -1339,6 +1345,8 @@ class Accesos(Accesos):
                     location=location,
                     rondin_name=rondin_name
                 )
+                roles_raw = item.get('roles', [])
+                data['roles'] = [r.get('rol') for r in roles_raw if r.get('rol')]
                 data['duracion_promedio'] = duracion_promedio
                 if area_details:
                     data['areas'] = self.get_area_images(
@@ -2376,6 +2384,11 @@ class Accesos(Accesos):
                     answers[self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID] = {
                         self.mf['nombre_area_salida']: value
                     }
+            elif key == 'roles':
+                answers[self.f['grupo_roles']] = [
+                    {self.ROL_CATALOG_OBJ_ID: {self.f['rol']: rol}}
+                    for rol in (value or [])
+                ]     
             elif key == 'grupo_asignado':
                 answers[self.GRUPOS_CAT_OBJ_ID] = {
                     self.rondin_keys[key]: value
