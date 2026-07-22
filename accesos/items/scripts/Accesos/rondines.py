@@ -1475,6 +1475,7 @@ class Accesos(Accesos):
             }},
             {"$project": {
                 "_id": 0,
+                "folio": 1,
                 "area": f"$answers.{self.Location.f['area']}",
                 "geolocation": f"$answers.{self.f['geolocalizacion_area_ubicacion']}",
                 "image": f"$answers.{self.f['foto_area']}",
@@ -1534,6 +1535,7 @@ class Accesos(Accesos):
             areas_formateadas = []
             for r in response:
                 areas_formateadas.append({
+                    "folio": r.get("folio", ""),
                     "rondin_area": r.get("area", ""),
                     "geolocalizacion_area_ubicacion": [
                         {
