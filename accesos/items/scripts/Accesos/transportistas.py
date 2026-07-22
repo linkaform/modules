@@ -868,7 +868,7 @@ class Accesos(Accesos):
                     num = punto.get('numero', 0) - 1
                     if 0 <= num < len(REMOLQUE_CAMPOS):
                         campo = REMOLQUE_CAMPOS[num]
-                        resultado = (punto.get('resultado') or '').lower().replace('í', 'i')
+                        resultado = (punto.get('resultado') or '').lower()
                         if resultado:
                             answers[f_ins[campo]] = resultado
                         if punto.get('comentario'):
