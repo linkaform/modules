@@ -108,13 +108,22 @@ class Accesos(Accesos):
         ]
         return self.format_cr(self.cr.aggregate(query), get_one=True)
     
-    def get_bitac_transportista_records(self):
+    def get_bitac_transportista_records(self, date_from=None, date_to=None):
         f = self.bitacora_transportista_fields
+        match_filters = {
+            'form_id': self.BITACORA_TRANSPORTISTAS,
+            'deleted_at': {'$exists': False},
+        }
+        fecha_field = f'answers.{f["fecha_hora_ingreso"]}'
+        if date_from and date_to:
+            match_filters[fecha_field] = {'$gte': date_from, '$lte': date_to}
+        elif date_from:
+            match_filters[fecha_field] = {'$gte': date_from}
+        elif date_to:
+            match_filters[fecha_field] = {'$lte': date_to}
+
         query = [
-            {'$match': {
-                'form_id': self.BITACORA_TRANSPORTISTAS,
-                'deleted_at': {'$exists': False},
-            }},
+            {'$match': match_filters},
             {'$project': {
                 '_id': 1,
                 'folio':              1,
@@ -1156,6 +1165,8 @@ if __name__ == "__main__":
     token = data.get("token", None)
     locations = data.get("locations", None)
     location = data.get("location", None)
+    date_from = data.get("date_from", None)
+    date_to = data.get("date_to", None)
 
     dispatcher = {
         "create_pass_transportista": lambda: script_obj.create_pass_transportista(payload),
@@ -1163,7 +1174,7 @@ if __name__ == "__main__":
         "generate_submit_token_transportista": lambda: script_obj.generate_submit_token_transportista(record_id),
         "get_andenes": lambda: script_obj.get_andenes(),
         "get_bitac_transportista_record": lambda: script_obj.get_bitac_transportista_record(record_id),
-        "get_bitac_transportista_records": lambda: script_obj.get_bitac_transportista_records(),
+        "get_bitac_transportista_records": lambda: script_obj.get_bitac_transportista_records(date_from=date_from, date_to=date_to),
         "get_horarios_data": lambda: script_obj.get_horarios_data(dia=data.get('dia')),
         "get_pass_transportista": lambda: script_obj.get_pass_transportista(record_id, token),
         "get_users_data": lambda: script_obj.get_users_data(locations),
