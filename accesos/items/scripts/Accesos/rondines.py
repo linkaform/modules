@@ -1025,7 +1025,7 @@ class Accesos(Accesos):
                     detalle = detalle[0] if detalle else detalle
                 areas_formateadas.append({
                     "area": area.get("rondin_area", ""),
-                    "foto_default_area": self.unlist(areas_default_images.get(area.get('rondin_area', []))),
+                    "foto_default_area": self.unlist(areas_default_images.get(area.get('rondin_area', ''))),
                     "detalle": detalle,
                 })
 
@@ -1479,6 +1479,9 @@ class Accesos(Accesos):
                 "geolocation": f"$answers.{self.f['geolocalizacion_area_ubicacion']}",
                 "image": f"$answers.{self.f['foto_area']}",
                 "tag_id": f"$answers.{self.f['area_tag_id']}",
+                "tipo_de_area": f"$answers.{self.Location.TIPO_AREA_OBJ_ID}.{self.f['tipo_de_area']}",
+                "area_state": f"$answers.{self.Location.f['area_state']}",
+                "area_status": f"$answers.{self.Location.f['area_status']}",
             }}
         ]
         response = self.format_cr(self.cr.aggregate(query))
@@ -1539,7 +1542,10 @@ class Accesos(Accesos):
                         }
                     ],
                     "area_tag_id": [r.get("tag_id", "")],
-                    "foto_area": r.get("image", [])
+                    "foto_area": r.get("image", []),
+                    "tipo_de_area": r.get("tipo_de_area", ""),
+                    "area_state": r.get("area_state", ""),
+                    "area_status": r.get("area_status", ""),
                 })
             print("RESPONSE",simplejson.dumps(areas_formateadas, indent=3))
             return areas_formateadas
