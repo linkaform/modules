@@ -1035,7 +1035,11 @@ class Accesos(Accesos):
             '  "confianza": "string — alto / medio / bajo"\n'
             "}"
         )
-
+        prompt += (
+            "\n\nKeep every field extremely concise (1-4 words max per field, "
+            "except 'observaciones' which can be a short phrase). "
+            "Never omit the closing brace of the JSON object."
+        )
         if extra_instructions:
             prompt += f"\n\nAdditional instructions: {extra_instructions}"
 
