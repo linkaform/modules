@@ -782,15 +782,15 @@ class Accesos(Accesos):
         Acepta mezcla de imágenes y documentos (PDFs, JPGs, PNGs).
 
         Tipos de archivos soportados:
-          - Foto de placas / vehículo
-          - Foto del conductor
-          - Licencia de conducir
-          - Tarjeta de circulación (tractor o remolque)
-          - Bill of Lading (BL) / conocimiento de embarque
-          - Pedimento de importación temporal
-          - Orden de compra / factura / manifiesto de carga
-          - Documento de autorización de salida de puerto
-          - Foto o documento del contenedor
+        - Foto de placas / vehículo
+        - Foto del conductor
+        - Licencia de conducir
+        - Tarjeta de circulación (tractor o remolque)
+        - Bill of Lading (BL) / conocimiento de embarque
+        - Pedimento de importación temporal
+        - Orden de compra / factura / manifiesto de carga
+        - Documento de autorización de salida de puerto
+        - Foto o documento del contenedor
 
         Args:
             image_source: URL, ruta local, o lista. Acepta imágenes y PDFs remotos.
@@ -805,12 +805,14 @@ class Accesos(Accesos):
         system = (
             "You are a certified security supervisor and CTPAT compliance specialist at an industrial facility. "
             "You process transport access events by analyzing any combination of: vehicle photos, license plates, "
-            "driver photos, driver licenses, vehicle registration cards (tarjeta de circulación), "
-            "Bills of Lading, temporary import permits (pedimentos), port release documents, "
+            "driver photos, driver licenses, vehicle registration cards (tarjeta de circulación) for both tractors "
+            "and trailers, Bills of Lading, temporary import permits (pedimentos), port release documents, "
             "purchase orders, cargo manifests, and container photos. "
-            "All inputs refer to ONE transport access event. "
+            "All inputs refer to ONE transport access event, which may include MULTIPLE remolques and MULTIPLE "
+            "contenedores, each with its own tarjeta de circulación or documentation. "
             "You ONLY extract information that is clearly visible or printed in the provided files. "
-            "You NEVER invent, estimate, or hallucinate data. "
+            "You NEVER invent, estimate, or hallucinate data, and you NEVER let data from one vehicle, remolque, "
+            "or contenedor overwrite or merge with data belonging to a different one. "
             "If a field is not present in any document, return null — never guess. "
             "Always respond with a single valid JSON object and nothing else — "
             "no markdown, no backticks, no explanation, no preamble."
@@ -824,7 +826,28 @@ class Accesos(Accesos):
             "Extract every field you can find. If a field is absent from all provided files, use null. "
             "IMPORTANT: remolques are trailers/flatbeds pulled by the truck. "
             "contenedores are ISO shipping containers (they have an alphanumeric container number like ECMU7740351). "
-            "A remolque may carry a contenedor — if so, list the trailer in remolques and the container in contenedores. "
+            "A remolque may carry a contenedor — if so, list the trailer in remolques and the container in "
+            "contenedores. There may be MORE THAN ONE remolque and MORE THAN ONE contenedor in the same event — "
+            "keep each one as a separate entry in its array, never merge two different units into one entry. "
+            "\n\n"
+            "IMPORTANT ON PLATES: a single physical vehicle or remolque can have its plate appear in more than one "
+            "source — a photo of the plate itself, an incidental mention in another document, AND its own tarjeta "
+            "de circulación. These are DIFFERENT sources describing the SAME plate, and must be kept in SEPARATE "
+            "fields, never overwriting one another: "
+            "use `placa`/`placas` for what you read from a photo or an incidental/general mention, and "
+            "`placa_tarjeta_circulacion`/`placas_tarjeta_circulacion` EXCLUSIVELY for the plate printed on that "
+            "specific entity's own tarjeta de circulación document. "
+            "If there are multiple remolques, each with its own tarjeta_circulacion_remolque document, match each "
+            "tarjeta to the correct remolque using its no_caja/unit number or contextual order (e.g. the tarjeta "
+            "appearing right after a given remolque's photo). If you cannot confidently match a tarjeta to a "
+            "specific remolque, still record its plate value in the most likely remolque's "
+            "`placas_tarjeta_circulacion` and note the ambiguity in that remolque's `comentarios` — never drop the "
+            "value just because the match is uncertain. "
+            "\n\n"
+            "IMPORTANT ON DATES: interpret dates according to the document's own convention before converting to "
+            "YYYY-MM-DD — English-language documents (BL, invoices) typically use MM/DD/YYYY, Mexican documents "
+            "(pedimentos, tarjetas, licencias) typically use DD/MM/YYYY. If the convention is genuinely ambiguous "
+            "for a given date, keep the original string as printed instead of guessing day vs. month. "
             "\n\n"
             "Return ONLY a JSON object with this exact structure:\n"
             "{\n"
@@ -833,11 +856,12 @@ class Accesos(Accesos):
             '  "vehiculo": {\n'
             '    "transportista": "string — carrier company name (e.g. TRAMO TRANSPORTES MONTERREY SA DE CV), or null",\n'
             '    "procedencia": "string — city or state of origin of the vehicle/shipment if visible on any document, or null",\n'
-            '    "tipo_vehiculo": "string — one of: torton, trailer, caja_seca, caja_refrigerada, plataforma, volteo, van, pick_up, camion, pipa, or null",\n'
+            '    "tipo_vehiculo": "string — one of: torton, trailer, caja_seca, caja_refrigerada, plataforma, volteo, van, pick_up, camion, pipa, otro, or null. Use otro (never force a wrong fit) if it clearly does not match any listed type",\n'
             '    "marca": "string — truck/tractor brand (Kenworth, Freightliner, International, Volvo, etc.), or null",\n'
             '    "modelo": "string — truck model year if visible (e.g. 2019), or null",\n'
             '    "color": "string — main cab color. PRIORITY: extract visually from vehicle/plate photos if provided. Fall back to text on registration card only if no vehicle photo is present. Use Spanish color names (Blanco, Negro, Rojo, Azul, Gris, Verde, Amarillo, Naranja, Cafe, Plateado, etc.), or null",\n'
-            '    "placa": "string — tractor/cab license plate exactly as printed, or null",\n'
+            '    "placa": "string — tractor/cab license plate as read from a vehicle/plate photo or an incidental mention in another document, exactly as printed, or null",\n'
+            '    "placa_tarjeta_circulacion": "string — tractor/cab license plate extracted EXCLUSIVELY from a tarjeta_circulacion_vehiculo document, exactly as printed, or null",\n'
             '    "no_economico": "string — carrier economic number / rótulo on the vehicle, or null"\n'
             '  },\n'
 
@@ -853,19 +877,20 @@ class Accesos(Accesos):
             # ── REMOLQUES ─────────────────────────────────────────────────
             '  "remolques": [\n'
             '    {\n'
-            '      "tipo": "string — trailer type: caja_seca, caja_refrigerada, plataforma, tanque, volteo, or null",\n'
+            '      "tipo": "string — trailer type: caja_seca, caja_refrigerada, plataforma, tanque, volteo, otro, or null. Use otro instead of forcing a wrong fit",\n'
             '      "no_caja": "string — trailer box/unit number (número económico de caja) from registration card or visible on unit, or null",\n'
             '      "no_sello": "string — seal number on the trailer, or null",\n'
-            '      "placas": "string — trailer license plate exactly as printed, or null",\n'
+            '      "placas": "string — trailer license plate as read from a photo or an incidental mention, exactly as printed, or null",\n'
+            '      "placas_tarjeta_circulacion": "string — trailer license plate extracted EXCLUSIVELY from this trailer\'s own tarjeta_circulacion_remolque document, exactly as printed, or null",\n'
             '      "color": "string — trailer color in Spanish (Blanco, Gris, Rojo, etc.), or null",\n'
-            '      "comentarios": "string — any relevant note about this trailer (damage, anomaly, etc.), or null"\n'
+            '      "comentarios": "string — any relevant note about this trailer (damage, anomaly, ambiguous tarjeta match, etc.), or null"\n'
             '    }\n'
             '  ],\n'
 
             # ── CONTENEDORES ──────────────────────────────────────────────
             '  "contenedores": [\n'
             '    {\n'
-            '      "tipo": "string — ISO container type: 20GP, 40GP, 40HC, 20RF, 40RF, tanque, or null",\n'
+            '      "tipo": "string — ISO container type: 20GP, 40GP, 40HC, 20RF, 40RF, tanque, otro, or null. Use otro instead of forcing a wrong fit",\n'
             '      "no_caja": "string — container number exactly as printed (e.g. ECMU7740351), or null",\n'
             '      "no_sello": "string — seal number on the container, or null",\n'
             '      "placas": "string — chassis plate if visible, or null",\n'
@@ -898,21 +923,15 @@ class Accesos(Accesos):
             '    "fecha_embarque": "string — on-board or shipment date (YYYY-MM-DD if possible), or null"\n'
             '  },\n'
 
-            # ── PLACAS DE TARJETAS ────────────────────────────────────────
-            '  "placas_tarjetas": {\n'
-            '    "vehiculo": "string — license plate extracted EXCLUSIVELY from a tarjeta_circulacion_vehiculo document, exactly as printed, or null",\n'
-            '    "remolque": "string — license plate extracted EXCLUSIVELY from a tarjeta_circulacion_remolque document, exactly as printed, or null"\n'
-            '  },\n'
-
             # ── METADATA ──────────────────────────────────────────────────
             '  "documentos_detectados": [\n'
             '    {\n'
             '      "fuente": "string — imagen_1 / imagen_2 / imagen_3 ... (position of the file in the input list)",\n'
-            '      "tipo": "string — one of: identificacion_chofer, foto_conductor, tarjeta_circulacion_vehiculo, carta_porte, factura_orden_compra, foto_placa_vehiculo, evidencia_carga, conocimiento_embarque_bl, otro. IMPORTANT: identificacion_chofer is an official ID document (INE, passport, license) showing the driver\'s personal data. foto_conductor is a photo of the driver\'s face. Never confuse them."\n'
+            '      "tipo": "string — one of: identificacion_chofer, foto_conductor, tarjeta_circulacion_vehiculo, tarjeta_circulacion_remolque, carta_porte, factura_orden_compra, foto_placa_vehiculo, evidencia_carga, conocimiento_embarque_bl, otro. IMPORTANT: identificacion_chofer is an official ID document (INE, passport, license) showing the driver\'s personal data. foto_conductor is a photo of the driver\'s face. tarjeta_circulacion_vehiculo belongs to the tractor/cab; tarjeta_circulacion_remolque belongs to a trailer — never confuse the two, and never confuse either with identificacion_chofer / foto_conductor."\n'
             '    }\n'
             '  ],\n'
-            '  "observaciones": "string — CTPAT flags, anomalies, damage, incomplete docs, or anything security-relevant, or null",\n'
-            '  "confianza": "string — alto / medio / bajo — overall confidence based on document/image quality"\n'
+            '  "observaciones": "string — CTPAT flags, anomalies, damage, incomplete docs, ambiguous plate/tarjeta matches, or anything security-relevant, or null",\n'
+            '  "confianza": "string — alto: all key documents present and legible, no null in critical fields (vehiculo.placa, conductor.nombre, at least one remolque or contenedor if cargo is present) | medio: 1-2 documents illegible or secondary fields missing | bajo: key documents missing/illegible or inconsistencies (e.g. unmatched tarjeta/plate) across sources"\n'
             "}"
         )
 
@@ -941,7 +960,7 @@ class Accesos(Accesos):
         print('>>> ocr_acceso_transportista sources=', [s[:80] for s in sources])
 
         try:
-            raw_text = self.ai.ocr_general(sources, system, prompt, model=model, max_tokens=2000)
+            raw_text = self.ai.ocr_general(sources, system, prompt, model=model, max_tokens=6000)
         except ValueError as e:
             return {'status_code': 500, 'msg': f'Error al parsear respuesta del modelo: {e}'}
 
