@@ -809,10 +809,11 @@ class Accesos(Accesos):
             "and trailers, Bills of Lading, temporary import permits (pedimentos), port release documents, "
             "purchase orders, cargo manifests, and container photos. "
             "All inputs refer to ONE transport access event, which may include MULTIPLE remolques and MULTIPLE "
-            "contenedores, each with its own tarjeta de circulación or documentation. "
+            "contenedores, each with its own tarjeta de circulación or documentation, and each potentially carrying "
+            "DIFFERENT cargo. "
             "You ONLY extract information that is clearly visible or printed in the provided files. "
             "You NEVER invent, estimate, or hallucinate data, and you NEVER let data from one vehicle, remolque, "
-            "or contenedor overwrite or merge with data belonging to a different one. "
+            "contenedor, or cargo line overwrite or merge with data belonging to a different one. "
             "If a field is not present in any document, return null — never guess. "
             "Always respond with a single valid JSON object and nothing else — "
             "no markdown, no backticks, no explanation, no preamble."
@@ -824,25 +825,68 @@ class Accesos(Accesos):
             "Files may include vehicle photos, driver photos, driver licenses, vehicle registration cards, "
             "Bills of Lading, pedimentos, port documents, purchase orders, or container photos. "
             "Extract every field you can find. If a field is absent from all provided files, use null. "
+            "\n\n"
+            "IMPORTANT ON CARGO-TO-UNIT LINKING: when a document (Bill of Lading, packing list, manifest) breaks "
+            "down cargo per container or trailer — e.g. a container number is followed by its own weight, volume, "
+            "package count, and product description — that cargo line belongs EXCLUSIVELY inside that container's "
+            "own `materiales` array (nested inside its entry in `contenedores[]`), matched by container number "
+            "first, or by the weight/volume/package figures printed right next to that container's row if the "
+            "number match is unclear. Do the same for remolques when cargo is described per-trailer. "
+            "A cargo line may also carry its OWN purchase-order reference distinct from the shipment-level PO — "
+            "capture it in that material's own `no_orden_compra` field when present, without overwriting "
+            "`embarque.no_orden_compra`. "
+            "If a summary line states a type/quantity that applies to multiple units (e.g. '2 x 40HC CONTAINER' "
+            "before individual container rows), apply that type to EACH of those containers' `tipo` field unless a "
+            "specific row overrides it — do not leave it null just because it was only stated once at the top. "
+            "Only use the top-level `materiales` array as a FALLBACK, for cargo that cannot be attributed to any "
+            "specific contenedor or remolque (e.g. loose cargo directly on a rigid vehicle with no container/trailer "
+            "breakdown, or a generic document that does not specify per-unit contents). Never duplicate the same "
+            "cargo line in both a specific unit's materiales and the top-level materiales. "
+            "\n\n"
+            "IMPORTANT ON CLOSED-LIST FIELDS (tipo_vehiculo, remolques[].tipo, contenedores[].tipo): these values "
+            "feed a form with FIXED dropdown options — there is NO 'otro' catch-all option available downstream. "
+            "If the document clearly states a type that matches one of the listed options, use that exact listed "
+            "value. If the document states a type that does NOT match any listed option (e.g. 'furgón' when it's "
+            "not in the list), do NOT force it into the closest option and do NOT return null — instead return the "
+            "type EXACTLY as written/stated in the document, as free text, so a human can review and map it "
+            "manually. Only return null if no type information is present at all. "
+            "\n\n"
+            "IMPORTANT ON VEHICLE ARTICULATION (camion vs. trailer): "
+            "A camion (rigid/straight truck) has the cab and cargo box built on ONE single chassis — they cannot "
+            "be separated. A trailer (tractocamion articulado) is TWO separable pieces joined by a fifth wheel "
+            "(quinta rueda): the tracto (cab + engine, no cargo box of its own) pulling a semirremolque (the box, "
+            "which can be unhitched and stands alone on its own landing gear). "
+            "DECISION RULE: if the vehicle has a separable remolque (i.e. you will be listing one or more entries "
+            "in remolques[]), set vehiculo.tipo_vehiculo to \"trailer\" — do NOT also describe the box type "
+            "(caja_seca, plataforma, etc.) at the vehiculo level, that belongs exclusively in remolques[].tipo. "
+            "If there is NO separable remolque (rigid single-chassis vehicle), set vehiculo.tipo_vehiculo to "
+            "whichever rigid type applies (torton, camion, van, pick_up, pipa, volteo), following the closed-list "
+            "rule above. Leave remolques[] empty in that case. "
+            "\n\n"
             "IMPORTANT: remolques are trailers/flatbeds pulled by the truck. "
-            "contenedores are ISO shipping containers (they have an alphanumeric container number like ECMU7740351). "
+            "contenedores are ISO shipping containers (they have an alphanumeric container number like ECMU7740351, "
+            "distinct from any internal box/asset number the facility may also assign). "
             "A remolque may carry a contenedor — if so, list the trailer in remolques and the container in "
             "contenedores. There may be MORE THAN ONE remolque and MORE THAN ONE contenedor in the same event — "
             "keep each one as a separate entry in its array, never merge two different units into one entry. "
             "\n\n"
-            "IMPORTANT ON PLATES: a single physical vehicle or remolque can have its plate appear in more than one "
-            "source — a photo of the plate itself, an incidental mention in another document, AND its own tarjeta "
-            "de circulación. These are DIFFERENT sources describing the SAME plate, and must be kept in SEPARATE "
-            "fields, never overwriting one another: "
-            "use `placa`/`placas` for what you read from a photo or an incidental/general mention, and "
-            "`placa_tarjeta_circulacion`/`placas_tarjeta_circulacion` EXCLUSIVELY for the plate printed on that "
-            "specific entity's own tarjeta de circulación document. "
-            "If there are multiple remolques, each with its own tarjeta_circulacion_remolque document, match each "
-            "tarjeta to the correct remolque using its no_caja/unit number or contextual order (e.g. the tarjeta "
-            "appearing right after a given remolque's photo). If you cannot confidently match a tarjeta to a "
-            "specific remolque, still record its plate value in the most likely remolque's "
-            "`placas_tarjeta_circulacion` and note the ambiguity in that remolque's `comentarios` — never drop the "
-            "value just because the match is uncertain. "
+            "IMPORTANT ON PLATES: a plate value must come from a field EXPLICITLY labeled as a plate (\"PLACAS\", "
+            "\"No. de Placas\", a physical plate photo, etc.). Do NOT confuse a plate with a nearby barcode, folio, "
+            "or document-verification code — these are different alphanumeric strings that often sit next to a "
+            "barcode graphic for document authentication purposes, not the physical plate, even if their format "
+            "superficially resembles a plate. When in doubt, prefer the value under an explicit plate label over "
+            "any other nearby code. "
+            "A single physical vehicle or remolque can have its plate appear in more than one source — a photo of "
+            "the plate itself, an incidental mention in another document, AND its own tarjeta de circulación / "
+            "pedimento. These are DIFFERENT sources describing the SAME plate, and must be kept in SEPARATE fields, "
+            "never overwriting one another: use `placa`/`placas` for what you read from a photo or an incidental/ "
+            "general mention, and `placa_tarjeta_circulacion`/`placas_tarjeta_circulacion` EXCLUSIVELY for the plate "
+            "printed under an explicit plate label on that specific entity's own registration/import document. "
+            "If there are multiple remolques, each with its own tarjeta/pedimento document, match each document to "
+            "the correct remolque using its no_caja/unit number/no_economico or contextual order. If you cannot "
+            "confidently match a document to a specific remolque, still record its plate value in the most likely "
+            "remolque's `placas_tarjeta_circulacion` and note the ambiguity in that remolque's `comentarios` — never "
+            "drop the value just because the match is uncertain. "
             "\n\n"
             "IMPORTANT ON DATES: interpret dates according to the document's own convention before converting to "
             "YYYY-MM-DD — English-language documents (BL, invoices) typically use MM/DD/YYYY, Mexican documents "
@@ -856,12 +900,12 @@ class Accesos(Accesos):
             '  "vehiculo": {\n'
             '    "transportista": "string — carrier company name (e.g. TRAMO TRANSPORTES MONTERREY SA DE CV), or null",\n'
             '    "procedencia": "string — city or state of origin of the vehicle/shipment if visible on any document, or null",\n'
-            '    "tipo_vehiculo": "string — one of: torton, trailer, caja_seca, caja_refrigerada, plataforma, volteo, van, pick_up, camion, pipa, otro, or null. Use otro (never force a wrong fit) if it clearly does not match any listed type",\n'
+            '    "tipo_vehiculo": "string — one of: torton, camion, van, pick_up, pipa, volteo, trailer, or null. See DECISION RULE and CLOSED-LIST rule above. Never use caja_seca/caja_refrigerada/plataforma/etc here — those belong to remolques[].tipo.",\n'
             '    "marca": "string — truck/tractor brand (Kenworth, Freightliner, International, Volvo, etc.), or null",\n'
             '    "modelo": "string — truck model year if visible (e.g. 2019), or null",\n'
             '    "color": "string — main cab color. PRIORITY: extract visually from vehicle/plate photos if provided. Fall back to text on registration card only if no vehicle photo is present. Use Spanish color names (Blanco, Negro, Rojo, Azul, Gris, Verde, Amarillo, Naranja, Cafe, Plateado, etc.), or null",\n'
             '    "placa": "string — tractor/cab license plate as read from a vehicle/plate photo or an incidental mention in another document, exactly as printed, or null",\n'
-            '    "placa_tarjeta_circulacion": "string — tractor/cab license plate extracted EXCLUSIVELY from a tarjeta_circulacion_vehiculo document, exactly as printed, or null",\n'
+            '    "placa_tarjeta_circulacion": "string — tractor/cab license plate extracted EXCLUSIVELY from an explicit plate label on a tarjeta_circulacion_vehiculo document, exactly as printed, or null",\n'
             '    "no_economico": "string — carrier economic number / rótulo on the vehicle, or null"\n'
             '  },\n'
 
@@ -877,35 +921,56 @@ class Accesos(Accesos):
             # ── REMOLQUES ─────────────────────────────────────────────────
             '  "remolques": [\n'
             '    {\n'
-            '      "tipo": "string — trailer type: caja_seca, caja_refrigerada, plataforma, tanque, volteo, otro, or null. Use otro instead of forcing a wrong fit",\n'
+            '      "tipo": "string — trailer box type: caja_seca, plataforma, caja_refrigerada, ganadero, basculante, portavehiculos, caravana, or null. This is a CLOSED LIST (no otro option downstream) — see CLOSED-LIST rule above.",\n'
             '      "no_caja": "string — trailer box/unit number (número económico de caja) from registration card or visible on unit, or null",\n'
             '      "no_sello": "string — seal number on the trailer, or null",\n'
             '      "placas": "string — trailer license plate as read from a photo or an incidental mention, exactly as printed, or null",\n'
-            '      "placas_tarjeta_circulacion": "string — trailer license plate extracted EXCLUSIVELY from this trailer\'s own tarjeta_circulacion_remolque document, exactly as printed, or null",\n'
+            '      "placas_tarjeta_circulacion": "string — trailer license plate extracted EXCLUSIVELY from an explicit plate label on this trailer\'s own tarjeta/pedimento document, exactly as printed, or null",\n'
             '      "color": "string — trailer color in Spanish (Blanco, Gris, Rojo, etc.), or null",\n'
-            '      "comentarios": "string — any relevant note about this trailer (damage, anomaly, ambiguous tarjeta match, etc.), or null"\n'
+            '      "comentarios": "string — any relevant note about this trailer (damage, anomaly, ambiguous document match, tipo that did not match the closed list, etc.), or null",\n'
+            '      "materiales": [\n'
+            '        {\n'
+            '          "producto": "string — cargo/product description, or null",\n'
+            '          "lote": "string — lot or batch number if stated, or null",\n'
+            '          "cant_esperada": "string — expected quantity with unit if stated, or null",\n'
+            '          "peso": "string — gross weight with unit, or null",\n'
+            '          "volumen": "string — volume with unit if stated, or null",\n'
+            '          "no_orden_compra": "string — PO number specific to THIS cargo line, if different from embarque.no_orden_compra, or null"\n'
+            '        }\n'
+            '      ]\n'
             '    }\n'
             '  ],\n'
 
             # ── CONTENEDORES ──────────────────────────────────────────────
             '  "contenedores": [\n'
             '    {\n'
-            '      "tipo": "string — ISO container type: 20GP, 40GP, 40HC, 20RF, 40RF, tanque, otro, or null. Use otro instead of forcing a wrong fit",\n'
-            '      "no_caja": "string — container number exactly as printed (e.g. ECMU7740351), or null",\n'
+            '      "tipo": "string — ISO container type: 20GP, 40GP, 40HC, 20RF, 40RF, 40HR, 20OT, 40OT, 20FR, 40FR, iso_tank, 20VH, open_side, or null. This is a CLOSED LIST (no otro option downstream) — see CLOSED-LIST rule above. Remember to apply a type stated once in a summary line to every matching container (see CARGO-TO-UNIT LINKING above).",\n'
+            '      "no_contenedor": "string — official ISO container number exactly as printed (e.g. ECMU7740351, EGHU9785216), or null",\n'
+            '      "no_caja": "string — internal facility box/asset number for this container, if separately assigned and distinct from no_contenedor, or null",\n'
             '      "no_sello": "string — seal number on the container, or null",\n'
             '      "placas": "string — chassis plate if visible, or null",\n'
             '      "color": "string — container color in Spanish, or null",\n'
-            '      "comentarios": "string — any relevant note about this container (damage, anomaly, etc.), or null"\n'
+            '      "comentarios": "string — any relevant note about this container (damage, anomaly, tipo that did not match the closed list, etc.), or null",\n'
+            '      "materiales": [\n'
+            '        {\n'
+            '          "producto": "string — cargo/product description for THIS container specifically (e.g. from its own row in the BL), or null",\n'
+            '          "lote": "string — lot or batch number if stated, or null",\n'
+            '          "cant_esperada": "string — expected quantity with unit as stated for THIS container (e.g. 1820 CAS), or null",\n'
+            '          "peso": "string — gross weight with unit for THIS container (e.g. 22944.063 KG), or null",\n'
+            '          "volumen": "string — volume with unit for THIS container (e.g. 32.684 M3), or null",\n'
+            '          "no_orden_compra": "string — PO number specific to THIS cargo line, if different from embarque.no_orden_compra, or null"\n'
+            '        }\n'
+            '      ]\n'
             '    }\n'
             '  ],\n'
 
-            # ── MATERIALES / CARGA ────────────────────────────────────────
+            # ── MATERIALES SIN ASIGNAR ──────────────────────────────────
             '  "materiales": [\n'
             '    {\n'
-            '      "producto": "string — cargo/product description (e.g. CERVEZAS, AUTOPARTES), or null",\n'
+            '      "producto": "string — cargo/product description that could NOT be attributed to a specific contenedor or remolque, or null",\n'
             '      "lote": "string — lot or batch number if stated, or null",\n'
-            '      "cant_esperada": "string — expected quantity with unit if stated (e.g. 1305 CAJAS), or null",\n'
-            '      "peso": "string — gross weight with unit (e.g. 19603.50 KGS), or null",\n'
+            '      "cant_esperada": "string — expected quantity with unit if stated, or null",\n'
+            '      "peso": "string — gross weight with unit, or null",\n'
             '      "volumen": "string — volume with unit if stated, or null"\n'
             '    }\n'
             '  ],\n'
@@ -913,7 +978,7 @@ class Accesos(Accesos):
             # ── EMBARQUE ──────────────────────────────────────────────────
             '  "embarque": {\n'
             '    "proveedor_cliente": "string — shipper, supplier or consignee company name, or null",\n'
-            '    "no_orden_compra": "string — purchase order / OC number, or null",\n'
+            '    "no_orden_compra": "string — shipment-level purchase order / OC number, or null. If multiple containers each carry their own distinct PO, list those in each material\'s own no_orden_compra instead, and put here only a PO that applies to the whole shipment (or leave null if there is none at that level).",\n'
             '    "no_bl": "string — Bill of Lading number, or null",\n'
             '    "no_pedimento": "string — pedimento or customs document number, or null",\n'
             '    "no_autorizacion_puerto": "string — port release authorization number, or null",\n'
@@ -927,11 +992,11 @@ class Accesos(Accesos):
             '  "documentos_detectados": [\n'
             '    {\n'
             '      "fuente": "string — imagen_1 / imagen_2 / imagen_3 ... (position of the file in the input list)",\n'
-            '      "tipo": "string — one of: identificacion_chofer, foto_conductor, tarjeta_circulacion_vehiculo, tarjeta_circulacion_remolque, carta_porte, factura_orden_compra, foto_placa_vehiculo, evidencia_carga, conocimiento_embarque_bl, otro. IMPORTANT: identificacion_chofer is an official ID document (INE, passport, license) showing the driver\'s personal data. foto_conductor is a photo of the driver\'s face. tarjeta_circulacion_vehiculo belongs to the tractor/cab; tarjeta_circulacion_remolque belongs to a trailer — never confuse the two, and never confuse either with identificacion_chofer / foto_conductor."\n'
+            '      "tipo": "string — one of: identificacion_chofer, foto_conductor, tarjeta_circulacion_vehiculo, tarjeta_circulacion_remolque, carta_porte, factura_orden_compra, foto_placa_vehiculo, evidencia_carga, conocimiento_embarque_bl, otro. IMPORTANT: identificacion_chofer is an official ID document (INE, passport, license) showing the driver\'s personal data. foto_conductor is a photo of the driver\'s face. tarjeta_circulacion_vehiculo belongs to the tractor/cab; tarjeta_circulacion_remolque belongs to a trailer (this also covers a pedimento de importación temporal de remolques, which functions like a trailer registration document) — never confuse the two, and never confuse either with identificacion_chofer / foto_conductor. (This document-type list DOES keep an otro option — it is only the tipo_vehiculo/remolques.tipo/contenedores.tipo fields above that map to closed dropdowns with no otro.)"\n'
             '    }\n'
             '  ],\n'
-            '  "observaciones": "string — CTPAT flags, anomalies, damage, incomplete docs, ambiguous plate/tarjeta matches, or anything security-relevant, or null",\n'
-            '  "confianza": "string — alto: all key documents present and legible, no null in critical fields (vehiculo.placa, conductor.nombre, at least one remolque or contenedor if cargo is present) | medio: 1-2 documents illegible or secondary fields missing | bajo: key documents missing/illegible or inconsistencies (e.g. unmatched tarjeta/plate) across sources"\n'
+            '  "observaciones": "string — CTPAT flags, anomalies, damage, incomplete docs, ambiguous plate/document matches, tipos that did not match a closed list, cargo that could not be attributed to a specific unit, or anything security-relevant, or null",\n'
+            '  "confianza": "string — alto: all key documents present and legible, no null in critical fields (vehiculo.placa, conductor.nombre, at least one remolque or contenedor if cargo is present) | medio: 1-2 documents illegible or secondary fields missing | bajo: key documents missing/illegible or inconsistencies (e.g. unmatched tarjeta/plate, unlinked cargo) across sources"\n'
             "}"
         )
 
@@ -993,7 +1058,6 @@ class Accesos(Accesos):
             }
 
         return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
-
     # PRUEBAS
 
     def ocr_persona(self, image_source,
