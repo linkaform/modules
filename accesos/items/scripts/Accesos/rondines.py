@@ -856,7 +856,7 @@ class Accesos(Accesos):
             }
             incidencias_area.append(incidencia_formateada)
 
-        checks_mes = self.get_rondin_checks(data.get('rondin_area', ''), data.get('ubicacion', ''), data.get('nombre_recorrido', ''), record_id)
+        checks_mes = self.get_rondin_checks_mes(data.get('rondin_area', ''), data.get('ubicacion', ''), data.get('nombre_recorrido', ''), record_id)
 
         format_data = {
             'area': data.get('rondin_area', ''),
@@ -1482,7 +1482,6 @@ class Accesos(Accesos):
                 f"answers.{self.Location.f['area']}": {"$in": areas_list},
             }},
             {"$project": {
-                "_id": 0,
                 "folio": 1,
                 "area": f"$answers.{self.Location.f['area']}",
                 "geolocation": f"$answers.{self.f['geolocalizacion_area_ubicacion']}",
@@ -1544,6 +1543,7 @@ class Accesos(Accesos):
             for r in response:
                 areas_formateadas.append({
                     "folio": r.get("folio", ""),
+                    "record_id": r.get("_id", ""),
                     "rondin_area": r.get("area", ""),
                     "geolocalizacion_area_ubicacion": [
                         {
@@ -2041,7 +2041,7 @@ class Accesos(Accesos):
             format_response = self.format_bitacoras_mes(response, nombre_recorrido)
         return format_response
 
-    def get_rondin_checks(self, area, location, nombre_recorrido, record_id):
+    def get_rondin_checks_mes(self, area, location, nombre_recorrido, record_id):
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
