@@ -1,5 +1,6 @@
 # coding: utf-8
 from datetime import date
+import re
 import sys, simplejson, pytz
 from tkinter import N
 from bson import ObjectId
@@ -1495,26 +1496,56 @@ class Accesos(Accesos):
         response = self.format_cr(self.cr.aggregate(query))
         return response
 
-    def get_catalog_areas(self, ubicacion=""):
+    def _detectar_tipo_tag(self, tag_value) -> str:
+        """
+        Determina si un area_tag_id corresponde a un tag NFC o a un código QR,
+        según su formato.
+
+        NFC: contiene un UID en pares hexadecimales separados por ':'
+            (ej. "EQUIPMENT:53:4C:37:47:41:00:01").
+        QR: string hexadecimal plano sin ':' (ej. "689534674617f0951ac18b02").
+        Sin valor: regresa "" (sin tag configurado).
+        """
+        if isinstance(tag_value, list):
+            tag_value = tag_value[0] if tag_value else None
+        if not tag_value:
+            return ""
+
+        nfc_pattern = r'(?:[0-9A-Fa-f]{2}:){2,}[0-9A-Fa-f]{2}'
+        if re.search(nfc_pattern, tag_value):
+            return "nfc"
+        return "qr"
+
+
+    def get_catalog_areas(self, ubicacion="", tipo=""):
         #Obtener areas disponibles para rondin
-        if ubicacion:
-            query = [
-                {"$match": {
-                    "form_id": self.AREAS_DE_LAS_UBICACIONES,
-                    "deleted_at": {"$exists": False},
-                    f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}": ubicacion,
-                    f"answers.{self.f['area_tag_id']}": {"$exists": True}
-                }},
-                {"$project": {
-                    "_id": f"$answers.{self.mf['nombre_area']}",
-                }}
-            ]
-            data = self.format_cr(self.cr.aggregate(query))
-            data = [item.get('_id') for item in data]
-            format_data = list(set(data))
-            return format_data
-        else:
+        if not ubicacion:
             raise Exception("Ubicacion is required.")
+
+        match_query = {
+            "form_id": self.AREAS_DE_LAS_UBICACIONES,
+            "deleted_at": {"$exists": False},
+            f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}": ubicacion,
+            f"answers.{self.f['area_tag_id']}": {"$exists": True},
+        }
+
+        query = [
+            {"$match": match_query},
+            {"$project": {
+                "_id": f"$answers.{self.mf['nombre_area']}",
+                "tag_id": f"$answers.{self.f['area_tag_id']}",
+            }}
+        ]
+        data = self.format_cr(self.cr.aggregate(query))
+
+        if tipo:
+            # Filtra según el formato del tag_id de cada área
+            data = [item for item in data if self._detectar_tipo_tag(item.get('tag_id')) == tipo]
+        # Si tipo viene vacío/None, no se filtra — regresa todas las áreas
+        # (NFC, QR, o cualquier formato) de esa ubicación.
+
+        nombres = [item.get('_id') for item in data]
+        return list(set(nombres))
 
     def catalago_grupos_recorridos(self):
         catalog_id = self.GRUPOS_CAT_ID
@@ -2547,6 +2578,7 @@ if __name__ == "__main__":
     area_details = data.get("area_details", False)
     asignado_a = data.get("asignado_a", [])
     user_to_assign = data.get("user_to_assign", {})
+    tipo=data.get("tipo", "")
     data_script = class_obj.current_record
     class_obj.timezone = data_script.get('timezone', 'America/Mexico_City')
     tz = pytz.timezone(class_obj.timezone)
@@ -2565,7 +2597,7 @@ if __name__ == "__main__":
     elif option == 'get_bitacora':
         response = class_obj.get_bitacora(date_from=date_from, date_to=date_to, area_details=area_details, limit=limit, offset=offset)
     elif option == 'get_catalog_areas':
-        response = class_obj.get_catalog_areas(ubicacion=ubicacion)
+        response = class_obj.get_catalog_areas(ubicacion=ubicacion, tipo=tipo)
     elif option == 'get_all_checks':
         response = class_obj.get_all_checks(ubicacion=ubicacion, nombre_rondin=nombre_rondin)
     elif option == 'get_rondin_by_id':
