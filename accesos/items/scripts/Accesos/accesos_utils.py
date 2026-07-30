@@ -375,6 +375,8 @@ class Accesos(Accesos):
             'lote_material': '6a4409523a38bb598a0a18a0',
             'cantidad_material': '6a42c7a7a1555d53d6b91950',
             'cantidad_fisica_material': '6a454fb37ddcb3993dd90107',
+            'cantidad_buena_material': '6a6ac379fab960f8931dcc77',
+            'cantidad_danada_material': '6a6ac35a71f64d908af42f69',
             'peso_material': '6a42c7a7a1555d53d6b91951',
             'volumen_material': '6a42c7a7a1555d53d6b91952',
 
@@ -388,6 +390,13 @@ class Accesos(Accesos):
             'comentarios': '6a319693884bec802c94fa48',
 
             'grupo_sellos': '6a42c65c03f125df7ad28601',
+
+            'grupo_desglose_empaque': '6a6a4abe639ed7cad54be377',
+            'no_referencia_material_desglose': '6a6a4adc169fc82c5fae8668',
+            'nivel_desglose': '6a6a4b64c6fd2eaaf5f8c0b6',
+            'tipo_unidad_empaque_desglose': '6a6a4b64c6fd2eaaf5f8c0b7',
+            'cantidad_desglose': '6a6a4b64c6fd2eaaf5f8c0b8',
+            'cantidad_acumulada_desglose': '6a6a4b64c6fd2eaaf5f8c0b9',
 
             'grupo_inspecciones': '6a42a7068dcfbf362329a972',
             'tipo_inspeccion': '6a42c80b03f125df7ad2862b',

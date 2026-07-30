@@ -79,8 +79,21 @@ class Accesos(Accesos):
                         'lote':              f'$$m.{f["lote_material"]}',
                         'cantidad':          f'$$m.{f["cantidad_material"]}',
                         'cantidad_fisica':   f'$$m.{f["cantidad_fisica_material"]}',
+                        'cantidad_buena':    f'$$m.{f["cantidad_buena_material"]}',
+                        'cantidad_danada':   f'$$m.{f["cantidad_danada_material"]}',
                         'peso':              f'$$m.{f["peso_material"]}',
                         'volumen':           f'$$m.{f["volumen_material"]}',
+                    },
+                }},
+                'desglose_empaque': {'$map': {
+                    'input': {'$ifNull': [f'$answers.{f["grupo_desglose_empaque"]}', []]},
+                    'as': 'd',
+                    'in': {
+                        'no_referencia_material': f'$$d.{f["no_referencia_material_desglose"]}',
+                        'nivel':                  f'$$d.{f["nivel_desglose"]}',
+                        'tipo_unidad_empaque':    f'$$d.{f["tipo_unidad_empaque_desglose"]}',
+                        'cantidad':               f'$$d.{f["cantidad_desglose"]}',
+                        'cantidad_acumulada':     f'$$d.{f["cantidad_acumulada_desglose"]}',
                     },
                 }},
                 'remolques': {'$map': {
@@ -655,6 +668,8 @@ class Accesos(Accesos):
                     f['lote_material']:            m.get('lote', ''),
                     f['cantidad_material']:        m.get('cant_esperada', ''),
                     f['cantidad_fisica_material']: m.get('cant_fisica', ''),
+                    f['cantidad_buena_material']:   m.get('cant_buena', ''),
+                    f['cantidad_danada_material']:  m.get('cant_danada', ''),
                     f['peso_material']:            m.get('peso', ''),
                     f['volumen_material']:         m.get('volumen', ''),
                     f['no_referencia_material']:   m.get('ref', ''),
@@ -662,6 +677,26 @@ class Accesos(Accesos):
                 }
                 for i, m in enumerate(materiales)
             }
+
+        # El front siempre reenvía el set completo del desglose (no ediciones
+        # incrementales a filas existentes), así que se reemplaza el grupo
+        # entero en vez de usar patch_multi_record con índices negativos
+        # (eso solo inserta filas nuevas y duplicaría el desglose en cada guardado).
+        if 'desglose_empaque' in data:
+            nuevo_grupo_desglose = [
+                {
+                    f['no_referencia_material_desglose']: d.get('no_referencia_material', ''),
+                    f['nivel_desglose']:                  d.get('nivel', ''),
+                    f['tipo_unidad_empaque_desglose']:    d.get('tipo_unidad_empaque', ''),
+                    f['cantidad_desglose']:               d.get('cantidad', ''),
+                    f['cantidad_acumulada_desglose']:     d.get('cantidad_acumulada', ''),
+                }
+                for d in (data.get('desglose_empaque') or [])
+            ]
+            self.cr.update_one(
+                {'_id': ObjectId(record_id), 'form_id': self.BITACORA_TRANSPORTISTAS, 'deleted_at': {'$exists': False}},
+                {'$set': {f'answers.{f["grupo_desglose_empaque"]}': nuevo_grupo_desglose}}
+            )
 
         documentos_raw = data.get('documentos_adicionales') or []
         if isinstance(documentos_raw, dict):
@@ -743,6 +778,8 @@ class Accesos(Accesos):
                     f['lote_material']:            m.get('lote', ''),
                     f['cantidad_material']:        m.get('cantidad', ''),
                     f['cantidad_fisica_material']: m.get('cantidad_fisica', ''),
+                    f['cantidad_buena_material']:   m.get('cantidad_buena', ''),
+                    f['cantidad_danada_material']:  m.get('cantidad_danada', ''),
                     f['peso_material']:            m.get('peso', ''),
                     f['volumen_material']:         m.get('volumen', ''),
                 }
