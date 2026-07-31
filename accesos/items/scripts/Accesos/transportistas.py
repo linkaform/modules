@@ -1121,6 +1121,44 @@ class Accesos(Accesos):
         data = self.format_cr(self.cr.aggregate(query), get_one=True)
         return self._labels(data, ids_label_dct=fields)
 
+    def get_form_fields(self, form_ids):
+        if isinstance(form_ids, str):
+            form_ids = [form_ids]
+
+        def normaliza_field(field):
+            return {
+                'field_id':   field.get('field_id'),
+                'label':      field.get('label'),
+                'field_type': field.get('field_type'),
+                'options':    field.get('options', []),
+            }
+
+        resultado = []
+        for form_id in form_ids:
+            form_data = self.lkf_api.get_form_id_fields(form_id)
+            if not form_data:
+                self.LKFException({'title': f'No se pudo obtener la forma {form_id}', 'status_code': 404})
+
+            form = form_data[0]
+            form_pages = form.get('form_pages') or []
+            if form_pages:
+                pages = [
+                    {
+                        'page_name': page.get('page_name', ''),
+                        'fields': [normaliza_field(f) for f in page.get('page_fields', [])],
+                    }
+                    for page in form_pages
+                ]
+            else:
+                pages = [{
+                    'page_name': '',
+                    'fields': [normaliza_field(f) for f in form.get('fields', [])],
+                }]
+
+            resultado.append({'form_id': form_id, 'pages': pages})
+
+        return resultado
+
     def get_fotografias(self, registros):
         FORM_MAP = {
             'bitacora':   (self.BITACORA_TRANSPORTISTAS,            self.bitacora_transportista_fields),
@@ -1219,6 +1257,7 @@ if __name__ == "__main__":
     tipo_de_vehiculo = data.get("tipo_de_vehiculo", None)
     proveedor_cliente = data.get("proveedor_cliente", None)
     anden_asignado = data.get("anden_asignado", None)
+    form_ids = data.get("form_ids", [])
 
     dispatcher = {
         "create_pass_transportista": lambda: script_obj.create_pass_transportista(payload),
@@ -1243,6 +1282,7 @@ if __name__ == "__main__":
         "save_inspecciones_sello": lambda: script_obj.save_inspecciones_sello(record_id, inspecciones),
         "get_inspeccion_record": lambda: script_obj.get_inspeccion_record(record_id, data.get('tipo', '')),
         "get_fotografias": lambda: script_obj.get_fotografias(registros),
+        "get_form_fields": lambda: script_obj.get_form_fields(form_ids),
     }
 
     action = dispatcher.get(option)
