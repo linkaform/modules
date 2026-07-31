@@ -3,6 +3,7 @@ import re, sys, datetime, simplejson, time
 import random, os, shutil, wget, zipfile, collections
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from copy import deepcopy
+from bson import ObjectId
 from produccion_pci_utils import Produccion_PCI
 
 from account_settings import *
@@ -303,19 +304,32 @@ class Produccion_PCI( Produccion_PCI ):
         FOLIO_KEY = '69d54fc4664f50823dc7684d'
         TEL_KEY = '69d54fc4664f50823dc7684e'
 
-        for folio_mts, list_folios_tels in integra_mts_possible_match.items():
+        FOLIO_OS_KEY = '69a860fe7023f5ab79c9b9e1'
+        TELEFONO_OS_KEY = '69a860fe7023f5ab79c9b9e2'
+
+        for folio_hit, info_coincidencias in integra_mts_possible_match.items():
+            # print('\n\n-------- info_coincidencias =',info_coincidencias)
+            list_folios_tels = info_coincidencias.get('coincidencias', [])
+            update_for_replace_data = info_coincidencias.get('update_folio_field')
+
             query_mts = {
                 'form_id': p_utils.FORM_ID_INTEGRA_MTS,
                 'deleted_at': {'$exists': False},
-                'folio': folio_mts
+                'folio': folio_hit
             }
 
-            record_mts = cr_admin.find_one( query_mts, {'folio': 1, FIELD_PATH: 1} )
+            record_hit = cr_admin.find_one( query_mts, {
+                'folio': 1, 
+                FIELD_PATH: 1,
+                f'answers.{FOLIO_OS_KEY}': 1,
+                f'answers.{TELEFONO_OS_KEY}': 1,
+            } )
 
-            if not record_mts:
+            if not record_hit:
                 continue
 
-            coincidencias = record_mts.get('answers', {}).get('69d54f9d1bc7a0c228017584', [])
+            answers_hit = record_hit.get('answers', {})
+            coincidencias = answers_hit.get('69d54f9d1bc7a0c228017584', [])
 
             # Normalizamos estructura existente → {'folio', 'telefono'}
             existentes_set = { (rec.get(FOLIO_KEY), rec.get(TEL_KEY)) for rec in coincidencias }
@@ -326,7 +340,7 @@ class Produccion_PCI( Produccion_PCI ):
                 if (d.get('folio'), d.get('telefono')) not in existentes_set
             ]
 
-            if not nuevos:
+            if not nuevos and not update_for_replace_data:
                 continue  # nada que actualizar
 
             # Convertimos al formato Mongo
@@ -337,8 +351,19 @@ class Produccion_PCI( Produccion_PCI ):
 
             coincidencias.extend(nuevos_formateados)
 
+            answers_to_set_hit = {FIELD_PATH: coincidencias}
+
+            if update_for_replace_data:
+                answers_to_set_hit['voucher_id'] = ObjectId("6a5a2f141fdb29ee0221eca8")
+                answers_to_set_hit['answers.6a5a2f07b17ec84f475efc06'] = self.folio
+                answers_to_set_hit['answers.6a5a2f07b17ec84f475efc07'] = answers_hit.get(FOLIO_OS_KEY)
+                answers_to_set_hit['answers.6a5a2f07b17ec84f475efc08'] = answers_hit.get(TELEFONO_OS_KEY)
+                answers_to_set_hit[f'answers.{FOLIO_OS_KEY}'] = list_folios_tels[0].get('folio')
+                answers_to_set_hit[f'answers.{TELEFONO_OS_KEY}'] = list_folios_tels[0].get('telefono')
+
             # Actualizar registro
-            cr_admin.update_one( query_mts, {'$set': {FIELD_PATH: coincidencias}} )
+            result_update_hit = cr_admin.update_one( query_mts, {'$set': answers_to_set_hit} )
+            print(f"HIT Result Update {folio_hit} matched_count: {result_update_hit.matched_count} modified_count: {result_update_hit.modified_count}")
 
     def prepare_record(self, record, metadata, pos_field_id, folio, connection_id, RECORDS_PASSED, tecnologia_orden, hibrida, form_id_turno, current_record, copes_consultados, cambio_tecnologia, records_for_cambio_tec, \
         folios_autorizados, info_cope, pos_tipo=0, pos_telefono=0, datos_tecnico={}, permisos_contratista={}, dict_info_connections={}, header_dict={}):
@@ -1298,6 +1323,18 @@ class Produccion_PCI( Produccion_PCI ):
         record_orden.pop('answers_before_assign', None)
         return record_orden
 
+    def update_map_hit_match(self, data_distom, hit_possible_match, folio_to_create, telefono_registro):
+        folio_mts_posible = data_distom.get('folio_posible_match')
+        if folio_mts_posible:
+            update_os_hit = data_distom.get('update_folio_os')
+            data_hit = hit_possible_match.setdefault( folio_mts_posible, {'update_folio_field': False, 'coincidencias': []} )
+            if not data_hit['update_folio_field']:
+                folio_tel = {'folio': folio_to_create, 'telefono': telefono_registro }
+                if update_os_hit:
+                    data_hit.update(update_folio_field=True, coincidencias=[folio_tel])
+                else:
+                    data_hit['coincidencias'].append(folio_tel)
+
     def create_record_fibra_cobre_hibrida(self, pos_field_id, records, header, current_record, parent_id, header_dict, pdfs_found, distometros_found, carga_sin_pdf, carga_sin_disto, dif_type, 
         permisos_contratista, dict_info_connections, records_for_cambio_tec, data_img, folios_autorizados, registros_integra_mts, folio_index, telefono_index):
         # print("Una sola funcion para fibra y cobre ....")
@@ -1324,7 +1361,7 @@ class Produccion_PCI( Produccion_PCI ):
         pos_tecnico = 0
         pos_expediente = 0
         pos_cambio_tecnologia = None
-        integra_mts_to_close, integra_mts_to_possible_match = {}, {}
+        integra_mts_to_close, hit_possible_match = {}, {}
         this_record = {}
         for pos_rec, record in enumerate(records):
             hibrida = migracion = False
@@ -1551,12 +1588,7 @@ class Produccion_PCI( Produccion_PCI ):
                             registros_integra_mts, folio_index, telefono_index, form_id_in_admin, data_pdfs=data_pdf)
                         if data_distom.get('error'):
                             record_errors.append(record + [ data_distom['error'] ])
-                            folio_mts_posible = data_distom.get('folio_posible_match')
-                            if folio_mts_posible:
-                                integra_mts_to_possible_match.setdefault( folio_mts_posible, [] ).append({
-                                    'folio': folio_to_create,
-                                    'telefono': telefono_registro
-                                })
+                            self.update_map_hit_match(data_distom, hit_possible_match, folio_to_create, telefono_registro)
                             continue
                         
                         this_record['create']['answers'].update(data_distom)
@@ -1663,13 +1695,14 @@ class Produccion_PCI( Produccion_PCI ):
                         if data_distom.get('error'):
                             record_errors.append(record + [ data_distom['error'] ])
                             self.desasignar_registro( settings.config['ACCOUNT_ID'], id_user_old, form_id_in_admin, folio_to_update, telefono_to_update, area_to_update, answers_prev, is_updating_record_exists )
-                            folio_mts_posible = data_distom.get('folio_posible_match')
-                            if folio_mts_posible:
-                                integra_mts_to_possible_match.setdefault( folio_mts_posible, [] ).append({
-                                    'folio': folio_to_update,
-                                    'telefono': telefono_registro
-                                })
-
+                            
+                            self.update_map_hit_match(data_distom, hit_possible_match, folio_to_update, telefono_registro)
+                            # folio_mts_posible = data_distom.get('folio_posible_match')
+                            # if folio_mts_posible:
+                            #     hit_possible_match.setdefault( folio_mts_posible, [] ).append({
+                            #         'folio': folio_to_update,
+                            #         'telefono': telefono_registro
+                            #     })
                             continue
                         
                         this_record['update']['answers'].update(data_distom)
@@ -1773,7 +1806,7 @@ class Produccion_PCI( Produccion_PCI ):
         if integra_mts_to_close:
             p_utils.close_integra_mts( list(integra_mts_to_close.values()) )
 
-        self.add_sets_integra_mts( integra_mts_to_possible_match )
+        self.add_sets_integra_mts( hit_possible_match )
 
         print('....... ............ ............. fols_psr_to_update =',fols_psr_to_update)
         if fols_psr_to_update:
@@ -1897,7 +1930,11 @@ class Produccion_PCI( Produccion_PCI ):
         
         # Validacion de casos de error con sugerencia folio - telefono
         if not answers_disto_pdf and resp_integra_mts.get('status') == 'error':
-            return {'error': resp_integra_mts['message'], 'folio_posible_match': resp_integra_mts.get('folio_posible_match')}
+            return {
+                'error': resp_integra_mts['message'], 
+                'folio_posible_match': resp_integra_mts.get('folio_posible_match'),
+                'update_folio_os': resp_integra_mts.get('update_folio_os')
+            }
 
         # Se procesa el PDF
         if answers_disto_pdf:
@@ -1905,7 +1942,7 @@ class Produccion_PCI( Produccion_PCI ):
             answers_disto_pdf.update(pdf_uploaded)
             return answers_disto_pdf
 
-        return {'error': 'No se encontraron coincidencias en el Distómetro'}
+        return {'error': 'No se encontró registro de HIT'}
 
     def get_tecnicos_by_conexion(self, parent_id):
         connections_users = p_utils.get_all_connections()
