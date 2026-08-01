@@ -1873,10 +1873,10 @@ class Produccion_PCI( Produccion_PCI ):
             print('     - [Distometro] la OS ya tiene los datos')
             return {}
 
-        # La OS aún no trae los datos, se revisa en la forma de Integra Metros
+        # La OS aún no trae los datos, se revisa en la forma de HIT
         resp_integra_mts = p_utils.buscar_integra_mts(data_this_record['folio'], answers_this_record['f1054000a010000000000005'], registros_integra_mts, folio_index, telefono_index)
         if resp_integra_mts.get('status') == "ok":
-            print('     - [Distometro] Datos obtenidos de Integra Metros')
+            print('     - [Distometro] Datos obtenidos de HIT')
             answers_datos_dist = {}
             data_integra_mts = resp_integra_mts['data']
             answers_datos_dist['68826735d9a13878537d7d3e'] = data_this_record['folio']

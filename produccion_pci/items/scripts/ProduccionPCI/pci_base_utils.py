@@ -749,7 +749,7 @@ class PCI_Utils():
         records_integra_mts = data.get(key)
         if records_integra_mts:
             if len(records_integra_mts) > 1:
-                return { "status": "error", "message": "Se encontró más de un registro en HIT. Favor de revisar con soporte." }
+                return { "status": "error", "message": "[HIT] Se encontró más de un registro en HIT. Favor de revisar con soporte." }
             
             return { "status": "ok", "data": records_integra_mts[0] }
 
@@ -763,7 +763,7 @@ class PCI_Utils():
             return {
                 "folio_posible_match": data[ f"{folio}||{ejemplo}" ][0]["folio_record"],
                 "status": "error",
-                "message": f"[INTEGRA METROS] El folio {folio} existe pero el teléfono {telefono} no coincide. Telefono encontrado: {ejemplo}"
+                "message": f"[HIT] El folio {folio} existe pero el teléfono {telefono} no coincide. Telefono encontrado: {ejemplo}"
             }
 
         # Caso 3: teléfono existe pero folio no coincide
@@ -776,15 +776,15 @@ class PCI_Utils():
             return {
                 "folio_posible_match": data[ f"{ejemplo}||{telefono}" ][0]["folio_record"],
                 "status": "error",
-                # "message": f"[INTEGRA METROS] El teléfono {telefono} existe pero con el folio {ejemplo}"
-                "message": f"[INTEGRA METROS] El folio {ejemplo} era incorrecto y ha sido modificado. Favor de reintenar.",
+                # "message": f"[HIT] El teléfono {telefono} existe pero con el folio {ejemplo}"
+                "message": f"[HIT] El folio {ejemplo} era incorrecto y ha sido modificado. Favor de reintenar.",
                 "update_folio_os": True
             }
 
         #Caso 4: no existe nada
         return {
             "status": "not_found",
-            "message": "No se encontró coincidencia"
+            "message": "[HIT] No se encontró coincidencia"
         }
 
     def close_integra_mts(self, folios_to_close):
@@ -795,7 +795,7 @@ class PCI_Utils():
         #     threading=True
         # )
 
-        print('Cerrando registros de Integra Metros =',folios_to_close)
+        print('Cerrando registros de HIT =',folios_to_close)
         resp_close_mts = self.cr_admin.update_many({
             'form_id': self.FORM_ID_INTEGRA_MTS,
             'folio': {'$in': folios_to_close}
