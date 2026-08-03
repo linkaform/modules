@@ -1159,6 +1159,38 @@ class Accesos(Accesos):
 
         return resultado
 
+    def send_aviso_correo_transportista(self, record_id, email_to):
+        if not email_to:
+            self.LKFException({'title': 'Se requiere al menos un correo destinatario', 'status_code': 400})
+        emails = email_to if isinstance(email_to, list) else [email_to]
+
+        record = self.get_bitac_transportista_record(record_id)
+        if not record:
+            self.LKFException({'title': 'Registro no encontrado', 'status_code': 404})
+
+        folio = record.get('folio', '')
+        titulo = f'Proceso de transportista terminado — Folio {folio}'
+        mensaje = (
+            f'Folio: {folio}\n'
+            f'Empresa transportista: {record.get("empresa_transportista", "")}\n'
+            f'Proveedor / cliente: {record.get("proveedor_cliente", "")}\n'
+            f'Fecha y hora de ingreso: {record.get("fecha_hora_ingreso", "")}\n'
+            f'Fecha y hora de descarga: {record.get("fecha_hora_descarga", "")}\n'
+            f'Estatus: {record.get("estatus", "")}\n'
+        )
+        data = {
+            'email_from': 'no-reply@linkaform.com',
+            'titulo': titulo,
+            'nombre': titulo,
+            'mensaje': mensaje,
+            'enviado_desde': 'Bitácora de Transportistas',
+        }
+        for email in emails:
+            data['email_to'] = email
+            self.send_email_by_form(data)
+
+        return {'status_code': 200, 'msg': 'OK', 'enviado_a': emails}
+
     def get_fotografias(self, registros):
         FORM_MAP = {
             'bitacora':   (self.BITACORA_TRANSPORTISTAS,            self.bitacora_transportista_fields),
@@ -1258,6 +1290,7 @@ if __name__ == "__main__":
     proveedor_cliente = data.get("proveedor_cliente", None)
     anden_asignado = data.get("anden_asignado", None)
     form_ids = data.get("form_ids", [])
+    email_to = data.get("email_to")
 
     dispatcher = {
         "create_pass_transportista": lambda: script_obj.create_pass_transportista(payload),
@@ -1283,6 +1316,7 @@ if __name__ == "__main__":
         "get_inspeccion_record": lambda: script_obj.get_inspeccion_record(record_id, data.get('tipo', '')),
         "get_fotografias": lambda: script_obj.get_fotografias(registros),
         "get_form_fields": lambda: script_obj.get_form_fields(form_ids),
+        "send_aviso_correo_transportista": lambda: script_obj.send_aviso_correo_transportista(record_id, email_to),
     }
 
     action = dispatcher.get(option)
