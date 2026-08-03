@@ -341,6 +341,7 @@ class Accesos(Accesos):
             'estatus': '6a31921f07fb9cb5840d1f22',
             'fecha_hora_ingreso': '6a3bee0a7829a4ca9572d39e',
             'fecha_hora_descarga': '6a3bee0a7829a4ca9572d39f',
+            'fecha_hora_terminado': '6a710409eaef5abc8b1a1a69',
 
             'grupo_fotos_y_documentos': '6a3bee0a7829a4ca9572d3a0',
             'tipo_de_documento': '6a3bee394a7a0748a6fc9a56',

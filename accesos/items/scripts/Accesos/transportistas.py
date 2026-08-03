@@ -1,6 +1,7 @@
 # coding: utf-8
 import dis
-import sys, simplejson
+import sys, simplejson, pytz
+from datetime import datetime
 from bson import ObjectId
 from linkaform_api import settings
 from account_settings import *
@@ -43,6 +44,7 @@ class Accesos(Accesos):
                 'estatus':               f'$answers.{f["estatus"]}',
                 'fecha_hora_ingreso':    f'$answers.{f["fecha_hora_ingreso"]}',
                 'fecha_hora_descarga':   f'$answers.{f["fecha_hora_descarga"]}',
+                'fecha_hora_terminado':  f'$answers.{f["fecha_hora_terminado"]}',
                 'num_de_pase':           f'$answers.{f["num_de_pase"]}',
                 'empresa_transportista': f'$answers.{f["empresa_transportista"]}',
                 'tipo_de_operacion':     f'$answers.{f["tipo_de_operacion"]}',
@@ -619,6 +621,12 @@ class Accesos(Accesos):
 
         if data.get('estatus'):
             answers[f['estatus']] = data['estatus']
+            tz_name = self.user.get('timezone', 'America/Mexico_City')
+            fecha_hora_actual = datetime.now(pytz.timezone(tz_name)).strftime('%Y-%m-%d %H:%M:%S')
+            if data['estatus'] == 'carga_/_descarga':
+                answers[f['fecha_hora_descarga']] = fecha_hora_actual
+            elif data['estatus'] == 'terminado':
+                answers[f['fecha_hora_terminado']] = fecha_hora_actual
 
         vehiculo = data.get('vehiculo') or {}
         if vehiculo:
@@ -1176,6 +1184,7 @@ class Accesos(Accesos):
             f'Proveedor / cliente: {record.get("proveedor_cliente", "")}\n'
             f'Fecha y hora de ingreso: {record.get("fecha_hora_ingreso", "")}\n'
             f'Fecha y hora de descarga: {record.get("fecha_hora_descarga", "")}\n'
+            f'Fecha y hora de terminado: {record.get("fecha_hora_terminado", "")}\n'
             f'Estatus: {record.get("estatus", "")}\n'
         )
         data = {
