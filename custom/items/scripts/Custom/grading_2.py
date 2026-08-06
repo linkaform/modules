@@ -2,6 +2,7 @@
 import sys, simplejson
 from custom_utils import Custom
 from bson import ObjectId
+from decimal import Decimal, ROUND_HALF_UP
 from account_settings import *
 
 class Custom(Custom):
@@ -56,12 +57,14 @@ class Custom(Custom):
         lo que se obtuvo de Ponderacion base X
         """
         ponderaciones_by_page = {}
+        completed_points = True
         for name_page, fields_ponderables in fields_ponderables_by_page.items():
             # Grading 1
             ponderaciones_by_page[name_page] = {'grading_1': ponderacion_base_x, 'grading_2': ponderacion_base_100}
             for field_ponderable in fields_ponderables:
                 if answers.get(field_ponderable) in ('no_cumple', 'no'):
                     ponderaciones_by_page[name_page] = {'grading_1': 0, 'grading_2': 0}
+                    completed_points = False
                     break
 
         print(f"\n - ponderaciones_by_page = {ponderaciones_by_page}")
@@ -108,6 +111,9 @@ class Custom(Custom):
                 field['points_obtained'] = value_by_field
                 field['points_available'] = value_by_field
 
+        if completed_points:
+            general_points_obtained = float( Decimal(general_points_obtained).quantize(Decimal("1"), rounding=ROUND_HALF_UP) )
+
         # Se guarda el grading con las páginas ya modificadas
         resp_update_grading = cr_grading.update_one( query_grading, {'$set': {
             'pages': rec_grading['pages'],
@@ -120,7 +126,8 @@ class Custom(Custom):
 
 
         resp_update_grading = lkf_obj.cr.update_one( {'_id': ObjectId( self.record_id )}, {'$set': {
-            'points': general_points_obtained
+            'points': general_points_obtained,
+            'answers.68a8943e7589aafccbe966e5': 'no'
         }} )
         print(f"\nMatched count: {resp_update_grading.matched_count} Modified count: {resp_update_grading.matched_count}", )
 
