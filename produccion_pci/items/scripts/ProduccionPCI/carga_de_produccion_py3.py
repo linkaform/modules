@@ -821,7 +821,7 @@ class Produccion_PCI( Produccion_PCI ):
             '''
             if element['scritp_type'] == 'folio' and type(position) == int:
                 this_record.update({'folio':str(folio) })
-                if len(str(folio)) != 8:
+                if len(str(folio)) != 8 and proyecto_record != "degradado":
                     this_record.update({'error':  ['Longitud de folio diferente de 8',]})
             elif element['scritp_type'] == 'etapa' and type(position) == int:
                 if record[position]:
