@@ -289,7 +289,7 @@ class Accesos(Accesos):
                     }
             elif key == 'grupo_asignado':
                 answers[self.GRUPOS_CAT_OBJ_ID] = {
-                    self.rondin_keys[key]: value
+                    self.rondin_keys['grupo_asignado_rondin']: value
                 }
             elif key == 'areas':
                 areas_list = []
@@ -2419,46 +2419,42 @@ class Accesos(Accesos):
                         self.mf['nombre_area_salida']: value
                     }
             elif key == 'roles':
-                answers[self.f['grupo_roles']] = [
-                    {self.ROL_CATALOG_OBJ_ID: {self.f['rol']: rol}}
-                    for rol in (value or [])
-                ]     
+                answers[self.f['grupo_roles']] = {
+                    (index + 1) * -1: {self.ROL_CATALOG_OBJ_ID: {self.f['rol']: rol}}
+                    for index, rol in enumerate(value or [])
+                }
             elif key == 'grupo_asignado':
                 answers[self.GRUPOS_CAT_OBJ_ID] = {
                     self.rondin_keys[key]: value
                 }
             elif key == 'asignado_a':
-                answers[self.rondin_keys['grupo_asignado_a']] = self.rondin_asignado_a(value)
+                asignados = self.rondin_asignado_a(value)
+                answers[self.rondin_keys['grupo_asignado_a']] = {
+                    (index + 1) * -1: item for index, item in enumerate(asignados)
+                }
             elif key == 'areas':
                 areas_list = []
                 for area in value:
+                    catalogo_area = {}
                     if isinstance(area, dict):
-                        area_dict = {
-                            self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
-                                self.Location.f['area']: area.get('area', ''),
-                                self.f['geolocalizacion_area_ubicacion']: [{
-                                    'latitude': area.get('latitude', 0),
-                                    'longitude': area.get('longitude', 0)
-                                }],
-                                self.f['foto_area']: area.get('image', []),
-                                self.f['area_tag_id']: [area.get('tag_id', [])]
-                            },
-                            self.CATALOGO_FORMAS_OBJ_ID: {},
-                            self.rondin_keys['prompt_inspeccion']: ''
-                        }
-                    else:
-                        area_dict = {
-                            self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
-                                self.Location.f['area']: area,
-                                self.f['geolocalizacion_area_ubicacion']: [],
-                                self.f['foto_area']: [],
-                                self.f['area_tag_id']: []
-                            },
-                            self.CATALOGO_FORMAS_OBJ_ID: {},
-                            self.rondin_keys['prompt_inspeccion']: ''
-                        }
+                        if area.get('area'):
+                            catalogo_area[self.Location.f['area']] = area.get('area')
+                        if area.get('latitude') or area.get('longitude'):
+                            catalogo_area[self.f['geolocalizacion_area_ubicacion']] = [{
+                                'latitude': area.get('latitude', 0),
+                                'longitude': area.get('longitude', 0)
+                            }]
+                        if area.get('image'):
+                            catalogo_area[self.f['foto_area']] = area.get('image')
+                        if area.get('tag_id'):
+                            catalogo_area[self.f['area_tag_id']] = [area.get('tag_id')]
+                    elif area:
+                        catalogo_area[self.Location.f['area']] = area
+                    area_dict = {self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: catalogo_area}
                     areas_list.append(area_dict)
-                answers[self.rondin_keys["areas"]] = areas_list
+                answers[self.rondin_keys["areas"]] = {
+                    (index + 1) * -1: item for index, item in enumerate(areas_list)
+                }
            
             elif key == 'sucede_recurrencia' and value and ('dia_del_mes' in value or 'mes' in value):
                 actual_day = datetime.now().day
