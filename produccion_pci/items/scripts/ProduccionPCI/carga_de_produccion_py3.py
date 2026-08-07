@@ -1148,6 +1148,7 @@ class Produccion_PCI( Produccion_PCI ):
         if record_existente:
             found_record['answers'].update(answer)
             this_record["answers"] = found_record['answers']
+            this_record["folio"] = found_record['folio']
             distom_in_os = this_record["answers"].get("5fff390f68b587d973f1958f")
             if distom_in_os and isinstance(distom_in_os, list):
                 this_record["answers"]["5fff390f68b587d973f1958f"] = distom_in_os[0]
@@ -2040,9 +2041,12 @@ class Produccion_PCI( Produccion_PCI ):
             all_folios_in_file, all_telefonos_in_file = [], []
             # all_folios_in_file = [ record[ pos_folio ] for record in records if record[ pos_folio ] ]
             for record in records:
-                if not record[pos_folio]:
-                    continue
-                all_folios_in_file.append( str(record[pos_folio]) )
+                # if not record[pos_folio]:
+                #     continue
+                # all_folios_in_file.append( str(record[pos_folio]) )
+
+                if record[pos_folio]:
+                    all_folios_in_file.append( str(record[pos_folio]) )
                 
                 if pos_telefono_xls is None:
                     continue
