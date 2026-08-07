@@ -82,7 +82,12 @@ class Accesos(Accesos):
         self.CONFIGURACION_DE_RECORRIDOS_FORM = self.lkm.form_id('configuracion_de_recorridos','id')
         self.CONF_MODULO_SEGURIDAD = self.lkm.form_id('configuracion_modulo_seguridad','id')
         self.BITACORA_TRANSPORTISTAS = self.lkm.form_id('bitacora_de_transportistas','id')
-        
+        # OJO: el slug real registrado en Linkaform es "configuracin..." (sin "ó") —
+        # Linkaform le quitó el acento de forma imperfecta al generar el nombre técnico
+        # a partir de "Configuración de Flujo de Transportistas". No "corregir" esto sin
+        # antes confirmar el item_name real en LKFModules.
+        self.CONFIGURACION_FLUJO_TRANSPORTISTAS = self.lkm.form_id('configuracin_de_flujo_de_transportistas','id')
+
         self.INSPECCION_ENTRADA_CTPAT_TRACTOR = self.lkm.form_id('inspeccion_de_entrada_ctpat_tractor_cabezal','id')
         self.INSPECCION_ENTRADA_CTPAT_REMOLQUE = self.lkm.form_id('inspeccion_de_entrada_ctpat_remolque','id')
         self.INSPECCION_ENTRADA_CTPAT_CONTENEDOR = self.lkm.form_id('inspeccion_de_entrada_ctpat_contenedor','id')
@@ -402,6 +407,12 @@ class Accesos(Accesos):
             'grupo_inspecciones': '6a42a7068dcfbf362329a972',
             'tipo_inspeccion': '6a42c80b03f125df7ad2862b',
             'url_inspeccion': '6a42a71aec3f7153a3d2aea3',
+        }
+
+        self.conf_flujo_transportistas_fields = {
+            'etapas_activas': '6a75056924f23eef843cd01b',
+            'configuracion_de_inspecciones': '6a7509cd6e87e5935b853b7b',
+            'tipo_de_inspeccion': '6a750a1afd4ed68d7c57c24d',
         }
 
         self.inspeccion_entrada_tractor_fields = {
@@ -729,6 +740,18 @@ class Accesos(Accesos):
             f['proveedor_cliente']:     embarque.get('proveedor_cliente', ''),
             f['orden_de_compra']:       embarque.get('no_orden_compra', ''),
         }
+
+        # Ubicación + área del turno activo desde donde se registró la visita — se
+        # usa después para resolver qué forma de inspección aplica en ese sitio.
+        # Campo "Áreas de las Ubicaciones" agregado por Paco a esta forma (mismo
+        # catálogo que usan paquetería/incidencias/casetas).
+        ubicacion = data.get('ubicacion')
+        area = data.get('area')
+        if ubicacion or area:
+            answers[self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID] = {
+                self.mf['ubicacion']: ubicacion or '',
+                self.mf['nombre_area']: area or '',
+            }
 
         remolques    = data.get('remolques', []) or []
         contenedores = data.get('contenedores', []) or []
