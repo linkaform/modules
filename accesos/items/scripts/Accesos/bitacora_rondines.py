@@ -39,7 +39,7 @@ class Accesos(Accesos):
 
         if not fecha_inicio:
             fecha_inicio = areas_con_fecha[0][0]
-            self.answers[self.f['fecha_inicio_rondin']] = fecha_inicio
+            self.answers[self.f['fecha_inicio_rondin']] = datetime.datetime.fromtimestamp(fecha_inicio).strftime('%Y-%m-%d %H:%M:%S')
 
         first_epoch = areas_con_fecha[0][0]
         for epoch, area in areas_con_fecha:

@@ -336,7 +336,9 @@ if __name__ == "__main__":
 
     #! Crea el area si no existe
     if nueva_area:
-        acceso_obj.create_new_area(data)
+        res_create = acceso_obj.create_new_area(data)
+        if res_create.get('status_code') == 400:
+            acceso_obj.LKFException(res_create.get('json'))
         data['area'] = data.get('nombre_nueva_area')
     else:
         #! Validacion para evitar problema con areas creadas directamente en el catalogo

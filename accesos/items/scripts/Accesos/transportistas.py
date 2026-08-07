@@ -1,6 +1,7 @@
 # coding: utf-8
 import dis
-import sys, simplejson
+import sys, simplejson, pytz
+from datetime import datetime
 from bson import ObjectId
 from linkaform_api import settings
 from account_settings import *
@@ -43,6 +44,7 @@ class Accesos(Accesos):
                 'estatus':               f'$answers.{f["estatus"]}',
                 'fecha_hora_ingreso':    f'$answers.{f["fecha_hora_ingreso"]}',
                 'fecha_hora_descarga':   f'$answers.{f["fecha_hora_descarga"]}',
+                'fecha_hora_terminado':  f'$answers.{f["fecha_hora_terminado"]}',
                 'num_de_pase':           f'$answers.{f["num_de_pase"]}',
                 'empresa_transportista': f'$answers.{f["empresa_transportista"]}',
                 'tipo_de_operacion':     f'$answers.{f["tipo_de_operacion"]}',
@@ -61,6 +63,8 @@ class Accesos(Accesos):
                 'anden_asignado':        f'$answers.{f["anden_asignado"]}',
                 'proveedor_cliente':     f'$answers.{f["proveedor_cliente"]}',
                 'orden_de_compra':       f'$answers.{f["orden_de_compra"]}',
+                'ubicacion':             f'$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf["ubicacion"]}',
+                'area':                  f'$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf["nombre_area"]}',
                 'documentos': {'$map': {
                     'input': {'$ifNull': [f'$answers.{f["grupo_fotos_y_documentos"]}', []]},
                     'as': 'doc',
@@ -619,6 +623,12 @@ class Accesos(Accesos):
 
         if data.get('estatus'):
             answers[f['estatus']] = data['estatus']
+            tz_name = self.user.get('timezone', 'America/Mexico_City')
+            fecha_hora_actual = datetime.now(pytz.timezone(tz_name)).strftime('%Y-%m-%d %H:%M:%S')
+            if data['estatus'] == 'carga_/_descarga':
+                answers[f['fecha_hora_descarga']] = fecha_hora_actual
+            elif data['estatus'] == 'terminado':
+                answers[f['fecha_hora_terminado']] = fecha_hora_actual
 
         vehiculo = data.get('vehiculo') or {}
         if vehiculo:
@@ -816,26 +826,8 @@ class Accesos(Accesos):
         print(simplejson.dumps(data, indent=3))
         f_bit = self.bitacora_transportista_fields
 
-        TRACTOR_CAMPOS = [
-            'defensa',
-            'motor_caja_de_la_bateria_caja_y_filtros_de_aire',
-            'llantas_y_rines_tractor_y_remolque',
-            'piso_tractor',
-            'tanque_de_combustible',
-            'cabina_dormitorio_puertas_y_compartimientos_de_herramientas_seccion_de_pasajero_y_techo',
-            'tanque_de_aire',
-            'ejes_de_transmision',
-            'quinta_rueda',
-            'chasis',
-            'puertas_externa',
-            'piso_externo_trailer_contenedor_caja',
-            'paredes_externa',
-            'pared_frontal_externa',
-            'techo_externo',
-            'unidad_de_refrigeracion',
-            'escape_mofles',
-        ]
-
+        # Rama "remolque" muerta desde 2026-07-31 (sin UI que la dispare) — se deja
+        # intacta, sigue dependiendo de esta lista fija por no estar en uso real.
         REMOLQUE_CAMPOS = [
             'tanque_de_aire',
             'ejes_de_transmision',
@@ -850,14 +842,13 @@ class Accesos(Accesos):
             'escape_mofles',
         ]
 
-        CONTENEDOR_PUNTO_MAP = {
-            'Exterior / parte inferior del contenedor (bastidor o chasis)': 'exterior_parte_inferior_del_contenedor_bastidor_o_chasis',
-            'Puertas interiores / exteriores':  'puertas_interiores_exteriores',
-            'Pared interior lado derecho':       'pared_interior_lado_derecho',
-            'Pared interior lado izquierdo':     'pared_interior_lado_izquierdo',
-            'Pared interior frontal':            'pared_interior_frontal',
-            'Techo / cubierta superior':         'techo_cubierta_superior',
-            'Piso (interior)':                   'piso_interior',
+        # field_id "universales" de las 3 medidas de contenedor — mismos que asume
+        # el frontend (CONTENEDOR_MEDIDA_FIELD_IDS en useInspeccionPuntosTransportista.ts),
+        # estables sin importar qué forma (default o custom) esté resuelta.
+        CONTENEDOR_MEDIDA_FIELD_IDS_UNIVERSAL = {
+            'altura':    'd412fb9f428dfc231c9bc3f0',
+            'ancho':     '6477c73222d9b7e8dd1de3b9',
+            'longitud':  'd7c19cbd2cfe6b19f848d697',
         }
 
         inspecciones_creadas = []
@@ -867,25 +858,30 @@ class Accesos(Accesos):
             unidad = inspeccion.get('unidad')
             tipo_label = f'{tipo}_{unidad}' if unidad else tipo
             tipo_base = tipo.replace('salida_', '')
+            es_default = False
 
             if tipo_base == 'tractor':
+                # Guardado siempre por field_id — funciona igual para la forma
+                # default de cuenta 10 o cualquier forma custom resuelta por
+                # ubicación, porque el frontend ya detecta cada punto y su
+                # comentario/evidencia propios por adyacencia (ver extractPuntos
+                # en useInspeccionPuntosTransportista.ts), no por posición fija.
                 puntos = inspeccion.get('puntos', [])
                 if not any(p.get('resultado') for p in puntos):
                     continue
-                form_id = self.INSPECCION_ENTRADA_CTPAT_TRACTOR
-                f_ins   = self.inspeccion_entrada_tractor_fields
+                form_id = inspeccion.get('form_id') or self.INSPECCION_ENTRADA_CTPAT_TRACTOR
+                # El frontend manda form_id como string; self.INSPECCION_ENTRADA_CTPAT_TRACTOR
+                # es int — comparar como string para no fallar por tipo.
+                es_default = str(form_id) == str(self.INSPECCION_ENTRADA_CTPAT_TRACTOR)
                 answers = {}
                 for punto in puntos:
-                    num = punto.get('numero', 0) - 1
-                    if 0 <= num < len(TRACTOR_CAMPOS):
-                        campo = TRACTOR_CAMPOS[num]
-                        resultado = (punto.get('resultado') or '').lower()
-                        if resultado:
-                            answers[f_ins[campo]] = resultado
-                        if punto.get('comentario'):
-                            answers[f_ins[f'{campo}_comentarios']] = punto['comentario']
-                        if punto.get('fotos'):
-                            answers[f_ins[f'{campo}_evidencia']] = punto['fotos']
+                    resultado = (punto.get('resultado') or '').lower()
+                    if punto.get('field_id') and resultado:
+                        answers[punto['field_id']] = resultado
+                    if punto.get('comentario_field_id') and punto.get('comentario'):
+                        answers[punto['comentario_field_id']] = punto['comentario']
+                    if punto.get('evidencia_field_id') and punto.get('fotos'):
+                        answers[punto['evidencia_field_id']] = punto['fotos']
 
             elif tipo_base == 'remolque':
                 puntos = inspeccion.get('puntos', [])
@@ -914,6 +910,8 @@ class Accesos(Accesos):
                             answers[f_ins[f'{campo}_evidencia']] = punto['fotos']
 
             elif tipo_base == 'contenedor':
+                # Igual que tractor: siempre por field_id (filas + medidas
+                # universales), sin la lista fija de labels de antes.
                 filas   = inspeccion.get('filas', [])
                 medidas = inspeccion.get('medidas', {}) or {}
                 has_data = (
@@ -922,34 +920,48 @@ class Accesos(Accesos):
                 )
                 if not has_data:
                     continue
-                form_id = self.INSPECCION_ENTRADA_CTPAT_CONTENEDOR
-                f_ins   = self.inspeccion_entrada_ctpat_contenedor_fields
+                form_id = inspeccion.get('form_id') or self.INSPECCION_ENTRADA_CTPAT_CONTENEDOR
+                es_default = str(form_id) == str(self.INSPECCION_ENTRADA_CTPAT_CONTENEDOR)
                 answers = {}
-                if medidas.get('longitud'):
-                    answers[f_ins['longitud_interior']] = medidas['longitud']
-                if medidas.get('ancho'):
-                    answers[f_ins['ancho_interior']] = medidas['ancho']
-                if medidas.get('altura'):
-                    answers[f_ins['altura_interior']] = medidas['altura']
+                for medida_key, field_id in CONTENEDOR_MEDIDA_FIELD_IDS_UNIVERSAL.items():
+                    if medidas.get(medida_key):
+                        answers[field_id] = medidas[medida_key]
                 for fila in filas:
-                    campo = CONTENEDOR_PUNTO_MAP.get(fila.get('punto', ''))
-                    if not campo:
-                        continue
-                    valores = fila.get('valores') or []
-                    if valores:
-                        answers[f_ins[campo]] = [v.lower() for v in valores]
+                    field_id = fila.get('field_id')
+                    valores  = fila.get('valores') or []
+                    if field_id and valores:
+                        answers[field_id] = [v.lower() for v in valores]
             else:
                 continue
 
-            evidencias = inspeccion.get('evidencias', []) or []
-            if evidencias:
-                answers[f_ins['fotos_y_documentos']] = [
-                    {
-                        f_ins['tipo_de_documento']: ev.get('tipo', ''),
-                        f_ins['documento']:         [{'file_name': ev['file_name'], 'file_url': ev['file_url']}],
-                    }
-                    for ev in evidencias
-                ]
+            # Comentario/evidencia generales de toda la inspección — remolque
+            # (rama muerta) conserva su propio manejo arriba y no entra aquí.
+            if tipo_base in ('tractor', 'contenedor'):
+                comentario_general_field_id = inspeccion.get('comentario_general_field_id')
+                if comentario_general_field_id and inspeccion.get('comentario_general'):
+                    answers[comentario_general_field_id] = inspeccion['comentario_general']
+
+                evidencias = inspeccion.get('evidencias') or []
+                if evidencias:
+                    if es_default:
+                        f_ins = (
+                            self.inspeccion_entrada_tractor_fields if tipo_base == 'tractor'
+                            else self.inspeccion_entrada_ctpat_contenedor_fields
+                        )
+                        answers[f_ins['fotos_y_documentos']] = [
+                            {
+                                f_ins['tipo_de_documento']: ev.get('tipo', ''),
+                                f_ins['documento']:         [{'file_name': ev['file_name'], 'file_url': ev['file_url']}],
+                            }
+                            for ev in evidencias
+                        ]
+                    else:
+                        evidencia_general_field_id = inspeccion.get('evidencia_general_field_id')
+                        if evidencia_general_field_id:
+                            answers[evidencia_general_field_id] = [
+                                {'file_name': ev['file_name'], 'file_url': ev['file_url']}
+                                for ev in evidencias
+                            ]
 
             metadata = self.lkf_api.get_metadata(form_id=form_id)
             inspeccion_id = self.object_id()
@@ -976,7 +988,7 @@ class Accesos(Accesos):
         if inspecciones_creadas:
             es_salida = any(t.startswith('salida_') for t, _ in inspecciones_creadas)
             answers_bitacora = {
-                f_bit['estatus']: 'inspeccion_salida' if es_salida else 'inspeccion_entrada',
+                f_bit['estatus']: self._resolver_estatus_tras_inspeccion(es_salida),
                 f_bit['grupo_inspecciones']: {
                     -(i + 1): {
                         f_bit['tipo_inspeccion']: tipo_label,
@@ -1104,10 +1116,9 @@ class Accesos(Accesos):
         if not entry:
             self.LKFException({'title': f'Tipo de inspección no válido: {tipo}', 'status_code': 400})
 
-        form_id, fields = entry
+        form_id_default, fields = entry
         query = [
             {'$match': {
-                'form_id': form_id,
                 'deleted_at': {'$exists': False},
                 '_id': ObjectId(record_id),
             }},
@@ -1115,11 +1126,224 @@ class Accesos(Accesos):
                 '_id': 1,
                 'folio': 1,
                 'created_at': 1,
+                'form_id': 1,
                 'answers': 1,
             }},
         ]
+        # OJO: NO usar self.format_cr/self._labels sobre el documento completo
+        # antes de decidir la rama — _labels() APLANA cualquier dict anidado
+        # (incluida 'answers') hacia el nivel superior, perdiendo la llave
+        # 'answers' por completo (misma clase de bug que en get_formas_inspeccion).
+        # Se lee el documento crudo primero y solo se aplica _labels() en la rama
+        # default, donde SÍ se quiere ese aplanado (traducido por `fields`).
+        resultados = list(self.cr.aggregate(query))
+        data = resultados[0] if resultados else None
+        if not data:
+            return data
+        # format_cr normalmente convierte _id/created_at antes de _labels() —
+        # como aquí se evita format_cr, se replica manualmente para las 2 ramas.
+        if data.get('_id') is not None:
+            data['_id'] = str(data['_id'])
+        if data.get('created_at'):
+            data['created_at'] = self.get_date_str(data['created_at'])
+        if data.get('form_id') == form_id_default:
+            return self._labels(data, ids_label_dct=fields)
+        # Forma custom resuelta por ubicación — no hay diccionario de slugs
+        # conocido de antemano, se regresan las respuestas crudas por field_id.
+        # Limitación aceptada: el visor de registros ya guardados no las agrupa
+        # en secciones para este caso (igual que useGetInspeccionRecord.ts, que
+        # ya quedó fuera de la dinamización previa).
+        return {
+            '_id':        data.get('_id'),
+            'folio':      data.get('folio'),
+            'created_at': data.get('created_at'),
+            'answers':    data.get('answers'),
+        }
+
+    def get_form_fields(self, form_ids):
+        if isinstance(form_ids, str):
+            form_ids = [form_ids]
+
+        def normaliza_field(field):
+            return {
+                'field_id':   field.get('field_id'),
+                'label':      field.get('label'),
+                'field_type': field.get('field_type'),
+                'options':    field.get('options', []),
+            }
+
+        resultado = []
+        for form_id in form_ids:
+            form_data = self.lkf_api.get_form_id_fields(form_id)
+            if not form_data:
+                self.LKFException({'title': f'No se pudo obtener la forma {form_id}', 'status_code': 404})
+
+            form = form_data[0]
+            form_pages = form.get('form_pages') or []
+            if form_pages:
+                pages = [
+                    {
+                        'page_name': page.get('page_name', ''),
+                        'fields': [normaliza_field(f) for f in page.get('page_fields', [])],
+                    }
+                    for page in form_pages
+                ]
+            else:
+                pages = [{
+                    'page_name': '',
+                    'fields': [normaliza_field(f) for f in form.get('fields', [])],
+                }]
+
+            resultado.append({'form_id': form_id, 'pages': pages})
+
+        return resultado
+
+    def get_config_flujo_transportistas(self):
+        """Etapas activas del flujo de transportistas para esta cuenta.
+        Registro singleton (un solo record) en la forma "Configuración de Flujo de
+        Transportistas". Si no existe el registro todavía, regresa las 3 etapas
+        opcionales activas (fail-open, mismo comportamiento que antes de este toggle)."""
+        f = self.conf_flujo_transportistas_fields
+        query = [
+            {'$match': {
+                'form_id': self.CONFIGURACION_FLUJO_TRANSPORTISTAS,
+                'deleted_at': {'$exists': False},
+            }},
+            {'$sort': {'updated_at': -1}},
+            {'$limit': 1},
+            {'$project': {
+                '_id': 0,
+                'etapas_activas': f'$answers.{f["etapas_activas"]}',
+            }},
+        ]
         data = self.format_cr(self.cr.aggregate(query), get_one=True)
-        return self._labels(data, ids_label_dct=fields)
+        # Valores tal cual quedaron las opciones del checkbox `etapas_activas` en Linkaform.
+        # 'inspeccion_materiales' es un toggle aparte (no una etapa del kanban): si carga/
+        # descarga es solo informativa, esto controla si además exige inspeccionar cantidad
+        # física de materiales antes de dejar avanzar a inspección de salida.
+        etapas_activas = (data or {}).get('etapas_activas') or [
+            'inspeccion_de_entrada', 'carga_/_descarga', 'inspeccion_salida', 'inspeccion_materiales',
+        ]
+        return {'etapas_activas': etapas_activas}
+
+    def _resolver_estatus_tras_inspeccion(self, es_salida):
+        """A qué estatus debe pasar la bitácora tras guardar una inspección de
+        entrada o de salida — respeta qué etapas están activas para la cuenta
+        (mismo criterio que ORDEN_ESTATUS en el frontend, page.tsx), en vez de
+        asumir siempre 'inspeccion_entrada'/'inspeccion_salida' como antes.
+        Si esa etapa conceptual no está activa, salta al siguiente estatus activo
+        después de donde normalmente caería."""
+        etapas_activas = self.get_config_flujo_transportistas()['etapas_activas']
+        orden = ['arribo']
+        if 'inspeccion_de_entrada' in etapas_activas:
+            orden.append('inspeccion_entrada')
+        if 'carga_/_descarga' in etapas_activas:
+            orden.append('carga_/_descarga')
+        if 'inspeccion_salida' in etapas_activas:
+            orden.append('inspeccion_salida')
+        orden.append('terminado')
+
+        objetivo = 'inspeccion_salida' if es_salida else 'inspeccion_entrada'
+        if objetivo in orden:
+            return objetivo
+
+        ancla = 'carga_/_descarga' if es_salida else 'arribo'
+        if ancla not in orden:
+            ancla = 'arribo'
+        idx = orden.index(ancla)
+        return orden[idx + 1] if idx + 1 < len(orden) else orden[-1]
+
+    def get_formas_inspeccion(self, ubicacion):
+        """Resuelve qué form_id de inspección usar para tractor/contenedor/sello en
+        una ubicación, leyendo el grupo `configuracion_de_inspecciones` de la forma
+        "Configuración de Flujo de Transportistas" (referencia al Catálogo de Formas,
+        `self.CATALOGO_FORMAS_CAT_OBJ_ID`, ya heredado de la capa base).
+        Fail-open: si no hay fila para esa ubicación+tipo (o no hay ubicación, o no
+        hay registro de config), cae al form_id hardcodeado de la cuenta."""
+        # self.lkm.form_id() regresa int — se castea a str para que coincida en tipo
+        # con el form_id guardado en el catálogo (también numérico) y con las
+        # constantes del frontend (TRACTOR_FORM_ID = "157729", como string).
+        defaults = {
+            'tractor':    str(self.INSPECCION_ENTRADA_CTPAT_TRACTOR),
+            'contenedor': str(self.INSPECCION_ENTRADA_CTPAT_CONTENEDOR),
+            'sello':      str(self.INSPECCION_SELLO),
+        }
+        if not ubicacion:
+            return defaults
+
+        f = self.conf_flujo_transportistas_fields
+        query = [
+            {'$match': {
+                'form_id': self.CONFIGURACION_FLUJO_TRANSPORTISTAS,
+                'deleted_at': {'$exists': False},
+            }},
+            {'$sort': {'updated_at': -1}},
+            {'$limit': 1},
+            {'$project': {
+                '_id': 0,
+                'filas': {'$ifNull': [f'$answers.{f["configuracion_de_inspecciones"]}', []]},
+            }},
+        ]
+        # OJO: NO usar self.format_cr aquí — sin un ids_label_dct explícito, _labels()
+        # cae a self.f (el diccionario GLOBAL de toda la cuenta) y re-etiqueta los
+        # field_id anidados del catálogo con el slug que sea que tengan registrado
+        # en CUALQUIER otro módulo (ej. "incidente_location" en vez de la ubicación
+        # real), rompiendo el match. Aquí necesitamos el documento crudo tal cual.
+        resultados = list(self.cr.aggregate(query))
+        data = resultados[0] if resultados else {}
+        filas = (data or {}).get('filas') or []
+        if isinstance(filas, dict):
+            filas = list(filas.values())
+
+        # field_id del sub-campo "ID de la forma" dentro del Catálogo de Formas.
+        # self.mf no trae 'form_id'/'form_name'/'form_type' en esta cadena de
+        # herencia (se pierden en algún punto del MRO) aunque sí trae 'ubicacion' —
+        # se usa el field_id fijo directo, mismo patrón que las medidas universales.
+        FORMA_ID_DE_LA_FORMA_FIELD = '5d810a982628de5556500d56'
+
+        resueltas = dict(defaults)
+        for fila in filas:
+            fila_ubicacion = (fila.get(self.UBICACIONES_CAT_OBJ_ID) or {}).get(self.mf['ubicacion'])
+            if fila_ubicacion != ubicacion:
+                continue
+            tipo = fila.get(f['tipo_de_inspeccion'])
+            forma_id = (fila.get(self.CATALOGO_FORMAS_CAT_OBJ_ID) or {}).get(FORMA_ID_DE_LA_FORMA_FIELD)
+            if tipo in resueltas and forma_id:
+                resueltas[tipo] = str(forma_id)
+        return resueltas
+
+    def send_aviso_correo_transportista(self, record_id, email_to):
+        if not email_to:
+            self.LKFException({'title': 'Se requiere al menos un correo destinatario', 'status_code': 400})
+        emails = email_to if isinstance(email_to, list) else [email_to]
+
+        record = self.get_bitac_transportista_record(record_id)
+        if not record:
+            self.LKFException({'title': 'Registro no encontrado', 'status_code': 404})
+
+        folio = record.get('folio', '')
+        titulo = f'Proceso de transportista terminado — Folio {folio}'
+        mensaje = (
+            f'Folio: {folio}\n'
+            f'Empresa transportista: {record.get("empresa_transportista", "")}\n'
+            f'Proveedor / cliente: {record.get("proveedor_cliente", "")}\n'
+            f'Fecha y hora de ingreso: {record.get("fecha_hora_ingreso", "")}\n'
+            f'Fecha y hora de descarga: {record.get("fecha_hora_descarga", "")}\n'
+            f'Fecha y hora de terminado: {record.get("fecha_hora_terminado", "")}\n'
+            f'Estatus: {record.get("estatus", "")}\n'
+        )
+        data = {
+            'email_from': 'no-reply@linkaform.com',
+            'titulo': titulo,
+            'nombre': titulo,
+            'mensaje': mensaje,
+            'enviado_desde': 'Bitácora de Transportistas',
+        }
+        for email in emails:
+            data['email_to'] = email
+            self.send_email_by_form(data)
+
+        return {'status_code': 200, 'msg': 'OK', 'enviado_a': emails}
 
     def get_fotografias(self, registros):
         FORM_MAP = {
@@ -1219,6 +1443,9 @@ if __name__ == "__main__":
     tipo_de_vehiculo = data.get("tipo_de_vehiculo", None)
     proveedor_cliente = data.get("proveedor_cliente", None)
     anden_asignado = data.get("anden_asignado", None)
+    form_ids = data.get("form_ids", [])
+    email_to = data.get("email_to")
+    ubicacion = data.get("ubicacion")
 
     dispatcher = {
         "create_pass_transportista": lambda: script_obj.create_pass_transportista(payload),
@@ -1243,6 +1470,10 @@ if __name__ == "__main__":
         "save_inspecciones_sello": lambda: script_obj.save_inspecciones_sello(record_id, inspecciones),
         "get_inspeccion_record": lambda: script_obj.get_inspeccion_record(record_id, data.get('tipo', '')),
         "get_fotografias": lambda: script_obj.get_fotografias(registros),
+        "get_form_fields": lambda: script_obj.get_form_fields(form_ids),
+        "get_config_flujo_transportistas": lambda: script_obj.get_config_flujo_transportistas(),
+        "get_formas_inspeccion_transportista": lambda: script_obj.get_formas_inspeccion(ubicacion),
+        "send_aviso_correo_transportista": lambda: script_obj.send_aviso_correo_transportista(record_id, email_to),
     }
 
     action = dispatcher.get(option)

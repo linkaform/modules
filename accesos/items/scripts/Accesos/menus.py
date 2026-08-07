@@ -69,6 +69,7 @@ class Accesos(Accesos):
         self.SCRIPT_PASE_ACCESO_API = self.lkm.script_id('pase_de_acceso_use_api','id')
         self.SCRIPT_GOOGLE_WALLET = self.lkm.script_id('create_pass_google_wallet','id')
         self.SCRIPT_RONDINES = self.lkm.script_id('rondines','id')
+        self.SCRIPT_TRANSPORTISTAS = self.lkm.script_id('transportistas','id')
         self.OFFLINE_SERVICES = self.lkm.script_id('offline_services','id')
         self.OCR_DOCS = self.lkm.script_id('ocr_docs','id')
         self.SCRIPT_MENUS = self.lkm.script_id('menus','id')
@@ -102,7 +103,7 @@ class Accesos(Accesos):
                     self.SCRIPT_PASE_ACCESO,
                     self.SCRIPT_PASE_ACCESO_API,
                 ],
-                'scripts':[self.OFFLINE_SERVICES, self.SCRIPT_MENUS, self.FILTERS]
+                'scripts':[self.OFFLINE_SERVICES, self.SCRIPT_MENUS, self.FILTERS, self.SCRIPT_TRANSPORTISTAS]
             },
             'accesos':{
                 'forms':[self.CHECKIN_CASETAS, self.REGISTRO_ASISTENCIA, self.BITACORA_GAFETES_LOCKERS, self.CHECK_UBICACIONES, self.BITACORA_ACCESOS],
