@@ -204,7 +204,7 @@ class Custom(Custom):
         # Se va a crear un registro por cada set del grupo Areas a programar
         for programacion in records_programacion:
             print(f"\n ===== Creando registro Planta: {programacion.get('planta')} Area: {programacion.get('area')} =====")
-            if programacion.get('planta') == 'Molino':
+            if programacion.get('planta') in ('Molino', 'Molino Proyectos'):
                 self.create_record_molino(programacion, data_fecha)
             else:
                 self.create_record_conversion(programacion, data_fecha)
