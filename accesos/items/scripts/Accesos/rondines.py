@@ -1426,6 +1426,7 @@ class Accesos(Accesos):
                 "ubicacion": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}",
                 "ubicacion_area": f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.Location.f['area_salida']}",
                 "ubicacion_geolocation": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.f['address_geolocation']}",
+                "roles": f"$answers.{self.f['grupo_roles']}", 
             }},
         ]
 
@@ -1440,6 +1441,8 @@ class Accesos(Accesos):
             location = response.get('ubicacion', '')
             rondin_name = response.get('nombre_del_rondin', '')
             duracion_promedio = self.get_average_rondin_duration(location=location, rondin_name=rondin_name)
+            roles_raw = response.get('roles', [])
+            format_response['roles'] = [r.get('rol') for r in roles_raw if r.get('rol')]
             format_response['duracion_promedio'] = duracion_promedio
         # print(simplejson.dumps(format_response, indent=4))
         return format_response
