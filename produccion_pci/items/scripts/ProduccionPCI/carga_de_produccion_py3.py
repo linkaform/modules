@@ -1991,7 +1991,7 @@ class Produccion_PCI( Produccion_PCI ):
         print('cuenta: {0} parent_id obtenido: {1} permisos del contratista: {2}'.format( current_record.get('user_id', 0), parent_id, permisos_contratista ))
 
         # Obtengo la informacion de IASA y se la integro a los permisos de su contratista para despues usarlos
-        data_admin_iasa = p_utils.get_permisos_contratista_from_catalog( parent_id )
+        data_admin_iasa = p_utils.get_permisos_contratista_from_catalog( self.account_id )
         permisos_contratista['info_iasa'] = data_admin_iasa
         print('permisos cuenta padre =',data_admin_iasa)
 

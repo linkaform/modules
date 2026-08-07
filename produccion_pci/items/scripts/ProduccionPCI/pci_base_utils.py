@@ -258,7 +258,7 @@ class PCI_Utils():
                 'f1216500a010000000000001': int(numero_expediente),
                 '590a4761f851c20e60ac168c': 'activo',
                 '58db0090b43fdd5c1419dae2': 'tecnico',
-                '5f344a0476c82e1bebc991d5': get_data_to_connection(info_conn_iasa, 1940) # Catalogo de Contratistas
+                '5f344a0476c82e1bebc991d5': get_data_to_connection(info_conn_iasa, self.lkf_obj.account_id) # Catalogo de Contratistas
             }
             properties_expediente = {"device_properties":{"system": "SCRIPT","process":"CARGA DE PRODUCCION", "accion":'Crear Expediente', "folio carga":kwargs.get('current_record_folio'), "archive":"iasa_carga_produccion_hibrido.py"}}
             
@@ -266,7 +266,8 @@ class PCI_Utils():
 
             # OJO AQUI. LOS DATOS DEL CONTRATISTA DEBEN SER LOS DE IASA
 
-            resp_exp_admin = self.create_record_expediente(answers_to_expediente, properties_expediente, self.FORM_ID_EXP_TECNICOS)
+            resp_exp_admin = self.create_record_expediente(answers_to_expediente, properties_expediente, self.FORM_ID_EXP_TECNICOS, jwt_settings_key='JWT_KEY_ADMIN')
+            print("\n\n +-+-+- resp_exp_admin =",resp_exp_admin)
             if resp_exp_admin.get('status_code') == 201:
                 self.send_notification_email('Nuevo Expediente desde Carga de Produccion', 'Se creó un nuevo expediente: {} para el contratista: {} desde la carga: {}'.format(numero_expediente, info_conn_iasa.get('nombre_contratista'), kwargs.get('current_record_folio')), properties_expediente)
                 
@@ -277,9 +278,9 @@ class PCI_Utils():
                 answers_to_expediente[self.lkf_obj.CATALOGO_CONTRATISTAS_OBJ_ID] = get_data_to_connection(kwargs, connection_id) # Catalogo de Contratistas
                 answers_to_expediente.pop('5f344a0476c82e1bebc991d5', None)
 
-                resp_exp_iasa = self.create_record_expediente(answers_to_expediente, properties_expediente, self.lkf_obj.FORM_ID_EXPEDIENTES_DE_TECNICOS, jwt_settings_key='JWT_KEY_IASA')
-
-                # El expediente se creó correctamente en las cuentas de Admin y IASA
+                resp_exp_iasa = self.create_record_expediente(answers_to_expediente, properties_expediente, self.lkf_obj.FORM_ID_EXPEDIENTES_DE_TECNICOS)
+                print("\n\n +-+-+- resp_exp_iasa =",resp_exp_iasa)
+                # # El expediente se creó correctamente en las cuentas de Admin y IASA
                 if resp_exp_iasa.get('status_code') == 201:
                     return True
             
@@ -904,12 +905,12 @@ class PCI_Utils():
         print('jwt_to_use consulta catalogo =',jwt_to_use)
         print('CATALOG_CONTRATISTAS =',CATALOG_CONTRATISTAS)
         
-        permisos_found = {
-            'carga': '', 'expediente': '', 'carga_sin_pdf': '', 'carga_sin_distometro': '',
-            'libs_sin_pdf': '', 'cobre_mayor_a_300': '', 'facturar': '', 'socio_comercial': '',
-            'contratista_carso': '', 'liberado_de_conecta': '', 'nombre': '', 'id_de_usuario': '',
-            'plain_data': {}
-        }
+        # permisos_found = {
+        #     'carga': '', 'expediente': '', 'carga_sin_pdf': '', 'carga_sin_distometro': '',
+        #     'libs_sin_pdf': '', 'cobre_mayor_a_300': '', 'facturar': '', 'socio_comercial': '',
+        #     'contratista_carso': '', 'liberado_de_conecta': '', 'nombre': '', 'id_de_usuario': '',
+        #     'plain_data': {}
+        # }
 
         field_map = {
             'carga': '5f8eff3c85a98dcae9f05dfb',
@@ -923,8 +924,17 @@ class PCI_Utils():
             'liberado_de_conecta': '63bed6a0cd55b21466e6f929',
             'nombre': '5f344a0476c82e1bebc991d7',
             'id_de_usuario': '5f344a0476c82e1bebc991d6',
-            'contratista_carso': '665f70d3a7463635ed0e0b81'
+            'contratista_carso': '665f70d3a7463635ed0e0b81',
+            'nombre_contratista': '5f344a0476c82e1bebc991d7',
+            'razon_social': '5f344a0476c82e1bebc991db',
+            'division_contratista': '5f344a0476c82e1bebc991da',
+            'telefono_contratista': '5f344a0476c82e1bebc991d9',
+            'correo_contratista': '5f344a0476c82e1bebc991d8',
         }
+
+        permisos_found = {'plain_data': {}}
+        for name_field in field_map:
+            permisos_found[ name_field ] = ''
 
         plain_data_fields = [
             '5f344a0476c82e1bebc991d7', '5f344a0476c82e1bebc991db',
