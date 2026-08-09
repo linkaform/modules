@@ -12,6 +12,19 @@ class Accesos(Accesos):
 
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
+        self.envio_correo_fields.update({
+            'clase': '6a77cd140ad8005cec5d9700',
+        })
+        self.envio_notificacion_transportista_fields = {
+            'estatus':               '6a7775df8997b1604c8d34b1',
+            'folio':                 '6a7775df8997b1604c8d34b2',
+            'tipo_de_operacion':     '6a7775df8997b1604c8d34b3',
+            'empresa_transportista': '6a7775df8997b1604c8d34b4',
+            'proveedor_cliente':     '6a7775df8997b1604c8d34b5',
+            'fecha_hora_ingreso':    '6a7775df8997b1604c8d34b6',
+            'fecha_hora_descarga':   '6a7775df8997b1604c8d34b7',
+            'fecha_hora_terminado':  '6a7775df8997b1604c8d34b8',
+        }
 
     def get_andenes(self):
         query = [
@@ -1323,25 +1336,42 @@ class Accesos(Accesos):
 
         folio = record.get('folio', '')
         titulo = f'Proceso de transportista terminado — Folio {folio}'
-        mensaje = (
-            f'Folio: {folio}\n'
-            f'Empresa transportista: {record.get("empresa_transportista", "")}\n'
-            f'Proveedor / cliente: {record.get("proveedor_cliente", "")}\n'
-            f'Fecha y hora de ingreso: {record.get("fecha_hora_ingreso", "")}\n'
-            f'Fecha y hora de descarga: {record.get("fecha_hora_descarga", "")}\n'
-            f'Fecha y hora de terminado: {record.get("fecha_hora_terminado", "")}\n'
-            f'Estatus: {record.get("estatus", "")}\n'
-        )
-        data = {
-            'email_from': 'no-reply@linkaform.com',
-            'titulo': titulo,
-            'nombre': titulo,
-            'mensaje': mensaje,
-            'enviado_desde': 'Bitácora de Transportistas',
-        }
+        tf = self.envio_notificacion_transportista_fields
+
         for email in emails:
-            data['email_to'] = email
-            self.send_email_by_form(data)
+            metadata = self.lkf_api.get_metadata(form_id=self.ENVIO_DE_NOTIFICACIONES_FORM)
+            metadata.update({
+                "properties": {
+                    "device_properties": {
+                        "System": "Addons",
+                        "Process": "Creación de envio de correo",
+                        "Action": "send_aviso_correo_transportista",
+                        "File": "transportistas.py",
+                    }
+                },
+            })
+            answers = {
+                self.envio_correo_fields['tipo_de_notificacion']: 'email',
+                self.envio_correo_fields['clase']:                'transportista',
+                self.envio_correo_fields['titulo']:               titulo,
+                self.envio_correo_fields['nombre']:                titulo,
+                self.envio_correo_fields['msj']:                   titulo,
+                self.envio_correo_fields['email_from']:            'no-reply@linkaform.com',
+                self.envio_correo_fields['email_to']:              email,
+                self.envio_correo_fields['enviado_desde']:         'Bitácora de Transportistas',
+                tf['estatus']:               record.get('estatus', ''),
+                tf['folio']:                 folio,
+                tf['tipo_de_operacion']:     record.get('tipo_de_operacion', ''),
+                tf['empresa_transportista']: record.get('empresa_transportista', ''),
+                tf['proveedor_cliente']:     record.get('proveedor_cliente', ''),
+                tf['fecha_hora_ingreso']:    record.get('fecha_hora_ingreso', ''),
+                tf['fecha_hora_descarga']:   record.get('fecha_hora_descarga', ''),
+                tf['fecha_hora_terminado']:  record.get('fecha_hora_terminado', ''),
+            }
+            metadata.update({'answers': answers})
+            res = self.lkf_api.post_forms_answers(metadata)
+            if res.get('status_code') not in [200, 201, 202]:
+                self.LKFException({'title': f'Error al enviar aviso a {email}', 'msg': res.get('json'), 'status_code': 400})
 
         return {'status_code': 200, 'msg': 'OK', 'enviado_a': emails}
 
