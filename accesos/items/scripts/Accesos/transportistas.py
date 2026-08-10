@@ -1000,8 +1000,9 @@ class Accesos(Accesos):
 
         if inspecciones_creadas:
             es_salida = any(t.startswith('salida_') for t, _ in inspecciones_creadas)
+            nuevo_estatus = self._resolver_estatus_tras_inspeccion(es_salida)
             answers_bitacora = {
-                f_bit['estatus']: self._resolver_estatus_tras_inspeccion(es_salida),
+                f_bit['estatus']: nuevo_estatus,
                 f_bit['grupo_inspecciones']: {
                     -(i + 1): {
                         f_bit['tipo_inspeccion']: tipo_label,
@@ -1010,6 +1011,13 @@ class Accesos(Accesos):
                     for i, (tipo_label, inspeccion_id) in enumerate(inspecciones_creadas)
                 }
             }
+            if nuevo_estatus in ('carga_/_descarga', 'terminado'):
+                tz_name = self.user.get('timezone', 'America/Mexico_City')
+                fecha_hora_actual = datetime.now(pytz.timezone(tz_name)).strftime('%Y-%m-%d %H:%M:%S')
+                if nuevo_estatus == 'carga_/_descarga':
+                    answers_bitacora[f_bit['fecha_hora_descarga']] = fecha_hora_actual
+                elif nuevo_estatus == 'terminado':
+                    answers_bitacora[f_bit['fecha_hora_terminado']] = fecha_hora_actual
             res_bit = self.lkf_api.patch_multi_record(
                 answers=answers_bitacora,
                 form_id=self.BITACORA_TRANSPORTISTAS,
