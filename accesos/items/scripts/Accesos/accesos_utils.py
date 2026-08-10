@@ -383,6 +383,7 @@ class Accesos(Accesos):
             'cantidad_fisica_material': '6a454fb37ddcb3993dd90107',
             'cantidad_buena_material': '6a6ac379fab960f8931dcc77',
             'cantidad_danada_material': '6a6ac35a71f64d908af42f69',
+            'cantidad_faltante_material': '6a7a4ee0e6092a8d37f6d448',
             'peso_material': '6a42c7a7a1555d53d6b91951',
             'volumen_material': '6a42c7a7a1555d53d6b91952',
 

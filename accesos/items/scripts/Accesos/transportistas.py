@@ -98,6 +98,7 @@ class Accesos(Accesos):
                         'cantidad_fisica':   f'$$m.{f["cantidad_fisica_material"]}',
                         'cantidad_buena':    f'$$m.{f["cantidad_buena_material"]}',
                         'cantidad_danada':   f'$$m.{f["cantidad_danada_material"]}',
+                        'cantidad_faltante': f'$$m.{f["cantidad_faltante_material"]}',
                         'peso':              f'$$m.{f["peso_material"]}',
                         'volumen':           f'$$m.{f["volumen_material"]}',
                     },
@@ -693,6 +694,7 @@ class Accesos(Accesos):
                     f['cantidad_fisica_material']: m.get('cant_fisica', ''),
                     f['cantidad_buena_material']:   m.get('cant_buena', ''),
                     f['cantidad_danada_material']:  m.get('cant_danada', ''),
+                    f['cantidad_faltante_material']: m.get('cant_faltante', ''),
                     f['peso_material']:            m.get('peso', ''),
                     f['volumen_material']:         m.get('volumen', ''),
                     f['no_referencia_material']:   m.get('ref', ''),
@@ -803,6 +805,7 @@ class Accesos(Accesos):
                     f['cantidad_fisica_material']: m.get('cantidad_fisica', ''),
                     f['cantidad_buena_material']:   m.get('cantidad_buena', ''),
                     f['cantidad_danada_material']:  m.get('cantidad_danada', ''),
+                    f['cantidad_faltante_material']: m.get('cantidad_faltante', ''),
                     f['peso_material']:            m.get('peso', ''),
                     f['volumen_material']:         m.get('volumen', ''),
                 }
