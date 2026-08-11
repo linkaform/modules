@@ -1054,7 +1054,8 @@ class Accesos(Accesos):
         inspecciones_creadas = []
 
         for inspeccion in data:
-            if inspeccion.get('tipo') != 'sello':
+            tipo_bitacora = inspeccion.get('tipo')
+            if tipo_bitacora not in ('sello', 'salida_sello'):
                 continue
 
             answers = {}
@@ -1100,7 +1101,7 @@ class Accesos(Accesos):
             if res.get('status_code') not in [200, 201, 202]:
                 self.LKFException({'title': f'Error al crear inspección de sello unidad {inspeccion.get("unidad")}', 'msg': res})
 
-            tipo_label = f'sello_{inspeccion.get("unidad", "")}'
+            tipo_label = f'{tipo_bitacora}_{inspeccion.get("unidad", "")}'
             inspecciones_creadas.append((tipo_label, inspeccion_id))
 
         if inspecciones_creadas:
