@@ -287,7 +287,7 @@ class Accesos(Accesos):
                     answers[self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID] = {
                         self.mf['nombre_area_salida']: value
                     }
-            elif key == 'grupo_asignado':
+            elif key == 'grupo_asignado': 
                 answers[self.GRUPOS_CAT_OBJ_ID] = {
                     self.rondin_keys['grupo_asignado_rondin']: value
                 }
@@ -319,7 +319,7 @@ class Accesos(Accesos):
                     areas_list.append(area_dict)
                 answers[self.rondin_keys[key]] = areas_list
             elif key == "cron_id":
-                answers[self.rondin_keys['cron_id']] = valor
+                answers[self.rondin_keys['cron_id']] = value
             elif key == 'sucede_recurrencia' and ('dia_del_mes' in value or 'mes' in value):
                 actual_day = datetime.now().day
                 answers[self.rondin_keys['que_dia_del_mes']] = int(actual_day)
@@ -339,17 +339,21 @@ class Accesos(Accesos):
                 if not value:
                     pass
                 elif tipo_asignacion == 'grupo':
-                    print("aqui andamos")
                     grupo_asignado = value[0] if isinstance(value, list) else value
                     answers[self.GRUPOS_CAT_OBJ_ID] = {
                         self.rondin_keys['grupo_asignado']: grupo_asignado,
                     }
                 elif tipo_asignacion == 'persona_especifica':
                     nombre = value[0] if isinstance(value, list) else value
-                    answers[self.rondin_keys['grupo_asignado_a']] = self.rondin_asignado_a(nombre)
+                    asignados = self.rondin_asignado_a(nombre)
+                    if asignados:
+                        answers[self.rondin_keys['grupo_asignado_a']] = asignados
                 else:
                     # responsable_en_turno
-                    answers[self.rondin_keys['grupo_asignado_a']] = self.rondin_asignado_a(value)
+                    asignado = value[0] if isinstance(value, list) else value
+                    asignados = self.rondin_asignado_a(asignado)
+                    if asignados:
+                        answers[self.rondin_keys['grupo_asignado_a']] = asignados
             else:
                 answers[self.rondin_keys[key]] = value
         print('creando rondin...', simplejson.dumps(answers, indent=4))
@@ -1410,7 +1414,7 @@ class Accesos(Accesos):
                 "fecha_hora_programada": f"$answers.{self.rondin_keys['fecha_hora_programada']}",
                 "fecha_inicio_rondin": f"$answers.{self.f['fecha_primer_evento']}",
                 "id_grupo": {"$arrayElemAt": [f"$answers.{self.GRUPOS_CAT_OBJ_ID}.{self.rondin_keys['id_grupo']}", 0]},
-                "grupo_asignado": {"$ifNull": [f"$answers.{self.GRUPOS_CAT_OBJ_ID}.{self.rondin_keys['grupo_asignado']}",None]},
+                "grupo_asignado": {"$ifNull": [f"$answers.{self.GRUPOS_CAT_OBJ_ID}.{self.rondin_keys['grupo_asignado']}",'']},
                 "la_recurrencia_cuenta_con_fecha_final": f"$answers.{self.rondin_keys['la_recurrencia_cuenta_con_fecha_final']}",
                 "nombre_del_rondin": f"$answers.{self.rondin_keys['nombre_rondin']}",
                 "programar_anticipacion": f"$answers.{self.rondin_keys['programar_anticipacion']}",
@@ -2428,10 +2432,13 @@ class Accesos(Accesos):
                     self.rondin_keys[key]: value
                 }
             elif key == 'asignado_a':
-                asignados = self.rondin_asignado_a(value)
-                answers[self.rondin_keys['grupo_asignado_a']] = {
-                    (index + 1) * -1: item for index, item in enumerate(asignados)
-                }
+                #En este caso se maneja de esta manera usando solo el primer elemento
+                #ya que desde front solo se manda 1 solo elemento cuando se habilite la
+                #funcionalidad de enviar mas de 1 asignado esta seccion debe cambiar
+                nombre = value[0] if isinstance(value, list) else value
+                asignados = self.rondin_asignado_a(nombre)
+                if asignados:
+                    answers[self.rondin_keys['grupo_asignado_a']] = {'0': asignados[0]}
             elif key == 'areas':
                 areas_list = []
                 for area in value:
@@ -2469,7 +2476,6 @@ class Accesos(Accesos):
                 answers[self.rondin_keys[key]] = value
 
         print('actualizando rondin...', simplejson.dumps(answers, indent=4))
-        print("grupoooo", folio)
 
         response = self.lkf_api.patch_multi_record(
             answers=answers,
