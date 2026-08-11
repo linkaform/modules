@@ -13,6 +13,10 @@ class Custom(Custom):
         self.field_responsable = "638a9a7767c332f5d459fc81"
         self.field_grupo_areas = "69dfc84f6748944372b3d533"
 
+        self.field_responsable_invitados = "69df18efff8ef345609750ff"
+        self.OBJ_ID_INVITADOS = "6a26fffffdf9dcdb9755f8b6"
+        self.excepciones_validaciones = ["Gracian Oswaldo Heredia Camez", "Alberto Perez Ruiz", "Misael Eden Paez Moreno"]
+
     def get_areas_by_planta(self, planta):
         query = {"$and":[ {self.field_planta: {'$eq': planta}} ]}
         records_catalog = lkf_obj.lkf_api.search_catalog_answers(145464, query)
@@ -52,7 +56,11 @@ class Custom(Custom):
             areas_selected.add(area)
 
             # El usuario seleccionado debe ser diferente al responsable de area en el catalogo
-            usuario_asignacion = item_area.get('696517d545ba5981006be647', {}).get(self.field_responsable)
+            usuario_asignacion = item_area.get(self.OBJ_ID_INVITADOS, {}).get(self.field_responsable_invitados)
+
+            if usuario_asignacion in self.excepciones_validaciones:
+                continue
+
             if map_area_responsable.get(area) == usuario_asignacion:
                 errores.append(f"Set {posicion}: No es posible programar el area {area} al usuario {usuario_asignacion}, ya que es el responsable de Área")
 
