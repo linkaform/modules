@@ -133,18 +133,19 @@ class Custom(Custom):
         metadata = lkf_obj.lkf_api.get_metadata(form_recorrido)
         metadata['properties'] = self.get_device_properties()
         metadata['answers'] = answers_recorrido
+        return metadata
 
-        resp_create = self.lkf_api.post_forms_answers(metadata)
-        print('     - resp_create =',resp_create)
+        # resp_create = self.lkf_api.post_forms_answers(metadata)
+        # print('     - resp_create =',resp_create)
 
     def create_record_conversion(self, data_programacion, data_fecha):
         answers_recorrido_conversion = self.similar_fields(data_fecha, data_programacion)
-        self.create_records_recorridos(self.FORM_ID_CONVERSION, answers_recorrido_conversion)
+        return self.create_records_recorridos(self.FORM_ID_CONVERSION, answers_recorrido_conversion)
 
     def create_record_molino(self, data_programacion, data_fecha):
         answers_recorrido_molino = self.similar_fields(data_fecha, data_programacion)
         # answers_recorrido_molino[ self.obj_usuarios ].pop( self.field_username, None )
-        self.create_records_recorridos(self.FORM_ID_MOLINOS, answers_recorrido_molino)
+        return self.create_records_recorridos(self.FORM_ID_MOLINOS, answers_recorrido_molino)
 
     def delete_record_from_inbox(self, records_delete_inbox):
         cr_couch = self.lkf_api.couch
@@ -184,8 +185,29 @@ class Custom(Custom):
             group_inbox.setdefault( rec['user_id'], [] ).append( str(rec['_id']) )
         return group_inbox
 
+    def get_exists_records(self, data_fecha):
+        records_exists = self.get_records(
+            form_id=[self.FORM_ID_CONVERSION, self.FORM_ID_MOLINOS],
+            query_answers={
+                "answers.abcde0001000000000000020": "programado",
+                "answers.fffff0001000000000000001": data_fecha.get('fecha_inicio'),
+                "answers.fffff0001000000000000002": data_fecha.get('fecha_fin'),
+            },
+            select_columns=['folio', 'answers']
+        )
+        map_records_exists = {}
+        for rec in records_exists:
+            answers_rec = rec.get('answers', {})
+            data_planta_area = answers_rec.get(self.obj_plantas_areas, {})
+            map_records_exists\
+                .setdefault( data_planta_area.get(self.field_planta), {} )\
+                .setdefault( data_planta_area.get(self.field_area), [] )\
+                .append( answers_rec.get( self.obj_usuarios, {} ).get( self.field_responsable ) )
+        return map_records_exists
+
     def ejecuta_programacion(self):
         # Se obtienen los datos de la fecha actual. anio, mes y semana
+        # data_fecha = self.semana_del_mes_lunes( datetime.strptime('2026-07-20', '%Y-%m-%d') ) # PARA MIS PRUEBAS
         data_fecha = self.semana_del_mes_lunes()
         print('++ data_fecha =', simplejson.dumps(data_fecha, indent=4))
         
@@ -201,13 +223,29 @@ class Custom(Custom):
         # Se consultan los registros de programacion
         records_programacion = self.get_records_programacion(data_fecha)
 
+        # Se consultan los registros que ya fueron creados para la misma fecha inicio y fin
+        records_recorrido_exists = self.get_exists_records(data_fecha)
+
         # Se va a crear un registro por cada set del grupo Areas a programar
+        list_records_to_create = []
         for programacion in records_programacion:
-            print(f"\n ===== Creando registro Planta: {programacion.get('planta')} Area: {programacion.get('area')} =====")
+            _planta = programacion.get('planta')
+            _area = programacion.get('area')
+            _responsable = programacion.get('usuario_a_asignar_nombre')
+            print(f"\n ===== Creando registro Planta: {_planta} Area: {_area} =====")
+
+            # Para no duplicar los registros si el script que llegara a reprocesar hay que validar si ya existe el registro
+            if _responsable in records_recorrido_exists.get(_planta, {}).get(_area, []):
+                print(f'... ya existe registro para: {_responsable}')
+                continue
+
             if programacion.get('planta') in ('Molino', 'Molino Proyectos'):
-                self.create_record_molino(programacion, data_fecha)
+                list_records_to_create.append( self.create_record_molino(programacion, data_fecha) )
             else:
-                self.create_record_conversion(programacion, data_fecha)
+                list_records_to_create.append( self.create_record_conversion(programacion, data_fecha) )
+
+        resp_create_all_records = self.lkf_api.post_forms_answers_list(list_records_to_create)
+        print('\n   - resp_create_all_records =',resp_create_all_records)
 
 
 if __name__ == '__main__':
