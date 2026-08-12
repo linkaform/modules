@@ -1001,7 +1001,7 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         row += migration_price_list
         row += [
             total, #precios
-            answers['f1054000a010000000000021'], #tipo os
+            answers.get('f1054000a010000000000021', ''), #tipo os
             tecnologia, #tecnologia
             metros_adicionales, #metros adicionales
             excedente, #Total metros adicionales
@@ -1244,6 +1244,12 @@ class GenerarOrdenDeCompra( Produccion_PCI ):
         return errors_to_create
 
     def ordenar_por_expediente(self, lista_folios, fecha_inicio_bono, fecha_fin_bono):
+
+        for debug_folio in lista_folios:
+            if isinstance(debug_folio['68f6a337764a6c7697770f8b'], str):
+                debug_folio['68f6a337764a6c7697770f8b'] = int(debug_folio['68f6a337764a6c7697770f8b'])
+
+
         # Ordenar la lista_folios por el campo 'expediente'
         lista_ordenada = sorted(lista_folios, key=lambda x: x['68f6a337764a6c7697770f8b'])
         
