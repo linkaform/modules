@@ -15,6 +15,14 @@ class Custom(Custom):
             return
 
         # consultar los grupos para saber donde esta como supervisor
+        supervisores = lkf_obj.lkf_api.get_supervised_users()
+        print('supervisores =',supervisores)
+
+        grupo_supervisores = {}
+        for sup in supervisores:
+            grupo_supervisores.setdefault( sup.get('first_name'), [] ).append(sup.get('group_id'))
+
+        print('\n - grupo_supervisores =', simplejson.dumps(grupo_supervisores, indent=4))
 
 if __name__ == '__main__':
     lkf_obj = Custom(settings, sys_argv=sys.argv)
