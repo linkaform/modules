@@ -697,12 +697,13 @@ def get_view_configuration(view_name):
 
 
     return True
+
 if __name__ == "__main__":
     """
     Formato last_update_date = '2025-08-25 15:00'
     """
     oo  = settings.config['ORACLE_HOST']
-
+    print('argv=', sys.argv)
     views = {
             'PRODUCCION.VW_LinkAForm_Hora':{
                 'catalog_id': 134148,
@@ -745,6 +746,7 @@ if __name__ == "__main__":
             last_update = last_update.strftime('%Y-%m-%d 00:00:00')
             #-FUNCTIONS
             data = False
+            print('option=', option)
             if option == 'read':
                 # print('module_obj.views.keys()', module_obj.views)
                 # last_update = module_obj.get_last_db_update_data(v)
