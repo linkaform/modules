@@ -7,6 +7,11 @@ class Custom(Custom):
     """docstring for Custom"""
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
+        self.config['JWT_DESVINCULACIONES'] = self.lkf_api.get_jwt( 
+            user='clientes.desvinculaciones', 
+            api_key='dad42417598a393939ed64d9d6079a99ddcd5e98'
+        )
+        self.settings.config.update(self.config)
 
     def get_usernames_ids(self):
         """
@@ -38,7 +43,7 @@ class Custom(Custom):
 
         # Ejecutando la Desvinculacion del dispositivo
         print('ID del usuario =',user_id)
-        resp_desvinculation = self.lkf_api.unlink_device(user_id)
+        resp_desvinculation = self.lkf_api.unlink_device(user_id, jwt_settings_key='JWT_DESVINCULACIONES')
         print('\n\nresp_desvinculation =',resp_desvinculation)
 
 if __name__ == '__main__':
