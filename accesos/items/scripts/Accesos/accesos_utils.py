@@ -82,7 +82,12 @@ class Accesos(Accesos):
         self.CONFIGURACION_DE_RECORRIDOS_FORM = self.lkm.form_id('configuracion_de_recorridos','id')
         self.CONF_MODULO_SEGURIDAD = self.lkm.form_id('configuracion_modulo_seguridad','id')
         self.BITACORA_TRANSPORTISTAS = self.lkm.form_id('bitacora_de_transportistas','id')
-        
+        # OJO: el slug real registrado en Linkaform es "configuracin..." (sin "ó") —
+        # Linkaform le quitó el acento de forma imperfecta al generar el nombre técnico
+        # a partir de "Configuración de Flujo de Transportistas". No "corregir" esto sin
+        # antes confirmar el item_name real en LKFModules.
+        self.CONFIGURACION_FLUJO_TRANSPORTISTAS = self.lkm.form_id('configuracin_de_flujo_de_transportistas','id')
+
         self.INSPECCION_ENTRADA_CTPAT_TRACTOR = self.lkm.form_id('inspeccion_de_entrada_ctpat_tractor_cabezal','id')
         self.INSPECCION_ENTRADA_CTPAT_REMOLQUE = self.lkm.form_id('inspeccion_de_entrada_ctpat_remolque','id')
         self.INSPECCION_ENTRADA_CTPAT_CONTENEDOR = self.lkm.form_id('inspeccion_de_entrada_ctpat_contenedor','id')
@@ -341,6 +346,7 @@ class Accesos(Accesos):
             'estatus': '6a31921f07fb9cb5840d1f22',
             'fecha_hora_ingreso': '6a3bee0a7829a4ca9572d39e',
             'fecha_hora_descarga': '6a3bee0a7829a4ca9572d39f',
+            'fecha_hora_terminado': '6a710409eaef5abc8b1a1a69',
 
             'grupo_fotos_y_documentos': '6a3bee0a7829a4ca9572d3a0',
             'tipo_de_documento': '6a3bee394a7a0748a6fc9a56',
@@ -375,6 +381,9 @@ class Accesos(Accesos):
             'lote_material': '6a4409523a38bb598a0a18a0',
             'cantidad_material': '6a42c7a7a1555d53d6b91950',
             'cantidad_fisica_material': '6a454fb37ddcb3993dd90107',
+            'cantidad_buena_material': '6a6ac379fab960f8931dcc77',
+            'cantidad_danada_material': '6a6ac35a71f64d908af42f69',
+            'cantidad_faltante_material': '6a7a4ee0e6092a8d37f6d448',
             'peso_material': '6a42c7a7a1555d53d6b91951',
             'volumen_material': '6a42c7a7a1555d53d6b91952',
 
@@ -389,9 +398,22 @@ class Accesos(Accesos):
 
             'grupo_sellos': '6a42c65c03f125df7ad28601',
 
+            'grupo_desglose_empaque': '6a6a4abe639ed7cad54be377',
+            'no_referencia_material_desglose': '6a6a4adc169fc82c5fae8668',
+            'nivel_desglose': '6a6a4b64c6fd2eaaf5f8c0b6',
+            'tipo_unidad_empaque_desglose': '6a6a4b64c6fd2eaaf5f8c0b7',
+            'cantidad_desglose': '6a6a4b64c6fd2eaaf5f8c0b8',
+            'cantidad_acumulada_desglose': '6a6a4b64c6fd2eaaf5f8c0b9',
+
             'grupo_inspecciones': '6a42a7068dcfbf362329a972',
             'tipo_inspeccion': '6a42c80b03f125df7ad2862b',
             'url_inspeccion': '6a42a71aec3f7153a3d2aea3',
+        }
+
+        self.conf_flujo_transportistas_fields = {
+            'etapas_activas': '6a75056924f23eef843cd01b',
+            'configuracion_de_inspecciones': '6a7509cd6e87e5935b853b7b',
+            'tipo_de_inspeccion': '6a750a1afd4ed68d7c57c24d',
         }
 
         self.inspeccion_entrada_tractor_fields = {
@@ -719,6 +741,18 @@ class Accesos(Accesos):
             f['proveedor_cliente']:     embarque.get('proveedor_cliente', ''),
             f['orden_de_compra']:       embarque.get('no_orden_compra', ''),
         }
+
+        # Ubicación + área del turno activo desde donde se registró la visita — se
+        # usa después para resolver qué forma de inspección aplica en ese sitio.
+        # Campo "Áreas de las Ubicaciones" agregado por Paco a esta forma (mismo
+        # catálogo que usan paquetería/incidencias/casetas).
+        ubicacion = data.get('ubicacion')
+        area = data.get('area')
+        if ubicacion or area:
+            answers[self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID] = {
+                self.mf['ubicacion']: ubicacion or '',
+                self.mf['nombre_area']: area or '',
+            }
 
         remolques    = data.get('remolques', []) or []
         contenedores = data.get('contenedores', []) or []
