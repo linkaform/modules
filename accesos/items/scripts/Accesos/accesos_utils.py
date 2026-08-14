@@ -414,6 +414,8 @@ class Accesos(Accesos):
             'etapas_activas': '6a75056924f23eef843cd01b',
             'configuracion_de_inspecciones': '6a7509cd6e87e5935b853b7b',
             'tipo_de_inspeccion': '6a750a1afd4ed68d7c57c24d',
+            'norma': '6a7e2c5c23fb366f1918dea8',
+            'subtipo': '6a7e2c5c23fb366f1918dea9',
         }
 
         self.inspeccion_entrada_tractor_fields = {
