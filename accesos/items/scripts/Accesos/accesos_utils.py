@@ -1118,8 +1118,7 @@ class Accesos(Accesos):
         except ValueError as e:
             return {'status_code': 500, 'msg': f'Error al parsear respuesta del modelo: {e}'}
         except RuntimeError as e:
-            status_code = 503 if 'Insufficient credits' in str(e) else 502
-            return {'status_code': status_code, 'msg': f'Error al llamar a OpenRouter: {e}'}
+            return {'status_code': 500, 'msg': f'Error al llamar a OpenRouter: {e}'}
 
         datos = {}
         if raw_text.get('choices'):
@@ -1263,8 +1262,7 @@ class Accesos(Accesos):
         except ValueError as e:
             return {'status_code': 500, 'msg': f'Error al parsear respuesta del modelo: {e}'}
         except RuntimeError as e:
-            status_code = 503 if 'Insufficient credits' in str(e) else 502
-            return {'status_code': status_code, 'msg': f'Error al llamar a OpenRouter: {e}'}
+            return {'status_code': 500, 'msg': f'Error al llamar a OpenRouter: {e}'}
 
         datos = {}
         if raw_text.get('choices'):
