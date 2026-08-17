@@ -13,17 +13,17 @@ class Custom(Custom):
         )
         self.settings.config.update(self.config)
 
-    def get_usernames_ids(self):
-        """
-        Consulta los usuarios de la cuenta y devuelve un mapeo del nombre de usuario y id
-        """
-        all_users = self.lkf_api.get_all_users()
+    # def get_usernames_ids(self):
+    #     """
+    #     Consulta los usuarios de la cuenta y devuelve un mapeo del nombre de usuario y id
+    #     """
+    #     all_users = self.lkf_api.get_all_users()
 
-        return {
-            u['username']: u['id'] 
-            for u in all_users
-            if u.get('username') and u.get('id')
-        }
+    #     return {
+    #         u['username']: u['id'] 
+    #         for u in all_users
+    #         if u.get('username') and u.get('id')
+    #     }
 
     def desvincular_usuario(self):
         """

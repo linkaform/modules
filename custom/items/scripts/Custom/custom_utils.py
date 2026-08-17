@@ -14,6 +14,7 @@ class Custom(Custom):
         self.FORM_ID_PROGRAMACION = 150324
         self.FORM_ID_CONVERSION = 145748
         self.FORM_ID_MOLINOS = 148658
+        self.CATALOG_ID_USUARIOS_INVITADOS = 155533
 
         self.field_anio = "69dfc83706c1197cec034b39"
         self.field_mes = "69d82f9651b77ef10d63b785"
@@ -37,6 +38,7 @@ class Custom(Custom):
         self.field_responsable = "69df18efff8ef345609750ff"
         self.field_email = "69df18efff8ef34560975101"
         self.field_username = "69df18efff8ef34560975100"
+        self.field_user_id = "69df18efff8ef345609750fe"
         
     
     def get_fields_ponderables(self, with_comentarios_field=False):
@@ -75,3 +77,15 @@ class Custom(Custom):
             return None
 
         return valor_porcentual_base
+
+    def get_usernames_ids(self):
+        """
+        Consulta los usuarios de la cuenta y devuelve un mapeo del nombre de usuario y id
+        """
+        all_users = self.lkf_api.get_all_users()
+
+        return {
+            u['username']: u['id'] 
+            for u in all_users
+            if u.get('username') and u.get('id')
+        }

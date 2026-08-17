@@ -10,6 +10,16 @@ class Custom(Custom):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
         self.host_lkf = "https://app.linkaform.com"
         self.script_id_delete_inbox = 145572
+        self.map_username_id = self.get_id_user_catalog()
+
+    def get_id_user_catalog(self):
+        # Consultar el catalogo de usuarios
+        records_catalog = self.lkf_api.search_catalog(self.CATALOG_ID_USUARIOS_INVITADOS)
+        
+        return {
+            rec.get('69df18efff8ef34560975100'): rec.get('69df18efff8ef345609750fe')
+            for rec in records_catalog
+        }
 
     def calcular_semana(self, f):
         """
@@ -113,17 +123,28 @@ class Custom(Custom):
         }
 
     def similar_fields(self, data_fecha, data_programacion):
+        username_asignacion = data_programacion.get('usuario_a_asignar_username')
+        id_user_asignacion = self.map_username_id.get(username_asignacion)
+        # print(f'username_asignacion = {username_asignacion} id_user_asignacion = {id_user_asignacion}')
+
+        data_user_asign = {
+            self.field_responsable: data_programacion.get('usuario_a_asignar_nombre'),
+            self.field_email: [username_asignacion],
+            self.field_username: [username_asignacion],
+        }
+
+        if id_user_asignacion:
+            data_user_asign[ self.field_user_id ] = [id_user_asignacion]
+
+        # print(simplejson.dumps(data_user_asign, indent=4))
+
         return {
             self.obj_plantas_areas: {
                 self.field_planta: data_programacion.get('planta'),
                 self.field_area: data_programacion.get('area'),
                 self.field_email_jefe_area: [data_programacion.get('email_jefe_area')],
             },
-            self.obj_usuarios: {
-                self.field_responsable: data_programacion.get('usuario_a_asignar_nombre'),
-                self.field_email: [data_programacion.get('usuario_a_asignar_username')],
-                self.field_username: [data_programacion.get('usuario_a_asignar_username')],
-            },
+            self.obj_usuarios: data_user_asign,
             "abcde0001000000000000020": "programado",
             "fffff0001000000000000001": data_fecha.get('fecha_inicio'),
             "fffff0001000000000000002": data_fecha.get('fecha_fin'),
