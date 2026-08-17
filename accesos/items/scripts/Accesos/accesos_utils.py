@@ -857,9 +857,31 @@ class Accesos(Accesos):
 
         prompt = (
             "Analyze all provided files (images and/or documents) as a single transport access event. "
-            "The files are provided in order: the first is imagen_1, the second is imagen_2, and so on. "
+            "The files are provided in order: the first is imagen_1, the second is imagen_2, and so on — "
+            "this numbering is PER FILE, not per page. A single file can be a multi-page PDF containing "
+            "several distinct photos or document pages (e.g. a PDF with 9 different evidence photos, or a "
+            "PDF with 3 pages: cover letter, invoice, packing list). When that happens, EVERY page/photo "
+            "found inside that one file still gets the SAME `fuente` value (that file's imagen_N) — never "
+            "invent a new imagen_N for a page just because it is the file's 2nd, 3rd, etc. internal page. "
+            "Use the `pagina` field on each `documentos_detectados` entry to indicate which page/photo "
+            "number WITHIN that file it corresponds to (1 for the first page/photo of that file, 2 for the "
+            "second, etc.), so a page can still be told apart from others in the same file. "
+            "WORKED EXAMPLE: suppose the input list has 2 files — file 1 is a 3-page PDF (a driver photo, a "
+            "container photo, and a Carta de Ruta) and file 2 is a 1-page Bill of Lading. The CORRECT output "
+            "has THREE `documentos_detectados` entries with `fuente`:\"imagen_1\" (using `pagina` 1, 2, and 3 "
+            "respectively, one per internal page, each with its own `tipo`), and ONE entry with "
+            "`fuente`:\"imagen_2\", `pagina`:1. It would be WRONG to output fuente values imagen_1, imagen_2, "
+            "imagen_3, imagen_4 for that example — there are only 2 actual files, so fuente can never exceed "
+            "the number of files provided, no matter how many total pages/photos are found across all of them. "
+            "HARD RULE: count the DISTINCT `fuente` values you use across the entire `documentos_detectados` "
+            "array — that count must be EXACTLY equal to the number of files given to you, never more. Before "
+            "moving on to describe the next page/photo you find, first check whether it belongs to a file whose "
+            "imagen_N you already used for a previous entry — if so, reuse that same `fuente` and only increase "
+            "`pagina`; only introduce a new, higher `fuente` value once you have moved on to inspecting the next "
+            "actual file in the input list. "
             "Files may include vehicle photos, driver photos, driver licenses, vehicle registration cards, "
-            "Bills of Lading, pedimentos, port documents, purchase orders, or container photos. "
+            "Bills of Lading, pedimentos, port documents, purchase orders, container photos, or a Carta de "
+            "Ruta (Dominican customs internal-transit authorization). "
             "Extract every field you can find. If a field is absent from all provided files, use null. "
             "\n\n"
             "IMPORTANT ON CARGO-TO-UNIT LINKING: when a document (Bill of Lading, packing list, manifest) breaks "
@@ -924,10 +946,39 @@ class Accesos(Accesos):
             "remolque's `placas_tarjeta_circulacion` and note the ambiguity in that remolque's `comentarios` — never "
             "drop the value just because the match is uncertain. "
             "\n\n"
+            "IMPORTANT ON SEAL NUMBERS (no_sello_documento / no_sello_fisico): a container or trailer can show MORE "
+            "THAN ONE physical seal in photos (e.g. a carrier lock seal, a security tag, AND the official customs/"
+            "shipper seal), and their numbers will differ from what is printed in text documents — this is normal "
+            "and does not mean any of them is wrong. Do NOT try to decide which one is 'the real seal' yourself: "
+            "just report each source into its own field, exactly as it appears there. `no_sello_documento` is "
+            "whatever seal number is printed in text on a BL/factura/packing list/carta de ruta/pedimento/"
+            "manifiesto for that unit — leave it null if no document prints one. `no_sello_fisico` is whatever seal "
+            "number you read directly off a photograph of a physical seal/tag on that unit — leave it null if no "
+            "such photo is provided. Fill BOTH independently whenever both kinds of source exist, even if their "
+            "values disagree; the decision of which one to trust is made downstream in code, not by you. "
+            "\n\n"
+            "IMPORTANT ON DRIVER IDENTIFICATION (conductor.nombre / conductor.no_licencia): `no_licencia` must come "
+            "EXCLUSIVELY from an official government-issued driving license/permit document. Never use a number "
+            "from a company badge, employee ID card, lanyard, or gafete as `no_licencia` — those are internal/"
+            "corporate identifiers, not driving licenses; if that is the only ID-like number visible, leave "
+            "`no_licencia` null and, if useful, mention the badge number in `observaciones` instead. "
+            "`conductor.nombre`, in contrast, is NOT limited to license/permit documents — it can also appear on an "
+            "official transit/customs authorization document such as a Carta de Ruta, which typically lists the "
+            "assigned driver by name alongside the container/seal/carrier data. These forms are often photographed "
+            "at an angle where a column's header label is cropped or unreadable, but the name value itself is still "
+            "legible — in that case, use the document's standard layout and the surrounding fields (container "
+            "number, seal, compañía transportista, sindicato de camioneros) to infer that a legible person's name "
+            "sitting in that position is the driver, and fill `conductor.nombre` accordingly rather than returning "
+            "null just because the column label itself was cut off. "
+            "\n\n"
             "IMPORTANT ON DATES: interpret dates according to the document's own convention before converting to "
             "YYYY-MM-DD — English-language documents (BL, invoices) typically use MM/DD/YYYY, Mexican documents "
             "(pedimentos, tarjetas, licencias) typically use DD/MM/YYYY. If the convention is genuinely ambiguous "
             "for a given date, keep the original string as printed instead of guessing day vs. month. "
+            "If different documents in the same event show dates that are inconsistent with each other in a way "
+            "that cannot be explained by normal shipment lead times (e.g. a loading date years apart from the "
+            "invoice or BL issue date), do not silently pick one and treat it as resolved — report the value you "
+            "found and flag the inconsistency in `observaciones`, and let it lower `confianza` accordingly. "
             "\n\n"
             "Return ONLY a JSON object with this exact structure:\n"
             "{\n"
@@ -959,7 +1010,8 @@ class Accesos(Accesos):
             '    {\n'
             '      "tipo": "string — trailer box type: caja_seca, plataforma, caja_refrigerada, ganadero, basculante, portavehiculos, caravana, or null. This is a CLOSED LIST (no otro option downstream) — see CLOSED-LIST rule above.",\n'
             '      "no_caja": "string — trailer box/unit number (número económico de caja) from registration card or visible on unit, or null",\n'
-            '      "no_sello": "string — seal number on the trailer, or null",\n'
+            '      "no_sello_documento": "string — seal number for this trailer EXACTLY as printed in any text document (BL, factura, packing list, carta de ruta, pedimento, manifiesto), or null if no document states one. See IMPORTANT ON SEAL NUMBERS below — do NOT put a photo-only reading here.",\n'
+            '      "no_sello_fisico": "string — seal number read directly off a photograph of the physical seal/tag on this trailer, or null if no such photo is provided or none is legible.",\n'
             '      "placas": "string — trailer license plate as read from a photo or an incidental mention, exactly as printed, or null",\n'
             '      "placas_tarjeta_circulacion": "string — trailer license plate extracted EXCLUSIVELY from an explicit plate label on this trailer\'s own tarjeta/pedimento document, exactly as printed, or null",\n'
             '      "color": "string — trailer color in Spanish (Blanco, Gris, Rojo, etc.), or null",\n'
@@ -983,7 +1035,8 @@ class Accesos(Accesos):
             '      "tipo": "string — ISO container type: 20GP, 40GP, 40HC, 20RF, 40RF, 40HR, 20OT, 40OT, 20FR, 40FR, iso_tank, 20VH, open_side, or null. This is a CLOSED LIST (no otro option downstream) — see CLOSED-LIST rule above. Remember to apply a type stated once in a summary line to every matching container (see CARGO-TO-UNIT LINKING above).",\n'
             '      "no_contenedor": "string — official ISO container number exactly as printed (e.g. ECMU7740351, EGHU9785216), or null",\n'
             '      "no_caja": "string — internal facility box/asset number for this container, if separately assigned and distinct from no_contenedor, or null",\n'
-            '      "no_sello": "string — seal number on the container, or null",\n'
+            '      "no_sello_documento": "string — seal number for this container EXACTLY as printed in any text document (BL, factura, packing list, carta de ruta, pedimento, manifiesto), or null if no document states one. See IMPORTANT ON SEAL NUMBERS below — do NOT put a photo-only reading here.",\n'
+            '      "no_sello_fisico": "string — seal number read directly off a photograph of the physical seal/tag on this container, or null if no such photo is provided or none is legible.",\n'
             '      "placas": "string — chassis plate if visible, or null",\n'
             '      "color": "string — container color in Spanish, or null",\n'
             '      "comentarios": "string — any relevant note about this container (damage, anomaly, tipo that did not match the closed list, etc.), or null",\n'
@@ -1020,19 +1073,19 @@ class Accesos(Accesos):
             '    "no_autorizacion_puerto": "string — port release authorization number, or null",\n'
             '    "origen": "string — place/port of loading or origin, or null",\n'
             '    "destino": "string — place/port of discharge or delivery, or null",\n'
-            '    "naviera": "string — shipping line name (CMA CGM, MSC, etc.), or null",\n'
             '    "fecha_embarque": "string — on-board or shipment date (YYYY-MM-DD if possible), or null"\n'
             '  },\n'
 
             # ── METADATA ──────────────────────────────────────────────────
             '  "documentos_detectados": [\n'
             '    {\n'
-            '      "fuente": "string — imagen_1 / imagen_2 / imagen_3 ... (position of the file in the input list)",\n'
-            '      "tipo": "string — one of: identificacion_chofer, foto_conductor, tarjeta_circulacion_vehiculo, tarjeta_circulacion_remolque, carta_porte, factura_orden_compra, foto_placa_vehiculo, evidencia_carga, conocimiento_embarque_bl, otro. IMPORTANT: identificacion_chofer is an official ID document (INE, passport, license) showing the driver\'s personal data. foto_conductor is a photo of the driver\'s face. tarjeta_circulacion_vehiculo belongs to the tractor/cab; tarjeta_circulacion_remolque belongs to a trailer (this also covers a pedimento de importación temporal de remolques, which functions like a trailer registration document) — never confuse the two, and never confuse either with identificacion_chofer / foto_conductor. (This document-type list DOES keep an otro option — it is only the tipo_vehiculo/remolques.tipo/contenedores.tipo fields above that map to closed dropdowns with no otro.)"\n'
+            '      "fuente": "string — imagen_1 / imagen_2 / imagen_3 ... — the position of the FILE in the input list (never a running page count across files — see numbering rule at the top of this prompt)",\n'
+            '      "pagina": "integer — page/photo number WITHIN that file (1 for the first page/photo of that file, 2 for the second, etc.), so distinct pages of the same multi-page file can be told apart even though they share the same fuente",\n'
+            '      "tipo": "string — one of: identificacion_chofer, foto_conductor, tarjeta_circulacion_vehiculo, tarjeta_circulacion_remolque, carta_porte, carta_de_ruta, factura_orden_compra, foto_placa_vehiculo, evidencia_carga, conocimiento_embarque_bl. IMPORTANT: identificacion_chofer is an official ID document (INE, passport, license) showing the driver\'s personal data. foto_conductor is a photo of the driver\'s face. tarjeta_circulacion_vehiculo belongs to the tractor/cab; tarjeta_circulacion_remolque belongs to a trailer (this also covers a pedimento de importación temporal de remolques, which functions like a trailer registration document) — never confuse the two, and never confuse either with identificacion_chofer / foto_conductor. carta_de_ruta is a Dominican Ministerio de Hacienda / Dirección General de Aduanas internal-transit authorization (fields typically include propietario, sello control, número de contenedor, chofer, compañía transportista, sindicato de camioneros) — this is DIFFERENT from carta_porte (a waybill/manifest), do not conflate the two. THIS FIELD HAS NO otro CATCH-ALL: this value is shown directly to the end user as a label under the uploaded file in the access form, so it must always be informative. If a file does not clearly match any of the listed types, do NOT return \'otro\' — instead return a short, specific description in Spanish of what the document/photo actually is (e.g. \'foto general del contenedor\', \'manifiesto de carga\', \'foto de sello de seguridad\', \'documento no identificado — ilegible\'), written the way a person reviewing the access would want to see it as a label, so it is never a dead-end value like \'otro\'."\n'
             '    }\n'
             '  ],\n'
             '  "observaciones": "string — CTPAT flags, anomalies, damage, incomplete docs, ambiguous plate/document matches, tipos that did not match a closed list, cargo that could not be attributed to a specific unit, or anything security-relevant, or null",\n'
-            '  "confianza": "string — alto: all key documents present and legible, no null in critical fields (vehiculo.placa, conductor.nombre, at least one remolque or contenedor if cargo is present) | medio: 1-2 documents illegible or secondary fields missing | bajo: key documents missing/illegible or inconsistencies (e.g. unmatched tarjeta/plate, unlinked cargo) across sources"\n'
+            '  "confianza": "string — alto: all key documents present and legible, no null in critical fields (vehiculo.placa, conductor.nombre, at least one remolque or contenedor if cargo is present), and no unresolved conflicts | medio: 1-2 documents illegible or secondary fields missing | bajo: key documents missing/illegible, or inconsistencies (e.g. unmatched tarjeta/plate, unlinked cargo, conflicting seal numbers, conflicting dates) across sources"\n'
             "}"
         )
 
@@ -1064,6 +1117,9 @@ class Accesos(Accesos):
             raw_text = self.ai.ocr_general(sources, system, prompt, model=model, max_tokens=6000)
         except ValueError as e:
             return {'status_code': 500, 'msg': f'Error al parsear respuesta del modelo: {e}'}
+        except RuntimeError as e:
+            status_code = 503 if 'Insufficient credits' in str(e) else 502
+            return {'status_code': status_code, 'msg': f'Error al llamar a OpenRouter: {e}'}
 
         datos = {}
         if raw_text.get('choices'):
@@ -1084,7 +1140,36 @@ class Accesos(Accesos):
                 if fuente in source_index:
                     doc['url'] = source_index[fuente]
 
+        # Resolver no_sello de forma determinista (código, no el LLM) — el LLM solo
+        # reporta lo que ve en cada fuente (no_sello_documento / no_sello_fisico); el
+        # sello impreso en documentos de texto (BL/factura/carta de ruta) siempre gana
+        # sobre uno leído únicamente de una foto, porque suele repetirse/confirmarse en
+        # varios documentos independientes mientras que la foto es una sola lectura.
+        if isinstance(datos, dict):
+            for unidad in (datos.get('remolques') or []) + (datos.get('contenedores') or []):
+                if not isinstance(unidad, dict):
+                    continue
+                sello_doc = unidad.pop('no_sello_documento', None)
+                sello_foto = unidad.pop('no_sello_fisico', None)
+                if sello_doc:
+                    unidad['no_sello'] = sello_doc
+                    if sello_foto and sello_foto != sello_doc:
+                        nota = f"Sello fotografiado ({sello_foto}) no coincide con el sello documentado ({sello_doc}); se usó el documentado."
+                        unidad['comentarios'] = f"{unidad['comentarios']} {nota}" if unidad.get('comentarios') else nota
+                else:
+                    unidad['no_sello'] = sello_foto or None
+
         errores = self._ocr_validar_id(datos)
+
+        # Validación determinista: si el propio modelo reportó una observación o una
+        # confianza no-alta, no confiar en que ya resolvió el conflicto en el campo
+        # correspondiente (p.ej. no_sello) — forzar revisión humana en vez de aceptarlo.
+        if isinstance(datos, dict):
+            if datos.get('observaciones'):
+                errores.append(f"Observación del modelo: {datos['observaciones']}")
+            if datos.get('confianza') and datos['confianza'].lower() != 'alto':
+                errores.append(f"Confianza reportada por el modelo: {datos['confianza']}")
+
         if errores:
             return {
                 'status_code': 206,
@@ -1177,6 +1262,9 @@ class Accesos(Accesos):
             raw_text = self.ai.ocr_general(image_source, system, prompt, model=model, max_tokens=1500)
         except ValueError as e:
             return {'status_code': 500, 'msg': f'Error al parsear respuesta del modelo: {e}'}
+        except RuntimeError as e:
+            status_code = 503 if 'Insufficient credits' in str(e) else 502
+            return {'status_code': status_code, 'msg': f'Error al llamar a OpenRouter: {e}'}
 
         datos = {}
         if raw_text.get('choices'):
