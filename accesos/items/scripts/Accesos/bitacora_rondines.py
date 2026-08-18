@@ -99,6 +99,7 @@ class Accesos(Accesos):
             self.answers[self.f['areas_del_rondin']] = areas_recorrido.get('rondin_areas', [])
             self.answers[self.rondin_keys['tipo_asignacion']] = areas_recorrido.get('tipo_asignacion')
             self.answers[self.rondin_keys['grupo_asignado_a']] = areas_recorrido.get('grupo_asignado_a', [])
+            self.answers[self.f['grupo_roles']] = areas_recorrido.get('roles', [])
             if areas_recorrido.get('id_grupo'):
                 self.answers[self.GRUPOS_CAT_OBJ_ID] = {self.mf['id_grupo']:areas_recorrido['id_grupo']} 
             return True
@@ -114,7 +115,7 @@ class Accesos(Accesos):
             }}
         if rol:
             match["$match"].update(
-                {f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.Location.f['area_salida']}":area}
+                {f"answers.{self.f['grupo_roles']}.{self.ROL_CATALOG_OBJ_ID}.{self.f['rol']}": {"$in": rol}}
                 )
         query = [
             match,
@@ -186,7 +187,13 @@ class Accesos(Accesos):
                     res = self.lkf_api.post_forms_answers(new_metadata)
         else:
             location = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'])
-            user_info = self.get_active_guards_in_location(location)
+            roles_raw = self.answers.get(self.f['grupo_roles'], [])
+            rol = [
+                r.get(self.ROL_CATALOG_OBJ_ID, {}).get(self.f['rol'])
+                for r in roles_raw
+                if r.get(self.ROL_CATALOG_OBJ_ID, {}).get(self.f['rol'])
+            ]
+            user_info = self.get_active_guards_in_location(location, rol=rol)
             if not user_info:
                 return False
             

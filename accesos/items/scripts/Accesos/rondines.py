@@ -1503,6 +1503,60 @@ class Accesos(Accesos):
         response = self.format_cr(self.cr.aggregate(query))
         return response
 
+    def get_area_by_id(self, record_id: str):
+        """Obtiene el detalle de una única área por su ID de registro
+        (mismo shape que produce get_catalog_areas_formatted por elemento).
+        Args:
+            record_id (str): El ID del registro del área.
+        Returns:
+            dict: El área con su geolocalización, foto, tipo y estatus.
+        Raises:
+            Exception: Si el ID del registro no es proporcionado.
+        """
+        if not record_id:
+            raise Exception("Record ID is required to get area details.")
+
+        query = [
+            {"$match": {
+                "_id": ObjectId(record_id),
+                "form_id": self.Location.AREAS_DE_LAS_UBICACIONES,
+                "deleted_at": {"$exists": False},
+            }},
+            {"$project": {
+                "folio": 1,
+                "area": f"$answers.{self.Location.f['area']}",
+                "geolocation": f"$answers.{self.f['geolocalizacion_area_ubicacion']}",
+                "image": f"$answers.{self.f['foto_area']}",
+                "tag_id": f"$answers.{self.f['area_tag_id']}",
+                "tipo_de_area": f"$answers.{self.Location.TIPO_AREA_OBJ_ID}.{self.f['tipo_de_area']}",
+                "area_state": f"$answers.{self.Location.f['area_state']}",
+                "area_status": f"$answers.{self.Location.f['area_status']}",
+                "ubicacion": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}",
+            }}
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
+        response = self.unlist(response)
+        if not response:
+            raise self.LKFException({'msg': 'Área no encontrada', 'status_code': 404})
+
+        return {
+            "folio": response.get("folio", ""),
+            "record_id": record_id,
+            "rondin_area": response.get("area", ""),
+            "geolocalizacion_area_ubicacion": [
+                {
+                    "latitude": response.get("latitude", 0.0),
+                    "longitude": response.get("longitude", 0.0),
+                }
+            ],
+            "area_tag_id": [response.get("tag_id", "")],
+            "foto_area": response.get("image", []),
+            "tipo_de_area": response.get("tipo_de_area", ""),
+            "area_state": response.get("area_state", ""),
+            "area_status": response.get("area_status", ""),
+            "ubicacion": response.get("ubicacion", ""),
+        }
+
     def _detectar_tipo_tag(self, tag_value) -> str:
         """
         Determina si un area_tag_id corresponde a un tag NFC o a un código QR,
