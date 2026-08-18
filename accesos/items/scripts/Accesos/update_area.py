@@ -328,10 +328,13 @@ if __name__ == "__main__":
             data['area'] = qr_data.get('area', '')
 
 
-    if data.get('area'):
-            search_area = acceso_obj.get_record_ubicacion(ubicacion=data.get('ubicacion'), area=data.get('area'))
     if data.get('nombre_nueva_area'):
         nueva_area = data.get('nombre_nueva_area')
+        # Nos aseguramos que el area no exista ya que el usuario pudo haber escogido area nueva y ya existia esa area
+        exists_area = acceso_obj.exists_area(data.get('ubicacion', {}), data.get('nombre_nueva_area', ''))
+        if exists_area:
+            data['area'] = nueva_area
+            nueva_area = None
 
 
     #! Crea el area si no existe
