@@ -926,27 +926,46 @@ class Accesos(Accesos):
                             answers[f_ins[f'{campo}_evidencia']] = punto['fotos']
 
             elif tipo_base == 'contenedor':
-                # Igual que tractor: siempre por field_id (filas + medidas
-                # universales), sin la lista fija de labels de antes.
-                filas   = inspeccion.get('filas', [])
-                medidas = inspeccion.get('medidas', {}) or {}
-                has_data = (
-                    any(fila.get('valores') for fila in filas)
-                    or any(medidas.get(k) for k in ['longitud', 'ancho', 'altura'])
-                )
-                if not has_data:
-                    continue
-                form_id = inspeccion.get('form_id') or self.INSPECCION_ENTRADA_CTPAT_CONTENEDOR
-                es_default = str(form_id) == str(self.INSPECCION_ENTRADA_CTPAT_CONTENEDOR)
-                answers = {}
-                for medida_key, field_id in CONTENEDOR_MEDIDA_FIELD_IDS_UNIVERSAL.items():
-                    if medidas.get(medida_key):
-                        answers[field_id] = medidas[medida_key]
-                for fila in filas:
-                    field_id = fila.get('field_id')
-                    valores  = fila.get('valores') or []
-                    if field_id and valores:
-                        answers[field_id] = [v.lower() for v in valores]
+                puntos = inspeccion.get('puntos') or []
+                if puntos:
+                    # Forma custom tipo Patrón A (ej. BASC): mismo tratamiento
+                    # que tractor — radio + comentario + evidencia propios por
+                    # punto, detectados por adyacencia en el frontend.
+                    if not any(p.get('resultado') for p in puntos):
+                        continue
+                    form_id = inspeccion.get('form_id') or self.INSPECCION_ENTRADA_CTPAT_CONTENEDOR
+                    es_default = str(form_id) == str(self.INSPECCION_ENTRADA_CTPAT_CONTENEDOR)
+                    answers = {}
+                    for punto in puntos:
+                        resultado = (punto.get('resultado') or '').lower()
+                        if punto.get('field_id') and resultado:
+                            answers[punto['field_id']] = resultado
+                        if punto.get('comentario_field_id') and punto.get('comentario'):
+                            answers[punto['comentario_field_id']] = punto['comentario']
+                        if punto.get('evidencia_field_id') and punto.get('fotos'):
+                            answers[punto['evidencia_field_id']] = punto['fotos']
+                else:
+                    # Forma CTPAT default (Patrón B): filas + medidas
+                    # universales, sin la lista fija de labels de antes.
+                    filas   = inspeccion.get('filas', [])
+                    medidas = inspeccion.get('medidas', {}) or {}
+                    has_data = (
+                        any(fila.get('valores') for fila in filas)
+                        or any(medidas.get(k) for k in ['longitud', 'ancho', 'altura'])
+                    )
+                    if not has_data:
+                        continue
+                    form_id = inspeccion.get('form_id') or self.INSPECCION_ENTRADA_CTPAT_CONTENEDOR
+                    es_default = str(form_id) == str(self.INSPECCION_ENTRADA_CTPAT_CONTENEDOR)
+                    answers = {}
+                    for medida_key, field_id in CONTENEDOR_MEDIDA_FIELD_IDS_UNIVERSAL.items():
+                        if medidas.get(medida_key):
+                            answers[field_id] = medidas[medida_key]
+                    for fila in filas:
+                        field_id = fila.get('field_id')
+                        valores  = fila.get('valores') or []
+                        if field_id and valores:
+                            answers[field_id] = [v.lower() for v in valores]
             else:
                 continue
 
@@ -1284,7 +1303,20 @@ class Accesos(Accesos):
         "Configuración de Flujo de Transportistas" (referencia al Catálogo de Formas,
         `self.CATALOGO_FORMAS_CAT_OBJ_ID`, ya heredado de la capa base).
         Fail-open: si no hay fila para esa ubicación+tipo (o no hay ubicación, o no
-        hay registro de config), cae al form_id hardcodeado de la cuenta."""
+        hay registro de config), cae al form_id hardcodeado de la cuenta.
+
+        Para `contenedor`, una fila puede además traer `subtipo` (ej. caja_seca,
+        refrigerado): esas filas NO pisan el catch-all `resueltas['contenedor']`,
+        se acumulan aparte en `contenedor_por_subtipo`. Una fila de contenedor sin
+        subtipo especificado es el catch-all — aplica a cualquier subtipo que no
+        tenga su propia fila.
+
+        `norma` en el resultado es un indicador derivado, solo para mostrar en el
+        front (ej. badge "BASC"/"CTPAT" en el detalle de la visita) — NO se usa
+        como criterio de match arriba: si la ubicación tiene alguna fila con
+        Norma=BASC se considera BASC en conjunto, si no tiene ninguna es CTPAT
+        por default. No valida que todas las filas de la ubicación compartan la
+        misma norma (esa validación queda pendiente, fuera de alcance por ahora)."""
         # self.lkm.form_id() regresa int — se castea a str para que coincida en tipo
         # con el form_id guardado en el catálogo (también numérico) y con las
         # constantes del frontend (TRACTOR_FORM_ID = "157729", como string).
@@ -1294,7 +1326,7 @@ class Accesos(Accesos):
             'sello':      str(self.INSPECCION_SELLO),
         }
         if not ubicacion:
-            return defaults
+            return dict(defaults, contenedor_por_subtipo={}, norma='ctpat')
 
         f = self.conf_flujo_transportistas_fields
         query = [
@@ -1327,14 +1359,26 @@ class Accesos(Accesos):
         FORMA_ID_DE_LA_FORMA_FIELD = '5d810a982628de5556500d56'
 
         resueltas = dict(defaults)
+        contenedor_por_subtipo = {}
+        normas_vistas = set()
         for fila in filas:
             fila_ubicacion = (fila.get(self.UBICACIONES_CAT_OBJ_ID) or {}).get(self.mf['ubicacion'])
             if fila_ubicacion != ubicacion:
                 continue
+            norma_fila = (fila.get(f['norma']) or '').strip()
+            if norma_fila:
+                normas_vistas.add(norma_fila)
             tipo = fila.get(f['tipo_de_inspeccion'])
+            subtipo = (fila.get(f['subtipo']) or '').strip()
             forma_id = (fila.get(self.CATALOGO_FORMAS_CAT_OBJ_ID) or {}).get(FORMA_ID_DE_LA_FORMA_FIELD)
-            if tipo in resueltas and forma_id:
+            if not forma_id or tipo not in resueltas:
+                continue
+            if tipo == 'contenedor' and subtipo:
+                contenedor_por_subtipo[subtipo] = str(forma_id)
+            else:
                 resueltas[tipo] = str(forma_id)
+        resueltas['contenedor_por_subtipo'] = contenedor_por_subtipo
+        resueltas['norma'] = 'basc' if 'basc' in normas_vistas else 'ctpat'
         return resueltas
 
     def send_aviso_correo_transportista(self, record_id, email_to):
