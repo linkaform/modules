@@ -574,6 +574,17 @@ class Accesos(Accesos):
             'comentarios': '0e009f7829544463cbf89e1e',  # Comentarios (textarea)
         }
 
+
+    def flatten_roles(self, roles_raw):
+        """
+        Se aplana la estructura de roles (viene como [{ROL_CATALOG_OBJ_ID: {rol: 'Gerente'}}, ...])
+        a una lista simple de strings (['Gerente', ...]) para el frontend.
+
+        Nota: roles_raw ya pasó por format_cr/_labels, que aplana
+        {ROL_CATALOG_OBJ_ID: {rol_field_id: valor}} a {'rol': valor}.
+        """
+        return [r.get('rol') for r in roles_raw if r.get('rol')]
+
     def create_pass_transportista(self, data):
         print(simplejson.dumps(data, indent=3))
         f = self.pass_fields_transportista
