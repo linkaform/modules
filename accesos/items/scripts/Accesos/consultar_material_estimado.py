@@ -33,6 +33,10 @@ class Accesos(Accesos):
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
 
+        # True si la petición se hizo desde el Front de SIGA
+        self.front_request = not self.current_record
+        self.data = self.data.get('data',{})
+
         # form_id / catalog_id (iguales a crear_vales_de_materiales.py)
         self.FORM_ID_KITS = 164626 # PREPROD
         self.CATALOG_ID_SKU = 133015 # Este ya está OK en Prod y Preprod.
@@ -175,11 +179,20 @@ class Accesos(Accesos):
         Raises:
             ValueError: Si alguna fecha no cumple el formato esperado.
         """
-        if not inicio or not fin:
-            return False, "Se requieren las fechas de Inicio y Fin."
-
-        fecha_inicio = datetime.strptime(inicio, formato)
-        fecha_fin = datetime.strptime(fin, formato)
+        if self.front_request:
+            # Si no dan fin, se usa hoy
+            fecha_fin = datetime.strptime(fin, formato) if fin else datetime.now()
+            # Si no dan inicio, se calcula un mes y medio antes de fin
+            if inicio:
+                fecha_inicio = datetime.strptime(inicio, formato)
+            else:
+                fecha_inicio = fecha_fin - relativedelta(months=1, days=15)
+        else:
+            if not inicio or not fin:
+                return False, "Se requieren las fechas de Inicio y Fin."
+            
+            fecha_inicio = datetime.strptime(inicio, formato)
+            fecha_fin = datetime.strptime(fin, formato)
 
         # 1 y 2: inicio no puede ser mayor a fin (equivalente a: fin no puede ser anterior a inicio)
         if fecha_inicio > fecha_fin:
@@ -311,6 +324,9 @@ class Accesos(Accesos):
             return 'No se pudo guardar el archivo, favor de reprocesar'
 
     def set_status(self, status, msg=''):
+        if self.front_request:
+            return {status: msg}
+
         f = self.material_estimado_fields
         self.current_record['answers'][f['estatus']] = status
         self.current_record['answers'][f['mensaje']] = msg
@@ -668,6 +684,21 @@ class Accesos(Accesos):
 
         rows_materiales = []
         for prod_id, data_prod in materiales_to_record.items():
+
+            if self.front_request:
+                rows_materiales.append({
+                    "nombre_contratista": nombre_conexion,
+                    "area": self.list_to_str([a.upper().replace('_', ' ') for a in areas]),
+                    "tecnologia": self.list_to_str(list(tecnologias)),
+                    "id_producto": prod_id,
+                    "sku": data_prod['sku'],
+                    "name": data_prod['nombre'],
+                    "unit": data_prod['unidad_medida'],
+                    "suggestedQuantity": round(data_prod['cantidad_estimada'], 2),
+                    # nsNeed: true,
+                })
+                continue
+
             rows_materiales.append([
                 nombre_conexion,
                 self.list_to_str([a.upper().replace('_', ' ') for a in areas]),
@@ -696,14 +727,19 @@ class Accesos(Accesos):
         Punto de entrada: calcula el material estimado para el periodo indicado y adjunta
         el resultado como Excel al registro actual. No crea Vales ni cierra Ordenes de Servicio.
         """
-        self.current_record['answers'].pop('6a032714b2194f0f517accc2', None)
-        self.current_record['answers'].pop('6a83a116e0a44de46b0e9f08', None)
-        self.set_status('procesando')
-
         f = self.material_estimado_fields
-        desde = self.answers.get(f['desde'])
-        hasta = self.answers.get(f['hasta'])
-        tecnologia = self.answers.get(f['tecnologia'])
+
+        if self.front_request:
+            desde = self.data.get('desde')
+            hasta = self.data.get('hasta')
+            tecnologia = self.data.get('tecnologia')
+        else:
+            self.current_record['answers'].pop('6a032714b2194f0f517accc2', None)
+            self.current_record['answers'].pop('6a83a116e0a44de46b0e9f08', None)
+            self.set_status('procesando')
+            desde = self.answers.get(f['desde'])
+            hasta = self.answers.get(f['hasta'])
+            tecnologia = self.answers.get(f['tecnologia'])
 
         periodo_valido, error_periodo = self.validar_periodo(desde, hasta)
         if not periodo_valido:
@@ -746,14 +782,17 @@ class Accesos(Accesos):
         # TODO del total_rows_materiales hay que generar el JSON que requiere Luis T. para su Front
         # self.make_xls(total_rows_materiales, self.header_material, self.field_id_file_estimacion)
 
-        self.make_xls(self.header_xls_fibra, total_folios_considerados_fibra, '6a032714b2194f0f517accc2', 'Órdenes de Servicio FTTH')
-        self.make_xls(self.header_xls_cobre, total_folios_considerados_cobre, '6a83a116e0a44de46b0e9f08', 'Órdenes de Servicio COBRE')
+        if not self.front_request:
+            self.make_xls(self.header_xls_fibra, total_folios_considerados_fibra, '6a032714b2194f0f517accc2', 'Órdenes de Servicio FTTH')
+            self.make_xls(self.header_xls_cobre, total_folios_considerados_cobre, '6a83a116e0a44de46b0e9f08', 'Órdenes de Servicio COBRE')
+            return self.set_status('terminado', self.list_to_str(total_no_aplican, separator='\n'))
 
-        return self.set_status('terminado', self.list_to_str(total_no_aplican, separator='\n'))
-
+        return total_rows_materiales
 
 if __name__ == '__main__':
     script_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
     script_obj.console_run()
 
-    script_obj.consultar_material_estimado()
+    response = script_obj.consultar_material_estimado()
+    if not script_obj.current_record:
+        script_obj.HttpResponse({"data": response})
