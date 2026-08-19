@@ -143,14 +143,14 @@ class Accesos(Accesos):
             "Nombre de la forma", "Folio", "Conexión", "Tipo de Tarea", "Teléfono", "AREA", "COPE", "Distrito", 
             "Expediente Del Tecnico", "Técnico PIC", "Fecha de Carga Contratista", "Tipo de Material", "Alfanumérico TAC", 
             "Alfanumérico Contratista", "Alfanumérico Técnico", "Tipo de Instalación", "Metros Bajante", "Metraje Adicional", 
-            "Fecha Liquidada", "Tecnico", "Estatus de Orden", "Expediente", 
+            "Fecha Liquidada", "Tecnico", "Estatus de Orden", "Tipo de Expediente", 
         ]
 
         self.header_xls_cobre = [
             "Nombre de la forma", "Folio", "Conexión", "Tipo de Tarea", "AREA", "COPE", "Distrito", "Telefono", "Tecnico", 
             "Expediente del Tecnico", "Técnico PIC", "Fecha de Carga Contratista", "Modem - Numero de Serie", 
             "Numero de Serie Contratista", "Numero de Serie Técnico", "Metros Bajante", "Fecha de Liquidacion", 
-            "Estatus de Orden", "Expediente", 
+            "Estatus de Orden", "Tipo de Expediente", 
         ]
 
         self.header_material = [
@@ -203,7 +203,7 @@ class Accesos(Accesos):
         if fecha_fin > limite:
             return False, "El periodo no puede exceder un mes y medio."
 
-        return True, None
+        return True, { 'inicio': fecha_inicio.strftime(formato), 'fin': fecha_fin.strftime(formato) }
 
     def get_kits(self):
         """
@@ -387,6 +387,7 @@ class Accesos(Accesos):
         return self.FORMS_ID_FTTH if str_tecnologia == 'fibra' else self.FORMS_ID_COBRE
 
     def get_records_orden_de_servicio(self, desde, hasta, tecnologia, conexiones=None, copes=None):
+        print(f'... consultando OS desde {desde} hasta {hasta}')
         """
         Consulta los registros de Orden de Servicio dentro del periodo indicado y los agrupa por conexion.
         """
@@ -447,7 +448,7 @@ class Accesos(Accesos):
                 '_id': {'connection_email': '$connection_email'},
                 'folios': {'$push': data_push},
             }},
-        ])
+        ], allowDiskUse=True)
 
     
 
@@ -585,7 +586,7 @@ class Accesos(Accesos):
                 data_os.get('fecha_liquidacion', ''), # Fecha Liquidada
                 data_os.get('tecnico', ''), # Tecnico
                 data_os.get('estatus_orden', ''), # Estatus de Orden
-                data_os.get('expediente')
+                'Calculado por Conexión' if data_os.get('connection_id') else 'Calculado por Expediente'
             ]
         elif version == 2:
             return [
@@ -607,7 +608,7 @@ class Accesos(Accesos):
                 data_os.get('metros_bajante', ''), # Metros Bajante
                 data_os.get('fecha_liquidacion', ''), # Fecha Liquidada
                 data_os.get('estatus_orden', ''), # Estatus de Orden
-                data_os.get('expediente')
+                'Calculado por Conexión' if data_os.get('connection_id') else 'Calculado por Expediente'
             ]
 
     def calcular_material_estimado(self, ordenes_de_servicio, productos, tipos_tarea_para_material, kits_products, nombre_conexion):
@@ -741,9 +742,12 @@ class Accesos(Accesos):
             hasta = self.answers.get(f['hasta'])
             tecnologia = self.answers.get(f['tecnologia'])
 
-        periodo_valido, error_periodo = self.validar_periodo(desde, hasta)
+        periodo_valido, response_periodo = self.validar_periodo(desde, hasta)
         if not periodo_valido:
-            return self.set_status('error', error_periodo)
+            return self.set_status('error', response_periodo)
+
+        desde = response_periodo.get('inicio')
+        hasta = response_periodo.get('fin')
 
         dict_productos = self.get_all_products()
         tipos_tarea_para_material = self.get_tipos_tarea_aplica_material()
