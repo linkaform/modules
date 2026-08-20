@@ -2454,7 +2454,7 @@ class Accesos(Accesos):
             folios=[folio,]
         )
         return response
-    
+
     def update_rondin(self, folio, rondin_data: dict = {}):
         answers = {}
         for key, value in rondin_data.items():
@@ -2477,10 +2477,13 @@ class Accesos(Accesos):
                         self.mf['nombre_area_salida']: value
                     }
             elif key == 'roles':
-                answers[self.f['grupo_roles']] = {
-                    (index + 1) * -1: {self.ROL_CATALOG_OBJ_ID: {self.f['rol']: rol}}
-                    for index, rol in enumerate(value or [])
-                }
+                answers[self.f['grupo_roles']] = {}
+                for rol in value or {}:
+                    answers[self.f['grupo_roles']].update({
+                        self.ROL_CATALOG_OBJ_ID: {
+                            self.f['rol']: rol
+                        }
+                    })
             elif key == 'grupo_asignado':
                 answers[self.GRUPOS_CAT_OBJ_ID] = {
                     self.rondin_keys[key]: value
@@ -2494,6 +2497,23 @@ class Accesos(Accesos):
                 if asignados:
                     answers[self.rondin_keys['grupo_asignado_a']] = {'0': asignados[0]}
             elif key == 'areas':
+                try:
+                    existing_record = self.get_rondin_by_id(folio)
+                except Exception:
+                    existing_record = {}
+                if not existing_record:
+                    raw_record = self.get_record_by_folio(
+                        folio, self.CONFIGURACION_RECORRIDOS_FORM, select_columns={'answers': 1}
+                    )
+                    existing_record = {
+                        'areas': raw_record.get('answers', {}).get(self.rondin_keys['areas'], [])
+                    }
+                existing_areas = existing_record.get('areas', [])
+                if isinstance(existing_areas, dict):
+                    existing_areas = [existing_areas[k] for k in sorted(existing_areas, key=lambda x: int(x))]
+                if existing_areas and isinstance(existing_areas[0], list):
+                    existing_areas = existing_areas[0]
+
                 areas_list = []
                 for area in value:
                     catalogo_area = {}
@@ -2513,10 +2533,24 @@ class Accesos(Accesos):
                         catalogo_area[self.Location.f['area']] = area
                     area_dict = {self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: catalogo_area}
                     areas_list.append(area_dict)
-                answers[self.rondin_keys["areas"]] = {
-                    (index + 1) * -1: item for index, item in enumerate(areas_list)
+
+                areas_answers = {
+                    str(index): item for index, item in enumerate(areas_list)
                 }
-           
+                for index in range(len(areas_list), len(existing_areas)):
+                    areas_answers[str(index)] = {
+                        self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
+                            self.Location.f['area']: "",
+                            self.f['geolocalizacion_area_ubicacion']: "",
+                            self.f['foto_area']: "",
+                            self.f['area_tag_id']: "",
+                        },
+                        self.CATALOGO_FORMAS_OBJ_ID: {
+                            self.mf['nombre_forma']: "",
+                            self.rondin_keys['grupo_id']: "",
+                        },
+                    }
+                answers[self.rondin_keys["areas"]] = areas_answers
             elif key == 'sucede_recurrencia' and value and ('dia_del_mes' in value or 'mes' in value):
                 actual_day = datetime.now().day
                 answers[self.rondin_keys['que_dia_del_mes']] = int(actual_day)
