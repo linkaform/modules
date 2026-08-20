@@ -77,7 +77,7 @@ if __name__ == "__main__":
     elif option == 'get_user_contacts':
         response = acceso_obj.get_user_contacts()
     elif option == 'get_config_modulo_seguridad':
-        response = acceso_obj.get_config_modulo_seguridad(ubicaciones=locations)
+        response = acceso_obj.get_config_modulo_seguridad(ubicaciones=locations, account_id=account_id)
     elif option == 'get_pass_img':
         response = acceso_obj.get_pass_img(qr_code)
     elif option == 'ocr_persona':
