@@ -52,7 +52,7 @@ if __name__ == "__main__":
     elif option == 'catalogos_pase_location':
         response = acceso_obj.catalogos_pase_location()
     elif option == 'catalogos_pase_no_jwt':
-        response = acceso_obj.catalagos_pase_no_jwt(qr_code)
+        response = acceso_obj.catalagos_pase_no_jwt(qr_code, account_id=account_id)
     elif option == 'enviar_msj':
         response = acceso_obj.create_enviar_msj_pase(folio=folio)
     elif option == 'enviar_correo':
