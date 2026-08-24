@@ -346,6 +346,7 @@ class Accesos(Accesos):
                 'proveedor':          f'$answers.{f["proveedor"]}',
                 'proveedor_email':    f'$answers.{f["proveedor_email"]}',
                 'proveedor_telefono': f'$answers.{f["proveedor_telefono"]}',
+                'empresa_transportista': f'$answers.{f["empresa_transportista"]}',
 
                 # material
                 'proveedor_cliente_material': f'$answers.{f["proveedor_cliente_material"]}',
@@ -369,6 +370,9 @@ class Accesos(Accesos):
                         'peso':       f'$$item.{f["peso"]}',
                         'sello':      f'$$item.{f["sello"]}',
                         'contenedor': f'$$item.{f["contenedor"]}',
+                        'producto':      f'$$item.{f["producto"]}',
+                        'lote':          f'$$item.{f["lote"]}',
+                        'no_referencia': f'$$item.{f["no_referencia"]}',
                     },
                 }},
 
@@ -399,6 +403,7 @@ class Accesos(Accesos):
                 'conductor_no_licencia':      f'$answers.{f["conductor_no_licencia"]}',
                 'conductor_lugar_expedicion': f'$answers.{f["conductor_lugar_expedicion"]}',
                 'conductor_vigencia':         f'$answers.{f["conductor_vigencia"]}',
+                'conductor_rfc':              f'$answers.{f["conductor_rfc"]}',
                 'conductor_foto_licencia':    f'$answers.{f["conductor_foto_licencia"]}',
 
                 # ayudante
@@ -417,6 +422,7 @@ class Accesos(Accesos):
                 'vehiculo_placas':              f'$answers.{f["vehiculo_placas"]}',
                 'vehiculo_no_economico':        f'$answers.{f["vehiculo_no_economico"]}',
                 'vehiculo_niv':                 f'$answers.{f["vehiculo_niv"]}',
+                'vehiculo_color':               f'$answers.{f["vehiculo_color"]}',
                 'vehiculo_tarjeta_circulacion': f'$answers.{f["vehiculo_tarjeta_circulacion"]}',
 
                 # contenedores
@@ -579,6 +585,7 @@ class Accesos(Accesos):
                 f['conductor_no_licencia']:      conductor.get('licencia', ''),
                 f['conductor_lugar_expedicion']: conductor.get('lugar_expedicion', ''),
                 f['conductor_vigencia']:         conductor.get('vigencia', ''),
+                f['conductor_rfc']:              conductor.get('rfc', ''),
                 f['conductor_foto_licencia']:    [{'file_name': foto.get('file_name', ''), 'file_url': foto['file_url']}] if foto.get('file_url') else [],
             })
 
@@ -603,6 +610,7 @@ class Accesos(Accesos):
                 f['vehiculo_placas']:              vehiculo.get('placas', ''),
                 f['vehiculo_no_economico']:        vehiculo.get('economico', ''),
                 f['vehiculo_niv']:                 vehiculo.get('niv', ''),
+                f['vehiculo_color']:               vehiculo.get('color', ''),
                 f['vehiculo_tarjeta_circulacion']: [{'file_name': foto.get('file_name', ''), 'file_url': foto['file_url']}] if foto.get('file_url') else [],
             })
 
