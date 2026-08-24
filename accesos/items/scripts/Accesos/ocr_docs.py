@@ -1,5 +1,7 @@
 # coding: utf-8
 import sys, simplejson
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from linkaform_api import settings
 from account_settings import *
 
@@ -539,6 +541,157 @@ class Accesos(Accesos):
             }
         return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
 
+    def ocr_packing_list(self, image_source,
+                          extra_instructions: str = None,
+                          model: str = 'google/gemini-2.5-flash',
+                          max_tokens: int = 8000) -> dict:
+        """
+        Extrae los datos de una foto de la etiqueta de un cartón/caja de equipo
+        de telecomunicaciones (ej. ONTs Huawei): los datos generales impresos en
+        el panel de la caja (modelo, marca, código de cartón, SKU, item, orden,
+        cantidad) y, por cada unidad individual etiquetada dentro de la caja,
+        su Prod ID, número de serie (SN) y dirección MAC.
+
+        Args:
+            image_source: URL remota, ruta local, o lista de imágenes (una por
+                          cara del cartón, si las etiquetas de las unidades
+                          continúan en más de una cara/foto).
+            model:        Modelo OpenRouter a usar. Se usa 'flash' (no 'lite')
+                          por default porque las etiquetas de las unidades son
+                          densas y 'lite' tiende a omitir filas.
+            max_tokens:   Sube este valor si el cartón trae muchas unidades
+                          (varias caras/fotos o cajas grandes).
+
+        Returns:
+            dict con:
+                - status_code : 200 OK / 206 advertencias / 400 config / 500 error
+                - data        : datos generales del cartón + lista de unidades
+                                con su prod_id, sn y mac
+                - msg         : mensaje de resultado
+        """
+        if not self.ai:
+            return {'status_code': 400, 'msg': 'OpenRouter no configurado'}
+
+        # "system" le da el rol/contexto al modelo (quién es y cómo debe comportarse).
+        # "prompt" (abajo) es la instrucción concreta de la tarea + el JSON exacto que
+        # debe regresar. Separar ambos es el mismo patrón que usan ocr_equipo/ocr_vehiculo.
+        system = (
+            "You are a logistics specialist trained to read carton/box labels for "
+            "telecommunications equipment (ONTs, modems, routers, network gear). "
+            "These labels have a header panel with the equipment type, brand, model, "
+            "carton code, SKU, item, order and quantity, followed by one small label "
+            "per individual unit packed inside the carton, each with its own Prod ID, "
+            "serial number (SN) and MAC address. "
+            "Always respond with a single valid JSON object and nothing else — "
+            "no markdown, no backticks, no explanation, no preamble."
+        )
+
+        # El JSON de abajo NO es el resultado: es el "molde"/schema que se le pide al
+        # modelo que llene. Cada línea documenta qué campo de la etiqueta corresponde
+        # a cada llave, para que el modelo sepa exactamente dónde leer cada dato.
+        # - Los campos de nivel raíz (tipo_equipo, marca, modelo, ...) son datos del
+        #   cartón completo (aparecen una sola vez en el panel de la etiqueta).
+        # - "serials" es una lista con una entrada por cada mini-etiqueta de unidad
+        #   individual (Prod ID / SN / MAC) impresa dentro/alrededor del cartón.
+        prompt = (
+            "Analyze the provided carton label image(s) as a single combined carton "
+            "(if there are multiple images, treat them as different faces/photos of "
+            "the SAME carton/box, since the individual unit labels can continue across "
+            "faces). Transcribe the header panel data and, for EVERY individual unit "
+            "label visible (each printed as 'PROD ID: ...' next to 'SN: ...' and "
+            "'MAC: ...'), extract its three values exactly as printed — do not skip or "
+            "summarize any unit, even if there are dozens of them. "
+            "If a field cannot be determined from the image, use null. "
+            "\n\n"
+            "Return ONLY a JSON object with this exact structure:\n"
+            "{\n"
+            '  "tipo_equipo": "string — equipment type description printed on the label, e.g. TERMINAL PARA RED DE FIBRA OPTICA, or null",\n'
+            '  "marca": "string — MARCA field, e.g. HUAWEI, or null",\n'
+            '  "modelo": "string — MODELO field, e.g. Huawei OptiXstar HG8141X7b-50, or null",\n'
+            '  "codigo_carton": "string — CODIGO DE CARTON value, or null",\n'
+            '  "sku": "string — SKU number printed next to its barcode, or null",\n'
+            '  "item": "string — ITEM code, or null",\n'
+            '  "order": "string — ORDER code, or null",\n'
+            '  "qty": "number — QTY value printed on the label header, or null",\n'
+            '  "code": "string — CODE value, or null",\n'
+            '  "notes": "string — NOTES field, e.g. HECHO EN CHINA, or null",\n'
+            '  "serials": [\n'
+            '    {\n'
+            '      "prod_id": "string — PROD ID of this unit label",\n'
+            '      "sn": "string — SN (serial number) of this unit label",\n'
+            '      "mac": "string — MAC address of this unit label, or null"\n'
+            '    }\n'
+            '  ],\n'
+            '  "confianza": "string — alto / medio / bajo — overall confidence based on image clarity"\n'
+            "}"
+        )
+
+        # Instrucciones extra opcionales (ej. "el Part No. siempre empieza con 5"),
+        # se agregan al final del prompt tal cual las mande quien llama la función.
+        if extra_instructions:
+            prompt += f"\n\nAdditional instructions: {extra_instructions}"
+
+        # Sanitizar image_source: ocr_general espera SIEMPRE una lista de URLs/rutas.
+        # Si mandan un solo string lo envolvemos en lista; si mandan una lista de dicts
+        # (ej. el formato de archivos adjuntos de LinkaForm: [{'file_url': '...'}]),
+        # extraemos solo la URL de cada uno.
+        if isinstance(image_source, str):
+            image_source = [image_source]
+        elif isinstance(image_source, list):
+            image_source = [
+                img['file_url'] if isinstance(img, dict) else img
+                for img in image_source
+            ]
+
+        print('>>> ocr_packing_list image_source=', image_source)
+
+        # Llamada al modelo de OpenRouter: le mandamos la(s) imagen(es) + system + prompt.
+        # Si son varias imágenes (varias caras del cartón), el modelo las analiza como
+        # un solo cartón, por eso el prompt dice "different faces/photos of the SAME carton".
+        raw_text = self.ai.ocr_general(image_source, system, prompt, model=model, max_tokens=max_tokens)
+
+        # La respuesta viene con la forma típica de una API tipo OpenAI/OpenRouter:
+        # {'choices': [{'message': {'content': <el JSON que pedimos>}}], ...}
+        # Aquí solo navegamos esa estructura para sacar el contenido; si algo no viene
+        # (ej. error del modelo), "datos" se queda como diccionario vacío.
+        datos = {}
+        if raw_text.get('choices'):
+            choices = raw_text['choices']
+            if isinstance(choices, list) and len(choices) > 0:
+                content = choices[0].get('message', {}).get('content')
+                if content:
+                    datos = content
+
+        print('ocr_packing_list datos=', datos)
+
+        # _ocr_normalizar limpia texto (mayúsculas/espacios) en campos típicos de
+        # identificación (curp, rfc, nombre). Un Packing List no trae esos campos,
+        # así que aquí no cambia nada — se llama solo por consistencia con el resto
+        # de las funciones de este archivo.
+        datos = self._ocr_normalizar(datos)
+
+        # Igual que arriba: _ocr_validar_id valida formatos de CURP/RFC/fecha de
+        # nacimiento. Para un Packing List siempre regresa una lista vacía (sin
+        # advertencias), pero se deja para mantener el mismo flujo de respuesta
+        # (200/206) que las demás funciones de OCR.
+        errores = self._ocr_validar_id(datos)
+        
+        datos['labelPhotos'] = image_source
+        fecha_monterrey = datetime.now(timezone.utc).astimezone(
+            ZoneInfo("America/Monterrey")
+        )
+        datos['confirmedAt'] = fecha_monterrey.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
+
+        if errores:
+            return {
+                'status_code': 206,
+                'msg': 'Extracción con advertencias',
+                'data': datos,
+                'warnings': errores,
+            }
+
+        return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
+
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
@@ -669,7 +822,15 @@ if __name__ == "__main__":
             image_source=image_source,
             extra_instructions=extra_instructions,
         )
+    elif option == 'ocr_packing_list':
+        images = data.get('images', [])
+        if not images and image_source:
+            images = [image_source]
+        response = acceso_obj.ocr_packing_list(
+            image_source=images,
+            extra_instructions=extra_instructions,
+        )
     else:
-        response = {'msg': 'Empty', 'valid_options': ['ocr_id', 'ocr_doc', 'ocr_batch', 'ocr_paquete', 'ocr_truck', 'ocr_vehiculo', 'ocr_persona', 'ocr_equipo', 'ocr_articulo_perdido', 'ocr_articulo']}
+        response = {'msg': 'Empty', 'valid_options': ['ocr_id', 'ocr_doc', 'ocr_batch', 'ocr_paquete', 'ocr_truck', 'ocr_vehiculo', 'ocr_persona', 'ocr_equipo', 'ocr_articulo_perdido', 'ocr_articulo', 'ocr_packing_list']}
 
     acceso_obj.HttpResponse({'data': response})

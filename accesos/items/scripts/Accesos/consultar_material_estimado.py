@@ -38,7 +38,7 @@ class Accesos(Accesos):
         self.data = self.data.get('data',{})
 
         # form_id / catalog_id (iguales a crear_vales_de_materiales.py)
-        self.FORM_ID_KITS = 164626 # PREPROD
+        self.FORM_ID_KITS = 164757 # 164626 # PREPROD
         self.CATALOG_ID_SKU = 133015 # Este ya está OK en Prod y Preprod.
         self.CATALOG_ID_TIPOS_TAREA = 56269 # Este se va a consultar la info que está en Admin.
         self.FORMS_ID_FTTH = [11044, 16343, 21954, 21953, 147977]
@@ -107,14 +107,14 @@ class Accesos(Accesos):
         }
 
         # field_id de la forma de Kits (FORM_ID_KITS)
-        self.sku_catalog_obj_id = '6824e631aa87c4ed5f18bcaa' # PREPROD
+        self.sku_catalog_obj_id = '6824e631aa87c4ed5f18bcaa'
         self.kits_fields = {
             'tecnologia': '68819db58b1b1ab2e1d5ef2b',
             'tipo': '68819e548b1b1ab2e1d5ef31',
             'tipo_material': '68819e1b9e38c6f0be9066c3',
             'grupo_productos': '68819f06fd736f4a03d5eece',
             'cantidad': '68819f7b5bf2a425981fef5b',
-            'unidad_medida_obj': '66c659483abf1c1605559450',
+            'unidad_medida_obj': '6824e60fb2d7f2425a31357a',
             'unidad_medida': '669efc6f47920d1b51663d29',
         }
 
@@ -141,14 +141,14 @@ class Accesos(Accesos):
 
         self.header_xls_fibra = [
             "Nombre de la forma", "Folio", "Conexión", "Tipo de Tarea", "Teléfono", "AREA", "COPE", "Distrito", 
-            "Expediente Del Tecnico", "Técnico PIC", "Fecha de Carga Contratista", "Tipo de Material", "Alfanumérico TAC", 
+            "Expediente Del Tecnico", "Técnico TAC", "Fecha de Carga Contratista", "Tipo de Material", "Alfanumérico TAC", 
             "Alfanumérico Contratista", "Alfanumérico Técnico", "Tipo de Instalación", "Metros Bajante", "Metraje Adicional", 
             "Fecha Liquidada", "Tecnico", "Estatus de Orden", "Tipo de Expediente", 
         ]
 
         self.header_xls_cobre = [
             "Nombre de la forma", "Folio", "Conexión", "Tipo de Tarea", "AREA", "COPE", "Distrito", "Telefono", "Tecnico", 
-            "Expediente del Tecnico", "Técnico PIC", "Fecha de Carga Contratista", "Modem - Numero de Serie", 
+            "Expediente del Tecnico", "Técnico TAC", "Fecha de Carga Contratista", "Modem - Numero de Serie", 
             "Numero de Serie Contratista", "Numero de Serie Técnico", "Metros Bajante", "Fecha de Liquidacion", 
             "Estatus de Orden", "Tipo de Expediente", 
         ]
@@ -269,6 +269,9 @@ class Accesos(Accesos):
         if not isinstance(text, str):
             return text
 
+        if text.startswith("="):
+            return ""
+
         try:
             return text.encode("latin1").decode("utf-8")
         except Exception:
@@ -295,7 +298,7 @@ class Accesos(Accesos):
                 row_record[c_idx] = self.fix_encoding( self.clean_value(cell) )
 
         content_sheets = {
-            sheet: [[self.clean_value(cell) for cell in row] for row in rows]
+            sheet: [[self.fix_encoding( self.clean_value(cell) ) for cell in row] for row in rows]
             for sheet, rows in content_sheets.items()
         }
 
@@ -420,7 +423,8 @@ class Accesos(Accesos):
             'tecnico': {'$ifNull': ['$answers.f1054000a02000000000fa04', '$answers.59e1280bb43fdd7cd6fc9f63']},
             'tecnico_pic': '$answers.5eb091915ae0d087df1163de',
             'telefono': '$answers.f1054000a010000000000005',
-            'tipo_de_material': {'$ifNull': [f'$answers.{self.field_id_tipo_material}', 'telmex/condumex']},
+            # 'tipo_de_material': {'$ifNull': [f'$answers.{self.field_id_tipo_material}', 'telmex/condumex']},
+            'tipo_de_material': 'telmex/condumex',
             'tipo_de_tarea': {'$ifNull': [f'$answers.{self.tipo_tarea_fields["ftth"]}', f'$answers.{self.tipo_tarea_fields["cobre"]}']},
             'tipo_instalacion': '$answers.f1054000a020000000000004'
         }
@@ -429,8 +433,8 @@ class Accesos(Accesos):
         match_query = {
             'form_id': {'$in': forms_os},
             'deleted_at': {'$exists': False},
-            'answers.633d9f63eb936fb6ec9bf580': {'$nin': ['degradado']},
-            'answers.6a0be77a2b38ce3a6333e3fc': {'$nin': ['sí']}, # ¿Vale de Materiales?
+            # 'answers.633d9f63eb936fb6ec9bf580': {'$nin': ['degradado']}, # 20260821 Gil solicita que si salgan los degradados
+            # 'answers.6a0be77a2b38ce3a6333e3fc': {'$nin': ['sí']}, # ¿Vale de Materiales? # 20260821 Gil solicita que salgan estos datos
             '$or': [
                 {f'answers.{f["fecha_liquidacion_1"]}': {'$gte': f'{desde}', '$lte': f'{hasta} 23:59:59'}},
                 {f'answers.{f["fecha_liquidacion_2"]}': {'$gte': f'{desde}', '$lte': f'{hasta} 23:59:59'}},
@@ -505,6 +509,7 @@ class Accesos(Accesos):
         Agrupa las Ordenes de Servicio por Conexion / Area / Tecnologia / Location
         """
         grupo_conexiones, email_id_expediente = {}, {}
+        folios_reclamados_y_expediente = {'reclamados': 0, 'por_expediente': 0}
         default_location = 'Almacen Fibra'
 
         for orden_servicio in records_orden_servicio:
@@ -513,9 +518,10 @@ class Accesos(Accesos):
             # Si el registro no tiene conexión se debe obtener a quien le pertenece el registro con el expediente
             if self.es_expediente(email_o_expediente):
                 email_connection, id_connection = self.get_contratista_by_expediente( email_o_expediente )
-                if not email_connection:
-                    print(f'[ERROR] No se pudo encontrar el email para el expediente = {email_o_expediente}')
-                    continue
+                # 20260821 Gil solicita que salgan los folios aunque su expediente no exista en Exp de Tecnicos
+                # if not email_connection:
+                #     print(f'[ERROR] No se pudo encontrar el email para el expediente = {email_o_expediente}')
+                #     continue
                 email_id_expediente[email_connection] = id_connection
             else:
                 email_connection = email_o_expediente
@@ -527,6 +533,9 @@ class Accesos(Accesos):
 
                 if orden.get('connection_id'):
                     email_id_expediente[email_connection] = orden['connection_id']
+                    folios_reclamados_y_expediente['reclamados'] += 1
+                else:
+                    folios_reclamados_y_expediente['por_expediente'] += 1
 
                 grupo_conexiones[email_connection] \
                     .setdefault(orden.get('area'), {}) \
@@ -534,7 +543,7 @@ class Accesos(Accesos):
                     .setdefault(default_location, []) \
                     .append(orden)
 
-        return grupo_conexiones, email_id_expediente
+        return grupo_conexiones, email_id_expediente, folios_reclamados_y_expediente
 
     def apply_sort_to_products(self, list_productos, productos):
         for data_product in list_productos:
@@ -616,7 +625,10 @@ class Accesos(Accesos):
         Recorre las ordenes de servicio de una Conexion y calcula el material estimado que le corresponde.
         A diferencia del script original, esta funcion NO crea ningun registro: solo regresa el calculo.
         """
-        no_aplica_por_tipo_tarea, folios_aplicados_fibra, folios_aplicados_cobre = [], [], []
+        msgs_no_aplica, folios_aplicados_fibra, folios_aplicados_cobre = [], [], []
+
+        folios_no_aplicados_fibra, folios_no_aplicados_cobre = [], []
+
         materiales_to_record = {}
         count_folios_metraje = {'fibra': 0, 'cobre': 0}
         areas, tecnologias = set(), set()
@@ -625,22 +637,28 @@ class Accesos(Accesos):
             os_cobre = orden_servicio['form_id'] in self.FORMS_ID_COBRE
             folio_os = orden_servicio['folio']
             tipo_tarea = orden_servicio.get('tipo_de_tarea')
-
-            if tipo_tarea not in tipos_tarea_para_material:
-                no_aplica_por_tipo_tarea.append(f"Folio {folio_os} no aplica por Tipo de Tarea {tipo_tarea}")
-                continue
-
             tipo_os = 'cobre' if os_cobre else 'fibra'
-            tecnologias.add(tipo_os.upper())
-
             info_tipo_tarea_aplica = tipos_tarea_para_material.get(tipo_tarea)
-            aplica_material = info_tipo_tarea_aplica.get(f"aplica_bajante_{tipo_os}") == 'Sí'
-            aplica_ont_modem = info_tipo_tarea_aplica.get('aplica_modem' if os_cobre else 'aplica_ont') == 'Sí'
 
-            if not aplica_material and not aplica_ont_modem:
-                no_aplica_por_tipo_tarea.append(f"Folio {folio_os} no aplica material")
+
+            if info_tipo_tarea_aplica:
+                aplica_material = info_tipo_tarea_aplica.get(f"aplica_bajante_{tipo_os}") == 'Sí'
+                aplica_ont_modem = info_tipo_tarea_aplica.get('aplica_modem' if os_cobre else 'aplica_ont') == 'Sí'
+                aplica = aplica_material or aplica_ont_modem
+                no_aplica_por = f"Folio {folio_os} no aplica material"
+            else:
+                aplica = False
+                no_aplica_por = f"Folio {folio_os} no aplica por Tipo de Tarea {tipo_tarea}"
+
+            if not aplica:
+                if os_cobre:
+                    folios_no_aplicados_cobre.append( self.get_row_for_xls( folio_os, orden_servicio, nombre_conexion, tipo_tarea, version=2 ) )
+                else:
+                    folios_no_aplicados_fibra.append( self.get_row_for_xls(folio_os, orden_servicio, nombre_conexion, tipo_tarea) )
+                msgs_no_aplica.append( no_aplica_por )
                 continue
-
+            
+            tecnologias.add(tipo_os.upper())
             # Tipo de Material para fibra siempre será telmex/condumex
             tipo_material = orden_servicio.get('tipo_de_material') if os_cobre else 'telmex/condumex'
 
@@ -711,15 +729,24 @@ class Accesos(Accesos):
                 round(data_prod['cantidad_estimada'], 2),
             ])
 
-        return rows_materiales, no_aplica_por_tipo_tarea, folios_aplicados_fibra, folios_aplicados_cobre
+        return rows_materiales, folios_aplicados_fibra, folios_aplicados_cobre, folios_no_aplicados_fibra, folios_no_aplicados_cobre, msgs_no_aplica
 
-    def make_xls(self, header_xls, rows_xls, field_xls, name_to_file=None):
+    def make_xls(self, header_xls, rows_xls, field_xls, name_to_file=None, rows_fols_no_considerados=None):
         if not rows_xls:
             return
 
-        response_xls_create = self.create_xls_file(
-            self.form_id, field_xls, header=header_xls, rows_records=rows_xls, name_to_file=name_to_file
-        )
+        if rows_fols_no_considerados:
+            sheets_to_xls = {}
+            for sheet_rows, sheet_name in [ (rows_xls, "Folios considerados"), (rows_fols_no_considerados, "NO Considerados") ]:
+                if not sheet_rows:
+                    continue
+
+                sheets_to_xls[sheet_name] = [header_xls, *sheet_rows]
+
+            response_xls_create = self.create_xls_file( self.form_id, field_xls, content_sheets=sheets_to_xls, name_to_file=name_to_file )
+        else:
+            response_xls_create = self.create_xls_file( self.form_id, field_xls, header=header_xls, rows_records=rows_xls, name_to_file=name_to_file )
+        
         print('\n+++ +++ response_xls_create =',response_xls_create)
         self.current_record['answers'].update(response_xls_create)
 
@@ -757,13 +784,14 @@ class Accesos(Accesos):
         # print('records_orden_servicio =',list(records_orden_servicio))
         # stop
 
-        group_conexiones, dict_email_id_conexion = self.get_conexiones_orden_servicio(records_orden_servicio)
+        group_conexiones, dict_email_id_conexion, dict_folios_reclamados = self.get_conexiones_orden_servicio(records_orden_servicio)
 
         if not group_conexiones:
             return self.set_status('error', 'No se encontraron registros de orden de servicio con el periodo indicado')
 
         total_rows_materiales, total_no_aplican = [], []
         total_folios_considerados_fibra, total_folios_considerados_cobre = [], []
+        total_folios_no_considerados_fibra, total_folios_no_considerados_cobre = [], []
 
         dict_contratistas = self.get_all_contratistas_catalog()
 
@@ -774,21 +802,34 @@ class Accesos(Accesos):
             for area_to, data_tecnologia in data_area.items():
                 for tecnologia_to, data_location in data_tecnologia.items():
                     for location_to, folios_os in data_location.items():
-                        rows_materiales, no_aplican, folios_considerados_fibra, folios_considerados_cobre = self.calcular_material_estimado(
+                        rows_materiales, folios_considerados_fibra, folios_considerados_cobre, no_aplican_fibra, no_aplican_cobre, msgs_no_aplica = self.calcular_material_estimado(
                             folios_os, dict_productos, tipos_tarea_para_material, kits_products, data_contratista.get('nombre', '')
                         )
                         total_rows_materiales.extend(rows_materiales)
-                        total_no_aplican.extend(no_aplican)
                         
                         total_folios_considerados_fibra.extend(folios_considerados_fibra)
                         total_folios_considerados_cobre.extend(folios_considerados_cobre)
 
-        # TODO del total_rows_materiales hay que generar el JSON que requiere Luis T. para su Front
-        # self.make_xls(total_rows_materiales, self.header_material, self.field_id_file_estimacion)
+                        total_folios_no_considerados_fibra.extend(no_aplican_fibra)
+                        total_folios_no_considerados_cobre.extend(no_aplican_cobre)
+
+                        total_no_aplican.extend(msgs_no_aplica)
 
         if not self.front_request:
-            self.make_xls(self.header_xls_fibra, total_folios_considerados_fibra, '6a032714b2194f0f517accc2', 'Órdenes de Servicio FTTH')
-            self.make_xls(self.header_xls_cobre, total_folios_considerados_cobre, '6a83a116e0a44de46b0e9f08', 'Órdenes de Servicio COBRE')
+            self.make_xls(self.header_material, total_rows_materiales, self.field_id_file_estimacion)
+            self.make_xls(
+                self.header_xls_fibra, total_folios_considerados_fibra, 
+                '6a032714b2194f0f517accc2', 'Órdenes de Servicio FTTH', total_folios_no_considerados_fibra
+            )
+            self.make_xls(
+                self.header_xls_cobre, total_folios_considerados_cobre, 
+                '6a83a116e0a44de46b0e9f08', 'Órdenes de Servicio COBRE', total_folios_no_considerados_cobre
+            )
+
+            self.current_record['answers']['6a062ac1fd516b4a6fd754a1'] = str( dict_folios_reclamados['reclamados'] + dict_folios_reclamados['por_expediente'] )
+            self.current_record['answers']['6a062ac1fd516b4a6fd754a2'] = str( dict_folios_reclamados['reclamados'] )
+            self.current_record['answers']['6a062ac1fd516b4a6fd754a3'] = str( dict_folios_reclamados['por_expediente'] )
+
             return self.set_status('terminado', self.list_to_str(total_no_aplican, separator='\n'))
 
         return total_rows_materiales
