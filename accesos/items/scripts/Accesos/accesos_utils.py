@@ -277,12 +277,13 @@ class Accesos(Accesos):
             "proveedor": "6a1ddb53f5a36ba1c7dd029d",
             "proveedor_email": "6a207762cd730fb838ce1bb1",
             "proveedor_telefono": "6a207762cd730fb838ce1bb2",
+            "empresa_transportista": "6a09fdc32fa9d55259ae9d2b",
 
             "grupo_documentos_para_ocr": "6a2ae394b8e5ca8fd73705dc",
             "tipo_de_documento": "6a2ae3d8cf0be6f60c19f85d",
             "no_de_documento": "6a2ae3d8cf0be6f60c19f85e",
             "documento_para_ocr": "6a2ae3d8cf0be6f60c19f85f",
-            
+
             "proveedor_cliente_material": "6a207762cd730fb838ce1bb4",
             "orden_de_compra": "6a1ddb53f5a36ba1c7dd02a0",
             "grupo_materiales": "6a2714954a54077ffa2394e6",
@@ -292,6 +293,9 @@ class Accesos(Accesos):
             "cantidad":   "6a2714eeca6ac6897ef55d95",
             "peso":       "6a2714eeca6ac6897ef55d96",
             "volumen":    "6a2714eeca6ac6897ef55d97",
+            "producto":      "6a3a6c2c9d500676ec5e3fbf",
+            "lote":          "6ade55ab470ae4e36395ba2b",
+            "no_referencia": "6a5b4fc9651b28e19d6352a2",
 
             "direccion_de_recoleccion": "6a1ddb53f5a36ba1c7dd02a1",
             "fecha_pase_transportista_desde": "6a1ddcba20dadbb04a29b59f",
@@ -335,6 +339,8 @@ class Accesos(Accesos):
             "vehiculo_placas": "6a2add8342320b4d1b66db8c",
             "vehiculo_no_economico": "6a2add8342320b4d1b66db8d",
             "vehiculo_niv": "6a2add8342320b4d1b66db8e",
+            "vehiculo_color": "6afbbf71031d00fe8bd50a41",
+            "conductor_rfc": "6a2c387c7df9203d2f98fcec",
             "foto_contenedores": "6a2b045ed8034654f212c1bc",
             "grupo_contenedores": "6a2add8342320b4d1b66db8f",
             "contenedor_numero": "6a2addcfcee6b93e39ab8a51",
@@ -635,6 +641,7 @@ class Accesos(Accesos):
             f['proveedor']:                      recibe.get('nombre', ''),
             f['proveedor_email']:                recibe.get('email', ''),
             f['proveedor_telefono']:             recibe.get('telefono', ''),
+            f['empresa_transportista']:          data.get('empresa_transportista', ''),
             f['proveedor_cliente_material']:     mat.get('proveedor_cliente', ''),
             f['orden_de_compra']:                mat.get('orden_compra', ''),
             f['grupo_documentos_para_ocr']:       [
@@ -653,6 +660,9 @@ class Accesos(Accesos):
                     f['peso']:       item.get('peso', ''),
                     f['sello']:      item.get('sello', ''),
                     f['contenedor']: item.get('contenedor', ''),
+                    f['producto']:      item.get('producto', ''),
+                    f['lote']:          item.get('lote', ''),
+                    f['no_referencia']: item.get('no_referencia', ''),
                 }
                 for item in mat.get('items', [])
             ],
@@ -705,6 +715,47 @@ class Accesos(Accesos):
         if res.get('status_code') not in [200, 201, 202]:
             self.LKFException({'title': 'Error al crear pase transportista', 'msg': res})
         res['qr_pase_transportista'] = qr_pase_transportista
+
+        # Reserva visible en el kanban de bitácora (columna "Programados") desde
+        # que se crea el pase — se liga por num_de_pase y se sustituye por el
+        # registro real de arribo en create_visit_transportista.
+        try:
+            bf = self.bitacora_transportista_fields
+            fecha_programada = (lugar.get('fecha_pase_transportista_desde') or '').strip()
+            if fecha_programada and ' ' not in fecha_programada:
+                fecha_programada = f'{fecha_programada} 00:00:00'
+            # La bitácora solo acepta "entrega"/"recolección" (binario); el pase
+            # maneja 4 valores (entrega_de_materia_prima, recoleccion_de_..., etc.)
+            tipo_operacion_pase = data.get('tipo_de_operacion', '') or ''
+            tipo_operacion_bitacora = 'recolección' if tipo_operacion_pase.startswith('recoleccion') else 'entrega'
+            b_metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_TRANSPORTISTAS)
+            b_metadata.update({
+                'properties': {
+                    'device_properties': {
+                        'System': 'Script',
+                        'Module': 'Accesos',
+                        'Process': 'Pase Transportista',
+                        'Action': 'create_pass_transportista',
+                        'File': 'modules/accesos/items/scripts/Accesos/accesos_utils.py',
+                    }
+                },
+                'answers': {
+                    bf['estatus']:               'programado',
+                    bf['fecha_hora_ingreso']:    fecha_programada,
+                    bf['num_de_pase']:           pass_id,
+                    bf['tipo_de_operacion']:     tipo_operacion_bitacora,
+                    bf['empresa_transportista']: data.get('empresa_transportista', ''),
+                    bf['proveedor_cliente']:     mat.get('proveedor_cliente', ''),
+                    bf['orden_de_compra']:       mat.get('orden_compra', ''),
+                    bf['anden_asignado']:        lugar.get('anden', ''),
+                },
+            })
+            res_stub = self.lkf_api.post_forms_answers(b_metadata)
+            if res_stub.get('status_code') not in [200, 201, 202]:
+                print(f'No se pudo crear el registro programado de bitácora para el pase {pass_id}: {res_stub}')
+        except Exception as e:
+            print(f'No se pudo crear el registro programado de bitácora para el pase {pass_id}: {e}')
+
         return res
 
     def create_visit_transportista(self, data):
@@ -735,6 +786,7 @@ class Accesos(Accesos):
         answers = {
             f['estatus']:               'arribo',
             f['fecha_hora_ingreso']:    fecha_ingreso,
+            f['num_de_pase']:           data.get('num_de_pase', ''),
             f['tipo_de_operacion']:     (data.get('tipo_operacion') or '').lower().replace(' ', '_'),
             f['empresa_transportista']: vehiculo.get('transportista', ''),
             f['procedencia']:           vehiculo.get('procedencia', ''),
@@ -774,7 +826,10 @@ class Accesos(Accesos):
             answers[f['grupo_remolques']] = [
                 {
                     f['tipo_remolque']:             item.get('tipo', ''),
-                    f['num_caja_contenedor']:        item.get('no_caja', ''),
+                    # Los remolques solo traen no_caja; los contenedores traen
+                    # además no_contenedor (su propio ID/ISO), que se prefiere
+                    # cuando está presente — si no, ambos comparten esta columna.
+                    f['num_caja_contenedor']:        item.get('no_contenedor') or item.get('no_caja', ''),
                     f['num_sello']:                  item.get('no_sello', ''),
                     f['placas_de_caja']:             item.get('placas', ''),
                     f['color_remolque_contenedor']:  item.get('color', ''),
@@ -810,10 +865,46 @@ class Accesos(Accesos):
                 for m in materiales
             ]
 
-        metadata.update({'answers': answers})
-        res = self.lkf_api.post_forms_answers(metadata)
-        if res.get('status_code') not in [200, 201, 202]:
-            self.LKFException({'title': 'Error al crear visita de transportista', 'msg': res})
+        num_de_pase = data.get('num_de_pase')
+        programado = None
+        if num_de_pase:
+            programado = self.cr.find_one({
+                'form_id': self.BITACORA_TRANSPORTISTAS,
+                'deleted_at': {'$exists': False},
+                f'answers.{f["num_de_pase"]}': num_de_pase,
+                f'answers.{f["estatus"]}': 'programado',
+            })
+
+        if programado:
+            # El pase ya reservó su lugar en el kanban (columna "Programados") al
+            # crearse — actualizamos ese mismo registro a "arribo" en vez de crear
+            # uno duplicado. patch_forms_answers reescribe el documento de answers
+            # completo, así que hay que mezclar con lo que ya existía (ej. andén)
+            # o se pierde cualquier campo que este payload no vuelva a mandar.
+            merged_answers = {**programado.get('answers', {}), **answers}
+            metadata.update({'answers': merged_answers, '_id': programado['_id']})
+            res = self.net.patch_forms_answers(metadata)
+            if res.get('status_code') not in [200, 201, 202]:
+                self.LKFException({'title': 'Error al actualizar visita de transportista', 'msg': res})
+            res['id'] = str(programado['_id'])
+            res['folio'] = programado.get('folio')
+            res['created_at'] = self.get_date_str(programado.get('created_at'))
+        else:
+            metadata.update({'answers': answers})
+            res = self.lkf_api.post_forms_answers(metadata)
+            if res.get('status_code') not in [200, 201, 202]:
+                self.LKFException({'title': 'Error al crear visita de transportista', 'msg': res})
+
+        if num_de_pase:
+            try:
+                self.lkf_api.patch_multi_record(
+                    answers={self.pass_fields_transportista['estado_transportista']: 'completado'},
+                    form_id=self.PASE_ENTRADA_TRANSPORTISTA,
+                    record_id=[num_de_pase],
+                )
+            except Exception as e:
+                print(f'No se pudo marcar el pase {num_de_pase} como completado: {e}')
+
         return res
 
     def create_custom_qr(self, url_for_qr, name_qr, form_id, img_field_id):
