@@ -682,7 +682,10 @@ class Accesos(Accesos):
             answers[f['grupo_remolques']] = {
                 (item['index'] if item.get('index') is not None else -(i + 1)): {
                     f['tipo_remolque']:            item.get('tipo', ''),
-                    f['num_caja_contenedor']:      item.get('no_caja', ''),
+                    # Los remolques solo traen no_caja; los contenedores traen
+                    # además no_contenedor (su propio ID/ISO), que se prefiere
+                    # cuando está presente — si no, ambos comparten esta columna.
+                    f['num_caja_contenedor']:      item.get('no_contenedor') or item.get('no_caja', ''),
                     f['num_sello']:                item.get('no_sello', ''),
                     f['placas_de_caja']:           item.get('placas', ''),
                     f['color_remolque_contenedor']: item.get('color', ''),

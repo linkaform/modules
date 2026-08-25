@@ -826,7 +826,10 @@ class Accesos(Accesos):
             answers[f['grupo_remolques']] = [
                 {
                     f['tipo_remolque']:             item.get('tipo', ''),
-                    f['num_caja_contenedor']:        item.get('no_caja', ''),
+                    # Los remolques solo traen no_caja; los contenedores traen
+                    # además no_contenedor (su propio ID/ISO), que se prefiere
+                    # cuando está presente — si no, ambos comparten esta columna.
+                    f['num_caja_contenedor']:        item.get('no_contenedor') or item.get('no_caja', ''),
                     f['num_sello']:                  item.get('no_sello', ''),
                     f['placas_de_caja']:             item.get('placas', ''),
                     f['color_remolque_contenedor']:  item.get('color', ''),
@@ -885,7 +888,7 @@ class Accesos(Accesos):
                 self.LKFException({'title': 'Error al actualizar visita de transportista', 'msg': res})
             res['id'] = str(programado['_id'])
             res['folio'] = programado.get('folio')
-            res['created_at'] = programado.get('created_at')
+            res['created_at'] = self.get_date_str(programado.get('created_at'))
         else:
             metadata.update({'answers': answers})
             res = self.lkf_api.post_forms_answers(metadata)
