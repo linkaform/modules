@@ -1125,7 +1125,7 @@ class Accesos(Accesos):
                 "checks_data": format_checks_data
             }
 
-    def get_bitacora(self, date_from=None, date_to=None, area_details=False, limit: int = 15, offset: int = 0, ubicacion: str = "", nombre_rondin: str = ""):
+    def get_bitacora(self, date_from=None, date_to=None, area_details=False, limit: int = 15, offset: int = 0, ubicacion: str = "", nombre_rondin: str = "",locations=[]):
         from datetime import datetime
         año = datetime.now().year
 
@@ -1152,6 +1152,8 @@ class Accesos(Accesos):
             match_filters[f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}"] = ubicacion
         if nombre_rondin:
             match_filters[f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}"] = nombre_rondin
+        if locations:
+            match_filters[f"answers.{self.mf['grupo_ubicaciones_pase']}.{self.UBICACIONES_CAT_OBJ_ID}.{self.f['location']}"] = {"$in": locations}
 
         query = [
             {"$match": match_filters},
@@ -1280,7 +1282,7 @@ class Accesos(Accesos):
             match.update({
                 "created_at": {"$lte": date_to}
             })
-
+       
         query = [
             {"$match": match},
             {"$project": {
@@ -1337,6 +1339,7 @@ class Accesos(Accesos):
             {"$skip": offset},
             {"$limit": limit}
         ]
+       
         response = self.format_cr(self.cr.aggregate(query))
         format_response = []
 
@@ -2673,7 +2676,9 @@ if __name__ == "__main__":
     user_to_assign = data.get("user_to_assign", {})
     tipo=data.get("tipo", "")
     data_script = class_obj.current_record
+    locations=data.get("locations", [])
     class_obj.timezone = data_script.get('timezone', 'America/Mexico_City')
+
     tz = pytz.timezone(class_obj.timezone)
     if option == 'create_rondin':
         response = class_obj.create_rondin(rondin_data=rondin_data)
@@ -2688,7 +2693,7 @@ if __name__ == "__main__":
     elif option == 'get_recorridos':
         response = class_obj.get_recorridos(date_from=date_from, date_to=date_to, area_details=area_details, limit=limit, offset=offset)
     elif option == 'get_bitacora':
-        response = class_obj.get_bitacora(date_from=date_from, date_to=date_to, area_details=area_details, limit=limit, offset=offset)
+        response = class_obj.get_bitacora(date_from=date_from, date_to=date_to, area_details=area_details, limit=limit, offset=offset, locations=locations)
     elif option == 'get_catalog_areas':
         response = class_obj.get_catalog_areas(ubicacion=ubicacion, tipo=tipo)
     elif option == 'get_all_checks':
