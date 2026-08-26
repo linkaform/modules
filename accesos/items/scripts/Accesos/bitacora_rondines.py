@@ -165,11 +165,18 @@ class Accesos(Accesos):
 
     def get_and_set_user(self):
         tipo_asignacion = self.answers.get(self.rondin_keys['tipo_asignacion'])
-        grupo_asignado_a = self.answers.get(self.rondin_keys['grupo_asignado_a'])
+        grupo_asignado_a = self.answers.get(self.rondin_keys['grupo_asignado_a']) or []
         print('tipo_asignacion = ', tipo_asignacion)
         if tipo_asignacion and tipo_asignacion in ('persona_especifica', 'grupo'):
             if tipo_asignacion == 'grupo':
-                grupo_asignado_a = self.lkf_api.get_group_users(self.unlist(self.answers[self.GRUPOS_CAT_OBJ_ID][self.mf['id_grupo']]))
+                id_grupo = self.unlist(self.answers.get(self.GRUPOS_CAT_OBJ_ID, {}).get(self.mf['id_grupo'], ''))
+                if id_grupo:
+                    grupo_asignado_a = self.lkf_api.get_group_users(id_grupo) or []
+                else:
+                    print('Warning: el recorrido esta asignado a un grupo pero no tiene id_grupo, se usa el grupo repetitivo asignado_a')
+            if not grupo_asignado_a:
+                print('Warning: no se encontraron usuarios para asignar el recorrido')
+                return False
             new_metadata = deepcopy(self.current_record)
             new_metadata.pop('answers')
             new_metadata.pop('_id')
