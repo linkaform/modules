@@ -52,7 +52,7 @@ if __name__ == "__main__":
     elif option == 'catalogos_pase_location':
         response = acceso_obj.catalogos_pase_location()
     elif option == 'catalogos_pase_no_jwt':
-        response = acceso_obj.catalagos_pase_no_jwt(qr_code)
+        response = acceso_obj.catalagos_pase_no_jwt(qr_code, account_id=account_id)
     elif option == 'enviar_msj':
         response = acceso_obj.create_enviar_msj_pase(folio=folio)
     elif option == 'enviar_correo':
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     elif option == 'get_user_contacts':
         response = acceso_obj.get_user_contacts()
     elif option == 'get_config_modulo_seguridad':
-        response = acceso_obj.get_config_modulo_seguridad(ubicaciones=locations)
+        response = acceso_obj.get_config_modulo_seguridad(ubicaciones=locations, account_id=account_id)
     elif option == 'get_pass_img':
         response = acceso_obj.get_pass_img(qr_code)
     elif option == 'ocr_persona':

@@ -6,9 +6,9 @@ import sys, simplejson, json
 from linkaform_api import settings
 from account_settings import *
 
-from accesos_utils import Accesos
+from base_utils import Base
 
-class Accesos(Accesos):
+class Base(Base):
 
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
@@ -80,25 +80,25 @@ class Accesos(Accesos):
             'always':{
                 'forms':[],
                 'catalogs':[
-                    self.ACTIVOS_FIJOS_CAT_ID,
-                    self.AREAS_DE_LAS_UBICACIONES_CAT_ID,
-                    self.CATEGORIAS_INCIDENCIAS_ID,
-                    self.CONFIGURACION_RECORRIDOS_ID,
-                    self.CONF_AREA_EMPLEADOS_AP_CAT_ID,
-                    self.CONF_AREA_EMPLEADOS_CAT_ID,
-                    self.ESTADO_ID,
-                    self.LISTA_FALLAS_CAT_ID,
-                    self.LISTA_INCIDENCIAS_CAT_ID,
-                    self.LOCKERS_CAT_ID,
-                    self.PASE_ENTRADA_ID,
-                    self.PROVEEDORES_CAT_ID,
-                    self.SUB_CATEGORIAS_INCIDENCIAS_ID,
-                    self.TIPO_ARTICULOS_PERDIDOS_CAT_ID,
-                    self.TIPO_DE_EQUIPO_ID,
-                    self.UBICACIONES_CAT_ID,
-                    self.USUARIOS_ID,
-                    self.VISITA_AUTORIZADA_CAT_ID,
-                    self.MENUS_CATALOG_ID,
+                    self.Accesos.ACTIVOS_FIJOS_CAT_ID,
+                    self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_ID,
+                    self.Accesos.CATEGORIAS_INCIDENCIAS_ID,
+                    self.Accesos.CONFIGURACION_RECORRIDOS_ID,
+                    self.Accesos.CONF_AREA_EMPLEADOS_AP_CAT_ID,
+                    self.Accesos.CONF_AREA_EMPLEADOS_CAT_ID,
+                    self.Accesos.ESTADO_ID,
+                    self.Accesos.LISTA_FALLAS_CAT_ID,
+                    self.Accesos.LISTA_INCIDENCIAS_CAT_ID,
+                    self.Accesos.LOCKERS_CAT_ID,
+                    self.Accesos.PASE_ENTRADA_ID,
+                    self.Accesos.PROVEEDORES_CAT_ID,
+                    self.Accesos.SUB_CATEGORIAS_INCIDENCIAS_ID,
+                    self.Accesos.TIPO_ARTICULOS_PERDIDOS_CAT_ID,
+                    self.Accesos.TIPO_DE_EQUIPO_ID,
+                    self.Accesos.UBICACIONES_CAT_ID,
+                    self.Accesos.USUARIOS_ID,
+                    self.Accesos.VISITA_AUTORIZADA_CAT_ID,
+                    self.Accesos.MENUS_CATALOG_ID,
                     self.OCR_DOCS,
                     self.SCRIPT_PASE_ACCESO,
                     self.SCRIPT_PASE_ACCESO_API,
@@ -106,19 +106,19 @@ class Accesos(Accesos):
                 'scripts':[self.OFFLINE_SERVICES, self.SCRIPT_MENUS, self.FILTERS, self.SCRIPT_TRANSPORTISTAS]
             },
             'accesos':{
-                'forms':[self.CHECKIN_CASETAS, self.REGISTRO_ASISTENCIA, self.BITACORA_GAFETES_LOCKERS, self.CHECK_UBICACIONES, self.BITACORA_ACCESOS],
+                'forms':[self.Accesos.CHECKIN_CASETAS, self.Accesos.REGISTRO_ASISTENCIA, self.Accesos.BITACORA_GAFETES_LOCKERS, self.Accesos.CHECK_UBICACIONES, self.Accesos.BITACORA_ACCESOS],
                 'catalogs':[],
                 'scripts':[]
             },
             'seguridad':{
-                'forms':[self.CONFIGURACION_RECORRIDOS_FORM, self.BITACORA_RONDINES, self.BITACORA_FALLAS, self.BITACORA_INCIDENCIAS],
+                'forms':[self.Accesos.CONFIGURACION_RECORRIDOS_FORM, self.Accesos.BITACORA_RONDINES, self.Accesos.BITACORA_FALLAS, self.Accesos.BITACORA_INCIDENCIAS],
                 'catalogs':[],
                 'scripts':[self.SCRIPT_RONDINES, self.FALLAS, self.SCRIPT_INCIDENCIAS]
             },
             'activos':{
-                'forms':[self.CONCESSIONED_ARTICULOS, self.BITACORA_OBJETOS_PERDIDOS],
-                'catalogs':[self.ACTIVOS_FIJOS_CAT_ID, ],
-                'scripts':[self.PAQUETERIA, self.GET_STATS, self.GAFETES_LOCKERS, self.FALLAS, self.ARTICULOS_PERDIDOS, self.ARTICULOS_CONSECIONADOS]
+                'forms':[self.Accesos.CONCESSIONED_ARTICULOS, self.Accesos.BITACORA_OBJETOS_PERDIDOS],
+                'catalogs':[self.Accesos.ACTIVOS_FIJOS_CAT_ID, ],
+                'scripts':[self.Accesos.PAQUETERIA, self.GET_STATS, self.GAFETES_LOCKERS, self.FALLAS, self.ARTICULOS_PERDIDOS, self.ARTICULOS_CONSECIONADOS]
             },
             'notas':{
                 'forms':[self.ACCESOS_NOTAS],
@@ -126,12 +126,12 @@ class Accesos(Accesos):
                 'scripts':[self.NOTAS]
             },
             'pases_de_entrada':{
-                'forms':[self.PASE_ENTRADA],
+                'forms':[self.Accesos.PASE_ENTRADA],
                 'catalogs':[],
                 'scripts':[self.SCRIPT_PASE_ACCESO, self.GET_STATS, self.SCRIPT_PASE_ACCESO_API]
             },
             'caseta':{
-                'forms':[self.CHECKIN_CASETAS, self.REGISTRO_ASISTENCIA, self.FORMATO_VACACIONES],
+                'forms':[self.Accesos.CHECKIN_CASETAS, self.Accesos.REGISTRO_ASISTENCIA, self.Accesos.FORMATO_VACACIONES],
                 'catalogs':[],
                 'scripts':[self.SCRIPT_TURNOS]
             },
@@ -312,6 +312,7 @@ class Accesos(Accesos):
         return {'modules': sorted(modules, key=lambda m: m['order'])}
 
     def get_user_menus(self, platform=''):
+        print('esta entrando aqui...')
         """
         Obtiene los menus personalizados para el usuario 
         actual desde los registros de la forma de CONFIGURACION MENUS.
@@ -331,7 +332,7 @@ class Accesos(Accesos):
                 "menu_key": f"$elementos.{self.MENUS_CATALOG_OBJ_ID}.{self.menu_form_fields['key']}",
             }}
         ]
-        data = self.format_cr(self.cr.aggregate(query), ids_label_dct=self.menu_form_fields)
+        data = self.format_cr(self.cr.aggregate(query), ids_label_dct=self.menu_form_fields)    
         if data:
             menu_keys = [self.unlist(item['menu_key']) for item in data if item.get('menu_key')]
             data = self.get_format_user_menus(filter_keys=menu_keys)
@@ -432,7 +433,7 @@ class Accesos(Accesos):
         return re.sub(r'[\s_-]+', sep, text)
 
 if __name__ == "__main__":
-    script_obj = Accesos(settings, sys_argv=sys.argv)
+    script_obj = Base(settings, sys_argv=sys.argv)
     script_obj.console_run()
     data = script_obj.data.get('data', {})
     data_raw = json.loads(sys.argv[2])
