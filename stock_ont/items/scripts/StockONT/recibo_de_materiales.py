@@ -1,0 +1,365 @@
+# -*- coding: utf-8 -*-
+import sys, simplejson
+from stock_ont_utils import Stock
+from account_settings import *
+
+class Stock(Stock):
+    """docstring for Stock"""
+    def __init__(self, settings, sys_argv=None, use_api=False):
+        super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
+        self.data = self.data.get('data')
+        self.provider_name = "Telmex" # Por ahora fijo el nombre del Proveedor
+        self.f_bitacora = self.bitacora_transportista_fields
+        self.FORM_BITACORA_TRANSPORTISTA_ID = 165688
+
+    def _find_catalog_record(self, catalog_id, filter_field, filter_value, field_map, rdOnly_fields=True):
+        """
+        Busca el primer registro de un catalogo cuyo campo `filter_field`
+        sea igual a `filter_value`, y devuelve solo los campos indicados
+        en `field_map`.
+
+        Args:
+            catalog_id (int): id del catalogo a consultar (p.ej. self.CATALOG_ID_USUARIOS_ALMACEN).
+            filter_field (str): field_id (ObjectId) por el que se filtra.
+            filter_value: valor a buscar en `filter_field`.
+            field_map (dict): mapeo {nombre_legible: field_id} con los campos
+                del registro que se quieren regresar.
+
+        Returns:
+            dict | None: {nombre_legible: valor, ...} del primer registro
+            encontrado, o None si no hay coincidencias.
+        """
+
+        # print(f"===== ===== consultando el catalogo {catalog_id} {filter_field} {filter_value}")
+
+        mango_query = {
+            "selector": {
+                "answers": {
+                    filter_field: {"$eq": filter_value},
+                },
+            },
+            "limit": 1,
+            "skip": 0,
+        }
+        record = self.lkf_api.search_catalog(catalog_id, mango_query)
+        if not record:
+            return None
+
+        row = record[0]
+
+        data_catalog_found = {}
+        for key, field_id in field_map.items():
+            value = self.unlist( row.get(field_id) )
+
+            if not rdOnly_fields:
+                data_catalog_found[field_id] = value
+            else:
+                data_catalog_found[ field_id ] = value if field_id == filter_field else [value]
+
+        return data_catalog_found
+
+    def find_material_catalog_sku(self, sku):
+        field_map = {
+            'sku': self.f['field_sku'],
+            'product_code': self.f['field_product_code'],
+            'product_name': self.f['field_product_name'],
+            'unidad_medida': self.f['field_unidad_medida'],
+        }
+        return self._find_catalog_record(
+            self.CATALOG_ID_SKU,
+            self.f['field_sku'],
+            sku,
+            field_map,
+        )
+
+    def find_warehouse_catalog_users(self, nombre_usuario):
+        """
+        Busca en CATALOG_ID_USUARIOS_ALMACEN al usuario de almacen destino
+        por su nombre, para obtener su id, warehouse y location.
+
+        Args:
+            nombre_usuario (str): nombre del usuario a buscar.
+
+        Returns:
+            dict | None: {id_usuario, nombre_usuario, location, wh_name},
+            o None si no se encontro el usuario.
+        """
+        field_map = {
+            'id_usuario': self.f['field_id_usuario_almacen_destino'],
+            'nombre_usuario': self.f['field_nombre_usuario_almacen_destino'],
+            'location': self.f['field_location_almacen_destino'],
+            'wh_name': self.f['field_wh_name_almacen_destino'],
+        }
+        return self._find_catalog_record(
+            self.CATALOG_ID_USUARIOS_ALMACEN,
+            self.f['field_nombre_usuario_almacen_destino'],
+            nombre_usuario,
+            field_map,
+        )
+
+    def find_proveedores_catalog_users(self, nombre_proveedor):
+        """
+        Busca en CATALOG_ID_WH_LOCATIONS el almacen de origen (proveedor)
+        por su nombre, para obtener su warehouse y location.
+
+        Args:
+            nombre_proveedor (str): nombre del proveedor a buscar.
+
+        Returns:
+            dict | None: {location, wh_name},
+            o None si no se encontro el proveedor.
+        """
+        field_map = {
+            'location': self.f['field_location_transportista'],
+            'wh_name': self.f['field_wh_name_transportista'],
+        }
+        return self._find_catalog_record(
+            self.CATALOG_ID_WH_LOCATIONS,
+            self.f['field_location_transportista'],
+            nombre_proveedor,
+            field_map,
+            rdOnly_fields=False
+        )
+
+    def find_transportista_catalog(self, nombre_transportista):
+        field_map = {
+            'nombre_transportista': self.f['field_nombre_transportista']
+        }
+        return self._find_catalog_record(
+            self.CATALOG_ID_TRANSPORTISTAS, self.f['field_nombre_transportista'],
+            nombre_transportista, field_map
+        )
+
+    def format_fecha_evento(self, val):
+        if not val:
+            return val
+        if not "T" in val:
+            return val
+
+        fecha, hora = val.split("T")
+        hora = hora.split(".")[0]
+        return f"{fecha} {hora}"
+
+    def find_catalogs_bitacora_transportista(self, delivery_data):
+        """
+        Busca en catalogo el almacen destino, el almacen origen y el
+        transportista a partir de los datos de entrega. Si alguno no
+        se encuentra, imprime una advertencia pero no interrumpe el flujo.
+
+        Args:
+            delivery_data (dict): seccion `delivery` del payload recibido.
+
+        Returns:
+            tuple: (info_catalog_almacen_destino, info_catalog_almacen_origen,
+            info_catalog_transportista), cada uno dict | None.
+        """
+        info_catalog_almacen_destino = self.find_warehouse_catalog_users(delivery_data.get('requestedBy'))
+        info_catalog_almacen_origen = self.find_proveedores_catalog_users(delivery_data.get('providerName'))
+        info_catalog_transportista = self.find_transportista_catalog(delivery_data.get('carrierName'))
+
+        if not info_catalog_almacen_destino:
+            print(f"ADVERTENCIA: no se encontro almacen destino para requestedBy='{delivery_data.get('requestedBy')}'")
+        if not info_catalog_almacen_origen:
+            print(f"ADVERTENCIA: no se encontro almacen origen para providerName='{delivery_data.get('providerName')}'")
+        if not info_catalog_transportista:
+            print(f"ADVERTENCIA: no se encontro transportista para carrierName='{delivery_data.get('carrierName')}'")
+
+        return info_catalog_almacen_destino, info_catalog_almacen_origen, info_catalog_transportista
+
+    def validate_delivery_date(self, delivery_data):
+        """
+        Valida que venga la fecha de entrega. Si falta, lanza LKFException
+        con un mensaje de error asociado al campo `fecha_hora_ingreso`.
+
+        Args:
+            delivery_data (dict): seccion `delivery` del payload recibido.
+
+        Returns:
+            str: valor de `deliveryDate`.
+        """
+        delivery_date = delivery_data.get('deliveryDate')
+        if not delivery_date:
+            self.LKFException(simplejson.dumps({
+                self.f_bitacora['fecha_hora_ingreso']: {
+                    "msg": ["No se recibio la fecha de entrega (delivery.deliveryDate)"],
+                    "label": "Fecha de entrega",
+                    "error": [],
+                }
+            }))
+        return delivery_date
+
+    def build_grp_inspecciones(self, documents_data):
+        """
+        Arma el grupo de fotos/documentos de inspeccion (carta porte,
+        factura, pedimento, orden de compra y documentos del transportista).
+
+        Args:
+            documents_data (dict): seccion `materialDocuments` del payload.
+
+        Returns:
+            list[dict]: lista de un solo elemento con el grupo armado, en
+            el formato que espera el campo `field_grp_inspecciones`.
+        """
+        return [{
+            self.f['field_fotos_carta_porte'] : documents_data.get('cartaPorte', []),
+            self.f['field_fotos_factura'] : documents_data.get('factura', []),
+            self.f['field_fotos_pedimento'] : documents_data.get('pedimento', []),
+            self.f['field_fotos_orden_compra'] : documents_data.get('ordenCompra', []),
+            self.f['field_fotos_docs_transportista'] : self.data.get('carrierDocuments', []),
+        }]
+
+    def build_grp_evidencias(self, evidence_data):
+        """
+        Arma el grupo repetitivo de fotos y documentos de evidencia
+        (camion cerrado/abierto/vacio, sello y candado del contenedor).
+        Los tipos de evidencia sin mapeo o sin archivo adjunto se omiten,
+        imprimiendo una advertencia en el primer caso.
+
+        Args:
+            evidence_data (dict): seccion `sharedEvidence` del payload,
+            con la forma {nombre_evidencia: {'evidence': [...]}}.
+
+        Returns:
+            list[dict]: filas para el campo `grupo_fotos_y_documentos`.
+        """
+        map_evidence = {
+            'truckClosed': 'Camión Cerrado',
+            'containerSeal': 'Sello del Contenedor',
+            'containerLock': 'Candado del Contenedor',
+            'truckOpen': 'Camión Abierto',
+            'truckEmpty': 'Camión Vacío',
+        }
+
+        grp_evidencias = []
+        for name_evidencia, data_evidencia in evidence_data.items():
+            if not data_evidencia.get('evidence'):
+                continue
+            tipo_documento = map_evidence.get(name_evidencia)
+            if not tipo_documento:
+                print(f"ADVERTENCIA: tipo de evidencia desconocido '{name_evidencia}', se omite")
+                continue
+            grp_evidencias.append({
+                self.f_bitacora['tipo_de_documento']: tipo_documento,
+                self.f_bitacora['documento']: data_evidencia['evidence']
+            })
+        return grp_evidencias
+
+    def build_grp_materiales(self, materiales_data):
+        """
+        Arma el desglose de materiales recibidos, resolviendo cada SKU
+        contra el catalogo de productos. Si un SKU no se encuentra,
+        imprime una advertencia y deja el producto como None.
+
+        Args:
+            materiales_data (list[dict]): seccion `items` del payload, cada
+            uno con `sku`, `expectedQuantity` y `receivedQuantity`.
+
+        Returns:
+            list[dict]: filas para el campo `grupo_desglose_empaque`.
+        """
+        grp_materiales = []
+        for data_material in materiales_data:
+            info_catalog_sku = self.find_material_catalog_sku( data_material.get('sku') )
+            if not info_catalog_sku:
+                print(f"ADVERTENCIA: no se encontro el sku '{data_material.get('sku')}' en el catalogo")
+            info_material = {
+                self.f['obj_products']: info_catalog_sku
+            }
+            info_material[ self.f_bitacora['cantidad_desglose'] ] = data_material.get('expectedQuantity', 0)
+            info_material[ self.f_bitacora['cantidad_acumulada_desglose'] ] = data_material.get('receivedQuantity', 0)
+            grp_materiales.append(info_material)
+        return grp_materiales
+
+    def build_grp_bitacora(self, eventos):
+        """
+        Arma el grupo repetitivo de eventos de la bitacora (fecha, tipo
+        y detalle de cada evento registrado durante el recibo).
+
+        Args:
+            eventos (list[dict]): seccion `events` del payload, cada uno
+            con `at`, `type` y `detail`.
+
+        Returns:
+            list[dict]: filas para el campo `field_grp_bitacora`.
+        """
+        grp_bitacora = []
+        for evento in eventos:
+            grp_bitacora.append({
+                self.f['field_fecha_evento']: self.format_fecha_evento( evento.get('at') ),
+                self.f['field_tipo_evento']: evento.get('type', '').replace('_', ' ').title(),
+                self.f['field_detalle_evento']: evento.get('detail')
+            })
+        return grp_bitacora
+
+    def post_bitacora_transportista(self, answers):
+        """
+        Crea el registro en la forma Bitacora de Transportistas
+        (form_id FORM_BITACORA_TRANSPORTISTA_ID) con las respuestas ya armadas.
+
+        Args:
+            answers (dict): respuestas {field_id: valor} a guardar.
+
+        Returns:
+            dict: respuesta de `lkf_api.post_forms_answers`.
+        """
+        metadata = self.lkf_api.get_metadata(self.FORM_BITACORA_TRANSPORTISTA_ID, user_id=self.record_user_id)
+        metadata.update({
+            'properties': {
+                "device_properties": {
+                    "system": "Script",
+                    "process": "Recibo de Materiales",
+                    "action": "Crear Bitacora de Transportista",
+                    "from_folio": self.folio,
+                    "script": "recibo_de_materiales.py",
+                    "module": "stock_ont",
+                    "function": "create_record_bitacora_transportista",
+                }
+            },
+            'answers': answers,
+        })
+        return self.lkf_api.post_forms_answers(metadata)
+
+    def create_record_bitacora_transportista(self):
+        """
+        Arma las respuestas de la Bitacora de Transportistas a partir de
+        `self.data` (almacenes, transportista, inspecciones, evidencias,
+        materiales, firma y eventos) y crea el registro en LKF.
+
+        Returns:
+            dict: respuesta de `lkf_api.post_forms_answers`.
+        """
+        delivery_data = self.data.get('delivery', {})
+        documents_data = self.data.get('materialDocuments', {})
+        evidence_data = self.data.get('sharedEvidence', {})
+        materiales_data = self.data.get('items', [])
+
+        info_catalog_almacen_destino, info_catalog_almacen_origen, info_catalog_transportista = \
+            self.find_catalogs_bitacora_transportista(delivery_data)
+        delivery_date = self.validate_delivery_date(delivery_data)
+
+        answers = {
+            self.f['obj_almacen_destino'] : info_catalog_almacen_destino,
+            self.f['obj_wh_locations'] : info_catalog_almacen_origen,
+            self.f['obj_ubi_transportista'] : info_catalog_transportista,
+            self.f_bitacora['fecha_hora_ingreso'] : f"{delivery_date} 00:00:00",
+            self.f['field_grp_inspecciones']: self.build_grp_inspecciones(documents_data),
+            self.f_bitacora['grupo_fotos_y_documentos']: self.build_grp_evidencias(evidence_data),
+            self.f_bitacora['grupo_desglose_empaque']: self.build_grp_materiales(materiales_data),
+            self.f_bitacora['firma_conductor']: self.data.get('signature', {}).get('signatureDataUrl', {}),
+            self.f['field_grp_bitacora']: self.build_grp_bitacora(self.data.get('events', [])),
+        }
+
+        return self.post_bitacora_transportista(answers)
+
+    def recibo_de_materiales(self):
+        """
+        Se va a ejecutar el proceso de Recibo de Materiales, se creará el registro
+        en la forma Bitacora de Transportistas y además se realizará la recepción
+        en la forma Recepcion de Materiales de Proveedor
+        """
+        resp_bitacora_transportista = self.create_record_bitacora_transportista()
+
+if __name__ == '__main__':
+    stock_obj = Stock(settings, sys_argv=sys.argv)
+    stock_obj.console_run()
+    stock_obj.recibo_de_materiales()
