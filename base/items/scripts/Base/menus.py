@@ -50,7 +50,9 @@ class Base(Base):
             "catalog_item_order": "69efb3dcfc8545da78179bfa",
             "catalog_href_web": "69efb3dcfc8545da78179bf8",
             "catalog_route_mobile": "69f27e8cdf4d7acc80f2e9af",
-            "catalog_plataforms": "69f27e8cdf4d7acc80f2e9b0"
+            "catalog_plataforms": "69f27e8cdf4d7acc80f2e9b0",
+            "catalog_item_icon": "6a9206aa07b8a64f70abc72d",
+            "catalog_seccion_description": "6a9206aa07b8a64f70abc72e"
         }
 
         self.f.update({
@@ -171,6 +173,8 @@ class Base(Base):
                 "href_web":           item.get(f['catalog_href_web']),
                 "route_mobile":       item.get(f['catalog_route_mobile']),
                 "plataforms":         item.get(f['catalog_plataforms']),
+                "item_icon":          item.get(f['catalog_item_icon']),
+                "seccion_description": item.get(f['catalog_seccion_description']),
             })
         return format_data
 
@@ -197,7 +201,7 @@ class Base(Base):
         modules_dict = {}
 
         for item in data:
-            if item.get('plataforms') == 'web':
+            if str(item.get('plataforms') or '').lower() != 'mobile':
                 continue
 
             menu_key    = item.get('menu_key') or self.slugify(item.get('menu', ''), '_')
@@ -220,6 +224,7 @@ class Base(Base):
                     'id':         seccion_key.replace('_', '-'),
                     'key':        seccion_key,
                     'label':      item.get('seccion', ''),
+                    'description': item.get('seccion_description') or '',
                     'order':      item.get('seccion_order') or len(submodules) + 1,
                     'icon':       item.get('seccion_icon'),
                     'iconBgColor': item.get('seccion_icon_color'),
@@ -233,6 +238,7 @@ class Base(Base):
                     'label': item.get('elemento', ''),
                     'type':  item.get('type', 'link'),
                     'order': item.get('item_order') or len(submodules[seccion_key]['items']) + 1,
+                    'icon':  item.get('item_icon') or '',
                 }
                 item_route = item.get('route_mobile')
                 if item_route:
@@ -256,7 +262,7 @@ class Base(Base):
         modules_dict = {}
 
         for item in data:
-            if item.get('plataforms') in ['Mobile', 'mobile']:
+            if str(item.get('plataforms') or '').lower() != 'web':
                 continue
 
             menu_key    = item.get('menu_key') or self.slugify(item.get('menu', ''), '_')
