@@ -1,9 +1,16 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson
+
+sys.path.append('/srv/scripts/addons/modules/accesos/items/scripts/Accesos')
+from accesos_utils import Accesos as AccesosUtils
+
+sys.path.append('/srv/scripts/addons/modules/stock/items/scripts/Stock')
+from stock_utils import Stock as StockUtils
+
 from lkf_addons.addons.stock.app import Stock
 
 class Stock(Stock):
-    def __init__(self, settings, sys_argv=None, use_api=False):
+    def __init__(self, settings, sys_argv=None, use_api=False, **kwargs):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
 
         self.CATALOG_ID_USUARIOS_ALMACEN = 165977
@@ -124,6 +131,30 @@ class Stock(Stock):
             'tipo_inspeccion': '6a42c80b03f125df7ad2862b',
             'url_inspeccion': '6a42a71aec3f7153a3d2aea3',
         }
+        
+        
+        self.kwargs['MODULES'] = self.kwargs.get('MODULES',[])
+        if self.__class__.__name__ not in kwargs:
+            self.kwargs['MODULES'].append(self.__class__.__name__)
+
+        if not hasattr(self, 'accs'):
+            # self.load() solo puede importar lkf_addons.addons.accesos.app.Accesos
+            # (el core del addon) y no ve el override de accesos_utils.py, que es
+            # donde vive BITACORA_TRANSPORTISTAS. Por eso se instancia manual aqui,
+            # igual que hacen los reports que ya cruzan de un modulo a otro.
+            self.accs = AccesosUtils(self.settings, sys_argv=self.sys_argv, use_api=self.use_api)
+            if 'Accesos' not in self.kwargs['MODULES']:
+                self.kwargs['MODULES'].append('Accesos')
+
+        if not hasattr(self, 'stk'):
+            # Mismo caso: este override tambien se llama "Stock" (choca con el nombre
+            # de esta propia clase), asi que se instancia aparte y se guarda en un
+            # atributo con otro nombre para no pisar el self.f / metodos de esta clase.
+            self.stk = StockUtils(self.settings, sys_argv=self.sys_argv, use_api=self.use_api)
+        
 
     def testing_stock_ont(self):
-        print('..... hola mundo .....')
+        print('+++ Importado desde Accesos = ',self.accs.support_guard)
+        print('+++ Importado desde Accesos Utils = ',self.accs.BITACORA_TRANSPORTISTAS)
+        print('+++ Importado desde Stock Utils = ',self.stk.NUEVA_VARIABLE)
+        stop
