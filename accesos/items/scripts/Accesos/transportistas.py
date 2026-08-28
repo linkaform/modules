@@ -316,7 +316,7 @@ class Accesos(Accesos):
         dia_label = DIAS_SEMANA[dia] if dia is not None else 'todos'
         return {'dia': dia_label, 'horarios': resultado}
 
-    def get_pass_transportista(self, record_id=None, token=None):
+    def get_pass_transportista(self, record_id=None, token=None, folio=None):
         f = self.pass_fields_transportista
         match = {
             'form_id': self.PASE_ENTRADA_TRANSPORTISTA,
@@ -326,8 +326,10 @@ class Accesos(Accesos):
             match['_id'] = ObjectId(record_id)
         elif token:
             match[f'answers.{f["token_transportista"]}'] = token
+        elif folio:
+            match['folio'] = folio
         else:
-            self.LKFException({'title': 'Se requiere record_id o token', 'status_code': 400})
+            self.LKFException({'title': 'Se requiere record_id, token o folio', 'status_code': 400})
         query = [
             {'$match': match},
             {'$project': {
@@ -1533,6 +1535,7 @@ if __name__ == "__main__":
     payload = data.get("payload", {})
     record_id = data.get("record_id", None)
     token = data.get("token", None)
+    folio = data.get("folio", None)
     locations = data.get("locations", None)
     location = data.get("location", None)
     date_from = data.get("date_from", None)
@@ -1555,7 +1558,7 @@ if __name__ == "__main__":
             tipo_de_vehiculo=tipo_de_vehiculo, proveedor_cliente=proveedor_cliente, anden_asignado=anden_asignado,
         ),
         "get_horarios_data": lambda: script_obj.get_horarios_data(dia=data.get('dia')),
-        "get_pass_transportista": lambda: script_obj.get_pass_transportista(record_id, token),
+        "get_pass_transportista": lambda: script_obj.get_pass_transportista(record_id, token, folio),
         "get_users_data": lambda: script_obj.get_users_data(locations),
         "get_location_data": lambda: script_obj.get_location_data(location),
         "get_proveedores_transportista": lambda: script_obj.get_proveedores_transportista(),
