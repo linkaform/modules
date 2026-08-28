@@ -322,6 +322,9 @@ class Accesos(Accesos):
             'form_id': self.PASE_ENTRADA_TRANSPORTISTA,
             'deleted_at': {'$exists': False},
         }
+        if record_id and not ObjectId.is_valid(record_id):
+            folio = folio or record_id
+            record_id = None
         if record_id:
             match['_id'] = ObjectId(record_id)
         elif token:
