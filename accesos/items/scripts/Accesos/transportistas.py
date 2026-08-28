@@ -449,7 +449,24 @@ class Accesos(Accesos):
                 'token':                f'$answers.{f["token_transportista"]}',
             }},
         ]
-        return self.format_cr(self.cr.aggregate(query), get_one=True)
+        result = self.format_cr(self.cr.aggregate(query), get_one=True)
+        if not result and (record_id or folio):
+            # El folio/_id buscado puede ser el de la bitácora (visible en el
+            # kanban) y no el del pase — se liga por num_de_pase al _id del pase.
+            bf = self.bitacora_transportista_fields
+            bitac_match = {
+                'form_id': self.BITACORA_TRANSPORTISTAS,
+                'deleted_at': {'$exists': False},
+            }
+            if record_id:
+                bitac_match['_id'] = ObjectId(record_id)
+            else:
+                bitac_match['folio'] = folio
+            bitac = self.cr.find_one(bitac_match, {f'answers.{bf["num_de_pase"]}': 1})
+            pase_record_id = bitac and bitac.get('answers', {}).get(bf['num_de_pase'])
+            if pase_record_id:
+                return self.get_pass_transportista(record_id=pase_record_id)
+        return result
 
     def generate_submit_token_transportista(self, record_id):
         f = self.pass_fields_transportista
