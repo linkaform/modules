@@ -2460,6 +2460,11 @@ class Accesos(Accesos):
 
     def update_rondin(self, folio, rondin_data: dict = {}):
         answers = {}
+        #---roles/asignado_a/areas se reemplazan completos via $set directo a Mongo
+        #   (no via patch_multi_record, que solo permite agregar/editar por posicion):
+        #   lo que mande el front sustituye el grupo repetitivo entero, incluyendo
+        #   vaciarlo si mandan una lista vacia.
+        replace_groups = {}
         for key, value in rondin_data.items():
             if key == 'ubicacion':
                 ubicacion_result = self.get_ubicacion_geolocation(location=value)
@@ -2480,44 +2485,22 @@ class Accesos(Accesos):
                         self.mf['nombre_area_salida']: value
                     }
             elif key == 'roles':
-                answers[self.f['grupo_roles']] = {}
-                for rol in value or {}:
-                    answers[self.f['grupo_roles']].update({
-                        self.ROL_CATALOG_OBJ_ID: {
-                            self.f['rol']: rol
-                        }
-                    })
+                replace_groups[self.f['grupo_roles']] = [
+                    {self.ROL_CATALOG_OBJ_ID: {self.f['rol']: rol}}
+                    for rol in (value or [])
+                ]
             elif key == 'grupo_asignado':
                 answers[self.GRUPOS_CAT_OBJ_ID] = {
                     self.rondin_keys[key]: value
                 }
             elif key == 'asignado_a':
-                #En este caso se maneja de esta manera usando solo el primer elemento
-                #ya que desde front solo se manda 1 solo elemento cuando se habilite la
-                #funcionalidad de enviar mas de 1 asignado esta seccion debe cambiar
-                nombre = value[0] if isinstance(value, list) else value
-                asignados = self.rondin_asignado_a(nombre)
-                if asignados:
-                    answers[self.rondin_keys['grupo_asignado_a']] = {'0': asignados[0]}
+                nombres = value if isinstance(value, list) else [value]
+                nuevo_grupo_asignado = []
+                for nombre in nombres:
+                    nuevo_grupo_asignado.extend(self.rondin_asignado_a(nombre))
+                replace_groups[self.rondin_keys['grupo_asignado_a']] = nuevo_grupo_asignado
             elif key == 'areas':
-                try:
-                    existing_record = self.get_rondin_by_id(folio)
-                except Exception:
-                    existing_record = {}
-                if not existing_record:
-                    raw_record = self.get_record_by_folio(
-                        folio, self.CONFIGURACION_RECORRIDOS_FORM, select_columns={'answers': 1}
-                    )
-                    existing_record = {
-                        'areas': raw_record.get('answers', {}).get(self.rondin_keys['areas'], [])
-                    }
-                existing_areas = existing_record.get('areas', [])
-                if isinstance(existing_areas, dict):
-                    existing_areas = [existing_areas[k] for k in sorted(existing_areas, key=lambda x: int(x))]
-                if existing_areas and isinstance(existing_areas[0], list):
-                    existing_areas = existing_areas[0]
-
-                areas_list = []
+                nuevo_grupo_areas = []
                 for area in value:
                     catalogo_area = {}
                     if isinstance(area, dict):
@@ -2534,26 +2517,8 @@ class Accesos(Accesos):
                             catalogo_area[self.f['area_tag_id']] = [area.get('tag_id')]
                     elif area:
                         catalogo_area[self.Location.f['area']] = area
-                    area_dict = {self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: catalogo_area}
-                    areas_list.append(area_dict)
-
-                areas_answers = {
-                    str(index): item for index, item in enumerate(areas_list)
-                }
-                for index in range(len(areas_list), len(existing_areas)):
-                    areas_answers[str(index)] = {
-                        self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
-                            self.Location.f['area']: "",
-                            self.f['geolocalizacion_area_ubicacion']: "",
-                            self.f['foto_area']: "",
-                            self.f['area_tag_id']: "",
-                        },
-                        self.CATALOGO_FORMAS_OBJ_ID: {
-                            self.mf['nombre_forma']: "",
-                            self.rondin_keys['grupo_id']: "",
-                        },
-                    }
-                answers[self.rondin_keys["areas"]] = areas_answers
+                    nuevo_grupo_areas.append({self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: catalogo_area})
+                replace_groups[self.rondin_keys["areas"]] = nuevo_grupo_areas
             elif key == 'sucede_recurrencia' and value and ('dia_del_mes' in value or 'mes' in value):
                 actual_day = datetime.now().day
                 answers[self.rondin_keys['que_dia_del_mes']] = int(actual_day)
@@ -2573,6 +2538,14 @@ class Accesos(Accesos):
             form_id=self.CONFIGURACION_RECORRIDOS_FORM,
             folios=[folio]
         )
+        if replace_groups:
+            filtro_replace = {'folio': folio, 'form_id': self.CONFIGURACION_RECORRIDOS_FORM, 'deleted_at': {'$exists': False}}
+            print('DEBUG UPDATE_RONDIN replace_groups filtro=', filtro_replace, 'grupos=', list(replace_groups.keys()))
+            update_result = self.cr.update_one(
+                filtro_replace,
+                {'$set': {f'answers.{field_id}': grupo for field_id, grupo in replace_groups.items()}}
+            )
+            print('DEBUG UPDATE_RONDIN replace_groups matched=', update_result.matched_count, 'modified=', update_result.modified_count)
         return response
 
     def _verificar_bitacora_programada(self, dia, year, month, hora_valida, bitacora_rondines):
