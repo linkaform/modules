@@ -256,6 +256,31 @@ class Stock(Stock):
             })
         return grp_evidencias
 
+    def get_damage_reports(self, damage_list):
+        if not damage_list:
+            return {}
+
+        total_quantity, total_notes, total_evidences = 0, [], []
+        for damage in damage_list:
+            total_quantity += ( damage.get('quantity') or 0 )
+            if damage.get('note'):
+                total_notes.append(damage['note'])
+            if damage.get('evidence'):
+                total_evidences.extend(damage.get('evidence', []))
+
+        damage_report = {
+            '6a8f105cf579313536b1984d': total_quantity,
+            '6a8f10acae2709fa995fc6be': self.list_to_str(total_notes)
+        }
+
+        if total_evidences:
+            damage_report['6a8f10acae2709fa995fc6bd'] = total_evidences
+
+        # print(simplejson.dumps(damage_report, indent=4))
+        # stop
+
+        return damage_report
+
     def build_grp_materiales(self, materiales_data):
         """
         Arma el desglose de materiales recibidos, resolviendo cada SKU
@@ -279,6 +304,7 @@ class Stock(Stock):
             }
             info_material[ self.f_bitacora['cantidad_desglose'] ] = data_material.get('expectedQuantity', 0)
             info_material[ self.f_bitacora['cantidad_acumulada_desglose'] ] = data_material.get('receivedQuantity', 0)
+            info_material.update( self.get_damage_reports( data_material.get('damageReports', []) ) )
             grp_materiales.append(info_material)
         return grp_materiales
 
