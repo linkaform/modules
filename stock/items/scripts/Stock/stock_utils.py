@@ -78,8 +78,6 @@ class Stock(Stock):
             'capture_num_serie': '66c75e0c0810217b0b5593ca'
         }
 
-        sel
-
         self.max_sets = 1500
         self.production_keys = [
                 'area',

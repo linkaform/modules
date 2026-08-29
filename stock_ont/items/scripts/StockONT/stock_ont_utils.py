@@ -61,6 +61,9 @@ class Stock(Stock):
             "field_fecha_evento": "6a90705ccd63fed585bc6eae",
             "field_tipo_evento": "6a9072b4ee23adcc3f752ea9",
             "field_detalle_evento": "6a90705ccd63fed585bc6eaf",
+
+            'capture_num_serie': '66c75e0c0810217b0b5593ca',
+            'tipo_material': '66b10b87a1d4483b5369f409'
         })
 
         # Esto lo debería jalar de accesos_utils
@@ -151,6 +154,8 @@ class Stock(Stock):
             # de esta propia clase), asi que se instancia aparte y se guarda en un
             # atributo con otro nombre para no pisar el self.f / metodos de esta clase.
             self.stk = StockUtils(self.settings, sys_argv=self.sys_argv, use_api=self.use_api)
+
+        self.f.update( self.stk.f )
         
 
     def testing_stock_ont(self):

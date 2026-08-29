@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson
+from copy import deepcopy
 from stock_ont_utils import Stock
 from account_settings import *
 
@@ -12,7 +13,7 @@ class Stock(Stock):
         self.f_bitacora = self.bitacora_transportista_fields
         self.FORM_BITACORA_TRANSPORTISTA_ID = 165688
 
-    def _find_catalog_record(self, catalog_id, filter_field, filter_value, field_map, rdOnly_fields=True):
+    def _find_catalog_record(self, catalog_id, filter_field, filter_value, field_map, rdOnly_fields=True, field_as_select=[]):
         """
         Busca el primer registro de un catalogo cuyo campo `filter_field`
         sea igual a `filter_value`, y devuelve solo los campos indicados
@@ -53,23 +54,34 @@ class Stock(Stock):
 
             if not rdOnly_fields:
                 data_catalog_found[field_id] = value
+            elif field_as_select:
+                if (field_id == filter_field) or (field_id in field_as_select):
+                    data_catalog_found[field_id] = value
+                else:
+                    data_catalog_found[field_id] = [value]
             else:
                 data_catalog_found[ field_id ] = value if field_id == filter_field else [value]
 
         return data_catalog_found
 
-    def find_material_catalog_sku(self, sku):
+    def find_material_catalog_sku(self, sku, field_as_select=[]):
         field_map = {
             'sku': self.f['field_sku'],
             'product_code': self.f['field_product_code'],
             'product_name': self.f['field_product_name'],
             'unidad_medida': self.f['field_unidad_medida'],
         }
+
+        if field_as_select:
+            field_map['capturar_serie'] = self.f['capture_num_serie']
+            field_map['tipo_material'] = self.f['tipo_material']
+
         return self._find_catalog_record(
             self.CATALOG_ID_SKU,
             self.f['field_sku'],
             sku,
             field_map,
+            field_as_select=field_as_select
         )
 
     def find_warehouse_catalog_users(self, nombre_usuario):
@@ -291,6 +303,120 @@ class Stock(Stock):
             })
         return grp_bitacora
 
+    def build_move_group_recepcion(self, materiales_data):
+        """
+        Arma el grupo repetitivo de materiales para la forma Recepcion de
+        Materiales de Proveedor, resolviendo cada SKU contra el catalogo de
+        productos. Si un SKU no se encuentra, imprime una advertencia y deja
+        el producto como None.
+
+        Args:
+            materiales_data (list[dict]): seccion `items` del payload, cada
+            uno con `sku` y `receivedQuantity`.
+
+        Returns:
+            list[dict]: filas para el campo `move_group`.
+        """
+        move_group = []
+        field_as_select = [ self.f['field_product_code'] ]
+        for data_material in materiales_data:
+            series = data_material.get('looseUnitScan', {}).get('serials', [])
+
+            info_catalog_sku = self.find_material_catalog_sku( data_material.get('sku'), field_as_select=field_as_select )
+            if not info_catalog_sku:
+                print(f"ADVERTENCIA: no se encontro el sku '{data_material.get('sku')}' en el catalogo")
+            
+            data_set_material = {
+                self.f['obj_products']: info_catalog_sku,
+                self.f['lot_number']: 'LotePCI001',
+                self.f['move_group_qty']: data_material.get('receivedQuantity', 0),
+                self.f['inv_adjust_grp_status']: 'todo',
+            }
+
+            if series:
+                for serie in series:
+                    serie_set_material = deepcopy(data_set_material)
+                    serie_set_material[ self.f['lot_number'] ] = serie
+                    serie_set_material[ self.f['move_group_qty'] ] = 1
+                    move_group.append(serie_set_material)
+            else:
+                move_group.append(data_set_material)
+
+        return move_group
+
+    def post_recepcion_materiales_proveedor(self, answers):
+        """
+        Crea el registro en la forma Recepcion de Materiales de Proveedor
+        (form_id STOCK_IN_ONE_MANY_ONE) con las respuestas ya armadas.
+
+        Args:
+            answers (dict): respuestas {field_id: valor} a guardar.
+
+        Returns:
+            dict: respuesta de `lkf_api.post_forms_answers`.
+        """
+        metadata = self.lkf_api.get_metadata(self.STOCK_IN_ONE_MANY_ONE, user_id=self.record_user_id)
+        metadata.update({
+            'properties': {
+                "device_properties": {
+                    "system": "Script",
+                    "process": "Recibo de Materiales",
+                    "action": "Crear Recepcion de Materiales de Proveedor",
+                    "from_folio": self.folio,
+                    "script": "recibo_de_materiales.py",
+                    "module": "stock_ont",
+                    "function": "create_record_recepcion_materiales_proveedor",
+                }
+            },
+            'answers': answers,
+        })
+        return self.lkf_api.post_forms_answers(metadata)
+
+    def create_record_recepcion_materiales_proveedor(self):
+        """
+        Arma las respuestas de la Recepcion de Materiales de Proveedor a
+        partir de `self.data` (almacenes y materiales recibidos) y crea el
+        registro en LKF.
+
+        Returns:
+            dict: respuesta de `lkf_api.post_forms_answers`.
+        """
+        delivery_data = self.data.get('delivery', {})
+        materiales_data = self.data.get('items', [])
+
+        info_catalog_almacen_destino, info_catalog_almacen_origen, _ = \
+            self.find_catalogs_bitacora_transportista(delivery_data)
+        delivery_date = self.validate_delivery_date(delivery_data)
+
+        # print("--- self.f['obj_almacen_destino'] =",self.f['obj_almacen_destino'])
+        # print("--- self.f['obj_wh_locations'] =",self.f['obj_wh_locations'])
+
+        answers = {
+            self.stk.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID: {
+                self.f['field_location_almacen_destino']: self.unlist(
+                    info_catalog_almacen_destino.get( self.f['field_location_almacen_destino'] )
+                ),
+                self.f['field_wh_name_almacen_destino']: self.unlist(
+                    info_catalog_almacen_destino.get( self.f['field_wh_name_almacen_destino'] )
+                ),
+            },
+            # self.f['obj_almacen_destino'] : info_catalog_almacen_destino,
+            self.f['obj_wh_locations'] : info_catalog_almacen_origen,
+            self.f['move_group'] : self.build_move_group_recepcion(materiales_data),
+            self.f['fecha_recepcion'] : f"{delivery_date} 00:00:00",
+            self.f['stock_status'] : 'to_do',
+            self.f['stock_move_comments'] : 'Esto es una prueba',
+            self.f['evidencia'] : [{
+                "file_name":"cartaPorte.jpg",
+                "file_url":"https://f001.backblazeb2.com/file/slimey-linkaform/public-client-17860/165688/6a4589aea6675c48f34bb270/6a9089b0d5fce2b5eac47a7f.png"
+            }]
+        }
+
+        print('answers recepcion =', simplejson.dumps(answers, indent=4))
+        # stop
+
+        return self.post_recepcion_materiales_proveedor(answers)
+
     def post_bitacora_transportista(self, answers):
         """
         Crea el registro en la forma Bitacora de Transportistas
@@ -357,7 +483,17 @@ class Stock(Stock):
         en la forma Bitacora de Transportistas y además se realizará la recepción
         en la forma Recepcion de Materiales de Proveedor
         """
+        # resp_bitacora_transportista = {'status_code': 201}
         resp_bitacora_transportista = self.create_record_bitacora_transportista()
+        print("+++ +++ +++ resp_bitacora_transportista =",resp_bitacora_transportista)
+        if resp_bitacora_transportista.get('status_code') == 201:
+            resp_recepcion_materiales = self.create_record_recepcion_materiales_proveedor()
+            print("+++ +++ +++ resp_recepcion_materiales =",resp_recepcion_materiales)
+            return {
+                'bitacora_transportista': resp_bitacora_transportista,
+                'recepcion_materiales': resp_recepcion_materiales,
+            }
+        return {'bitacora_transportista': resp_bitacora_transportista}
 
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)
