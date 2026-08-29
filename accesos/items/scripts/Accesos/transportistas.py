@@ -316,18 +316,23 @@ class Accesos(Accesos):
         dia_label = DIAS_SEMANA[dia] if dia is not None else 'todos'
         return {'dia': dia_label, 'horarios': resultado}
 
-    def get_pass_transportista(self, record_id=None, token=None):
+    def get_pass_transportista(self, record_id=None, token=None, folio=None):
         f = self.pass_fields_transportista
         match = {
             'form_id': self.PASE_ENTRADA_TRANSPORTISTA,
             'deleted_at': {'$exists': False},
         }
+        if record_id and not ObjectId.is_valid(record_id):
+            folio = folio or record_id
+            record_id = None
         if record_id:
             match['_id'] = ObjectId(record_id)
         elif token:
             match[f'answers.{f["token_transportista"]}'] = token
+        elif folio:
+            match['folio'] = folio
         else:
-            self.LKFException({'title': 'Se requiere record_id o token', 'status_code': 400})
+            self.LKFException({'title': 'Se requiere record_id, token o folio', 'status_code': 400})
         query = [
             {'$match': match},
             {'$project': {
@@ -444,7 +449,24 @@ class Accesos(Accesos):
                 'token':                f'$answers.{f["token_transportista"]}',
             }},
         ]
-        return self.format_cr(self.cr.aggregate(query), get_one=True)
+        result = self.format_cr(self.cr.aggregate(query), get_one=True)
+        if not result and (record_id or folio):
+            # El folio/_id buscado puede ser el de la bitácora (visible en el
+            # kanban) y no el del pase — se liga por num_de_pase al _id del pase.
+            bf = self.bitacora_transportista_fields
+            bitac_match = {
+                'form_id': self.BITACORA_TRANSPORTISTAS,
+                'deleted_at': {'$exists': False},
+            }
+            if record_id:
+                bitac_match['_id'] = ObjectId(record_id)
+            else:
+                bitac_match['folio'] = folio
+            bitac = self.cr.find_one(bitac_match, {f'answers.{bf["num_de_pase"]}': 1})
+            pase_record_id = bitac and bitac.get('answers', {}).get(bf['num_de_pase'])
+            if pase_record_id:
+                return self.get_pass_transportista(record_id=pase_record_id)
+        return result
 
     def generate_submit_token_transportista(self, record_id):
         f = self.pass_fields_transportista
@@ -1533,6 +1555,7 @@ if __name__ == "__main__":
     payload = data.get("payload", {})
     record_id = data.get("record_id", None)
     token = data.get("token", None)
+    folio = data.get("folio", None)
     locations = data.get("locations", None)
     location = data.get("location", None)
     date_from = data.get("date_from", None)
@@ -1555,7 +1578,7 @@ if __name__ == "__main__":
             tipo_de_vehiculo=tipo_de_vehiculo, proveedor_cliente=proveedor_cliente, anden_asignado=anden_asignado,
         ),
         "get_horarios_data": lambda: script_obj.get_horarios_data(dia=data.get('dia')),
-        "get_pass_transportista": lambda: script_obj.get_pass_transportista(record_id, token),
+        "get_pass_transportista": lambda: script_obj.get_pass_transportista(record_id, token, folio),
         "get_users_data": lambda: script_obj.get_users_data(locations),
         "get_location_data": lambda: script_obj.get_location_data(location),
         "get_proveedores_transportista": lambda: script_obj.get_proveedores_transportista(),
