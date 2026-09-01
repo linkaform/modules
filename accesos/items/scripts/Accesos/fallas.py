@@ -7,6 +7,7 @@ from accesos_utils import Accesos
 
 class Accesos(Accesos):
     pass
+
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
@@ -41,8 +42,6 @@ if __name__ == "__main__":
     dateFrom = data.get("dateFrom", "")
     dateTo = data.get("dateTo", "")
     filterDate = data.get("filterDate", "")
-
-    print('option', option)
     if option == 'new_failure':
         response = acceso_obj.create_failure(data_failure)
     elif option == 'get_failure_by_folio':
@@ -58,14 +57,14 @@ if __name__ == "__main__":
     elif option == 'delete_failure':
         response = acceso_obj.delete_failure(folio)
     elif option =='catalogo_area_empleado_apoyo':
-        response = acceso_obj.catalogo_config_area_empleado_apoyo()
+        employees = acceso_obj.Employee.get_employee_data()
+        response = [employee.get('worker_name') for employee in employees]
+        #response = acceso_obj.catalogo_config_area_empleado_apoyo()
     elif option == 'catalogo_fallas':
         if tipo:
             response = acceso_obj.catalogo_falla(tipo)
         else:
             response = acceso_obj.catalogo_falla()
-    elif option == 'catalogo_area_empleado_apoyo':
-            response = acceso_obj.catalogo_config_area_empleado_apoyo()
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
