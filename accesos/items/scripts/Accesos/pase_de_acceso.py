@@ -11,7 +11,6 @@ class Accesos(Accesos):
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
     acceso_obj.console_run()
-    #-FILTROS
     data = acceso_obj.data.get('data',{})
     option = data.get("option",'')
     location = data.get("location",'')
@@ -26,13 +25,17 @@ if __name__ == "__main__":
     option = data.get("option","")
     qr_code=data.get("qr_code")
     tab_status=data.get("tab_status")
-    pre_sms = data.get("enviar_pre_sms",{})
     update_obj = data.get("update_obj",{})
     envio = data.get("envio",[])
     limit = data.get("limit", 25)
     skip = data.get("skip", 0)
     search_name = data.get("search_name", None)
-    
+    dynamic_filters = data.get("dynamic_filters", {})
+    dateFrom = data.get("dateFrom", "")
+    dateTo = data.get("dateTo", "")
+    filterDate = data.get("filterDate", "")
+    record_ids = data.get("record_ids", [])
+
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
     elif option == 'create_access_pass' or option == 'crear_pase':
@@ -66,9 +69,11 @@ if __name__ == "__main__":
     elif option == 'get_pass':
         response = acceso_obj.get_pass_custom(qr_code)
     elif option == 'get_my_pases':
-        response = acceso_obj.get_my_pases(tab_status=tab_status, limit=limit, skip=skip, search_name=search_name)
+        response = acceso_obj.get_my_pases(tab_status=tab_status, limit=limit, skip=skip, search_name=search_name, location=location, dynamic_filters=dynamic_filters, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, locations=locations)
     elif option == 'get_pdf':
         response = acceso_obj.get_pdf(qr_code)
+    elif option == 'get_pdf_multi':
+        response = acceso_obj.get_pdf_multi(record_ids)
     elif option == 'get_user_contacts':
         response = acceso_obj.get_user_contacts()
     elif option == 'get_config_modulo_seguridad':

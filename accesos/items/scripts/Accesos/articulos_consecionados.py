@@ -24,19 +24,23 @@ if __name__ == "__main__":
         'observacion_concesion':'hola actualizado',
     })
     location = data.get("location",'Planta Monterrey')
+    locations = data.get("locations", [])
     area = data.get("area","")
     status= data.get("status", "")
     folio = data.get("folio")
     tipo = data.get("tipo","")
+    limit = data.get("limit", 25)
+    skip = data.get("skip", 0)
+    search = data.get("search", "")
 
     dateFrom = data.get("dateFrom", "")
     dateTo = data.get("dateTo", "")
     filterDate = data.get("filterDate", "")
-   
+
     if option == 'new_article':
         response = acceso_obj.create_article_concessioned(data_article)
     elif option == 'get_articles':
-        response = acceso_obj.get_list_articulos_concesionados(location, area, status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate)
+        response = acceso_obj.get_list_articulos_concesionados(location, area, status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, limit=limit, skip=skip, locations=locations, search=search)
     elif option == 'update_article':
         if data.get('data'):
             data = data['data']

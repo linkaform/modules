@@ -125,7 +125,7 @@ class Accesos(Accesos):
 
         for record in records:
             record['inbox'] = False
-            record['status_rondin'] = 'closed'
+            record['status_user'] = 'closed'
         self.cr_db.update(records)
 
         answers[self.f['estatus_del_recorrido']] = 'cerrado'

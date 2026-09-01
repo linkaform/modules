@@ -31,7 +31,7 @@ if __name__ == "__main__":
         'tags':[],
         'categoria':"",
         'sub_categoria':"",
-        'incidente':"",
+        'incidencia':"",
 
         'nombre_completo_persona_extraviada':"",
         'edad':"",
