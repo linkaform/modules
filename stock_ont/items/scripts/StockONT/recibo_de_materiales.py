@@ -438,7 +438,7 @@ class Stock(Stock):
             }]
         }
 
-        print('answers recepcion =', simplejson.dumps(answers, indent=4))
+        # print('answers recepcion =', simplejson.dumps(answers, indent=4))
         # stop
 
         return self.post_recepcion_materiales_proveedor(answers)
@@ -524,4 +524,5 @@ class Stock(Stock):
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)
     stock_obj.console_run()
-    stock_obj.recibo_de_materiales()
+    resp_bitacora_recepcion = stock_obj.recibo_de_materiales()
+    stock_obj.HttpResponse({"data": resp_bitacora_recepcion})

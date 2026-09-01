@@ -25,10 +25,10 @@ from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 
 from account_settings import *
 
-from accesos_utils import Accesos
+# from accesos_utils import Accesos
+from stock_ont_utils import Stock
 
-
-class Accesos(Accesos):
+class Stock(Stock):
 
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
@@ -445,6 +445,8 @@ class Accesos(Accesos):
         if copes:
             match_query[f'answers.{f["cope"]}'] = {'$in': copes}
 
+        # print('+++ +++ +++ match_query =',match_query)
+
         return self.cr_admin.aggregate([
             {'$match': match_query},
             {'$project': data_project},
@@ -761,6 +763,7 @@ class Accesos(Accesos):
             desde = self.data.get('desde')
             hasta = self.data.get('hasta')
             tecnologia = self.data.get('tecnologia')
+            wh_origen = self.data.get('almacen_origen')
         else:
             self.current_record['answers'].pop('6a032714b2194f0f517accc2', None)
             self.current_record['answers'].pop('6a83a116e0a44de46b0e9f08', None)
@@ -768,6 +771,7 @@ class Accesos(Accesos):
             desde = self.answers.get(f['desde'])
             hasta = self.answers.get(f['hasta'])
             tecnologia = self.answers.get(f['tecnologia'])
+            wh_origen = None
 
         periodo_valido, response_periodo = self.validar_periodo(desde, hasta)
         if not periodo_valido:
@@ -779,6 +783,9 @@ class Accesos(Accesos):
         dict_productos = self.get_all_products()
         tipos_tarea_para_material = self.get_tipos_tarea_aplica_material()
         kits_products = self.get_kits()
+
+        # print('+++ +++ kits_products =',kits_products)
+        # stop
 
         records_orden_servicio = self.get_records_orden_de_servicio(desde, hasta, tecnologia)
         # print('records_orden_servicio =',list(records_orden_servicio))
@@ -835,7 +842,7 @@ class Accesos(Accesos):
         return total_rows_materiales
 
 if __name__ == '__main__':
-    script_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
+    script_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
     script_obj.console_run()
 
     response = script_obj.consultar_material_estimado()
