@@ -1501,6 +1501,7 @@ class Accesos(Accesos):
                 "tipo_de_area": f"$answers.{self.Location.TIPO_AREA_OBJ_ID}.{self.f['tipo_de_area']}",
                 "area_state": f"$answers.{self.Location.f['area_state']}",
                 "area_status": f"$answers.{self.Location.f['area_status']}",
+                "usos": {"$ifNull": [f"$answers.{self.Location.f['utilizar_area_en']}", []]},
             }}
         ]
         response = self.format_cr(self.cr.aggregate(query))
@@ -1598,6 +1599,7 @@ class Accesos(Accesos):
             {"$project": {
                 "_id": f"$answers.{self.mf['nombre_area']}",
                 "tag_id": f"$answers.{self.f['area_tag_id']}",
+                "usos": {"$ifNull": [f"$answers.{self.Location.f['utilizar_area_en']}", []]},
             }}
         ]
         data = self.format_cr(self.cr.aggregate(query))
@@ -1607,6 +1609,14 @@ class Accesos(Accesos):
             data = [item for item in data if self._detectar_tipo_tag(item.get('tag_id')) == tipo]
         # Si tipo viene vacío/None, no se filtra — regresa todas las áreas
         # (NFC, QR, o cualquier formato) de esa ubicación.
+
+        # Marca "Utilizar Area en: Rondines". El TagId sigue siendo requisito
+        # (sin tag no hay como escanear el area); la marca filtra encima. Si
+        # ninguna de las areas con tag esta marcada, se regresan todas.
+        marcadas = [item for item in data
+                    if 'rondines' in (item.get('usos') or [])]
+        if marcadas:
+            data = marcadas
 
         nombres = [item.get('_id') for item in data]
         return list(set(nombres))
@@ -1634,6 +1644,11 @@ class Accesos(Accesos):
             form_id = self.CONFIGURACION_RECORRIDOS_FORM
             areas = self.catalogo_view(catalog_id, form_id, options)
             response = self.get_areas_details(areas)
+            # Marca "Utilizar Area en: Rondines". Si ninguna area de la
+            # ubicacion esta marcada, se regresan todas.
+            marcadas = [r for r in response if 'rondines' in (r.get('usos') or [])]
+            if marcadas:
+                response = marcadas
             areas_formateadas = []
             for r in response:
                 areas_formateadas.append({
