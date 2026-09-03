@@ -139,6 +139,17 @@ class Base(Base):
             },
         }
 
+        # En mobile los mismos módulos de permisos viven bajo otros labels
+        # (Turnos, Bitácoras, Artículos, Rondines) — alias al mismo config de Web.
+        self.module_permits['turnos'] = self.module_permits['caseta']
+        self.module_permits['rondines'] = self.module_permits['seguridad']
+        self.module_permits['artículos'] = self.module_permits['activos']
+        self.module_permits['bitácoras'] = {
+            'forms': self.module_permits['accesos']['forms'] + self.module_permits['seguridad']['forms'],
+            'catalogs': self.module_permits['accesos']['catalogs'] + self.module_permits['seguridad']['catalogs'],
+            'scripts': self.module_permits['accesos']['scripts'] + self.module_permits['seguridad']['scripts'],
+        }
+
     def format_menus(self, data):
         """
         Formatea los datos de los registros obtenidos en el catalogo de ELEMENTOS MENU
