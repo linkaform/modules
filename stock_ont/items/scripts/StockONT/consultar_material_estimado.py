@@ -839,6 +839,25 @@ class Stock(Stock):
 
             return self.set_status('terminado', self.list_to_str(total_no_aplican, separator='\n'))
 
+        actual_quantity = {}
+        for material in total_rows_materiales:
+
+            if wh_origen:
+                clave_producto = material.get('id_producto')
+                sku = material.get('sku')
+
+                if actual_quantity.get(clave_producto, {}).get(sku) is None:
+                    stock_inventory = self.stk.get_product_stock( 
+                        clave_producto, 
+                        sku=sku, 
+                        warehouse='Almacen Distribuidor', 
+                        location=wh_origen
+                    )
+                    # print('+++ +++ +++ stock_inventory =',stock_inventory)
+                    actual_quantity.setdefault(clave_producto, {})[sku] = stock_inventory.get('actuals') or 0
+                
+                material["actualQuantity"] = actual_quantity[clave_producto][sku]
+
         return total_rows_materiales
 
 if __name__ == '__main__':
