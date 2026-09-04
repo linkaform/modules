@@ -13,77 +13,6 @@ class Stock(Stock):
         self.f_bitacora = self.bitacora_transportista_fields
         self.FORM_BITACORA_TRANSPORTISTA_ID = 165688
 
-    def _find_catalog_record(self, catalog_id, filter_field, filter_value, field_map, rdOnly_fields=True, field_as_select=[]):
-        """
-        Busca el primer registro de un catalogo cuyo campo `filter_field`
-        sea igual a `filter_value`, y devuelve solo los campos indicados
-        en `field_map`.
-
-        Args:
-            catalog_id (int): id del catalogo a consultar (p.ej. self.CATALOG_ID_USUARIOS_ALMACEN).
-            filter_field (str): field_id (ObjectId) por el que se filtra.
-            filter_value: valor a buscar en `filter_field`.
-            field_map (dict): mapeo {nombre_legible: field_id} con los campos
-                del registro que se quieren regresar.
-
-        Returns:
-            dict | None: {nombre_legible: valor, ...} del primer registro
-            encontrado, o None si no hay coincidencias.
-        """
-
-        # print(f"===== ===== consultando el catalogo {catalog_id} {filter_field} {filter_value}")
-
-        mango_query = {
-            "selector": {
-                "answers": {
-                    filter_field: {"$eq": filter_value},
-                },
-            },
-            "limit": 1,
-            "skip": 0,
-        }
-        record = self.lkf_api.search_catalog(catalog_id, mango_query)
-        if not record:
-            return None
-
-        row = record[0]
-
-        data_catalog_found = {}
-        for key, field_id in field_map.items():
-            value = self.unlist( row.get(field_id) )
-
-            if not rdOnly_fields:
-                data_catalog_found[field_id] = value
-            elif field_as_select:
-                if (field_id == filter_field) or (field_id in field_as_select):
-                    data_catalog_found[field_id] = value
-                else:
-                    data_catalog_found[field_id] = [value]
-            else:
-                data_catalog_found[ field_id ] = value if field_id == filter_field else [value]
-
-        return data_catalog_found
-
-    def find_material_catalog_sku(self, sku, field_as_select=[]):
-        field_map = {
-            'sku': self.f['field_sku'],
-            'product_code': self.f['field_product_code'],
-            'product_name': self.f['field_product_name'],
-            'unidad_medida': self.f['field_unidad_medida'],
-        }
-
-        if field_as_select:
-            field_map['capturar_serie'] = self.f['capture_num_serie']
-            field_map['tipo_material'] = self.f['tipo_material']
-
-        return self._find_catalog_record(
-            self.CATALOG_ID_SKU,
-            self.f['field_sku'],
-            sku,
-            field_map,
-            field_as_select=field_as_select
-        )
-
     def find_warehouse_catalog_users(self, nombre_usuario):
         """
         Busca en CATALOG_ID_USUARIOS_ALMACEN al usuario de almacen destino
@@ -141,16 +70,6 @@ class Stock(Stock):
             self.CATALOG_ID_TRANSPORTISTAS, self.f['field_nombre_transportista'],
             nombre_transportista, field_map
         )
-
-    def format_fecha_evento(self, val):
-        if not val:
-            return val
-        if not "T" in val:
-            return val
-
-        fecha, hora = val.split("T")
-        hora = hora.split(".")[0]
-        return f"{fecha} {hora}"
 
     def find_catalogs_bitacora_transportista(self, delivery_data):
         """
@@ -255,59 +174,7 @@ class Stock(Stock):
                 self.f_bitacora['documento']: data_evidencia['evidence']
             })
         return grp_evidencias
-
-    def get_damage_reports(self, damage_list):
-        if not damage_list:
-            return {}
-
-        total_quantity, total_notes, total_evidences = 0, [], []
-        for damage in damage_list:
-            total_quantity += ( damage.get('quantity') or 0 )
-            if damage.get('note'):
-                total_notes.append(damage['note'])
-            if damage.get('evidence'):
-                total_evidences.extend(damage.get('evidence', []))
-
-        damage_report = {
-            '6a8f105cf579313536b1984d': total_quantity,
-            '6a8f10acae2709fa995fc6be': self.list_to_str(total_notes)
-        }
-
-        if total_evidences:
-            damage_report['6a8f10acae2709fa995fc6bd'] = total_evidences
-
-        # print(simplejson.dumps(damage_report, indent=4))
-        # stop
-
-        return damage_report
-
-    def build_grp_materiales(self, materiales_data):
-        """
-        Arma el desglose de materiales recibidos, resolviendo cada SKU
-        contra el catalogo de productos. Si un SKU no se encuentra,
-        imprime una advertencia y deja el producto como None.
-
-        Args:
-            materiales_data (list[dict]): seccion `items` del payload, cada
-            uno con `sku`, `expectedQuantity` y `receivedQuantity`.
-
-        Returns:
-            list[dict]: filas para el campo `grupo_desglose_empaque`.
-        """
-        grp_materiales = []
-        for data_material in materiales_data:
-            info_catalog_sku = self.find_material_catalog_sku( data_material.get('sku') )
-            if not info_catalog_sku:
-                print(f"ADVERTENCIA: no se encontro el sku '{data_material.get('sku')}' en el catalogo")
-            info_material = {
-                self.f['obj_products']: info_catalog_sku
-            }
-            info_material[ self.f_bitacora['cantidad_desglose'] ] = data_material.get('expectedQuantity', 0)
-            info_material[ self.f_bitacora['cantidad_acumulada_desglose'] ] = data_material.get('receivedQuantity', 0)
-            info_material.update( self.get_damage_reports( data_material.get('damageReports', []) ) )
-            grp_materiales.append(info_material)
-        return grp_materiales
-
+    
     def build_grp_bitacora(self, eventos):
         """
         Arma el grupo repetitivo de eventos de la bitacora (fecha, tipo
