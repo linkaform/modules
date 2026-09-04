@@ -51,6 +51,12 @@ if __name__ == "__main__":
     records = data.get("records", [])
     user_to_assign = data.get("user_to_assign", {})
     response = {}
+
+    config_accesos = acceso_obj.get_config_accesos()
+    if 'rondines' not in config_accesos.get('menus', []):
+        sys.stdout.write(simplejson.dumps({'status_code': 200, 'msg': 'El usuario no tiene configurado el menú de Rondines para utilizar couch services', 'data': {}}))
+        sys.exit()
+
     db_name = f'clave_{acceso_obj.user_id}'
     acceso_obj.cr_db = acceso_obj.get_couch_user_db(db_name)
     if option == 'get_user_catalogs':

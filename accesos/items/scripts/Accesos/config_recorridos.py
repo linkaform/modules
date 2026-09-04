@@ -77,15 +77,14 @@ class Schedule(Schedule):
                 response['is_paused'] = False
 
         first_date = self.answers.get(self.mf['fecha_primer_evento'])
-        #por default se corre en UTC+0
-        start_date = first_date
+        #por default se corre en UTC+0, se convierte la fecha local a UTC
+        start_date = self.calc_date(first_date, tz_offset, 'minutes')
         anticipacion = self.answers.get(self.f['anticipacion'])
         timeframe_ant = self.answers.get(self.f['timeframe_ant'])
         timeframe_unit_ant = self.answers.get(self.f['timeframe_unit_ant'], 'horas')
         if anticipacion == 'si':
             if timeframe_ant:
-                start_date = self.calc_date(first_date, timeframe_ant, timeframe_unit_ant, operator='-')
-                start_date = self.calc_date(start_date, tz_offset, 'minutes')
+                start_date = self.calc_date(start_date, timeframe_ant, timeframe_unit_ant, operator='-')
         # print('start date ', start_datestop)
         end_date = self.answers.get(self.f['end_date'])
         timeframe = self.answers.get(self.f['timeframe'])

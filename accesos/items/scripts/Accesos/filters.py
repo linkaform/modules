@@ -174,6 +174,30 @@ class Accesos(Accesos):
             "field": f"answers.{self.notes_fields['note_status']}"
         }
     @get_mongo_distinct_list
+    def get_transportistas_estatus(self):
+        return {
+            "form_id": self.BITACORA_TRANSPORTISTAS,
+            "field": f"answers.{self.bitacora_transportista_fields['estatus']}"
+        }
+    @get_mongo_distinct_list
+    def get_transportistas_tipo_vehiculo(self):
+        return {
+            "form_id": self.BITACORA_TRANSPORTISTAS,
+            "field": f"answers.{self.bitacora_transportista_fields['tipo_de_vehiculo']}"
+        }
+    @get_mongo_distinct_list
+    def get_transportistas_empresa(self):
+        return {
+            "form_id": self.BITACORA_TRANSPORTISTAS,
+            "field": f"answers.{self.bitacora_transportista_fields['proveedor_cliente']}"
+        }
+    @get_mongo_distinct_list
+    def get_transportistas_anden(self):
+        return {
+            "form_id": self.BITACORA_TRANSPORTISTAS,
+            "field": f"answers.{self.bitacora_transportista_fields['anden_asignado']}"
+        }
+    @get_mongo_distinct_list
     def get_proveedores(self):
         return {
             "form_id": self.PAQUETERIA,
@@ -622,6 +646,41 @@ class Accesos(Accesos):
    
         ]
 
+    def get_filters_transportistas(self):
+        estatus = self.get_transportistas_estatus()
+        tipo_vehiculo = self.get_transportistas_tipo_vehiculo()
+        empresa = self.get_transportistas_empresa()
+        anden = self.get_transportistas_anden()
+        return [
+            {
+                "defaultDisplayOpen": True,
+                "key": "estatus",
+                "label": "Estatus",
+                "type": "multiple",
+                "options": [{"label": i.capitalize().replace('_', ' '), "value": i} for i in estatus]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "tipo_de_vehiculo",
+                "label": "Tipo de vehículo",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in tipo_vehiculo]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "proveedor_cliente",
+                "label": "Empresa / Transportista",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in empresa]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "anden_asignado",
+                "label": "Andén asignado",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in anden]
+            },
+        ]
 
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
@@ -637,6 +696,7 @@ if __name__ == "__main__":
         "incidencias": lambda: script_obj.get_filters_incidencias(),
         "fallas":      lambda: script_obj.get_filters_fallas(),
         "in_and_out":  lambda: script_obj.get_filters_in_and_out(),
+        "transportistas": lambda: script_obj.get_filters_transportistas(),
         "pases":       lambda: script_obj.get_filters_pases(),
         "paqueteria": lambda:script_obj.get_filters_paqueteria(),
         "concesionados": lambda:script_obj.get_filters_concesionados(),
