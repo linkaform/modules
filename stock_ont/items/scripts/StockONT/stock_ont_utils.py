@@ -19,6 +19,8 @@ class Stock(Stock):
         self.CATALOG_ID_SKU = 133015
         self.CATALOG_ID_WH_LOCATIONS = 133014
 
+        self.FORM_ID_TRANSFERENCIAS = 166688
+
         self.f.update({
             # campos para el Almacen Destino
             "obj_almacen_destino": "6a8e2d1ee08b6d156660ea46",
@@ -67,6 +69,10 @@ class Stock(Stock):
             'tipo_material': '66b10b87a1d4483b5369f409',
 
             ### Campos para la Transferencia de Material ###
+            'field_status_transferencia': '6a31921f07fb9cb5840d1f22',
+            'field_transfer_date_from': '6a95bcb168696b683d55112f',
+            'field_transfer_date_to': '6a95bcb168696b683d551130',
+
             'field_grp_missing_report': '6a9989a484b5b4e7dbd27359',
             'field_missing_sku': '6a998aaff3ed00ab7c7aa8ff',
             'field_missing_product_code': '6a998aaff3ed00ab7c7aa900',
@@ -76,6 +82,35 @@ class Stock(Stock):
             'field_missing_evidence': '6a998bd60909c0efcfb730aa',
             'field_missing_at': '6a998bfbcc618b7776d69e62',
             'field_missing_by': '6a998bfbcc618b7776d69e63',
+
+            'field_box_bool_loose_unit': '6a9a1db1ba0b8de77af0d07c',
+            'field_box_id': '6a9a196b8f084d0a0bbe1631',
+            'field_box_id_pallet': '6a9a196b8f084d0a0bbe1632',
+            'field_box_evidence': '6a9a196b8f084d0a0bbe1633',
+            'field_box_position': '6a9a196b8f084d0a0bbe1634',
+            'field_box_at': '6a9a196b8f084d0a0bbe1635',
+            'field_box_by': '6a9a196b8f084d0a0bbe1636',
+
+            'field_serie_box_id': '6a9a181cceff751bc0311a34',
+            'field_serie_sku': '6a998d651c34062b10a9765c',
+            'field_serie_product_id': '6a998d651c34062b10a9765d',
+            'field_serie_product_name': '6a998d651c34062b10a9765e',
+            'field_serie_num_serie': '6a8f119594112d8156b9c1b6',
+            'field_serie_reacondicionado': '6a9a181cceff751bc0311a31',
+            'field_serie_source': '6a9a181cceff751bc0311a32',
+            'field_serie_corrected_manually': '6a9a181cceff751bc0311a33',
+            'field_serie_evidence': '6a9a19a65258221f2528cf9a',
+            'field_serie_position': '6a9a1ceea1016d22900f3fe2',
+
+            'field_grp_tarimas': '6a9a1a739c43aaa5c435d7b5',
+            'field_pallet_id': '6a9a1a8831743950c27599f9',
+            'field_grp_boxes': '6a9a1862d30d583834257566',
+
+            'field_grp_stages': '6a9a36d231743950c2759a2a',
+            'field_stage_name': '6a9a392dc725d11c0c356f7b',
+            'field_stage_at': '6a9a392dc725d11c0c356f7c',
+            'field_stage_by': '6a9a392dc725d11c0c356f7d',
+            'field_stage_canceled_reason': '6a9a392dc725d11c0c356f7e',
 
             # Ajustes de material en la Transferencia
             'adjust_prev_quantity': '6a9893e11186e5b473216a19',
@@ -223,6 +258,7 @@ class Stock(Stock):
             "skip": 0,
         }
         record = self.lkf_api.search_catalog(catalog_id, mango_query)
+
         if not record:
             return None
 
@@ -322,6 +358,72 @@ class Stock(Stock):
 
         return missing_products
 
+    def format_bool_value(self, value):
+        if value:
+            return 'sí'
+        return 'no'
+
+    def make_series_data(self, box_id, sku_data, list_serials):
+        if not list_serials:
+            return []
+        
+        data_num_serie = {
+            self.f['field_serie_sku']: self.unlist( sku_data.get( self.f['field_sku'] ) ),
+            self.f['field_serie_product_id']: self.unlist( sku_data.get( self.f['field_product_code'] ) ),
+            self.f['field_serie_product_name']: self.unlist( sku_data.get( self.f['field_product_name'] ) ),
+        }
+
+        if box_id:
+            data_num_serie[ self.f['field_serie_box_id'] ] = box_id
+
+        group_series = []
+        for serial in list_serials:
+            serial_info = deepcopy(data_num_serie)
+            serial_info.update({
+                self.f['field_serie_num_serie']: serial.get('value'),
+                self.f['field_serie_reacondicionado']: self.format_bool_value(serial.get('reacondicionado')),
+                self.f['field_serie_source']: serial.get('source'),
+                self.f['field_serie_corrected_manually']: self.format_bool_value(serial.get('correctedManually')),
+                # self.f['field_serie_evidence']: 
+                # self.f['field_serie_position']: 
+            })
+            group_series.append(serial_info)
+
+        return group_series
+
+    def get_materials_scan(self, sku_data, list_boxes):
+        if not list_boxes:
+            return []
+
+        list_fields_box = []
+        pallets = set()
+        list_series_box = []
+        for box in list_boxes:
+            box_id = box.get('id')
+            pallet_id = box.get('groupId')
+
+            data_box = {}
+
+            # Si no hay id de caja ni de tarima, se entiende que es una unidad suelta
+            if not box_id and not pallet_id:
+                data_box[ self.f['field_box_bool_loose_unit'] ] = 'sí'
+            
+            data_box[self.f['field_box_id']] = box_id
+            data_box[self.f['field_box_id_pallet']] = pallet_id
+            data_box[self.f['field_box_evidence']] = box.get('labelPhotos', [])
+            data_box[self.f['field_box_position']] = box.get('position')
+            data_box[self.f['field_box_at']] = self.format_fecha_evento( box.get('scannedAt') )
+            data_box[self.f['field_box_by']] = box.get('scannedBy')
+            list_fields_box.append(data_box)
+            
+            if pallet_id:
+                pallets.add(pallet_id)
+
+            series = self.make_series_data( box_id, sku_data, box.get('serials') )
+            list_series_box.extend(series)
+
+        return list_fields_box, pallets, list_series_box
+
     def build_grp_materiales(self, materiales_data, is_transfer=False):
         """
         Arma el desglose de materiales recibidos, resolviendo cada SKU
@@ -343,15 +445,50 @@ class Stock(Stock):
             info_material = {
                 self.f['obj_products']: info_catalog_sku
             }
-            info_material[ self.f_bitacora['cantidad_desglose'] ] = data_material.get('expectedQuantity', 0)
-            info_material[ self.f_bitacora['cantidad_acumulada_desglose'] ] = data_material.get('receivedQuantity', 0)
+            info_material[ self.bitacora_transportista_fields['cantidad_desglose'] ] = data_material.get('expectedQuantity', 0)
+            info_material[ self.bitacora_transportista_fields['cantidad_acumulada_desglose'] ] = data_material.get('receivedQuantity', 0)
             info_material.update( self.get_damage_reports( data_material.get('damageReports', []) ) )
             
             # Datos que aplican para el proceso de Transferencias
             if is_transfer:
+                # Se integran los ajustes
                 info_material.update( self.get_adjustment_data( data_material.get('adjustment') ) )
+                # se obtienen los elementos faltantes en la recepcion
                 missing_reports = self.make_missing_report( info_catalog_sku, data_material.get('missingReports', []) )
                 grp_missing.extend(missing_reports)
+                # se obtienen las Tarimas, Cajas y Núms. de Serie
+                grp_boxes, grp_pallets, grp_series = self.get_materials_scan( info_catalog_sku, data_material.get('boxScans') )
+                # Puede ser que también haya Unidades sueltan, por tanto hay que integrarlas al grupo de series
+                loose_units = data_material.get('looseUnitScan')
+                if loose_units:
+                    boxes_loose_units, _, loose_units_found = self.get_materials_scan( info_catalog_sku, [loose_units] )
+                    grp_series.extend(loose_units_found)
+                    grp_boxes.extend(boxes_loose_units)
 
             grp_materiales.append(info_material)
+        
+        if is_transfer:
+            return grp_materiales, grp_boxes, grp_pallets, grp_series
+
         return grp_materiales
+
+    def build_grp_bitacora(self, eventos):
+        """
+        Arma el grupo repetitivo de eventos de la bitacora (fecha, tipo
+        y detalle de cada evento registrado durante el recibo).
+
+        Args:
+            eventos (list[dict]): seccion `events` del payload, cada uno
+            con `at`, `type` y `detail`.
+
+        Returns:
+            list[dict]: filas para el campo `field_grp_bitacora`.
+        """
+        grp_bitacora = []
+        for evento in eventos:
+            grp_bitacora.append({
+                self.f['field_fecha_evento']: self.format_fecha_evento( evento.get('at') ),
+                self.f['field_tipo_evento']: evento.get('type', '').replace('_', ' ').title(),
+                self.f['field_detalle_evento']: evento.get('detail')
+            })
+        return grp_bitacora
