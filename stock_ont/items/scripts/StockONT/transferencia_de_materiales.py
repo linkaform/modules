@@ -102,32 +102,37 @@ class Stock(Stock):
             rdOnly_fields=False
         )
 
+    def _build_stage_row(self, stage, name_stage, data_stage):
+        stage_at = data_stage.get('cancelledAt' if stage == 'cancellation' else 'confirmedAt')
+        stage_by = data_stage.get('cancelledBy' if stage == 'cancellation' else 'confirmedBy')
+        reason = data_stage.get('reason')
+
+        if not stage_at and not stage_by:
+            return None
+
+        return {
+            self.f['field_stage_name'] : name_stage,
+            self.f['field_stage_at'] : self.format_fecha_evento(stage_at),
+            self.f['field_stage_by'] : stage_by,
+            self.f['field_stage_canceled_reason'] : reason,
+        }
+
     def build_grp_stages(self):
         data_grp_stages = []
         for stage, name_stage in self.map_stages.items():
             data_stage = self.data.get(stage, {})
-            
+
             if not data_stage:
                 continue
-            
-            stage_at = data_stage.get('cancelledAt' if stage == 'cancellation' else 'confirmedAt')
-            stage_by = data_stage.get('cancelledBy' if stage == 'cancellation' else 'confirmedBy')
-            reason = data_stage.get('reason')
 
-            if not stage_at and not stage_by:
-                continue
-
-            data_grp_stages.append({
-                self.f['field_stage_name'] : name_stage,
-                self.f['field_stage_at'] : self.format_fecha_evento(stage_at),
-                self.f['field_stage_by'] : stage_by,
-                self.f['field_stage_canceled_reason'] : reason,
-            })
+            row_stage = self._build_stage_row(stage, name_stage, data_stage)
+            if row_stage:
+                data_grp_stages.append(row_stage)
         return data_grp_stages
 
-    def tranferencia_de_materiales(self):
+    def build_answers_transferencia(self):
         materiales_data = self.data.get('items', [])
-        grp_materiales, grp_boxes, grp_pallets, grp_series = self.build_grp_materiales(materiales_data, is_transfer=True)
+        grp_materiales, grp_boxes, grp_pallets, grp_series, grp_missing = self.build_grp_materiales(materiales_data, is_transfer=True)
 
         # print("\n+++ grp_materiales =",grp_materiales)
         # print("\n+++ grp_boxes =",grp_boxes)
@@ -137,7 +142,7 @@ class Stock(Stock):
         # print('... ... .... ... originWarehouse= ', self.find_warehouse_location_catalog(self.data.get('originWarehouse')))
         # print('... ... .... ... destinationWarehouse= ', self.find_warehouse_dest_catalog(self.data.get('destinationWarehouse')))
         # stop
-
+        delivery_data = self.data.get('delivery', {})
         answers_transferencia = {
             self.f['field_status_transferencia']: self.map_transfer_stages.get(self.data.get('stage')),
             self.f['field_transfer_date_from']: self.data.get('analysisRange', {}).get('startDate'),
@@ -150,10 +155,26 @@ class Stock(Stock):
             self.f['field_grp_onts']: grp_series,
             self.f['field_grp_bitacora']: self.build_grp_bitacora(self.data.get('events', [])),
             self.f['field_grp_stages']: self.build_grp_stages(),
+            self.f['field_grp_missing_report']: grp_missing,
+
+            self.f['field_delivery_estimated_date']: delivery_data.get('estimatedDeliveryDate'),
+            self.f['field_delivery_signature']: delivery_data.get('signatureDataUrl',[]),
+            self.f['field_delivery_signature_at']: self.format_fecha_evento(delivery_data.get('signedAt')),
+            self.f['field_delivery_ev_transport']: delivery_data.get('evidence', {}).get('transport', {}).get('evidence', []),
+            self.f['field_delivery_ev_plates']: delivery_data.get('evidence', {}).get('plates', {}).get('evidence', []),
+            self.f['field_delivery_ev_material']: delivery_data.get('evidence', {}).get('material', {}).get('evidence', []),
         }
+
+        info_catalog_transportista = self.find_transportista_catalog(delivery_data.get('carrierName'))
+        if info_catalog_transportista:
+            answers_transferencia[ self.f['obj_ubi_transportista'] ] = info_catalog_transportista
 
         # print('answers_transferencia =',simplejson.dumps(answers_transferencia, indent=4))
 
+        return answers_transferencia
+
+    def tranferencia_de_materiales(self):
+        answers_transferencia = self.build_answers_transferencia()
         return self.post_transferencia_materiales(answers_transferencia)
 
 if __name__ == '__main__':

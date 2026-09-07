@@ -62,15 +62,6 @@ class Stock(Stock):
             rdOnly_fields=False
         )
 
-    def find_transportista_catalog(self, nombre_transportista):
-        field_map = {
-            'nombre_transportista': self.f['field_nombre_transportista']
-        }
-        return self._find_catalog_record(
-            self.CATALOG_ID_TRANSPORTISTAS, self.f['field_nombre_transportista'],
-            nombre_transportista, field_map
-        )
-
     def find_catalogs_bitacora_transportista(self, delivery_data):
         """
         Busca en catalogo el almacen destino, el almacen origen y el

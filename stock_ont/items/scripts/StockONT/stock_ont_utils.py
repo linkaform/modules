@@ -90,6 +90,7 @@ class Stock(Stock):
             'field_box_position': '6a9a196b8f084d0a0bbe1634',
             'field_box_at': '6a9a196b8f084d0a0bbe1635',
             'field_box_by': '6a9a196b8f084d0a0bbe1636',
+            'field_box_sku': '6a9d62f7a53f0c0b2896b7d5',
 
             'field_serie_box_id': '6a9a181cceff751bc0311a34',
             'field_serie_sku': '6a998d651c34062b10a9765c',
@@ -111,6 +112,13 @@ class Stock(Stock):
             'field_stage_at': '6a9a392dc725d11c0c356f7c',
             'field_stage_by': '6a9a392dc725d11c0c356f7d',
             'field_stage_canceled_reason': '6a9a392dc725d11c0c356f7e',
+
+            'field_delivery_estimated_date': '6a95c9b2dec9e900acd6facc',
+            'field_delivery_signature': '6a95c9b2dec9e900acd6fad0',
+            'field_delivery_signature_at': '6a9a2415d30d58383425756b',
+            'field_delivery_ev_transport': '6a95c9b2dec9e900acd6facd',
+            'field_delivery_ev_plates': '6a95c9b2dec9e900acd6face',
+            'field_delivery_ev_material': '6a95c9b2dec9e900acd6facf',
 
             # Ajustes de material en la Transferencia
             'adjust_prev_quantity': '6a9893e11186e5b473216a19',
@@ -182,6 +190,7 @@ class Stock(Stock):
             'nivel_desglose': '6a6a4b64c6fd2eaaf5f8c0b6',
             'tipo_unidad_empaque_desglose': '6a6a4b64c6fd2eaaf5f8c0b7',
             'cantidad_desglose': '6a6a4b64c6fd2eaaf5f8c0b8',
+            'cantidad_sugerida_desglose': '6a6a4b64c6fd2eaaf5f8c015',
             'cantidad_acumulada_desglose': '6a6a4b64c6fd2eaaf5f8c0b9',
 
             'grupo_inspecciones': '6a42a7068dcfbf362329a972',
@@ -227,6 +236,15 @@ class Stock(Stock):
         fecha, hora = val.split("T")
         hora = hora.split(".")[0]
         return f"{fecha} {hora}"
+
+    def find_transportista_catalog(self, nombre_transportista):
+        field_map = {
+            'nombre_transportista': self.f['field_nombre_transportista']
+        }
+        return self._find_catalog_record(
+            self.CATALOG_ID_TRANSPORTISTAS, self.f['field_nombre_transportista'],
+            nombre_transportista, field_map
+        )
 
     def _find_catalog_record(self, catalog_id, filter_field, filter_value, field_map, rdOnly_fields=True, field_as_select=[]):
         """
@@ -393,23 +411,32 @@ class Stock(Stock):
 
     def get_materials_scan(self, sku_data, list_boxes):
         if not list_boxes:
-            return []
+            return [], set(), []
 
         list_fields_box = []
         pallets = set()
         list_series_box = []
+        sku_producto = self.unlist( sku_data.get(self.f['field_sku']) ) if sku_data else None
         for box in list_boxes:
             box_id = box.get('id')
             pallet_id = box.get('groupId')
 
             data_box = {}
 
-            # Si no hay id de caja ni de tarima, se entiende que es una unidad suelta
+            # Si no hay id de caja ni de tarima, se entiende que es una unidad suelta.
+            # No trae un id propio, asi que se usa el sku del producto como box_id
+            # sintetico: permite ligar sus series (field_serie_box_id) de vuelta a
+            # esta caja/producto al consultar, igual que se hace con cajas normales.
             if not box_id and not pallet_id:
                 data_box[ self.f['field_box_bool_loose_unit'] ] = 'sí'
-            
+                box_id = sku_producto
+
             data_box[self.f['field_box_id']] = box_id
             data_box[self.f['field_box_id_pallet']] = pallet_id
+            # Se guarda el sku del producto en la propia caja (tenga o no series)
+            # para poder reagruparla de vuelta a su item al consultar, sin depender
+            # de que tenga algun serial asociado.
+            data_box[self.f['field_box_sku']] = sku_producto
             data_box[self.f['field_box_evidence']] = box.get('labelPhotos', [])
             data_box[self.f['field_box_position']] = box.get('position')
             data_box[self.f['field_box_at']] = self.format_fecha_evento( box.get('scannedAt') )
@@ -438,6 +465,7 @@ class Stock(Stock):
             list[dict]: filas para el campo `grupo_desglose_empaque`.
         """
         grp_materiales, grp_missing = [], []
+        grp_boxes, grp_pallets, grp_series = [], set(), []
         for data_material in materiales_data:
             info_catalog_sku = self.find_material_catalog_sku( data_material.get('sku') )
             if not info_catalog_sku:
@@ -446,9 +474,10 @@ class Stock(Stock):
                 self.f['obj_products']: info_catalog_sku
             }
             info_material[ self.bitacora_transportista_fields['cantidad_desglose'] ] = data_material.get('expectedQuantity', 0)
+            info_material[ self.bitacora_transportista_fields['cantidad_sugerida_desglose'] ] = data_material.get('suggestedQuantity', 0)
             info_material[ self.bitacora_transportista_fields['cantidad_acumulada_desglose'] ] = data_material.get('receivedQuantity', 0)
             info_material.update( self.get_damage_reports( data_material.get('damageReports', []) ) )
-            
+
             # Datos que aplican para el proceso de Transferencias
             if is_transfer:
                 # Se integran los ajustes
@@ -457,18 +486,23 @@ class Stock(Stock):
                 missing_reports = self.make_missing_report( info_catalog_sku, data_material.get('missingReports', []) )
                 grp_missing.extend(missing_reports)
                 # se obtienen las Tarimas, Cajas y Núms. de Serie
-                grp_boxes, grp_pallets, grp_series = self.get_materials_scan( info_catalog_sku, data_material.get('boxScans') )
+                boxes, pallets, series = self.get_materials_scan( info_catalog_sku, data_material.get('boxScans') )
                 # Puede ser que también haya Unidades sueltan, por tanto hay que integrarlas al grupo de series
                 loose_units = data_material.get('looseUnitScan')
                 if loose_units:
                     boxes_loose_units, _, loose_units_found = self.get_materials_scan( info_catalog_sku, [loose_units] )
-                    grp_series.extend(loose_units_found)
-                    grp_boxes.extend(boxes_loose_units)
+                    series.extend(loose_units_found)
+                    boxes.extend(boxes_loose_units)
+
+                # Se acumulan (no se reasignan) para no perder cajas/series de items anteriores
+                grp_boxes += boxes
+                grp_pallets |= pallets
+                grp_series += series
 
             grp_materiales.append(info_material)
-        
+
         if is_transfer:
-            return grp_materiales, grp_boxes, grp_pallets, grp_series
+            return grp_materiales, grp_boxes, grp_pallets, grp_series, grp_missing
 
         return grp_materiales
 
