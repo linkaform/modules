@@ -49,6 +49,8 @@ if __name__ == "__main__":
     fotografia=data.get("fotografia",[])
     nombre_suplente=data.get("nombre_suplente","")
     guard_id=data.get("guard_id","")
+    dynamic_filters=data.get("dynamic_filters",{})
+    roles=data.get("roles",[])
     #-FUNCTIONS
     print('option', option)
     if option == 'load_shift':
@@ -59,17 +61,19 @@ if __name__ == "__main__":
     elif option == 'assing_gafete':
         response = acceso_obj.assing_gafete(data_gafete, id_bitacora, tipo_movimiento)
     elif option == 'list_bitacora2':
-        response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, limit=limit, offset=offset)
+        response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, dynamic_filters=dynamic_filters, limit=limit, offset=offset)
     elif option == 'get_user_booths':
         response = acceso_obj.get_user_booths_availability(turn_areas=turn_areas)
     elif option == 'get_boot_guards' or option == 'guardias_de_apoyo':
         response = acceso_obj.get_booths_guards(location, area, solo_disponibles=True, **{'position':acceso_obj.support_guard})
+    elif option == 'catalogo_roles':
+        response = acceso_obj.catalogo_roles()
     elif option == 'catalog_estado':
         response = acceso_obj.catalogo_estados()
     elif option == 'catalog_location':
         response = acceso_obj.get_catalog_locations(location)
     elif option == 'checkin':
-        response = acceso_obj.do_checkin(location, area, employee_list, fotografia=fotografia ,nombre_suplente=nombre_suplente, checkin_id=checkin_id)
+        response = acceso_obj.do_checkin(location, area, employee_list, fotografia=fotografia ,nombre_suplente=nombre_suplente, checkin_id=checkin_id, roles=roles)
     elif option == 'checkout':
         # used
         response = acceso_obj.do_checkout(checkin_id=checkin_id, \
@@ -84,7 +88,7 @@ if __name__ == "__main__":
         response = acceso_obj.get_lista_pase(location=location, inActive=inActive)
     elif option == 'do_out':
         # used
-        response = acceso_obj.do_out(qr_code, location, area, gafete_id)
+        response = acceso_obj.do_out(qr_code, location, area, gafete_id, record_id)
     elif option == 'do_access':
         # used
         response = acceso_obj.do_access(qr_code, location, area, data)

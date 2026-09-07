@@ -21,7 +21,7 @@ class Location(Location):
         print('area', area)
         print('location', location)
         field_id_qr = self.f['area_qr_code']
-        base_url = 'https://srv.linkaform.com/solucion_accesos/ingreso.html'
+        base_url = 'https://web.clave10.com/dashboard/registro-ingreso'
         if self.answers.get(self.f['url_configurable']):
             base_url = self.answers.get(self.f['url_configurable'])
         url= f'{base_url}?caseta="{area}"&ubicacion="{location}"&acc_id={self.user.get("user_id", 0)}'

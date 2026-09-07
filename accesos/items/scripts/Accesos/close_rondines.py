@@ -117,7 +117,7 @@ class Accesos(Accesos):
         print("======log: ", rondines_ids)
 
         db_name = f'clave_{self.user.get("user_id")}'
-        self.cr_db = self.lkf_api.couch.set_db(db_name)
+        self.cr_db = self.get_couch_user_db(db_name)
 
         records = list(self.cr_db.find({
             "selector": {"_id": {"$in": rondines_ids}}
@@ -125,7 +125,7 @@ class Accesos(Accesos):
 
         for record in records:
             record['inbox'] = False
-            record['status_rondin'] = 'closed'
+            record['status_user'] = 'closed'
         self.cr_db.update(records)
 
         answers[self.f['estatus_del_recorrido']] = 'cerrado'
