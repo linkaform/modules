@@ -62,15 +62,6 @@ class Stock(Stock):
             rdOnly_fields=False
         )
 
-    def find_transportista_catalog(self, nombre_transportista):
-        field_map = {
-            'nombre_transportista': self.f['field_nombre_transportista']
-        }
-        return self._find_catalog_record(
-            self.CATALOG_ID_TRANSPORTISTAS, self.f['field_nombre_transportista'],
-            nombre_transportista, field_map
-        )
-
     def find_catalogs_bitacora_transportista(self, delivery_data):
         """
         Busca en catalogo el almacen destino, el almacen origen y el
@@ -174,27 +165,6 @@ class Stock(Stock):
                 self.f_bitacora['documento']: data_evidencia['evidence']
             })
         return grp_evidencias
-    
-    def build_grp_bitacora(self, eventos):
-        """
-        Arma el grupo repetitivo de eventos de la bitacora (fecha, tipo
-        y detalle de cada evento registrado durante el recibo).
-
-        Args:
-            eventos (list[dict]): seccion `events` del payload, cada uno
-            con `at`, `type` y `detail`.
-
-        Returns:
-            list[dict]: filas para el campo `field_grp_bitacora`.
-        """
-        grp_bitacora = []
-        for evento in eventos:
-            grp_bitacora.append({
-                self.f['field_fecha_evento']: self.format_fecha_evento( evento.get('at') ),
-                self.f['field_tipo_evento']: evento.get('type', '').replace('_', ' ').title(),
-                self.f['field_detalle_evento']: evento.get('detail')
-            })
-        return grp_bitacora
 
     def build_move_group_recepcion(self, materiales_data):
         """
