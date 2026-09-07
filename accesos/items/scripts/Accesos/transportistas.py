@@ -1247,6 +1247,7 @@ class Accesos(Accesos):
                 'label':      field.get('label'),
                 'field_type': field.get('field_type'),
                 'options':    field.get('options', []),
+                'required':   field.get('required', False),
             }
 
         resultado = []
