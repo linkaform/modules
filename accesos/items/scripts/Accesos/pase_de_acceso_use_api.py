@@ -48,11 +48,11 @@ if __name__ == "__main__":
     elif option == 'update_active_pass':
         response = acceso_obj.update_active_pass(folio, qr_code, update_obj)
     elif option == 'catalogos_pase_area':
-        response = acceso_obj.catalogos_pase_area(location)
+        response = acceso_obj.catalogos_pase_area(location, uso=uso)
     elif option == 'catalogos_pase_location':
         response = acceso_obj.catalogos_pase_location()
     elif option == 'catalogos_pase_no_jwt':
-        response = acceso_obj.catalagos_pase_no_jwt(qr_code)
+        response = acceso_obj.catalagos_pase_no_jwt(qr_code, account_id=account_id)
     elif option == 'enviar_msj':
         response = acceso_obj.create_enviar_msj_pase(folio=folio)
     elif option == 'enviar_correo':

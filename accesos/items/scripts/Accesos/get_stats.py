@@ -20,7 +20,7 @@ if __name__ == "__main__":
     month = data.get('month', 1)
     year = data.get('year', 2026)
     print("data//////////////////", data)
-    
+
     if option == 'get_stats':
         response = acceso_obj.get_page_stats(booth_area=area, location=location, page=page, month=month, year=year)
     else :
