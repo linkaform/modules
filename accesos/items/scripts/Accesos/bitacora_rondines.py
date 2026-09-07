@@ -39,7 +39,7 @@ class Accesos(Accesos):
 
         if not fecha_inicio:
             fecha_inicio = areas_con_fecha[0][0]
-            self.answers[self.f['fecha_inicio_rondin']] = fecha_inicio
+            self.answers[self.f['fecha_inicio_rondin']] = datetime.datetime.fromtimestamp(fecha_inicio).strftime('%Y-%m-%d %H:%M:%S')
 
         first_epoch = areas_con_fecha[0][0]
         for epoch, area in areas_con_fecha:
@@ -99,6 +99,7 @@ class Accesos(Accesos):
             self.answers[self.f['areas_del_rondin']] = areas_recorrido.get('rondin_areas', [])
             self.answers[self.rondin_keys['tipo_asignacion']] = areas_recorrido.get('tipo_asignacion')
             self.answers[self.rondin_keys['grupo_asignado_a']] = areas_recorrido.get('grupo_asignado_a', [])
+            self.answers[self.f['grupo_roles']] = areas_recorrido.get('roles', [])
             if areas_recorrido.get('id_grupo'):
                 self.answers[self.GRUPOS_CAT_OBJ_ID] = {self.mf['id_grupo']:areas_recorrido['id_grupo']} 
             return True
@@ -114,7 +115,7 @@ class Accesos(Accesos):
             }}
         if rol:
             match["$match"].update(
-                {f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.Location.f['area_salida']}":area}
+                {f"answers.{self.f['grupo_roles']}.{self.ROL_CATALOG_OBJ_ID}.{self.f['rol']}": {"$in": rol}}
                 )
         query = [
             match,
@@ -164,11 +165,18 @@ class Accesos(Accesos):
 
     def get_and_set_user(self):
         tipo_asignacion = self.answers.get(self.rondin_keys['tipo_asignacion'])
-        grupo_asignado_a = self.answers.get(self.rondin_keys['grupo_asignado_a'])
-        breakpoint()
+        grupo_asignado_a = self.answers.get(self.rondin_keys['grupo_asignado_a']) or []
+        print('tipo_asignacion = ', tipo_asignacion)
         if tipo_asignacion and tipo_asignacion in ('persona_especifica', 'grupo'):
             if tipo_asignacion == 'grupo':
-                grupo_asignado_a = self.lkf_api.get_group_users(self.unlist(self.answers[self.GRUPOS_CAT_OBJ_ID][self.mf['id_grupo']]))
+                id_grupo = self.unlist(self.answers.get(self.GRUPOS_CAT_OBJ_ID, {}).get(self.mf['id_grupo'], ''))
+                if id_grupo:
+                    grupo_asignado_a = self.lkf_api.get_group_users(id_grupo) or []
+                else:
+                    print('Warning: el recorrido esta asignado a un grupo pero no tiene id_grupo, se usa el grupo repetitivo asignado_a')
+            if not grupo_asignado_a:
+                print('Warning: no se encontraron usuarios para asignar el recorrido')
+                return False
             new_metadata = deepcopy(self.current_record)
             new_metadata.pop('answers')
             new_metadata.pop('_id')
@@ -186,7 +194,13 @@ class Accesos(Accesos):
                     res = self.lkf_api.post_forms_answers(new_metadata)
         else:
             location = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'])
-            user_info = self.get_active_guards_in_location(location)
+            roles_raw = self.answers.get(self.f['grupo_roles'], [])
+            rol = [
+                r.get(self.ROL_CATALOG_OBJ_ID, {}).get(self.f['rol'])
+                for r in roles_raw
+                if r.get(self.ROL_CATALOG_OBJ_ID, {}).get(self.f['rol'])
+            ]
+            user_info = self.get_active_guards_in_location(location, rol=rol)
             if not user_info:
                 return False
             

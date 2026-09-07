@@ -328,15 +328,20 @@ if __name__ == "__main__":
             data['area'] = qr_data.get('area', '')
 
 
-    if data.get('area'):
-            search_area = acceso_obj.get_record_ubicacion(ubicacion=data.get('ubicacion'), area=data.get('area'))
     if data.get('nombre_nueva_area'):
         nueva_area = data.get('nombre_nueva_area')
+        # Nos aseguramos que el area no exista ya que el usuario pudo haber escogido area nueva y ya existia esa area
+        exists_area = acceso_obj.exists_area(data.get('ubicacion', {}), data.get('nombre_nueva_area', ''))
+        if exists_area:
+            data['area'] = nueva_area
+            nueva_area = None
 
 
     #! Crea el area si no existe
     if nueva_area:
-        acceso_obj.create_new_area(data)
+        res_create = acceso_obj.create_new_area(data)
+        if res_create.get('status_code') == 400:
+            acceso_obj.LKFException(res_create.get('json'))
         data['area'] = data.get('nombre_nueva_area')
     else:
         #! Validacion para evitar problema con areas creadas directamente en el catalogo

@@ -82,7 +82,12 @@ class Accesos(Accesos):
         self.CONFIGURACION_DE_RECORRIDOS_FORM = self.lkm.form_id('configuracion_de_recorridos','id')
         self.CONF_MODULO_SEGURIDAD = self.lkm.form_id('configuracion_modulo_seguridad','id')
         self.BITACORA_TRANSPORTISTAS = self.lkm.form_id('bitacora_de_transportistas','id')
-        
+        # OJO: el slug real registrado en Linkaform es "configuracin..." (sin "ó") —
+        # Linkaform le quitó el acento de forma imperfecta al generar el nombre técnico
+        # a partir de "Configuración de Flujo de Transportistas". No "corregir" esto sin
+        # antes confirmar el item_name real en LKFModules.
+        self.CONFIGURACION_FLUJO_TRANSPORTISTAS = self.lkm.form_id('configuracin_de_flujo_de_transportistas','id')
+
         self.INSPECCION_ENTRADA_CTPAT_TRACTOR = self.lkm.form_id('inspeccion_de_entrada_ctpat_tractor_cabezal','id')
         self.INSPECCION_ENTRADA_CTPAT_REMOLQUE = self.lkm.form_id('inspeccion_de_entrada_ctpat_remolque','id')
         self.INSPECCION_ENTRADA_CTPAT_CONTENEDOR = self.lkm.form_id('inspeccion_de_entrada_ctpat_contenedor','id')
@@ -127,14 +132,8 @@ class Accesos(Accesos):
             'free_day_autorization': '55887b7e01a4de2ea71c5ab8',
             'grupo_incluir': '69974d3806cc6d6a17f8b1fa',
             'pases_incluir': '69974d55879296015c1cd8d2',
-
             'prefijo_telefonico':'6a221532db633d0cf4faf12f',
             'grupo_requisitos':"676975321df93a68a609f9ce",
-
-            'opcion_condiciones_servicio':"6a4c65bd847c02cf0be63f05",
-            'desc_condiciones_servicio':"6a4c673722f825e7b3e46468",
-            'doc_condiciones_servicio':"6a4c673722f825e7b3e46469",
-            'url_condiciones_servicio':"6a4c673722f825e7b3e4646a",
         })
         
         self.checkin_fields.update({
@@ -278,12 +277,13 @@ class Accesos(Accesos):
             "proveedor": "6a1ddb53f5a36ba1c7dd029d",
             "proveedor_email": "6a207762cd730fb838ce1bb1",
             "proveedor_telefono": "6a207762cd730fb838ce1bb2",
+            "empresa_transportista": "6a09fdc32fa9d55259ae9d2b",
 
             "grupo_documentos_para_ocr": "6a2ae394b8e5ca8fd73705dc",
             "tipo_de_documento": "6a2ae3d8cf0be6f60c19f85d",
             "no_de_documento": "6a2ae3d8cf0be6f60c19f85e",
             "documento_para_ocr": "6a2ae3d8cf0be6f60c19f85f",
-            
+
             "proveedor_cliente_material": "6a207762cd730fb838ce1bb4",
             "orden_de_compra": "6a1ddb53f5a36ba1c7dd02a0",
             "grupo_materiales": "6a2714954a54077ffa2394e6",
@@ -293,6 +293,9 @@ class Accesos(Accesos):
             "cantidad":   "6a2714eeca6ac6897ef55d95",
             "peso":       "6a2714eeca6ac6897ef55d96",
             "volumen":    "6a2714eeca6ac6897ef55d97",
+            "producto":      "6a3a6c2c9d500676ec5e3fbf",
+            "lote":          "6ade55ab470ae4e36395ba2b",
+            "no_referencia": "6a5b4fc9651b28e19d6352a2",
 
             "direccion_de_recoleccion": "6a1ddb53f5a36ba1c7dd02a1",
             "fecha_pase_transportista_desde": "6a1ddcba20dadbb04a29b59f",
@@ -336,6 +339,8 @@ class Accesos(Accesos):
             "vehiculo_placas": "6a2add8342320b4d1b66db8c",
             "vehiculo_no_economico": "6a2add8342320b4d1b66db8d",
             "vehiculo_niv": "6a2add8342320b4d1b66db8e",
+            "vehiculo_color": "6afbbf71031d00fe8bd50a41",
+            "conductor_rfc": "6a2c387c7df9203d2f98fcec",
             "foto_contenedores": "6a2b045ed8034654f212c1bc",
             "grupo_contenedores": "6a2add8342320b4d1b66db8f",
             "contenedor_numero": "6a2addcfcee6b93e39ab8a51",
@@ -347,6 +352,7 @@ class Accesos(Accesos):
             'estatus': '6a31921f07fb9cb5840d1f22',
             'fecha_hora_ingreso': '6a3bee0a7829a4ca9572d39e',
             'fecha_hora_descarga': '6a3bee0a7829a4ca9572d39f',
+            'fecha_hora_terminado': '6a710409eaef5abc8b1a1a69',
 
             'grupo_fotos_y_documentos': '6a3bee0a7829a4ca9572d3a0',
             'tipo_de_documento': '6a3bee394a7a0748a6fc9a56',
@@ -381,6 +387,9 @@ class Accesos(Accesos):
             'lote_material': '6a4409523a38bb598a0a18a0',
             'cantidad_material': '6a42c7a7a1555d53d6b91950',
             'cantidad_fisica_material': '6a454fb37ddcb3993dd90107',
+            'cantidad_buena_material': '6a6ac379fab960f8931dcc77',
+            'cantidad_danada_material': '6a6ac35a71f64d908af42f69',
+            'cantidad_faltante_material': '6a7a4ee0e6092a8d37f6d448',
             'peso_material': '6a42c7a7a1555d53d6b91951',
             'volumen_material': '6a42c7a7a1555d53d6b91952',
 
@@ -395,12 +404,31 @@ class Accesos(Accesos):
 
             'grupo_sellos': '6a42c65c03f125df7ad28601',
 
+            'grupo_desglose_empaque': '6a6a4abe639ed7cad54be377',
+            'no_referencia_material_desglose': '6a6a4adc169fc82c5fae8668',
+            'nivel_desglose': '6a6a4b64c6fd2eaaf5f8c0b6',
+            'tipo_unidad_empaque_desglose': '6a6a4b64c6fd2eaaf5f8c0b7',
+            'cantidad_desglose': '6a6a4b64c6fd2eaaf5f8c0b8',
+            'cantidad_acumulada_desglose': '6a6a4b64c6fd2eaaf5f8c0b9',
+
             'grupo_inspecciones': '6a42a7068dcfbf362329a972',
             'tipo_inspeccion': '6a42c80b03f125df7ad2862b',
             'url_inspeccion': '6a42a71aec3f7153a3d2aea3',
         }
 
+        self.conf_flujo_transportistas_fields = {
+            'etapas_activas': '6a75056924f23eef843cd01b',
+            'configuracion_de_inspecciones': '6a7509cd6e87e5935b853b7b',
+            'tipo_de_inspeccion': '6a750a1afd4ed68d7c57c24d',
+            'norma': '6a7e2c5c23fb366f1918dea8',
+            'subtipo': '6a7e2c5c23fb366f1918dea9',
+        }
+
         self.inspeccion_entrada_tractor_fields = {
+            'fotos_y_documentos': '6a5fcf869160bd10e1b0b323',
+            'tipo_de_documento': '6a5fe2b0a5af7dac33061ea9',
+            'documento': '6a5fe2b0a5af7dac33061eaa',
+
             'defensa': '20e7950eaac0054dbb8ca133',  # 1. Defensa (Si/No/N.A)
             'defensa_comentarios': '7aa52ec9ded1f199a3bfa307',
             'defensa_evidencia': '529623abe2be9e64816dec78',
@@ -471,6 +499,10 @@ class Accesos(Accesos):
         }
 
         self.inspeccion_entrada_ctpat_contenedor_fields = {
+            'fotos_y_documentos': '6a5fde6455cec5f5e85ea2a0',
+            'tipo_de_documento': '6a5fe2b0a5af7dac33061ea9',
+            'documento': '6a5fe2b0a5af7dac33061eaa',
+
             'altura_interior': 'd412fb9f428dfc231c9bc3f0',  # Altura interior (text)
             'ancho_interior': '6477c73222d9b7e8dd1de3b9',  # Ancho interior (text)
             'longitud_interior': 'd7c19cbd2cfe6b19f848d697',  # Longitud interior (text)
@@ -484,6 +516,10 @@ class Accesos(Accesos):
         }
 
         self.inspeccion_entrada_ctpat_remolque_fields = {
+            'fotos_y_documentos': '6a5fde3b04fdbbdbcfdfc2a2',
+            'tipo_de_documento': '6a5fe2b0a5af7dac33061ea9',
+            'documento': '6a5fe2b0a5af7dac33061eaa',
+
             'altura_interior': '6703c4acd45242ffb0eb0839',  # Altura interior (text)
             'ancho_interior': '7bfa6fe868c1cbec93a051e5',  # Ancho interior (text)
             'longitud_interior': '2624dc82316e99315084d385',  # Longitud interior (text)
@@ -546,6 +582,17 @@ class Accesos(Accesos):
             'comentarios': '0e009f7829544463cbf89e1e',  # Comentarios (textarea)
         }
 
+
+    def flatten_roles(self, roles_raw):
+        """
+        Se aplana la estructura de roles (viene como [{ROL_CATALOG_OBJ_ID: {rol: 'Gerente'}}, ...])
+        a una lista simple de strings (['Gerente', ...]) para el frontend.
+
+        Nota: roles_raw ya pasó por format_cr/_labels, que aplana
+        {ROL_CATALOG_OBJ_ID: {rol_field_id: valor}} a {'rol': valor}.
+        """
+        return [r.get('rol') for r in roles_raw if r.get('rol')]
+
     def create_pass_transportista(self, data):
         print(simplejson.dumps(data, indent=3))
         f = self.pass_fields_transportista
@@ -594,6 +641,7 @@ class Accesos(Accesos):
             f['proveedor']:                      recibe.get('nombre', ''),
             f['proveedor_email']:                recibe.get('email', ''),
             f['proveedor_telefono']:             recibe.get('telefono', ''),
+            f['empresa_transportista']:          data.get('empresa_transportista', ''),
             f['proveedor_cliente_material']:     mat.get('proveedor_cliente', ''),
             f['orden_de_compra']:                mat.get('orden_compra', ''),
             f['grupo_documentos_para_ocr']:       [
@@ -612,6 +660,9 @@ class Accesos(Accesos):
                     f['peso']:       item.get('peso', ''),
                     f['sello']:      item.get('sello', ''),
                     f['contenedor']: item.get('contenedor', ''),
+                    f['producto']:      item.get('producto', ''),
+                    f['lote']:          item.get('lote', ''),
+                    f['no_referencia']: item.get('no_referencia', ''),
                 }
                 for item in mat.get('items', [])
             ],
@@ -664,6 +715,47 @@ class Accesos(Accesos):
         if res.get('status_code') not in [200, 201, 202]:
             self.LKFException({'title': 'Error al crear pase transportista', 'msg': res})
         res['qr_pase_transportista'] = qr_pase_transportista
+
+        # Reserva visible en el kanban de bitácora (columna "Programados") desde
+        # que se crea el pase — se liga por num_de_pase y se sustituye por el
+        # registro real de arribo en create_visit_transportista.
+        try:
+            bf = self.bitacora_transportista_fields
+            fecha_programada = (lugar.get('fecha_pase_transportista_desde') or '').strip()
+            if fecha_programada and ' ' not in fecha_programada:
+                fecha_programada = f'{fecha_programada} 00:00:00'
+            # La bitácora solo acepta "entrega"/"recolección" (binario); el pase
+            # maneja 4 valores (entrega_de_materia_prima, recoleccion_de_..., etc.)
+            tipo_operacion_pase = data.get('tipo_de_operacion', '') or ''
+            tipo_operacion_bitacora = 'recolección' if tipo_operacion_pase.startswith('recoleccion') else 'entrega'
+            b_metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_TRANSPORTISTAS)
+            b_metadata.update({
+                'properties': {
+                    'device_properties': {
+                        'System': 'Script',
+                        'Module': 'Accesos',
+                        'Process': 'Pase Transportista',
+                        'Action': 'create_pass_transportista',
+                        'File': 'modules/accesos/items/scripts/Accesos/accesos_utils.py',
+                    }
+                },
+                'answers': {
+                    bf['estatus']:               'programado',
+                    bf['fecha_hora_ingreso']:    fecha_programada,
+                    bf['num_de_pase']:           pass_id,
+                    bf['tipo_de_operacion']:     tipo_operacion_bitacora,
+                    bf['empresa_transportista']: data.get('empresa_transportista', ''),
+                    bf['proveedor_cliente']:     mat.get('proveedor_cliente', ''),
+                    bf['orden_de_compra']:       mat.get('orden_compra', ''),
+                    bf['anden_asignado']:        lugar.get('anden', ''),
+                },
+            })
+            res_stub = self.lkf_api.post_forms_answers(b_metadata)
+            if res_stub.get('status_code') not in [200, 201, 202]:
+                print(f'No se pudo crear el registro programado de bitácora para el pase {pass_id}: {res_stub}')
+        except Exception as e:
+            print(f'No se pudo crear el registro programado de bitácora para el pase {pass_id}: {e}')
+
         return res
 
     def create_visit_transportista(self, data):
@@ -694,7 +786,8 @@ class Accesos(Accesos):
         answers = {
             f['estatus']:               'arribo',
             f['fecha_hora_ingreso']:    fecha_ingreso,
-            f['tipo_de_operacion']:     data.get('tipo_operacion', '').lower().replace(' ', '_'),
+            f['num_de_pase']:           data.get('num_de_pase', ''),
+            f['tipo_de_operacion']:     (data.get('tipo_operacion') or '').lower().replace(' ', '_'),
             f['empresa_transportista']: vehiculo.get('transportista', ''),
             f['procedencia']:           vehiculo.get('procedencia', ''),
             f['tipo_de_vehiculo']:      vehiculo.get('tipo_vehiculo', ''),
@@ -714,6 +807,18 @@ class Accesos(Accesos):
             f['orden_de_compra']:       embarque.get('no_orden_compra', ''),
         }
 
+        # Ubicación + área del turno activo desde donde se registró la visita — se
+        # usa después para resolver qué forma de inspección aplica en ese sitio.
+        # Campo "Áreas de las Ubicaciones" agregado por Paco a esta forma (mismo
+        # catálogo que usan paquetería/incidencias/casetas).
+        ubicacion = data.get('ubicacion')
+        area = data.get('area')
+        if ubicacion or area:
+            answers[self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID] = {
+                self.mf['ubicacion']: ubicacion or '',
+                self.mf['nombre_area']: area or '',
+            }
+
         remolques    = data.get('remolques', []) or []
         contenedores = data.get('contenedores', []) or []
         grupo = remolques + contenedores
@@ -721,7 +826,10 @@ class Accesos(Accesos):
             answers[f['grupo_remolques']] = [
                 {
                     f['tipo_remolque']:             item.get('tipo', ''),
-                    f['num_caja_contenedor']:        item.get('no_caja', ''),
+                    # Los remolques solo traen no_caja; los contenedores traen
+                    # además no_contenedor (su propio ID/ISO), que se prefiere
+                    # cuando está presente — si no, ambos comparten esta columna.
+                    f['num_caja_contenedor']:        item.get('no_contenedor') or item.get('no_caja', ''),
                     f['num_sello']:                  item.get('no_sello', ''),
                     f['placas_de_caja']:             item.get('placas', ''),
                     f['color_remolque_contenedor']:  item.get('color', ''),
@@ -757,10 +865,46 @@ class Accesos(Accesos):
                 for m in materiales
             ]
 
-        metadata.update({'answers': answers})
-        res = self.lkf_api.post_forms_answers(metadata)
-        if res.get('status_code') not in [200, 201, 202]:
-            self.LKFException({'title': 'Error al crear visita de transportista', 'msg': res})
+        num_de_pase = data.get('num_de_pase')
+        programado = None
+        if num_de_pase:
+            programado = self.cr.find_one({
+                'form_id': self.BITACORA_TRANSPORTISTAS,
+                'deleted_at': {'$exists': False},
+                f'answers.{f["num_de_pase"]}': num_de_pase,
+                f'answers.{f["estatus"]}': 'programado',
+            })
+
+        if programado:
+            # El pase ya reservó su lugar en el kanban (columna "Programados") al
+            # crearse — actualizamos ese mismo registro a "arribo" en vez de crear
+            # uno duplicado. patch_forms_answers reescribe el documento de answers
+            # completo, así que hay que mezclar con lo que ya existía (ej. andén)
+            # o se pierde cualquier campo que este payload no vuelva a mandar.
+            merged_answers = {**programado.get('answers', {}), **answers}
+            metadata.update({'answers': merged_answers, '_id': programado['_id']})
+            res = self.net.patch_forms_answers(metadata)
+            if res.get('status_code') not in [200, 201, 202]:
+                self.LKFException({'title': 'Error al actualizar visita de transportista', 'msg': res})
+            res['id'] = str(programado['_id'])
+            res['folio'] = programado.get('folio')
+            res['created_at'] = self.get_date_str(programado.get('created_at'))
+        else:
+            metadata.update({'answers': answers})
+            res = self.lkf_api.post_forms_answers(metadata)
+            if res.get('status_code') not in [200, 201, 202]:
+                self.LKFException({'title': 'Error al crear visita de transportista', 'msg': res})
+
+        if num_de_pase:
+            try:
+                self.lkf_api.patch_multi_record(
+                    answers={self.pass_fields_transportista['estado_transportista']: 'completado'},
+                    form_id=self.PASE_ENTRADA_TRANSPORTISTA,
+                    record_id=[num_de_pase],
+                )
+            except Exception as e:
+                print(f'No se pudo marcar el pase {num_de_pase} como completado: {e}')
+
         return res
 
     def create_custom_qr(self, url_for_qr, name_qr, form_id, img_field_id):
@@ -770,21 +914,21 @@ class Accesos(Accesos):
 
     def ocr_acceso_transportista(self, image_source,
                                   extra_instructions: str = None,
-                                  model: str = 'google/gemini-2.5-flash') -> dict:
+                                  model: str = 'google/gemini-2.5-flash-lite') -> dict:
         """
         Analiza uno o varios archivos de un acceso de transportista.
         Acepta mezcla de imágenes y documentos (PDFs, JPGs, PNGs).
 
         Tipos de archivos soportados:
-          - Foto de placas / vehículo
-          - Foto del conductor
-          - Licencia de conducir
-          - Tarjeta de circulación (tractor o remolque)
-          - Bill of Lading (BL) / conocimiento de embarque
-          - Pedimento de importación temporal
-          - Orden de compra / factura / manifiesto de carga
-          - Documento de autorización de salida de puerto
-          - Foto o documento del contenedor
+        - Foto de placas / vehículo
+        - Foto del conductor
+        - Licencia de conducir
+        - Tarjeta de circulación (tractor o remolque)
+        - Bill of Lading (BL) / conocimiento de embarque
+        - Pedimento de importación temporal
+        - Orden de compra / factura / manifiesto de carga
+        - Documento de autorización de salida de puerto
+        - Foto o documento del contenedor
 
         Args:
             image_source: URL, ruta local, o lista. Acepta imágenes y PDFs remotos.
@@ -799,12 +943,15 @@ class Accesos(Accesos):
         system = (
             "You are a certified security supervisor and CTPAT compliance specialist at an industrial facility. "
             "You process transport access events by analyzing any combination of: vehicle photos, license plates, "
-            "driver photos, driver licenses, vehicle registration cards (tarjeta de circulación), "
-            "Bills of Lading, temporary import permits (pedimentos), port release documents, "
+            "driver photos, driver licenses, vehicle registration cards (tarjeta de circulación) for both tractors "
+            "and trailers, Bills of Lading, temporary import permits (pedimentos), port release documents, "
             "purchase orders, cargo manifests, and container photos. "
-            "All inputs refer to ONE transport access event. "
+            "All inputs refer to ONE transport access event, which may include MULTIPLE remolques and MULTIPLE "
+            "contenedores, each with its own tarjeta de circulación or documentation, and each potentially carrying "
+            "DIFFERENT cargo. "
             "You ONLY extract information that is clearly visible or printed in the provided files. "
-            "You NEVER invent, estimate, or hallucinate data. "
+            "You NEVER invent, estimate, or hallucinate data, and you NEVER let data from one vehicle, remolque, "
+            "contenedor, or cargo line overwrite or merge with data belonging to a different one. "
             "If a field is not present in any document, return null — never guess. "
             "Always respond with a single valid JSON object and nothing else — "
             "no markdown, no backticks, no explanation, no preamble."
@@ -812,13 +959,128 @@ class Accesos(Accesos):
 
         prompt = (
             "Analyze all provided files (images and/or documents) as a single transport access event. "
-            "The files are provided in order: the first is imagen_1, the second is imagen_2, and so on. "
+            "The files are provided in order: the first is imagen_1, the second is imagen_2, and so on — "
+            "this numbering is PER FILE, not per page. A single file can be a multi-page PDF containing "
+            "several distinct photos or document pages (e.g. a PDF with 9 different evidence photos, or a "
+            "PDF with 3 pages: cover letter, invoice, packing list). When that happens, EVERY page/photo "
+            "found inside that one file still gets the SAME `fuente` value (that file's imagen_N) — never "
+            "invent a new imagen_N for a page just because it is the file's 2nd, 3rd, etc. internal page. "
+            "Use the `pagina` field on each `documentos_detectados` entry to indicate which page/photo "
+            "number WITHIN that file it corresponds to (1 for the first page/photo of that file, 2 for the "
+            "second, etc.), so a page can still be told apart from others in the same file. "
+            "WORKED EXAMPLE: suppose the input list has 2 files — file 1 is a 3-page PDF (a driver photo, a "
+            "container photo, and a Carta de Ruta) and file 2 is a 1-page Bill of Lading. The CORRECT output "
+            "has THREE `documentos_detectados` entries with `fuente`:\"imagen_1\" (using `pagina` 1, 2, and 3 "
+            "respectively, one per internal page, each with its own `tipo`), and ONE entry with "
+            "`fuente`:\"imagen_2\", `pagina`:1. It would be WRONG to output fuente values imagen_1, imagen_2, "
+            "imagen_3, imagen_4 for that example — there are only 2 actual files, so fuente can never exceed "
+            "the number of files provided, no matter how many total pages/photos are found across all of them. "
+            "HARD RULE: count the DISTINCT `fuente` values you use across the entire `documentos_detectados` "
+            "array — that count must be EXACTLY equal to the number of files given to you, never more. Before "
+            "moving on to describe the next page/photo you find, first check whether it belongs to a file whose "
+            "imagen_N you already used for a previous entry — if so, reuse that same `fuente` and only increase "
+            "`pagina`; only introduce a new, higher `fuente` value once you have moved on to inspecting the next "
+            "actual file in the input list. "
             "Files may include vehicle photos, driver photos, driver licenses, vehicle registration cards, "
-            "Bills of Lading, pedimentos, port documents, purchase orders, or container photos. "
+            "Bills of Lading, pedimentos, port documents, purchase orders, container photos, or a Carta de "
+            "Ruta (Dominican customs internal-transit authorization). "
             "Extract every field you can find. If a field is absent from all provided files, use null. "
+            "\n\n"
+            "IMPORTANT ON CARGO-TO-UNIT LINKING: when a document (Bill of Lading, packing list, manifest) breaks "
+            "down cargo per container or trailer — e.g. a container number is followed by its own weight, volume, "
+            "package count, and product description — that cargo line belongs EXCLUSIVELY inside that container's "
+            "own `materiales` array (nested inside its entry in `contenedores[]`), matched by container number "
+            "first, or by the weight/volume/package figures printed right next to that container's row if the "
+            "number match is unclear. Do the same for remolques when cargo is described per-trailer. "
+            "A cargo line may also carry its OWN purchase-order reference distinct from the shipment-level PO — "
+            "capture it in that material's own `no_orden_compra` field when present, without overwriting "
+            "`embarque.no_orden_compra`. "
+            "If a summary line states a type/quantity that applies to multiple units (e.g. '2 x 40HC CONTAINER' "
+            "before individual container rows), apply that type to EACH of those containers' `tipo` field unless a "
+            "specific row overrides it — do not leave it null just because it was only stated once at the top. "
+            "Only use the top-level `materiales` array as a FALLBACK, for cargo that cannot be attributed to any "
+            "specific contenedor or remolque (e.g. loose cargo directly on a rigid vehicle with no container/trailer "
+            "breakdown, or a generic document that does not specify per-unit contents). Never duplicate the same "
+            "cargo line in both a specific unit's materiales and the top-level materiales. "
+            "\n\n"
+            "IMPORTANT ON CLOSED-LIST FIELDS (tipo_vehiculo, remolques[].tipo, contenedores[].tipo): these values "
+            "feed a form with FIXED dropdown options — there is NO 'otro' catch-all option available downstream. "
+            "If the document clearly states a type that matches one of the listed options, use that exact listed "
+            "value. If the document states a type that does NOT match any listed option (e.g. 'furgón' when it's "
+            "not in the list), do NOT force it into the closest option and do NOT return null — instead return the "
+            "type EXACTLY as written/stated in the document, as free text, so a human can review and map it "
+            "manually. Only return null if no type information is present at all. "
+            "\n\n"
+            "IMPORTANT ON VEHICLE ARTICULATION (camion vs. trailer): "
+            "A camion (rigid/straight truck) has the cab and cargo box built on ONE single chassis — they cannot "
+            "be separated. A trailer (tractocamion articulado) is TWO separable pieces joined by a fifth wheel "
+            "(quinta rueda): the tracto (cab + engine, no cargo box of its own) pulling a semirremolque (the box, "
+            "which can be unhitched and stands alone on its own landing gear). "
+            "DECISION RULE: if the vehicle has a separable remolque (i.e. you will be listing one or more entries "
+            "in remolques[]), set vehiculo.tipo_vehiculo to \"trailer\" — do NOT also describe the box type "
+            "(caja_seca, plataforma, etc.) at the vehiculo level, that belongs exclusively in remolques[].tipo. "
+            "If there is NO separable remolque (rigid single-chassis vehicle), set vehiculo.tipo_vehiculo to "
+            "whichever rigid type applies (torton, camion, van, pick_up, pipa, volteo), following the closed-list "
+            "rule above. Leave remolques[] empty in that case. "
+            "\n\n"
             "IMPORTANT: remolques are trailers/flatbeds pulled by the truck. "
-            "contenedores are ISO shipping containers (they have an alphanumeric container number like ECMU7740351). "
-            "A remolque may carry a contenedor — if so, list the trailer in remolques and the container in contenedores. "
+            "contenedores are ISO shipping containers (they have an alphanumeric container number like ECMU7740351, "
+            "distinct from any internal box/asset number the facility may also assign). "
+            "A remolque may carry a contenedor — if so, list the trailer in remolques and the container in "
+            "contenedores. There may be MORE THAN ONE remolque and MORE THAN ONE contenedor in the same event — "
+            "keep each one as a separate entry in its array, never merge two different units into one entry. "
+            "\n\n"
+            "IMPORTANT ON PLATES: a plate value must come from a field EXPLICITLY labeled as a plate (\"PLACAS\", "
+            "\"No. de Placas\", a physical plate photo, etc.). Do NOT confuse a plate with a nearby barcode, folio, "
+            "or document-verification code — these are different alphanumeric strings that often sit next to a "
+            "barcode graphic for document authentication purposes, not the physical plate, even if their format "
+            "superficially resembles a plate. When in doubt, prefer the value under an explicit plate label over "
+            "any other nearby code. "
+            "A single physical vehicle or remolque can have its plate appear in more than one source — a photo of "
+            "the plate itself, an incidental mention in another document, AND its own tarjeta de circulación / "
+            "pedimento. These are DIFFERENT sources describing the SAME plate, and must be kept in SEPARATE fields, "
+            "never overwriting one another: use `placa`/`placas` for what you read from a photo or an incidental/ "
+            "general mention, and `placa_tarjeta_circulacion`/`placas_tarjeta_circulacion` EXCLUSIVELY for the plate "
+            "printed under an explicit plate label on that specific entity's own registration/import document. "
+            "If there are multiple remolques, each with its own tarjeta/pedimento document, match each document to "
+            "the correct remolque using its no_caja/unit number/no_economico or contextual order. If you cannot "
+            "confidently match a document to a specific remolque, still record its plate value in the most likely "
+            "remolque's `placas_tarjeta_circulacion` and note the ambiguity in that remolque's `comentarios` — never "
+            "drop the value just because the match is uncertain. "
+            "\n\n"
+            "IMPORTANT ON SEAL NUMBERS (no_sello_documento / no_sello_fisico): a container or trailer can show MORE "
+            "THAN ONE physical seal in photos (e.g. a carrier lock seal, a security tag, AND the official customs/"
+            "shipper seal), and their numbers will differ from what is printed in text documents — this is normal "
+            "and does not mean any of them is wrong. Do NOT try to decide which one is 'the real seal' yourself: "
+            "just report each source into its own field, exactly as it appears there. `no_sello_documento` is "
+            "whatever seal number is printed in text on a BL/factura/packing list/carta de ruta/pedimento/"
+            "manifiesto for that unit — leave it null if no document prints one. `no_sello_fisico` is whatever seal "
+            "number you read directly off a photograph of a physical seal/tag on that unit — leave it null if no "
+            "such photo is provided. Fill BOTH independently whenever both kinds of source exist, even if their "
+            "values disagree; the decision of which one to trust is made downstream in code, not by you. "
+            "\n\n"
+            "IMPORTANT ON DRIVER IDENTIFICATION (conductor.nombre / conductor.no_licencia): `no_licencia` must come "
+            "EXCLUSIVELY from an official government-issued driving license/permit document. Never use a number "
+            "from a company badge, employee ID card, lanyard, or gafete as `no_licencia` — those are internal/"
+            "corporate identifiers, not driving licenses; if that is the only ID-like number visible, leave "
+            "`no_licencia` null and, if useful, mention the badge number in `observaciones` instead. "
+            "`conductor.nombre`, in contrast, is NOT limited to license/permit documents — it can also appear on an "
+            "official transit/customs authorization document such as a Carta de Ruta, which typically lists the "
+            "assigned driver by name alongside the container/seal/carrier data. These forms are often photographed "
+            "at an angle where a column's header label is cropped or unreadable, but the name value itself is still "
+            "legible — in that case, use the document's standard layout and the surrounding fields (container "
+            "number, seal, compañía transportista, sindicato de camioneros) to infer that a legible person's name "
+            "sitting in that position is the driver, and fill `conductor.nombre` accordingly rather than returning "
+            "null just because the column label itself was cut off. "
+            "\n\n"
+            "IMPORTANT ON DATES: interpret dates according to the document's own convention before converting to "
+            "YYYY-MM-DD — English-language documents (BL, invoices) typically use MM/DD/YYYY, Mexican documents "
+            "(pedimentos, tarjetas, licencias) typically use DD/MM/YYYY. If the convention is genuinely ambiguous "
+            "for a given date, keep the original string as printed instead of guessing day vs. month. "
+            "If different documents in the same event show dates that are inconsistent with each other in a way "
+            "that cannot be explained by normal shipment lead times (e.g. a loading date years apart from the "
+            "invoice or BL issue date), do not silently pick one and treat it as resolved — report the value you "
+            "found and flag the inconsistency in `observaciones`, and let it lower `confianza` accordingly. "
             "\n\n"
             "Return ONLY a JSON object with this exact structure:\n"
             "{\n"
@@ -827,11 +1089,12 @@ class Accesos(Accesos):
             '  "vehiculo": {\n'
             '    "transportista": "string — carrier company name (e.g. TRAMO TRANSPORTES MONTERREY SA DE CV), or null",\n'
             '    "procedencia": "string — city or state of origin of the vehicle/shipment if visible on any document, or null",\n'
-            '    "tipo_vehiculo": "string — one of: torton, trailer, caja_seca, caja_refrigerada, plataforma, volteo, van, pick_up, camion, pipa, or null",\n'
+            '    "tipo_vehiculo": "string — one of: torton, camion, van, pick_up, pipa, volteo, trailer, or null. See DECISION RULE and CLOSED-LIST rule above. Never use caja_seca/caja_refrigerada/plataforma/etc here — those belong to remolques[].tipo.",\n'
             '    "marca": "string — truck/tractor brand (Kenworth, Freightliner, International, Volvo, etc.), or null",\n'
             '    "modelo": "string — truck model year if visible (e.g. 2019), or null",\n'
             '    "color": "string — main cab color. PRIORITY: extract visually from vehicle/plate photos if provided. Fall back to text on registration card only if no vehicle photo is present. Use Spanish color names (Blanco, Negro, Rojo, Azul, Gris, Verde, Amarillo, Naranja, Cafe, Plateado, etc.), or null",\n'
-            '    "placa": "string — tractor/cab license plate exactly as printed, or null",\n'
+            '    "placa": "string — tractor/cab license plate as read from a vehicle/plate photo or an incidental mention in another document, exactly as printed, or null",\n'
+            '    "placa_tarjeta_circulacion": "string — tractor/cab license plate extracted EXCLUSIVELY from an explicit plate label on a tarjeta_circulacion_vehiculo document, exactly as printed, or null",\n'
             '    "no_economico": "string — carrier economic number / rótulo on the vehicle, or null"\n'
             '  },\n'
 
@@ -847,34 +1110,58 @@ class Accesos(Accesos):
             # ── REMOLQUES ─────────────────────────────────────────────────
             '  "remolques": [\n'
             '    {\n'
-            '      "tipo": "string — trailer type: caja_seca, caja_refrigerada, plataforma, tanque, volteo, or null",\n'
+            '      "tipo": "string — trailer box type: caja_seca, plataforma, caja_refrigerada, ganadero, basculante, portavehiculos, caravana, or null. This is a CLOSED LIST (no otro option downstream) — see CLOSED-LIST rule above.",\n'
             '      "no_caja": "string — trailer box/unit number (número económico de caja) from registration card or visible on unit, or null",\n'
-            '      "no_sello": "string — seal number on the trailer, or null",\n'
-            '      "placas": "string — trailer license plate exactly as printed, or null",\n'
+            '      "no_sello_documento": "string — seal number for this trailer EXACTLY as printed in any text document (BL, factura, packing list, carta de ruta, pedimento, manifiesto), or null if no document states one. See IMPORTANT ON SEAL NUMBERS below — do NOT put a photo-only reading here.",\n'
+            '      "no_sello_fisico": "string — seal number read directly off a photograph of the physical seal/tag on this trailer, or null if no such photo is provided or none is legible.",\n'
+            '      "placas": "string — trailer license plate as read from a photo or an incidental mention, exactly as printed, or null",\n'
+            '      "placas_tarjeta_circulacion": "string — trailer license plate extracted EXCLUSIVELY from an explicit plate label on this trailer\'s own tarjeta/pedimento document, exactly as printed, or null",\n'
             '      "color": "string — trailer color in Spanish (Blanco, Gris, Rojo, etc.), or null",\n'
-            '      "comentarios": "string — any relevant note about this trailer (damage, anomaly, etc.), or null"\n'
+            '      "comentarios": "string — any relevant note about this trailer (damage, anomaly, ambiguous document match, tipo that did not match the closed list, etc.), or null",\n'
+            '      "materiales": [\n'
+            '        {\n'
+            '          "producto": "string — cargo/product description, or null",\n'
+            '          "lote": "string — lot or batch number if stated, or null",\n'
+            '          "cant_esperada": "string — expected quantity with unit if stated, or null",\n'
+            '          "peso": "string — gross weight with unit, or null",\n'
+            '          "volumen": "string — volume with unit if stated, or null",\n'
+            '          "no_orden_compra": "string — PO number specific to THIS cargo line, if different from embarque.no_orden_compra, or null"\n'
+            '        }\n'
+            '      ]\n'
             '    }\n'
             '  ],\n'
 
             # ── CONTENEDORES ──────────────────────────────────────────────
             '  "contenedores": [\n'
             '    {\n'
-            '      "tipo": "string — ISO container type: 20GP, 40GP, 40HC, 20RF, 40RF, tanque, or null",\n'
-            '      "no_caja": "string — container number exactly as printed (e.g. ECMU7740351), or null",\n'
-            '      "no_sello": "string — seal number on the container, or null",\n'
+            '      "tipo": "string — ISO container type: 20GP, 40GP, 40HC, 20RF, 40RF, 40HR, 20OT, 40OT, 20FR, 40FR, iso_tank, 20VH, open_side, or null. This is a CLOSED LIST (no otro option downstream) — see CLOSED-LIST rule above. Remember to apply a type stated once in a summary line to every matching container (see CARGO-TO-UNIT LINKING above).",\n'
+            '      "no_contenedor": "string — official ISO container number exactly as printed (e.g. ECMU7740351, EGHU9785216), or null",\n'
+            '      "no_caja": "string — internal facility box/asset number for this container, if separately assigned and distinct from no_contenedor, or null",\n'
+            '      "no_sello_documento": "string — seal number for this container EXACTLY as printed in any text document (BL, factura, packing list, carta de ruta, pedimento, manifiesto), or null if no document states one. See IMPORTANT ON SEAL NUMBERS below — do NOT put a photo-only reading here.",\n'
+            '      "no_sello_fisico": "string — seal number read directly off a photograph of the physical seal/tag on this container, or null if no such photo is provided or none is legible.",\n'
             '      "placas": "string — chassis plate if visible, or null",\n'
             '      "color": "string — container color in Spanish, or null",\n'
-            '      "comentarios": "string — any relevant note about this container (damage, anomaly, etc.), or null"\n'
+            '      "comentarios": "string — any relevant note about this container (damage, anomaly, tipo that did not match the closed list, etc.), or null",\n'
+            '      "materiales": [\n'
+            '        {\n'
+            '          "producto": "string — cargo/product description for THIS container specifically (e.g. from its own row in the BL), or null",\n'
+            '          "lote": "string — lot or batch number if stated, or null",\n'
+            '          "cant_esperada": "string — expected quantity with unit as stated for THIS container (e.g. 1820 CAS), or null",\n'
+            '          "peso": "string — gross weight with unit for THIS container (e.g. 22944.063 KG), or null",\n'
+            '          "volumen": "string — volume with unit for THIS container (e.g. 32.684 M3), or null",\n'
+            '          "no_orden_compra": "string — PO number specific to THIS cargo line, if different from embarque.no_orden_compra, or null"\n'
+            '        }\n'
+            '      ]\n'
             '    }\n'
             '  ],\n'
 
-            # ── MATERIALES / CARGA ────────────────────────────────────────
+            # ── MATERIALES SIN ASIGNAR ──────────────────────────────────
             '  "materiales": [\n'
             '    {\n'
-            '      "producto": "string — cargo/product description (e.g. CERVEZAS, AUTOPARTES), or null",\n'
+            '      "producto": "string — cargo/product description that could NOT be attributed to a specific contenedor or remolque, or null",\n'
             '      "lote": "string — lot or batch number if stated, or null",\n'
-            '      "cant_esperada": "string — expected quantity with unit if stated (e.g. 1305 CAJAS), or null",\n'
-            '      "peso": "string — gross weight with unit (e.g. 19603.50 KGS), or null",\n'
+            '      "cant_esperada": "string — expected quantity with unit if stated, or null",\n'
+            '      "peso": "string — gross weight with unit, or null",\n'
             '      "volumen": "string — volume with unit if stated, or null"\n'
             '    }\n'
             '  ],\n'
@@ -882,31 +1169,25 @@ class Accesos(Accesos):
             # ── EMBARQUE ──────────────────────────────────────────────────
             '  "embarque": {\n'
             '    "proveedor_cliente": "string — shipper, supplier or consignee company name, or null",\n'
-            '    "no_orden_compra": "string — purchase order / OC number, or null",\n'
+            '    "no_orden_compra": "string — shipment-level purchase order / OC number, or null. If multiple containers each carry their own distinct PO, list those in each material\'s own no_orden_compra instead, and put here only a PO that applies to the whole shipment (or leave null if there is none at that level).",\n'
             '    "no_bl": "string — Bill of Lading number, or null",\n'
             '    "no_pedimento": "string — pedimento or customs document number, or null",\n'
             '    "no_autorizacion_puerto": "string — port release authorization number, or null",\n'
             '    "origen": "string — place/port of loading or origin, or null",\n'
             '    "destino": "string — place/port of discharge or delivery, or null",\n'
-            '    "naviera": "string — shipping line name (CMA CGM, MSC, etc.), or null",\n'
             '    "fecha_embarque": "string — on-board or shipment date (YYYY-MM-DD if possible), or null"\n'
-            '  },\n'
-
-            # ── PLACAS DE TARJETAS ────────────────────────────────────────
-            '  "placas_tarjetas": {\n'
-            '    "vehiculo": "string — license plate extracted EXCLUSIVELY from a tarjeta_circulacion_vehiculo document, exactly as printed, or null",\n'
-            '    "remolque": "string — license plate extracted EXCLUSIVELY from a tarjeta_circulacion_remolque document, exactly as printed, or null"\n'
             '  },\n'
 
             # ── METADATA ──────────────────────────────────────────────────
             '  "documentos_detectados": [\n'
             '    {\n'
-            '      "fuente": "string — imagen_1 / imagen_2 / imagen_3 ... (position of the file in the input list)",\n'
-            '      "tipo": "string — one of: identificacion_chofer, foto_conductor, tarjeta_circulacion_vehiculo, carta_porte, factura_orden_compra, foto_placa_vehiculo, evidencia_carga, conocimiento_embarque_bl, otro. IMPORTANT: identificacion_chofer is an official ID document (INE, passport, license) showing the driver\'s personal data. foto_conductor is a photo of the driver\'s face. Never confuse them."\n'
+            '      "fuente": "string — imagen_1 / imagen_2 / imagen_3 ... — the position of the FILE in the input list (never a running page count across files — see numbering rule at the top of this prompt)",\n'
+            '      "pagina": "integer — page/photo number WITHIN that file (1 for the first page/photo of that file, 2 for the second, etc.), so distinct pages of the same multi-page file can be told apart even though they share the same fuente",\n'
+            '      "tipo": "string — one of: identificacion_chofer, foto_conductor, tarjeta_circulacion_vehiculo, tarjeta_circulacion_remolque, carta_porte, carta_de_ruta, factura_orden_compra, foto_placa_vehiculo, evidencia_carga, conocimiento_embarque_bl. IMPORTANT: identificacion_chofer is an official ID document (INE, passport, license) showing the driver\'s personal data. foto_conductor is a photo of the driver\'s face. tarjeta_circulacion_vehiculo belongs to the tractor/cab; tarjeta_circulacion_remolque belongs to a trailer (this also covers a pedimento de importación temporal de remolques, which functions like a trailer registration document) — never confuse the two, and never confuse either with identificacion_chofer / foto_conductor. carta_de_ruta is a Dominican Ministerio de Hacienda / Dirección General de Aduanas internal-transit authorization (fields typically include propietario, sello control, número de contenedor, chofer, compañía transportista, sindicato de camioneros) — this is DIFFERENT from carta_porte (a waybill/manifest), do not conflate the two. THIS FIELD HAS NO otro CATCH-ALL: this value is shown directly to the end user as a label under the uploaded file in the access form, so it must always be informative. If a file does not clearly match any of the listed types, do NOT return \'otro\' — instead return a short, specific description in Spanish of what the document/photo actually is (e.g. \'foto general del contenedor\', \'manifiesto de carga\', \'foto de sello de seguridad\', \'documento no identificado — ilegible\'), written the way a person reviewing the access would want to see it as a label, so it is never a dead-end value like \'otro\'."\n'
             '    }\n'
             '  ],\n'
-            '  "observaciones": "string — CTPAT flags, anomalies, damage, incomplete docs, or anything security-relevant, or null",\n'
-            '  "confianza": "string — alto / medio / bajo — overall confidence based on document/image quality"\n'
+            '  "observaciones": "string — CTPAT flags, anomalies, damage, incomplete docs, ambiguous plate/document matches, tipos that did not match a closed list, cargo that could not be attributed to a specific unit, or anything security-relevant, or null",\n'
+            '  "confianza": "string — alto: all key documents present and legible, no null in critical fields (vehiculo.placa, conductor.nombre, at least one remolque or contenedor if cargo is present), and no unresolved conflicts | medio: 1-2 documents illegible or secondary fields missing | bajo: key documents missing/illegible, or inconsistencies (e.g. unmatched tarjeta/plate, unlinked cargo, conflicting seal numbers, conflicting dates) across sources"\n'
             "}"
         )
 
@@ -934,7 +1215,12 @@ class Accesos(Accesos):
         source_index = {f'imagen_{i+1}': src for i, src in enumerate(image_source)}
         print('>>> ocr_acceso_transportista sources=', [s[:80] for s in sources])
 
-        raw_text = self.ai.ocr_general(sources, system, prompt, model=model, max_tokens=2000)
+        try:
+            raw_text = self.ai.ocr_general(sources, system, prompt, model=model, max_tokens=6000)
+        except ValueError as e:
+            return {'status_code': 500, 'msg': f'Error al parsear respuesta del modelo: {e}'}
+        except RuntimeError as e:
+            return {'status_code': 500, 'msg': f'Error al llamar a OpenRouter: {e}'}
 
         datos = {}
         if raw_text.get('choices'):
@@ -955,6 +1241,143 @@ class Accesos(Accesos):
                 if fuente in source_index:
                     doc['url'] = source_index[fuente]
 
+        # Resolver no_sello de forma determinista (código, no el LLM) — el LLM solo
+        # reporta lo que ve en cada fuente (no_sello_documento / no_sello_fisico); el
+        # sello impreso en documentos de texto (BL/factura/carta de ruta) siempre gana
+        # sobre uno leído únicamente de una foto, porque suele repetirse/confirmarse en
+        # varios documentos independientes mientras que la foto es una sola lectura.
+        if isinstance(datos, dict):
+            for unidad in (datos.get('remolques') or []) + (datos.get('contenedores') or []):
+                if not isinstance(unidad, dict):
+                    continue
+                sello_doc = unidad.pop('no_sello_documento', None)
+                sello_foto = unidad.pop('no_sello_fisico', None)
+                if sello_doc:
+                    unidad['no_sello'] = sello_doc
+                    if sello_foto and sello_foto != sello_doc:
+                        nota = f"Sello fotografiado ({sello_foto}) no coincide con el sello documentado ({sello_doc}); se usó el documentado."
+                        unidad['comentarios'] = f"{unidad['comentarios']} {nota}" if unidad.get('comentarios') else nota
+                else:
+                    unidad['no_sello'] = sello_foto or None
+
+        errores = self._ocr_validar_id(datos)
+
+        # Validación determinista: si el propio modelo reportó una observación o una
+        # confianza no-alta, no confiar en que ya resolvió el conflicto en el campo
+        # correspondiente (p.ej. no_sello) — forzar revisión humana en vez de aceptarlo.
+        if isinstance(datos, dict):
+            if datos.get('observaciones'):
+                errores.append(f"Observación del modelo: {datos['observaciones']}")
+            if datos.get('confianza') and datos['confianza'].lower() != 'alto':
+                errores.append(f"Confianza reportada por el modelo: {datos['confianza']}")
+
+        if errores:
+            return {
+                'status_code': 206,
+                'msg': 'Extracción con advertencias',
+                'data': datos,
+                'warnings': errores,
+            }
+
+        return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
+    # PRUEBAS
+
+    def ocr_persona(self, image_source,
+                    extra_instructions: str = None,
+                    model: str = 'google/gemini-2.5-flash-lite') -> dict:
+        """
+        Analiza una foto para detectar si hay una persona visible
+        y extrae sus características físicas descriptivas.
+
+        Args:
+            image_source: URL remota, ruta local, o lista de imágenes.
+            model:        Modelo OpenRouter a usar.
+
+        Returns:
+            dict con:
+                - status_code : 200 OK / 206 advertencias / 400 config / 500 error
+                - data        : campos extraídos
+                - msg         : mensaje de resultado
+        """
+        if not self.ai:
+            return {'status_code': 400, 'msg': 'OpenRouter no configurado'}
+
+        system = (
+            "You are a security system specialist trained to analyze images "
+            "and determine whether a person is present, and describe their "
+            "visible physical characteristics for identification purposes. "
+            "You are objective and descriptive. Never make assumptions about "
+            "identity, ethnicity, or personal data beyond what is visually evident. "
+            "Always respond with a single valid JSON object and nothing else — "
+            "no markdown, no backticks, no explanation, no preamble."
+        )
+
+        prompt = (
+            "Analyze the provided image and determine if a person is visible. "
+            "If a person is present, extract all visible physical characteristics. "
+            "If no person is detected, return es_persona: false and all other fields as null. "
+            "\n\n"
+            "Return ONLY a JSON object with this exact structure:\n"
+            "{\n"
+            '  "es_persona": true,\n'
+            '  "cantidad_personas": "integer — number of people visible in the image",\n'
+            '  "rostro_visible": "boolean — true if face is clearly visible",\n'
+            '  "genero_aparente": "string — masculino / femenino / no determinado",\n'
+            '  "edad_estimada": "string — estimated age range e.g. 20-30",\n'
+            '  "complexion": "string — delgado / normal / robusto / corpulento",\n'
+            '  "estatura_estimada": "string — bajo / mediano / alto based on context clues",\n'
+            '  "color_piel": "string — descriptive skin tone in Spanish",\n'
+            '  "color_cabello": "string — hair color in Spanish, or null if not visible",\n'
+            '  "tipo_cabello": "string — corto / mediano / largo / calvo, or null",\n'
+            '  "color_ojos": "string — eye color if visible, else null",\n'
+            '  "rasgos_faciales": "string — notable facial features: beard, glasses, mustache, etc., or null",\n'
+            '  "ropa_superior": "string — describe upper garment color and type, or null",\n'
+            '  "ropa_inferior": "string — describe lower garment color and type, or null",\n'
+            '  "accesorios": "string — hat, backpack, bag, jewelry, or null",\n'
+            '  "postura": "string — de pie / sentado / en movimiento / acostado, or null",\n'
+            '  "calidad_imagen": "string — buena / regular / mala",\n'
+            '  "observaciones": "string — anything unusual, suspicious behavior, or notable context",\n'
+            '  "confianza": "string — alto / medio / bajo"\n'
+            "}"
+        )
+        prompt += (
+            "\n\nKeep every field extremely concise (1-4 words max per field, "
+            "except 'observaciones' which can be a short phrase). "
+            "Never omit the closing brace of the JSON object."
+        )
+        if extra_instructions:
+            prompt += f"\n\nAdditional instructions: {extra_instructions}"
+
+        # Sanitizar image_source
+        if isinstance(image_source, str):
+            image_source = [image_source]
+        elif isinstance(image_source, list):
+            image_source = [
+                img['file_url'] if isinstance(img, dict) else img
+                for img in image_source
+            ]
+
+        print('>>> ocr_persona image_source=', image_source)
+
+        try:
+            raw_text = self.ai.ocr_general(image_source, system, prompt, model=model, max_tokens=1500)
+        except ValueError as e:
+            return {'status_code': 500, 'msg': f'Error al parsear respuesta del modelo: {e}'}
+        except RuntimeError as e:
+            return {'status_code': 500, 'msg': f'Error al llamar a OpenRouter: {e}'}
+
+        datos = {}
+        if raw_text.get('choices'):
+            choices = raw_text['choices']
+            if isinstance(choices, list) and len(choices) > 0:
+                content = choices[0].get('message', {}).get('content')
+                if content:
+                    datos = content
+
+        print('ocr_persona datos=', datos)
+
+        datos = self._ocr_normalizar(datos)
+
         errores = self._ocr_validar_id(datos)
         if errores:
             return {
@@ -966,57 +1389,87 @@ class Accesos(Accesos):
 
         return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
 
-    # PRUEBAS
-    def get_config_modulo_seguridad(self, ubicaciones=[]):
-        #TODO Verificar por que se envia asi la lista
-        if isinstance(ubicaciones, list) and ubicaciones and isinstance(ubicaciones[0], dict):
-            ubicaciones = [u.get('name') or u.get('id') for u in ubicaciones]
-        requerimientos = set()
-        envios = set()
-        condiciones_servicio = {}
-        match_query = {
-            "deleted_at": {"$exists": False},
-            "form_id": self.CONF_MODULO_SEGURIDAD,
-        }
-        query = [
-            {'$match': match_query},
-            {'$sort': {'updated_at': -1}},
-            {'$limit': 1},
-            {'$project': {
-                "grupo_requisitos": f"$answers.{self.conf_modulo_seguridad['grupo_requisitos']}",
-            }},
-        ]
-        raw_result = self.format_cr(self.cr.aggregate(query))
-        for raw in raw_result:
-            for grupo in raw.get('grupo_requisitos', []):
-                #---Condiciones de servicio
-                condiciones_servicio["opcion_condiciones_servicio"] = grupo.get('opcion_condiciones_servicio','')
-                condiciones_servicio["desc_condiciones_servicio"] = grupo.get('desc_condiciones_servicio','')
-                condiciones_servicio["doc_condiciones_servicio"] = grupo.get('doc_condiciones_servicio','')
-                condiciones_servicio["url_condiciones_servicio"] = grupo.get('url_condiciones_servicio','')
+    def ocr_identificacion(self, image_source: str, form_id: int = None,
+                           model: str = 'google/gemini-2.5-flash-lite', 
+                           name: str = None, is_employee: bool = False) -> dict:
+        """
+        Extrae los datos de una identificación (INE, pasaporte, licencia, etc.)
+        y opcionalmente crea el registro en LinkaForm.
 
-                #TODO Verficiar el cambio de key
-                ubicacion = grupo.get('incidente_location', grupo.get('ubicacion_recorrido', ''))
-                if ubicacion in ubicaciones:
-                    clave_conf = self.conf_modulo_seguridad.get('datos_requeridos')
-                    reqs = grupo.get('datos_requeridos') or grupo.get(clave_conf, [])
-                    if isinstance(reqs, list):
-                        requerimientos.update(reqs)
-                    envios = set()
-                    envio_por_list = self.conf_modulo_seguridad.get('envio_por', [])
-                    for item in envio_por_list if isinstance(envio_por_list, list) else [envio_por_list]:
-                        envs = grupo.get(item) or grupo.get('envio_por', [])
-                        if envs:
-                            if isinstance(envs, list):
-                                envios.update(envs)
-                            else:
-                                envios.add(envs)
+        Args:
+            image_source: URL remota o ruta local de la imagen.
+            form_id:      Si se proporciona, crea el registro en ese formulario.
+            model:        Modelo OpenRouter a usar (opcional).
+            MODEL = "anthropic/claude-haiku-4.5"  # excelente OCR, precio razonable
+            MODEL = "google/gemini-2.5-flash"  # un escalón arriba, más caro pero mejor
+            name:         Si se indica, valida que la identificación pertenezca a esa persona.
+            is_employee:  Si es True, busca a la persona de la identificación en el
+                          catálogo de empleados (self.Employee.get_employee_data por
+                          nombre) y agrega 'es_empleado' (bool) y 'datos_empleado' a
+                          cada identificación extraída.
 
-        tipos = self.get_tipos_de_pase(ubicaciones)
-        return {
-            "ubicaciones": ubicaciones,
-            "requerimientos": list(requerimientos),
-            "envios": list(envios),
-            "tipos": tipos,
-            "condiciones_servicio":condiciones_servicio,
-        }
+        Returns:
+            dict con:
+                - status_code: 200/201/400/500
+                - data: campos extraídos por el OCR (incluye 'es_empleado' si is_employee=True)
+                - folio: folio del registro creado (si se pasó form_id)
+                - msg: mensaje de resultado
+
+        Ejemplo de uso en script:
+            response = acceso_obj.ocr_identificacion(
+                image_source="https://s3.../ine.jpg",
+                form_id=self.EMPLEADOS_FORM,
+            )
+        """
+
+        if not self.ai:
+            return {'status_code': 400, 'msg': 'OpenRouter no configurado'}
+
+        # 1. Extraer datos con el LLM
+        try:
+            raw_text = self.ai.ocr_id(image_source, model=model, name=name)
+        except ValueError as e:
+            return {'status_code': 500, 'msg': f'Error OCR: {e}'}
+        except Exception as e:
+            return {'status_code': 500, 'msg': f'Error inesperado: {e}'}
+
+        # 2. Normalizar — esto es código, no LLM
+        datos = {}
+        if raw_text.get('choices'):
+            if isinstance(raw_text['choices'], list) and len(raw_text['choices']) >0:
+                if raw_text['choices'][0].get('message',{}).get('content'):
+                    datos = raw_text['choices'][0]['message']['content']
+
+        datos = self._ocr_normalizar(datos)
+        # 2.5 Verificar si la persona de la identificación es empleado (opcional)
+        if is_employee:
+            datos = self._ocr_verificar_empleado(datos)
+
+        # 3. Validar
+        errores = self._ocr_validar_id(datos)
+        if errores:
+            return {
+                'status_code': 206,  # partial content — extrajo pero hay campos inválidos
+                'msg': 'Extracción con advertencias',
+                'data': datos,
+                'warnings': errores,
+            }
+        # 4. Crear registro en LinkaForm si se solicitó
+        if form_id:
+            try:
+                result = self._ocr_crear_registro(datos, form_id)
+                return {
+                    'status_code': 201,
+                    'msg': 'Registro creado exitosamente',
+                    'data': datos,
+                    'folio': result.get('folio'),
+                }
+            except Exception as e:
+                return {
+                    'status_code': 500,
+                    'msg': f'OCR OK pero error al crear registro: {e}',
+                    'data': datos,
+                }
+
+        status = 200 if isinstance(datos, list) else datos.get('status_code', 200)
+        return {'status_code': status, 'msg': 'OK', 'data': datos}
