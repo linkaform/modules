@@ -843,7 +843,7 @@ class Accesos(Accesos):
         if docs:
             answers[f['grupo_fotos_y_documentos']] = [
                 {
-                    f['tipo_de_documento']: doc.get('tipo', ''),
+                    f['tipo_de_documento']: doc.get('tipo', '').lower().replace(' ', '_'),
                     f['documento']:         [{'file_name': doc.get('file_name', ''), 'file_url': doc['file_url']}] if doc.get('file_url') else [],
                 }
                 for doc in docs
@@ -932,6 +932,12 @@ class Accesos(Accesos):
 
         Args:
             image_source: URL, ruta local, o lista. Acepta imágenes y PDFs remotos.
+                          Cada elemento puede ser un string (URL) o un dict
+                          {'file_url': ..., 'file_name': ..., 'tipo_hint': ...} —
+                          `tipo_hint` es opcional: una etiqueta legible (en español)
+                          que el usuario ya asignó a ese archivo antes de analizar,
+                          usada como prior de alta confianza (no reemplaza la
+                          verificación contra el contenido real de la imagen).
             model:        Modelo OpenRouter ('google/gemini-2.5-flash' recomendado para docs).
 
         Returns:
@@ -1194,13 +1200,28 @@ class Accesos(Accesos):
         if extra_instructions:
             prompt += f"\n\nAdditional instructions: {extra_instructions}"
 
+        hints = {}
         if isinstance(image_source, str):
             image_source = [image_source]
         elif isinstance(image_source, list):
+            hints = {
+                f'imagen_{i+1}': img['tipo_hint']
+                for i, img in enumerate(image_source)
+                if isinstance(img, dict) and img.get('tipo_hint')
+            }
             image_source = [
                 img['file_url'] if isinstance(img, dict) else img
                 for img in image_source
             ]
+
+        if hints:
+            hint_lines = "\n".join(f"- {k}: {v}" for k, v in hints.items())
+            prompt += (
+                "\n\nUser-provided type hints per file (high-confidence priors from the "
+                "person uploading, but still verify against the actual visual content — "
+                "if an image clearly does not match its hint, trust the image and note the "
+                f"discrepancy in `observaciones`):\n{hint_lines}"
+            )
 
         sources = []
         for src in image_source:
