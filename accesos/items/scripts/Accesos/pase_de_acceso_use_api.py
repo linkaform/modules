@@ -26,16 +26,21 @@ if __name__ == "__main__":
     option = data.get("option","")
     qr_code=data.get("qr_code")
     tab_status=data.get("tab_status")
-    pre_sms = data.get("enviar_pre_sms",{})
     update_obj = data.get("update_obj",{})
     envio = data.get("envio",[])
     account_id = data.get("account_id", "")
     template_id= data.get("template_id")
-    
+    image_source = data.get('image_source', '')
+    extra_instructions = data.get('extra_instructions', '')
+    nombre = data.get('nombre', data.get('name'))
+    form_id   = acceso_obj.data.get('form_id')
+    is_employee = data.get('is_employee', data.get('is_employee'))
+    uso = data.get("uso", None)
+
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
     elif option == 'create_access_pass' or option == 'crear_pase':
-        response = acceso_obj.create_access_pass(location, access_pass)
+        response = acceso_obj.create_access_pass(access_pass)
         folio_msj = response.get('json', {}).get('id', '')
     elif option == 'update_pass':
         response = acceso_obj.update_pass(access_pass,folio)
@@ -44,22 +49,19 @@ if __name__ == "__main__":
     elif option == 'update_active_pass':
         response = acceso_obj.update_active_pass(folio, qr_code, update_obj)
     elif option == 'catalogos_pase_area':
-        response = acceso_obj.catalogos_pase_area(location)
+        response = acceso_obj.catalogos_pase_area(location, uso=uso)
     elif option == 'catalogos_pase_location':
         response = acceso_obj.catalogos_pase_location()
     elif option == 'catalogos_pase_no_jwt':
-        response = acceso_obj.catalagos_pase_no_jwt(qr_code)
+        response = acceso_obj.catalagos_pase_no_jwt(qr_code, account_id=account_id)
     elif option == 'enviar_msj':
         response = acceso_obj.create_enviar_msj_pase(folio=folio)
     elif option == 'enviar_correo':
         response = acceso_obj.create_enviar_correo(folio=folio, envio=envio)
     elif option == 'catalago_vehiculo':
-        if tipo and marca:
-            response = acceso_obj.vehiculo_modelo(tipo, marca)
-        elif tipo:
-            response = acceso_obj.vehiculo_marca(tipo)
-        else:
-            response = acceso_obj.vehiculo_tipo()
+        response = acceso_obj.catalogo_vehiculos()
+    elif option == 'catalago_tipo_equipo':
+        response = acceso_obj.catalogo_tipo_equipo()
     elif option == 'catalago_estados':
         response = acceso_obj.catalogo_estados()
     elif option == 'get_pass':
@@ -76,7 +78,23 @@ if __name__ == "__main__":
     elif option == 'get_user_contacts':
         response = acceso_obj.get_user_contacts()
     elif option == 'get_config_modulo_seguridad':
-        response = acceso_obj.get_config_modulo_seguridad(ubicaciones=locations)
+        response = acceso_obj.get_config_modulo_seguridad(ubicaciones=locations, account_id=account_id)
+    elif option == 'get_pass_img':
+        response = acceso_obj.get_pass_img(qr_code)
+    elif option == 'ocr_persona':
+        response = acceso_obj.ocr_persona(
+            image_source=image_source,
+            extra_instructions=extra_instructions,
+        )
+    elif option == 'ocr_id':
+        response = acceso_obj.ocr_identificacion(
+            image_source=image_source,
+            form_id=form_id,
+            name=nombre,
+            is_employee=is_employee
+        )
+    elif option == "log_client_error":
+        acceso_obj.LKFException({"title": "Error", "msg": f"Ocurrio un error"})
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
