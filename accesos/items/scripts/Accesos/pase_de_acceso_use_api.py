@@ -35,6 +35,7 @@ if __name__ == "__main__":
     nombre = data.get('nombre', data.get('name'))
     form_id   = acceso_obj.data.get('form_id')
     is_employee = data.get('is_employee', data.get('is_employee'))
+    uso = data.get("uso", None)
 
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
@@ -48,11 +49,11 @@ if __name__ == "__main__":
     elif option == 'update_active_pass':
         response = acceso_obj.update_active_pass(folio, qr_code, update_obj)
     elif option == 'catalogos_pase_area':
-        response = acceso_obj.catalogos_pase_area(location)
+        response = acceso_obj.catalogos_pase_area(location, uso=uso)
     elif option == 'catalogos_pase_location':
         response = acceso_obj.catalogos_pase_location()
     elif option == 'catalogos_pase_no_jwt':
-        response = acceso_obj.catalagos_pase_no_jwt(qr_code)
+        response = acceso_obj.catalagos_pase_no_jwt(qr_code, account_id=account_id)
     elif option == 'enviar_msj':
         response = acceso_obj.create_enviar_msj_pase(folio=folio)
     elif option == 'enviar_correo':
@@ -77,7 +78,7 @@ if __name__ == "__main__":
     elif option == 'get_user_contacts':
         response = acceso_obj.get_user_contacts()
     elif option == 'get_config_modulo_seguridad':
-        response = acceso_obj.get_config_modulo_seguridad(ubicaciones=locations)
+        response = acceso_obj.get_config_modulo_seguridad(ubicaciones=locations, account_id=account_id)
     elif option == 'get_pass_img':
         response = acceso_obj.get_pass_img(qr_code)
     elif option == 'ocr_persona':
