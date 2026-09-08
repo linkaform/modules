@@ -468,6 +468,21 @@ class Accesos(Accesos):
             pase_record_id = bitac and bitac.get('answers', {}).get(bf['num_de_pase'])
             if pase_record_id:
                 return self.get_pass_transportista(record_id=pase_record_id)
+        if result and result.get('_id'):
+            # Bitácora ligada a este pase (stub "programado" creado desde que
+            # se generó el pase, ver create_pass_transportista) — permite que
+            # el frontend redirija a la pantalla de detalle de acceso real en
+            # vez de quedarse en la vista pública del pase.
+            bf = self.bitacora_transportista_fields
+            bitac = self.cr.find_one(
+                {
+                    'form_id': self.BITACORA_TRANSPORTISTAS,
+                    'deleted_at': {'$exists': False},
+                    f'answers.{bf["num_de_pase"]}': result['_id'],
+                },
+                {'_id': 1},
+            )
+            result['bitacora_id'] = str(bitac['_id']) if bitac else None
         return result
 
     def generate_submit_token_transportista(self, record_id):
