@@ -1,6 +1,7 @@
 # coding: utf-8
 import dis
 import sys, simplejson, pytz
+from math import ceil
 from datetime import datetime
 from bson import ObjectId
 from linkaform_api import settings
@@ -142,7 +143,9 @@ class Accesos(Accesos):
         return self.format_cr(self.cr.aggregate(query), get_one=True)
     
     def get_bitac_transportista_records(self, date_from=None, date_to=None,
-                                         tipo_de_vehiculo=None, proveedor_cliente=None, anden_asignado=None):
+                                         tipo_de_vehiculo=None, proveedor_cliente=None, anden_asignado=None,
+                                         estatus=None, tipo_de_operacion=None, conductor=None, material=None,
+                                         search=None, skip=0, limit=None):
         f = self.bitacora_transportista_fields
         match_filters = {
             'form_id': self.BITACORA_TRANSPORTISTAS,
@@ -165,6 +168,32 @@ class Accesos(Accesos):
         if anden_asignado:
             values = anden_asignado if isinstance(anden_asignado, list) else [anden_asignado]
             match_filters[f'answers.{f["anden_asignado"]}'] = {'$in': values}
+        if estatus:
+            values = estatus if isinstance(estatus, list) else [estatus]
+            match_filters[f'answers.{f["estatus"]}'] = {'$in': values}
+        if tipo_de_operacion:
+            values = tipo_de_operacion if isinstance(tipo_de_operacion, list) else [tipo_de_operacion]
+            match_filters[f'answers.{f["tipo_de_operacion"]}'] = {'$in': values}
+        if conductor:
+            values = conductor if isinstance(conductor, list) else [conductor]
+            match_filters[f'answers.{f["conductor"]}'] = {'$in': values}
+        if material:
+            values = material if isinstance(material, list) else [material]
+            match_filters[f'answers.{f["grupo_materiales"]}'] = {
+                '$elemMatch': {f['producto_material']: {'$in': values}}
+            }
+        if search:
+            search_regex = {'$regex': search, '$options': 'i'}
+            match_filters['$or'] = [
+                {'folio': search_regex},
+                {f'answers.{f["placas_de_vehiculo"]}': search_regex},
+                {f'answers.{f["conductor"]}': search_regex},
+                {f'answers.{f["proveedor_cliente"]}': search_regex},
+            ]
+
+        count_query = [{'$match': match_filters}, {'$count': 'total'}]
+        count_result = self.format_cr(self.cr.aggregate(count_query))
+        total_count = count_result[0]['total'] if count_result else 0
 
         query = [
             {'$match': match_filters},
@@ -219,7 +248,21 @@ class Accesos(Accesos):
             }},
             {'$sort': {'_id': -1}},
         ]
-        return self.format_cr(self.cr.aggregate(query))
+        if limit:
+            query.append({'$skip': skip or 0})
+            query.append({'$limit': limit})
+        records = self.format_cr(self.cr.aggregate(query))
+
+        current_page = ((skip or 0) // limit) + 1 if limit else 1
+        total_pages = ceil(total_count / limit) if limit else 1
+
+        return {
+            'records': records,
+            'total_records': total_count,
+            'total_pages': total_pages,
+            'actual_page': current_page,
+            'records_on_page': len(records),
+        }
 
     def get_horarios_data(self, dia=None):
         """
@@ -1583,6 +1626,13 @@ if __name__ == "__main__":
     tipo_de_vehiculo = data.get("tipo_de_vehiculo", None)
     proveedor_cliente = data.get("proveedor_cliente", None)
     anden_asignado = data.get("anden_asignado", None)
+    estatus = data.get("estatus", None)
+    tipo_de_operacion = data.get("tipo_de_operacion", None)
+    conductor = data.get("conductor", None)
+    material = data.get("material", None)
+    search = data.get("search", None)
+    skip = data.get("skip", 0)
+    limit = data.get("limit", None)
     form_ids = data.get("form_ids", [])
     email_to = data.get("email_to")
     ubicacion = data.get("ubicacion")
@@ -1596,6 +1646,8 @@ if __name__ == "__main__":
         "get_bitac_transportista_records": lambda: script_obj.get_bitac_transportista_records(
             date_from=date_from, date_to=date_to,
             tipo_de_vehiculo=tipo_de_vehiculo, proveedor_cliente=proveedor_cliente, anden_asignado=anden_asignado,
+            estatus=estatus, tipo_de_operacion=tipo_de_operacion, conductor=conductor, material=material,
+            search=search, skip=skip, limit=limit,
         ),
         "get_horarios_data": lambda: script_obj.get_horarios_data(dia=data.get('dia')),
         "get_pass_transportista": lambda: script_obj.get_pass_transportista(record_id, token, folio),
