@@ -101,6 +101,8 @@ class Accesos(Accesos):
                         'cantidad_faltante': f'$$m.{f["cantidad_faltante_material"]}',
                         'peso':              f'$$m.{f["peso_material"]}',
                         'volumen':           f'$$m.{f["volumen_material"]}',
+                        'evidencia':         {'$ifNull': [f'$$m.{f["evidencia_material"]}', []]},
+                        'comentario':        f'$$m.{f["comentario_material"]}',
                     },
                 }},
                 'desglose_empaque': {'$map': {
@@ -732,6 +734,8 @@ class Accesos(Accesos):
                     f['volumen_material']:         m.get('volumen', ''),
                     f['no_referencia_material']:   m.get('ref', ''),
                     f['lugar_material']:           'contenedor' if str(m.get('ref', '')).startswith('contenedor') else 'remolque' if str(m.get('ref', '')).startswith('remolque') else 'vehiculo',
+                    f['evidencia_material']:       m.get('evidencia', []),
+                    f['comentario_material']:      m.get('comentario', ''),
                 }
                 for i, m in enumerate(materiales)
             }

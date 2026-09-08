@@ -392,6 +392,8 @@ class Accesos(Accesos):
             'cantidad_faltante_material': '6a7a4ee0e6092a8d37f6d448',
             'peso_material': '6a42c7a7a1555d53d6b91951',
             'volumen_material': '6a42c7a7a1555d53d6b91952',
+            'evidencia_material': '6a9f34d31c217e8c3f8c1702',
+            'comentario_material': '6a9f34d31c217e8c3f8c1703',
 
             'grupo_remolques': '6a31959ed11ece87f2b0052d',
             'tipo_remolque': '6a319693884bec802c94fa44',
