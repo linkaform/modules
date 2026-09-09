@@ -230,59 +230,59 @@ class PCI_Utils():
             return False
 
         # Si no existe el expediente en Admin ni en IASA pues se debe crear
-        if not connections_expediente and not connections_expediente_iasa:
-            print('expediente {} no encontrado... creando'.format(numero_expediente))
+        # if not connections_expediente and not connections_expediente_iasa:
+        #     print('expediente {} no encontrado... creando'.format(numero_expediente))
 
-            def get_data_to_connection(dict_data, conexion):
-                return { # Catalogo de Contratistas
-                    '5f344a0476c82e1bebc991d7': dict_data.get('nombre_contratista'),
-                    '5f344a0476c82e1bebc991db': [dict_data.get('razon_social')],
-                    '5f344a0476c82e1bebc991da': [dict_data.get('division_contratista')],
-                    '5f344a0476c82e1bebc991d9': [dict_data.get('telefono_contratista')],
-                    '5f344a0476c82e1bebc991d8': [dict_data.get('correo_contratista')],
-                    '5f344a0476c82e1bebc991d6': [str(conexion)],
-                    '673e4bc4f3e1a7191de583cf': [dict_data.get('socio_comercial')],
-                }
+        #     def get_data_to_connection(dict_data, conexion):
+        #         return { # Catalogo de Contratistas
+        #             '5f344a0476c82e1bebc991d7': dict_data.get('nombre_contratista'),
+        #             '5f344a0476c82e1bebc991db': [dict_data.get('razon_social')],
+        #             '5f344a0476c82e1bebc991da': [dict_data.get('division_contratista')],
+        #             '5f344a0476c82e1bebc991d9': [dict_data.get('telefono_contratista')],
+        #             '5f344a0476c82e1bebc991d8': [dict_data.get('correo_contratista')],
+        #             '5f344a0476c82e1bebc991d6': [str(conexion)],
+        #             '673e4bc4f3e1a7191de583cf': [dict_data.get('socio_comercial')],
+        #         }
 
-            info_conn_iasa = kwargs.get('info_iasa', {})
-            answers_to_expediente = {
-                '5d77be2577248fa5ad7f82ee': { # CATALOGO DE COPES 
-                    '5d641731ddd3adcc24778a9d': kwargs.get('cope'),
-                    '5d641731ddd3adcc24778a9e': [kwargs.get('abreviatura_cope')],
-                    '5d641731ddd3adcc24778a9c': [kwargs.get('area')],
-                    '5d641731ddd3adcc24778a9b': [kwargs.get('subdireccion')],
-                    '5d77bd96eeb32658ce522ec4': [kwargs.get('division_pic_movil')],
-                    '5d641731ddd3adcc24778a9a': [kwargs.get('division')]
-                },
-                '5fa470ac2bf44d032891457e': kwargs.get('nombre_tecnico'),
-                'f1216500a010000000000001': int(numero_expediente),
-                '590a4761f851c20e60ac168c': 'activo',
-                '58db0090b43fdd5c1419dae2': 'tecnico',
-                '5f344a0476c82e1bebc991d5': get_data_to_connection(info_conn_iasa, self.lkf_obj.account_id) # Catalogo de Contratistas
-            }
-            properties_expediente = {"device_properties":{"system": "SCRIPT","process":"CARGA DE PRODUCCION", "accion":'Crear Expediente', "folio carga":kwargs.get('current_record_folio'), "archive":"iasa_carga_produccion_hibrido.py"}}
+        #     info_conn_iasa = kwargs.get('info_iasa', {})
+        #     answers_to_expediente = {
+        #         '5d77be2577248fa5ad7f82ee': { # CATALOGO DE COPES 
+        #             '5d641731ddd3adcc24778a9d': kwargs.get('cope'),
+        #             '5d641731ddd3adcc24778a9e': [kwargs.get('abreviatura_cope')],
+        #             '5d641731ddd3adcc24778a9c': [kwargs.get('area')],
+        #             '5d641731ddd3adcc24778a9b': [kwargs.get('subdireccion')],
+        #             '5d77bd96eeb32658ce522ec4': [kwargs.get('division_pic_movil')],
+        #             '5d641731ddd3adcc24778a9a': [kwargs.get('division')]
+        #         },
+        #         '5fa470ac2bf44d032891457e': kwargs.get('nombre_tecnico'),
+        #         'f1216500a010000000000001': int(numero_expediente),
+        #         '590a4761f851c20e60ac168c': 'activo',
+        #         '58db0090b43fdd5c1419dae2': 'tecnico',
+        #         '5f344a0476c82e1bebc991d5': get_data_to_connection(info_conn_iasa, self.lkf_obj.account_id) # Catalogo de Contratistas
+        #     }
+        #     properties_expediente = {"device_properties":{"system": "SCRIPT","process":"CARGA DE PRODUCCION", "accion":'Crear Expediente', "folio carga":kwargs.get('current_record_folio'), "archive":"iasa_carga_produccion_hibrido.py"}}
             
-            print('--- --- --- Creando registro de Expediente en la cuenta de Admin')
+        #     print('--- --- --- Creando registro de Expediente en la cuenta de Admin')
 
-            # OJO AQUI. LOS DATOS DEL CONTRATISTA DEBEN SER LOS DE IASA
+        #     # OJO AQUI. LOS DATOS DEL CONTRATISTA DEBEN SER LOS DE IASA
 
-            resp_exp_admin = self.create_record_expediente(answers_to_expediente, properties_expediente, self.FORM_ID_EXP_TECNICOS, jwt_settings_key='JWT_KEY_ADMIN')
-            print("\n\n +-+-+- resp_exp_admin =",resp_exp_admin)
-            if resp_exp_admin.get('status_code') == 201:
-                self.send_notification_email('Nuevo Expediente desde Carga de Produccion', 'Se creó un nuevo expediente: {} para el contratista: {} desde la carga: {}'.format(numero_expediente, info_conn_iasa.get('nombre_contratista'), kwargs.get('current_record_folio')), properties_expediente)
+        #     resp_exp_admin = self.create_record_expediente(answers_to_expediente, properties_expediente, self.FORM_ID_EXP_TECNICOS, jwt_settings_key='JWT_KEY_ADMIN')
+        #     print("\n\n +-+-+- resp_exp_admin =",resp_exp_admin)
+        #     if resp_exp_admin.get('status_code') == 201:
+        #         self.send_notification_email('Nuevo Expediente desde Carga de Produccion', 'Se creó un nuevo expediente: {} para el contratista: {} desde la carga: {}'.format(numero_expediente, info_conn_iasa.get('nombre_contratista'), kwargs.get('current_record_folio')), properties_expediente)
                 
-                print('--- --- --- Creando registro de Expediente en la cuenta de IASA')
+        #         print('--- --- --- Creando registro de Expediente en la cuenta de IASA')
 
-                # OJO AQUI. LOS DATOS DEBEN SER LOS DEL CONTRATISTA DE IASA Y APUNTAR A LA BD DE IASA
+        #         # OJO AQUI. LOS DATOS DEBEN SER LOS DEL CONTRATISTA DE IASA Y APUNTAR A LA BD DE IASA
 
-                answers_to_expediente[self.lkf_obj.CATALOGO_CONTRATISTAS_OBJ_ID] = get_data_to_connection(kwargs, connection_id) # Catalogo de Contratistas
-                answers_to_expediente.pop('5f344a0476c82e1bebc991d5', None)
+        #         answers_to_expediente[self.lkf_obj.CATALOGO_CONTRATISTAS_OBJ_ID] = get_data_to_connection(kwargs, connection_id) # Catalogo de Contratistas
+        #         answers_to_expediente.pop('5f344a0476c82e1bebc991d5', None)
 
-                resp_exp_iasa = self.create_record_expediente(answers_to_expediente, properties_expediente, self.lkf_obj.FORM_ID_EXPEDIENTES_DE_TECNICOS)
-                print("\n\n +-+-+- resp_exp_iasa =",resp_exp_iasa)
-                # # El expediente se creó correctamente en las cuentas de Admin y IASA
-                if resp_exp_iasa.get('status_code') == 201:
-                    return True
+        #         resp_exp_iasa = self.create_record_expediente(answers_to_expediente, properties_expediente, self.lkf_obj.FORM_ID_EXPEDIENTES_DE_TECNICOS)
+        #         print("\n\n +-+-+- resp_exp_iasa =",resp_exp_iasa)
+        #         # # El expediente se creó correctamente en las cuentas de Admin y IASA
+        #         if resp_exp_iasa.get('status_code') == 201:
+        #             return True
             
         return False
 
