@@ -386,6 +386,8 @@ class Accesos(Accesos):
             'cantidad_faltante_material': '6a7a4ee0e6092a8d37f6d448',
             'peso_material': '6a42c7a7a1555d53d6b91951',
             'volumen_material': '6a42c7a7a1555d53d6b91952',
+            'evidencia_material': '6a9f34d31c217e8c3f8c1702',
+            'comentario_material': '6a9f34d31c217e8c3f8c1703',
 
             'grupo_remolques': '6a31959ed11ece87f2b0052d',
             'tipo_remolque': '6a319693884bec802c94fa44',
@@ -775,7 +777,7 @@ class Accesos(Accesos):
         if docs:
             answers[f['grupo_fotos_y_documentos']] = [
                 {
-                    f['tipo_de_documento']: doc.get('tipo', ''),
+                    f['tipo_de_documento']: doc.get('tipo', '').lower().replace(' ', '_'),
                     f['documento']:         [{'file_name': doc.get('file_name', ''), 'file_url': doc['file_url']}] if doc.get('file_url') else [],
                 }
                 for doc in docs
@@ -828,6 +830,12 @@ class Accesos(Accesos):
 
         Args:
             image_source: URL, ruta local, o lista. Acepta imágenes y PDFs remotos.
+                          Cada elemento puede ser un string (URL) o un dict
+                          {'file_url': ..., 'file_name': ..., 'tipo_hint': ...} —
+                          `tipo_hint` es opcional: una etiqueta legible (en español)
+                          que el usuario ya asignó a ese archivo antes de analizar,
+                          usada como prior de alta confianza (no reemplaza la
+                          verificación contra el contenido real de la imagen).
             model:        Modelo OpenRouter ('google/gemini-2.5-flash' recomendado para docs).
 
         Returns:
@@ -876,6 +884,46 @@ class Accesos(Accesos):
             "specific contenedor or remolque (e.g. loose cargo directly on a rigid vehicle with no container/trailer "
             "breakdown, or a generic document that does not specify per-unit contents). Never duplicate the same "
             "cargo line in both a specific unit's materiales and the top-level materiales. "
+            "\n\n"
+            "IMPORTANT ON REPEATING ITEM#/PART-NUMBER SHIPMENT MANIFESTS (e.g. OEM/EDI-style forms with a "
+            "'Details' section listing multiple ITEM#, SERIAL#, SHIPPED QTY, PO# blocks — common in automotive/"
+            "GM-style shipment paperwork such as ASN or MGO shipment forms): each such block is ONE DISTINCT "
+            "cargo line — extract it as its own entry in `materiales`, never merge multiple blocks into one "
+            "entry or drop all but one. Map `producto` to that block's ITEM#/part number (or its description if "
+            "one is printed), `cant_esperada` to that block's SHIPPED QTY with its unit, and `no_orden_compra` to "
+            "that block's own PO# — when the PO# differs between blocks, record each on its own material rather "
+            "than collapsing them into a single shipment-level PO. Do NOT invent a new contenedor or remolque "
+            "entry per ITEM# block — these forms usually describe cargo riding on a SINGLE trailer/container "
+            "already identified elsewhere in the same event (e.g. by a CARRIER REF NO, CONVEYANCE IDENTIF., or a "
+            "remolque number matching another document). Attach all these materiales entries to that one unit's "
+            "`materiales` array (or to the top-level `materiales` fallback if no unit is otherwise identified) — "
+            "never one manufactured contenedor/remolque per row. "
+            "A field like 'PACKAGE TYPE' or 'CONTAINER QTY' on this kind of form describes HOW the cargo is "
+            "packaged (a packaging code, or a count of packages) — it is NEVER a unique container/box "
+            "identifier, even if the exact same value repeats identically across every row. Never copy it into "
+            "`no_caja` or `no_contenedor` just because it sits in a container-labeled column; only put a value "
+            "there when it is a genuinely distinct identifier per unit (an ISO container number, an internal "
+            "asset/box number, etc.) — otherwise leave it null. "
+            "`producto` must always be an actual description of the cargo/goods (an item or part description, a "
+            "part number, or a commodity name) — never a company name (carrier, shipper/remitente, consignee/"
+            "destinatario, customer, or any party name) copied over from a different field or a different "
+            "document in the same batch. If the manifest itself provides no product description, use its ITEM#/"
+            "part number as `producto` instead of leaving it null, and only use null if that cargo line has "
+            "truly no identifying text at all. This rule OVERRIDES any company/party name that also appears "
+            "elsewhere in the same batch of documents — a shipper/remitente name belongs ONLY in "
+            "`embarque.proveedor_cliente`, and must never be substituted as `producto` for a cargo line just "
+            "because no better description was found; using the ITEM#/part number is always preferable to using "
+            "a party name. WORKED EXAMPLE: a 'Details' table with 3 blocks — ITEM# 85750949 / RECORD YEAR 6 / "
+            "SHIPPED QTY 98 Each / PO# 3NF801G0, ITEM# 85750950 / RECORD YEAR 6 / SHIPPED QTY 49 Each / PO# "
+            "3NF801G0, ITEM# 85757065 / RECORD YEAR 6 / SHIPPED QTY 49 Each / PO# 3NF801GV — must produce THREE "
+            "materiales: {producto: \"85750949\", cant_esperada: \"98 Each\", no_orden_compra: \"3NF801G0\"}, "
+            "{producto: \"85750950\", cant_esperada: \"49 Each\", no_orden_compra: \"3NF801G0\"}, {producto: "
+            "\"85757065\", cant_esperada: \"49 Each\", no_orden_compra: \"3NF801GV\"} — never the shipper's "
+            "company name as producto, and never RECORD YEAR (a record-keeping/catalog year, unrelated to "
+            "quantity) as cant_esperada. `cant_esperada` must come EXCLUSIVELY from a field explicitly labeled as "
+            "a quantity/qty/amount shipped (SHIPPED QTY, CYTD QTY, cantidad, etc.) — never from RECORD YEAR, "
+            "ITEM#, PO#, or any other unrelated numeric field on the same row, even if it is the closest number "
+            "to the quantity column. "
             "\n\n"
             "IMPORTANT ON CLOSED-LIST FIELDS (tipo_vehiculo, remolques[].tipo, contenedores[].tipo): these values "
             "feed a form with FIXED dropdown options — there is NO 'otro' catch-all option available downstream. "
@@ -1037,13 +1085,28 @@ class Accesos(Accesos):
         if extra_instructions:
             prompt += f"\n\nAdditional instructions: {extra_instructions}"
 
+        hints = {}
         if isinstance(image_source, str):
             image_source = [image_source]
         elif isinstance(image_source, list):
+            hints = {
+                f'imagen_{i+1}': img['tipo_hint']
+                for i, img in enumerate(image_source)
+                if isinstance(img, dict) and img.get('tipo_hint')
+            }
             image_source = [
                 img['file_url'] if isinstance(img, dict) else img
                 for img in image_source
             ]
+
+        if hints:
+            hint_lines = "\n".join(f"- {k}: {v}" for k, v in hints.items())
+            prompt += (
+                "\n\nUser-provided type hints per file (high-confidence priors from the "
+                "person uploading, but still verify against the actual visual content — "
+                "if an image clearly does not match its hint, trust the image and note the "
+                f"discrepancy in `observaciones`):\n{hint_lines}"
+            )
 
         sources = []
         for src in image_source:
