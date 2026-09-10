@@ -1,5 +1,6 @@
 # coding: utf-8
 import sys, simplejson, json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from linkaform_api import settings
 from account_settings import *
 
@@ -331,6 +332,8 @@ class Base(Base):
                 "deleted_at": {"$exists": False},
                 f"answers.{self.USUARIOS_OBJ_ID}.{self.menu_form_fields['usuario_id']}": user_id
             }},
+            {"$sort": {"_id": -1}},
+            {"$limit": 1},
             {"$project": {
                 "_id": 1,
                 "elementos": f"$answers.{self.menu_form_fields['elementos']}"
@@ -355,6 +358,76 @@ class Base(Base):
             if key:
                 item_keys.append(key)
         return {"item_keys": item_keys}
+
+    def resync_all_permissions(self):
+        """
+        Vuelve a compartir Formas/Catalogos/Scripts de TODOS los usuarios con
+        registro en CONFIGURACION_MENUS, reusando su `elementos` ya guardado
+        (misma logica que dispara set_permissions al reguardar el registro,
+        sin tener que reguardar la asignacion de cada usuario a mano).
+
+        Corre un usuario a la vez implicaria cientos de llamadas HTTP
+        secuenciales a LinkaForm (3 tipos de item x GET+POST por usuario) en
+        cuentas con muchos usuarios, arriesgando timeouts de gateway sin
+        avisar al front. Se paraleliza por usuario (I/O-bound) igual que
+        accesos/app.py (ver do_multi_access, process_single_check_for_rondin).
+        """
+        query = [
+            {"$match": {"form_id": self.MENUS_FORM, "deleted_at": {"$exists": False}}},
+            {"$project": {
+                "_id": 1,
+                "elementos": f"$answers.{self.menu_form_fields['elementos']}",
+                "usuario_obj": f"$answers.{self.USUARIOS_OBJ_ID}",
+            }}
+        ]
+        records = self.format_cr(self.cr.aggregate(query), labels_off=True)
+
+        def _record_user_id(record):
+            usuario_obj = record.get('usuario_obj') or {}
+            raw_user_id = usuario_obj.get(self.menu_form_fields['usuario_id'])
+            return self.unlist(raw_user_id) if raw_user_id else None
+
+        # La cuenta padre ya tiene acceso a todo por ser la duena de la cuenta
+        # -- nunca necesita que se le compartan permisos, asi que ni siquiera
+        # se considera parte del universo a resincronizar (no cuenta en total
+        # ni aparece en skipped).
+        records = [r for r in records if str(_record_user_id(r)) != str(self.account_id)]
+
+        pending = []
+        skipped = []
+        for record in records:
+            user_id = _record_user_id(record)
+            if not user_id:
+                skipped.append({"record_id": record.get('_id'), "reason": "sin usuario_id"})
+                continue
+
+            # No se pre-valida existencia con get_user_by_id: ese endpoint da
+            # falsos negativos (401) para usuarios reales y activos (ej.
+            # user_id 9999, con formas/catalogos/scripts ya compartidos). Un
+            # usuario realmente borrado sigue quedando cubierto: set_item_permits
+            # (via apply_user_menu_permissions) truena con LKFException al
+            # intentar compartir, y ese error se captura mas abajo.
+            labeled = self._labels(
+                {self.menu_form_fields['elementos']: record.get('elementos') or []},
+                ids_label_dct=self.menu_form_fields,
+            )
+            pending.append((record.get('_id'), user_id, labeled.get('elementos', [])))
+
+        updated = 0
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {
+                executor.submit(self.apply_user_menu_permissions, user_id, elementos): (record_id, user_id)
+                for record_id, user_id, elementos in pending
+            }
+            for future in as_completed(futures):
+                record_id, user_id = futures[future]
+                try:
+                    future.result()
+                    updated += 1
+                except Exception as e:
+                    skipped.append({"record_id": record_id, "user_id": user_id, "reason": str(e)})
+
+        return {"updated": updated, "skipped": skipped, "total": len(records)}
 
     def save_user_menu_items(self, user_id, item_keys):
         """
@@ -419,6 +492,7 @@ if __name__ == "__main__":
         "list_users": lambda: script_obj.list_users(),
         "get_user_menu_items": lambda: script_obj.get_user_menu_items(user_id),
         "save_user_menu_items": lambda: script_obj.save_user_menu_items(user_id, item_keys),
+        "resync_all_permissions": lambda: script_obj.resync_all_permissions(),
     }
 
     action = dispatcher.get(option)
