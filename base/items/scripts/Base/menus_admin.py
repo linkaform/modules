@@ -331,6 +331,8 @@ class Base(Base):
                 "deleted_at": {"$exists": False},
                 f"answers.{self.USUARIOS_OBJ_ID}.{self.menu_form_fields['usuario_id']}": user_id
             }},
+            {"$sort": {"_id": -1}},
+            {"$limit": 1},
             {"$project": {
                 "_id": 1,
                 "elementos": f"$answers.{self.menu_form_fields['elementos']}"
