@@ -13,6 +13,14 @@ class Stock(Stock):
         self.f_bitacora = self.bitacora_transportista_fields
         self.FORM_BITACORA_TRANSPORTISTA_ID = 165688
 
+        self.map_recibo_stages = {
+            'materialDeclaration': 'declaracion_de_materiales',
+            'damageReview': 'evaluación_de_daños',
+            'serialScanReview': 'revisión_de_escaneo_de_series',
+            'finalReview': 'revisión_final',
+            'cancellation': 'cancelación',
+        }
+
     def find_warehouse_catalog_users(self, nombre_usuario):
         """
         Busca en CATALOG_ID_USUARIOS_ALMACEN al usuario de almacen destino
@@ -166,6 +174,27 @@ class Stock(Stock):
             })
         return grp_evidencias
 
+    def _get_item_serials(self, data_material):
+        """
+        Junta los numeros de serie capturados para un item del Recibo de
+        Materiales (cajas escaneadas + la unidad suelta, si aplica).
+
+        Args:
+            data_material (dict): un elemento de self.data['items'].
+
+        Returns:
+            list[dict]: lista de series (cada una con al menos 'value').
+        """
+        series = []
+        for box in data_material.get('boxScans') or []:
+            series.extend(box.get('serials') or [])
+
+        loose_unit = data_material.get('looseUnitScan')
+        if loose_unit:
+            series.extend(loose_unit.get('serials') or [])
+
+        return series
+
     def build_move_group_recepcion(self, materiales_data):
         """
         Arma el grupo repetitivo de materiales para la forma Recepcion de
@@ -183,12 +212,12 @@ class Stock(Stock):
         move_group = []
         field_as_select = [ self.f['field_product_code'] ]
         for data_material in materiales_data:
-            series = data_material.get('looseUnitScan', {}).get('serials', [])
+            series = self._get_item_serials(data_material)
 
             info_catalog_sku = self.find_material_catalog_sku( data_material.get('sku'), field_as_select=field_as_select )
             if not info_catalog_sku:
                 print(f"ADVERTENCIA: no se encontro el sku '{data_material.get('sku')}' en el catalogo")
-            
+
             data_set_material = {
                 self.f['obj_products']: info_catalog_sku,
                 self.f['lot_number']: 'LotePCI001',
@@ -199,7 +228,7 @@ class Stock(Stock):
             if series:
                 for serie in series:
                     serie_set_material = deepcopy(data_set_material)
-                    serie_set_material[ self.f['lot_number'] ] = serie
+                    serie_set_material[ self.f['lot_number'] ] = serie.get('value')
                     serie_set_material[ self.f['move_group_qty'] ] = 1
                     move_group.append(serie_set_material)
             else:
@@ -234,6 +263,67 @@ class Stock(Stock):
             'answers': answers,
         })
         return self.lkf_api.post_forms_answers(metadata)
+
+    def _build_stage_row(self, stage, name_stage, data_stage):
+        """
+        Arma una fila del grupo repetitivo de Fases (field_grp_stages) a
+        partir de la seccion `self.data[stage]` (p.ej. self.data['finalReview']).
+
+        Args:
+            stage (str): nombre del nodo en self.data (p.ej. 'finalReview').
+            name_stage (str): etiqueta a guardar en field_stage_name.
+            data_stage (dict): seccion `self.data[stage]`, con
+                confirmedAt/confirmedBy o cancelledAt/cancelledBy y reason.
+
+        Returns:
+            dict | None: fila para field_grp_stages, o None si no trae fecha ni autor.
+        """
+        stage_at = data_stage.get('cancelledAt' if stage == 'cancellation' else 'confirmedAt')
+        stage_by = data_stage.get('cancelledBy' if stage == 'cancellation' else 'confirmedBy')
+        reason = data_stage.get('reason')
+
+        if not stage_at and not stage_by:
+            return None
+
+        return {
+            self.f['field_stage_name'] : name_stage,
+            self.f['field_stage_at'] : self.format_fecha_evento(stage_at),
+            self.f['field_stage_by'] : stage_by,
+            self.f['field_stage_canceled_reason'] : reason,
+        }
+
+    def build_grp_stages(self):
+        """
+        Arma el grupo repetitivo de Fases del proceso (field_grp_stages) a
+        partir de los nodos materialDeclaration, damageReview,
+        serialScanReview, finalReview y cancellation en self.data.
+
+        Returns:
+            list[dict]: filas para el campo field_grp_stages.
+        """
+        data_grp_stages = []
+        for stage, name_stage in self.map_recibo_stages.items():
+            data_stage = self.data.get(stage, {})
+
+            if not data_stage:
+                continue
+
+            row_stage = self._build_stage_row(stage, name_stage, data_stage)
+            if row_stage:
+                data_grp_stages.append(row_stage)
+        return data_grp_stages
+
+    def should_generate_recepcion_materiales(self):
+        """
+        Bandera que determina si ya se debe generar la Recepcion de
+        Materiales de Proveedor: solo cuando la revision final ya fue
+        confirmada, es decir, cuando `self.data['finalReview']['confirmedAt']`
+        viene en el payload.
+
+        Returns:
+            bool
+        """
+        return bool(self.data.get('finalReview', {}).get('confirmedAt'))
 
     def create_record_recepcion_materiales_proveedor(self):
         """
@@ -308,14 +398,14 @@ class Stock(Stock):
         })
         return self.lkf_api.post_forms_answers(metadata)
 
-    def create_record_bitacora_transportista(self):
+    def build_answers_bitacora_transportista(self):
         """
         Arma las respuestas de la Bitacora de Transportistas a partir de
         `self.data` (almacenes, transportista, inspecciones, evidencias,
-        materiales, firma y eventos) y crea el registro en LKF.
+        materiales, firma y eventos).
 
         Returns:
-            dict: respuesta de `lkf_api.post_forms_answers`.
+            dict: respuestas {field_id: valor} para FORM_BITACORA_TRANSPORTISTA_ID.
         """
         delivery_data = self.data.get('delivery', {})
         documents_data = self.data.get('materialDocuments', {})
@@ -326,6 +416,9 @@ class Stock(Stock):
             self.find_catalogs_bitacora_transportista(delivery_data)
         delivery_date = self.validate_delivery_date(delivery_data)
 
+        grp_materiales, grp_boxes, grp_pallets, grp_series, _grp_missing = \
+            self.build_grp_materiales(materiales_data, is_transfer=True)
+
         answers = {
             self.f['obj_almacen_destino'] : info_catalog_almacen_destino,
             self.f['obj_wh_locations'] : info_catalog_almacen_origen,
@@ -333,23 +426,43 @@ class Stock(Stock):
             self.f_bitacora['fecha_hora_ingreso'] : f"{delivery_date} 00:00:00",
             self.f['field_grp_inspecciones']: self.build_grp_inspecciones(documents_data),
             self.f_bitacora['grupo_fotos_y_documentos']: self.build_grp_evidencias(evidence_data),
-            self.f_bitacora['grupo_desglose_empaque']: self.build_grp_materiales(materiales_data),
-            self.f_bitacora['firma_conductor']: self.data.get('signature', {}).get('signatureDataUrl', {}),
+            self.f_bitacora['grupo_desglose_empaque']: grp_materiales,
+            self.f['field_grp_tarimas']: [{self.f['field_pallet_id']: pall} for pall in grp_pallets],
+            self.f['field_grp_boxes']: grp_boxes,
+            self.f['field_grp_onts']: grp_series,
             self.f['field_grp_bitacora']: self.build_grp_bitacora(self.data.get('events', [])),
+            self.f['field_status_transferencia']: self.data.get('stage'),
+            self.f['field_grp_stages']: self.build_grp_stages(),
         }
 
+        signature_data_url = self.data.get('signature', {}).get('signatureDataUrl')
+        if signature_data_url:
+            answers[self.f_bitacora['firma_conductor']] = signature_data_url
+
+        return answers
+
+    def create_record_bitacora_transportista(self):
+        """
+        Crea el registro de la Bitacora de Transportistas en LKF a partir de
+        las respuestas armadas por `build_answers_bitacora_transportista`.
+
+        Returns:
+            dict: respuesta de `lkf_api.post_forms_answers`.
+        """
+        answers = self.build_answers_bitacora_transportista()
         return self.post_bitacora_transportista(answers)
 
     def recibo_de_materiales(self):
         """
         Se va a ejecutar el proceso de Recibo de Materiales, se creará el registro
-        en la forma Bitacora de Transportistas y además se realizará la recepción
-        en la forma Recepcion de Materiales de Proveedor
+        en la forma Bitacora de Transportistas y, si la revision final ya fue
+        confirmada (`self.data['finalReview']['confirmedAt']`), tambien se
+        realizará la recepción en la forma Recepcion de Materiales de Proveedor.
         """
-        # resp_bitacora_transportista = {'status_code': 201}
         resp_bitacora_transportista = self.create_record_bitacora_transportista()
         print("+++ +++ +++ resp_bitacora_transportista =",resp_bitacora_transportista)
-        if resp_bitacora_transportista.get('status_code') == 201:
+
+        if resp_bitacora_transportista.get('status_code') in (200, 201) and self.should_generate_recepcion_materiales():
             resp_recepcion_materiales = self.create_record_recepcion_materiales_proveedor()
             print("+++ +++ +++ resp_recepcion_materiales =",resp_recepcion_materiales)
             return {
