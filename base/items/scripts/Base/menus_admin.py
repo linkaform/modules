@@ -359,18 +359,88 @@ class Base(Base):
                 item_keys.append(key)
         return {"item_keys": item_keys}
 
+    def _configured_menu_user_ids(self):
+        """
+        Set de user_id con al menos un registro en CONFIGURACION_MENUS
+        (la forma actual de permisos, ver [[clave10_menus_admin_board]]).
+        """
+        query = [
+            {"$match": {"form_id": self.MENUS_FORM, "deleted_at": {"$exists": False}}},
+            {"$project": {
+                "usuario_id": f"$answers.{self.USUARIOS_OBJ_ID}.{self.menu_form_fields['usuario_id']}",
+            }}
+        ]
+        records = self.format_cr(self.cr.aggregate(query), labels_off=True)
+        configured_ids = set()
+        for record in records:
+            raw_user_id = record.get('usuario_id')
+            user_id = self.unlist(raw_user_id) if raw_user_id else None
+            if user_id:
+                configured_ids.add(user_id)
+        return configured_ids
+
+    def list_users_missing_menu_config(self):
+        """
+        Regresa los usuarios del catalogo USUARIOS que NO tienen ningun
+        registro en CONFIGURACION_MENUS -- altas nuevas que nunca llegaron a
+        configurarse. Excluye la cuenta padre (nunca necesita configurarse).
+        """
+        configured_ids = self._configured_menu_user_ids()
+        return [
+            user for user in self.list_users()
+            if user['user_id'] not in configured_ids
+            and str(user['user_id']) != str(self.account_id)
+        ]
+
+    def list_users_only_in_legacy_accesos(self):
+        """
+        Regresa los usuarios que tienen registro en CONFIGURACION_ACCESOS
+        (forma legacy de permisos, previa a CONFIGURACION_MENUS -- ver
+        get_config_accesos en accesos/app.py) pero NO tienen registro en
+        CONFIGURACION_MENUS -- señal de que nunca se migraron al mecanismo
+        nuevo y pueden estar operando con permisos desactualizados.
+        """
+        acc = self.Accesos
+        user_id_field = acc.employee_fields['user_id_id']
+
+        legacy_query = [
+            {"$match": {"form_id": acc.CONF_ACCESOS, "deleted_at": {"$exists": False}}},
+            {"$project": {
+                "usuario_id": f"$answers.{acc.EMPLOYEE_OBJ_ID}.{user_id_field}",
+            }}
+        ]
+        legacy_records = self.format_cr(self.cr.aggregate(legacy_query), labels_off=True)
+        legacy_ids = set()
+        for record in legacy_records:
+            raw_user_id = record.get('usuario_id')
+            user_id = self.unlist(raw_user_id) if raw_user_id else None
+            if user_id:
+                legacy_ids.add(user_id)
+
+        only_legacy_ids = legacy_ids - self._configured_menu_user_ids()
+        if not only_legacy_ids:
+            return []
+
+        users_by_id = {user['user_id']: user for user in self.list_users()}
+        return [users_by_id[uid] for uid in only_legacy_ids if uid in users_by_id]
+
     def resync_all_permissions(self):
         """
-        Vuelve a compartir Formas/Catalogos/Scripts de TODOS los usuarios con
-        registro en CONFIGURACION_MENUS, reusando su `elementos` ya guardado
-        (misma logica que dispara set_permissions al reguardar el registro,
-        sin tener que reguardar la asignacion de cada usuario a mano).
+        Dispara el workflow nativo de CONFIGURACION_MENUS (option=set_permissions,
+        ver menus.py -> set_user_permissions en app.py) para todos los
+        registros, reescribiendo el mismo elementos/usuario_obj que ya
+        tenian. LinkaForm corre ese workflow en cada update de un registro
+        del formulario -- igual que si cada usuario hubiera reguardado su
+        asignacion a mano. No se llama la logica de compartir directo
+        (set_item_permits/apply_user_menu_permissions) para no duplicarla:
+        el workflow, que ya es la fuente de verdad de que se comparte, la
+        corre el solo.
 
-        Corre un usuario a la vez implicaria cientos de llamadas HTTP
-        secuenciales a LinkaForm (3 tipos de item x GET+POST por usuario) en
-        cuentas con muchos usuarios, arriesgando timeouts de gateway sin
-        avisar al front. Se paraleliza por usuario (I/O-bound) igual que
-        accesos/app.py (ver do_multi_access, process_single_check_for_rondin).
+        Un registro a la vez implicaria cientos de llamadas HTTP
+        secuenciales a LinkaForm en cuentas con muchos usuarios, arriesgando
+        timeouts de gateway sin avisar al front. Se paraleliza por registro
+        (I/O-bound) igual que accesos/app.py (ver do_multi_access,
+        process_single_check_for_rondin).
         """
         query = [
             {"$match": {"form_id": self.MENUS_FORM, "deleted_at": {"$exists": False}}},
@@ -388,44 +458,50 @@ class Base(Base):
             return self.unlist(raw_user_id) if raw_user_id else None
 
         # La cuenta padre ya tiene acceso a todo por ser la duena de la cuenta
-        # -- nunca necesita que se le compartan permisos, asi que ni siquiera
-        # se considera parte del universo a resincronizar (no cuenta en total
-        # ni aparece en skipped).
+        # -- nunca necesita que se le actualice su registro, asi que ni
+        # siquiera se considera parte del universo a resincronizar (no
+        # cuenta en total ni aparece en skipped).
         records = [r for r in records if str(_record_user_id(r)) != str(self.account_id)]
 
         pending = []
         skipped = []
         for record in records:
-            user_id = _record_user_id(record)
-            if not user_id:
+            if not _record_user_id(record):
                 skipped.append({"record_id": record.get('_id'), "reason": "sin usuario_id"})
                 continue
+            pending.append(record)
 
-            # No se pre-valida existencia con get_user_by_id: ese endpoint da
-            # falsos negativos (401) para usuarios reales y activos (ej.
-            # user_id 9999, con formas/catalogos/scripts ya compartidos). Un
-            # usuario realmente borrado sigue quedando cubierto: set_item_permits
-            # (via apply_user_menu_permissions) truena con LKFException al
-            # intentar compartir, y ese error se captura mas abajo.
-            labeled = self._labels(
-                {self.menu_form_fields['elementos']: record.get('elementos') or []},
-                ids_label_dct=self.menu_form_fields,
-            )
-            pending.append((record.get('_id'), user_id, labeled.get('elementos', [])))
+        def _touch_record(record):
+            metadata = self.lkf_api.get_metadata(form_id=self.MENUS_FORM)
+            metadata['_id'] = record['_id']
+            metadata['answers'] = {
+                self.USUARIOS_OBJ_ID: record.get('usuario_obj') or {},
+                self.menu_form_fields['elementos']: record.get('elementos') or [],
+            }
+            return self.net.patch_forms_answers(metadata)
 
         updated = 0
         with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = {
-                executor.submit(self.apply_user_menu_permissions, user_id, elementos): (record_id, user_id)
-                for record_id, user_id, elementos in pending
-            }
+            futures = {executor.submit(_touch_record, record): record for record in pending}
             for future in as_completed(futures):
-                record_id, user_id = futures[future]
+                record = futures[future]
                 try:
-                    future.result()
-                    updated += 1
+                    res = future.result()
+                    status_code = res.get('status_code') if isinstance(res, dict) else None
+                    if status_code in (200, 201, 202):
+                        updated += 1
+                    else:
+                        skipped.append({
+                            "record_id": record.get('_id'),
+                            "user_id": _record_user_id(record),
+                            "reason": f"status_code {status_code}",
+                        })
                 except Exception as e:
-                    skipped.append({"record_id": record_id, "user_id": user_id, "reason": str(e)})
+                    skipped.append({
+                        "record_id": record.get('_id'),
+                        "user_id": _record_user_id(record),
+                        "reason": str(e),
+                    })
 
         return {"updated": updated, "skipped": skipped, "total": len(records)}
 
@@ -493,6 +569,8 @@ if __name__ == "__main__":
         "get_user_menu_items": lambda: script_obj.get_user_menu_items(user_id),
         "save_user_menu_items": lambda: script_obj.save_user_menu_items(user_id, item_keys),
         "resync_all_permissions": lambda: script_obj.resync_all_permissions(),
+        "list_users_missing_menu_config": lambda: script_obj.list_users_missing_menu_config(),
+        "list_users_only_in_legacy_accesos": lambda: script_obj.list_users_only_in_legacy_accesos(),
     }
 
     action = dispatcher.get(option)
