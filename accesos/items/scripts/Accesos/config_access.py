@@ -71,7 +71,7 @@ class Accesos(Accesos):
             'rondines':{
                 'forms':[self.CONFIGURACION_RECORRIDOS_FORM, self.BITACORA_RONDINES],
                 'catalogs':[],
-                'scripts':[self.SCRIPT_RONDINES]
+                'scripts':[self.SCRIPT_RONDINES, self.SCRIPT_PASE_ACCESO, self.GET_STATS, self.SCRIPT_PASE_ACCESO_API]
             },
             'articulos':{
                 'forms':[self.CONCESSIONED_ARTICULOS, self.BITACORA_OBJETOS_PERDIDOS, self.PAQUETERIA],
