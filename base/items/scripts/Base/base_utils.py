@@ -51,7 +51,15 @@ class Base(Base):
                     self.SCRIPT_PASE_ACCESO,
                     self.SCRIPT_PASE_ACCESO_API,
                 ],
-                'scripts':[self.OFFLINE_SERVICES, self.SCRIPT_MENUS, self.FILTERS, self.SCRIPT_TRANSPORTISTAS]
+                'scripts':[
+                    self.OFFLINE_SERVICES,
+                    self.SCRIPT_MENUS,
+                    self.FILTERS,
+                    self.SCRIPT_TRANSPORTISTAS,
+                    self.SCRIPT_PASE_ACCESO,
+                    self.GET_STATS,
+                    self.SCRIPT_PASE_ACCESO_API
+                ]
             },
             'accesos':{
                 'forms':[self.Accesos.CHECKIN_CASETAS, self.Accesos.REGISTRO_ASISTENCIA, self.Accesos.BITACORA_GAFETES_LOCKERS, self.Accesos.CHECK_UBICACIONES, self.Accesos.BITACORA_ACCESOS],
