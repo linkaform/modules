@@ -325,23 +325,6 @@ class Base(Base):
         users.sort(key=lambda u: (u.get('nombre') or u.get('username') or '').lower())
         return users
 
-    def _get_user_menu_record(self, user_id):
-        query = [
-            {"$match": {
-                "form_id": self.MENUS_FORM,
-                "deleted_at": {"$exists": False},
-                f"answers.{self.USUARIOS_OBJ_ID}.{self.menu_form_fields['usuario_id']}": user_id
-            }},
-            {"$sort": {"_id": -1}},
-            {"$limit": 1},
-            {"$project": {
-                "_id": 1,
-                "elementos": f"$answers.{self.menu_form_fields['elementos']}"
-            }}
-        ]
-        data = self.format_cr(self.cr.aggregate(query), get_one=True, labels_off=True)
-        return data
-
     def get_user_menu_items(self, user_id):
         """
         Regresa las keys de items de menú actualmente asignadas a un usuario.
