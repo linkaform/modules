@@ -359,6 +359,71 @@ class Base(Base):
                 item_keys.append(key)
         return {"item_keys": item_keys}
 
+    def _configured_menu_user_ids(self):
+        """
+        Set de user_id con al menos un registro en CONFIGURACION_MENUS
+        (la forma actual de permisos, ver [[clave10_menus_admin_board]]).
+        """
+        query = [
+            {"$match": {"form_id": self.MENUS_FORM, "deleted_at": {"$exists": False}}},
+            {"$project": {
+                "usuario_id": f"$answers.{self.USUARIOS_OBJ_ID}.{self.menu_form_fields['usuario_id']}",
+            }}
+        ]
+        records = self.format_cr(self.cr.aggregate(query), labels_off=True)
+        configured_ids = set()
+        for record in records:
+            raw_user_id = record.get('usuario_id')
+            user_id = self.unlist(raw_user_id) if raw_user_id else None
+            if user_id:
+                configured_ids.add(user_id)
+        return configured_ids
+
+    def list_users_missing_menu_config(self):
+        """
+        Regresa los usuarios del catalogo USUARIOS que NO tienen ningun
+        registro en CONFIGURACION_MENUS -- altas nuevas que nunca llegaron a
+        configurarse. Excluye la cuenta padre (nunca necesita configurarse).
+        """
+        configured_ids = self._configured_menu_user_ids()
+        return [
+            user for user in self.list_users()
+            if user['user_id'] not in configured_ids
+            and str(user['user_id']) != str(self.account_id)
+        ]
+
+    def list_users_only_in_legacy_accesos(self):
+        """
+        Regresa los usuarios que tienen registro en CONFIGURACION_ACCESOS
+        (forma legacy de permisos, previa a CONFIGURACION_MENUS -- ver
+        get_config_accesos en accesos/app.py) pero NO tienen registro en
+        CONFIGURACION_MENUS -- señal de que nunca se migraron al mecanismo
+        nuevo y pueden estar operando con permisos desactualizados.
+        """
+        acc = self.Accesos
+        user_id_field = acc.employee_fields['user_id_id']
+
+        legacy_query = [
+            {"$match": {"form_id": acc.CONF_ACCESOS, "deleted_at": {"$exists": False}}},
+            {"$project": {
+                "usuario_id": f"$answers.{acc.EMPLOYEE_OBJ_ID}.{user_id_field}",
+            }}
+        ]
+        legacy_records = self.format_cr(self.cr.aggregate(legacy_query), labels_off=True)
+        legacy_ids = set()
+        for record in legacy_records:
+            raw_user_id = record.get('usuario_id')
+            user_id = self.unlist(raw_user_id) if raw_user_id else None
+            if user_id:
+                legacy_ids.add(user_id)
+
+        only_legacy_ids = legacy_ids - self._configured_menu_user_ids()
+        if not only_legacy_ids:
+            return []
+
+        users_by_id = {user['user_id']: user for user in self.list_users()}
+        return [users_by_id[uid] for uid in only_legacy_ids if uid in users_by_id]
+
     def resync_all_permissions(self):
         """
         Vuelve a compartir Formas/Catalogos/Scripts de TODOS los usuarios con
@@ -493,6 +558,8 @@ if __name__ == "__main__":
         "get_user_menu_items": lambda: script_obj.get_user_menu_items(user_id),
         "save_user_menu_items": lambda: script_obj.save_user_menu_items(user_id, item_keys),
         "resync_all_permissions": lambda: script_obj.resync_all_permissions(),
+        "list_users_missing_menu_config": lambda: script_obj.list_users_missing_menu_config(),
+        "list_users_only_in_legacy_accesos": lambda: script_obj.list_users_only_in_legacy_accesos(),
     }
 
     action = dispatcher.get(option)
