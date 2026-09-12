@@ -35,6 +35,7 @@ if __name__ == "__main__":
     dateTo = data.get("dateTo", "")
     filterDate = data.get("filterDate", "")
     record_ids = data.get("record_ids", [])
+    uso = data.get("uso", None)
 
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
@@ -48,7 +49,7 @@ if __name__ == "__main__":
     elif option == 'update_active_pass':
         response = acceso_obj.update_active_pass(folio, qr_code, update_obj)
     elif option == 'catalogos_pase_area':
-        response = acceso_obj.catalogos_pase_area(location)
+        response = acceso_obj.catalogos_pase_area(location, uso=uso)
     elif option == 'catalogos_pase_location':
         response = acceso_obj.catalogos_pase_location()
     elif option == 'catalogos_pase_no_jwt':
