@@ -682,6 +682,12 @@ class Accesos(Accesos):
         )
         datos['confirmedAt'] = fecha_monterrey.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
 
+        modelo_series = datos.get('modelo') or ''
+        if modelo_series.lower() == 'huawei':
+            for serial in datos.get('serials', []):
+                sn = serial.get('sn', '')
+                serial['sn'] = f"HWTC{sn[8:]}" if sn else None
+
         if errores:
             return {
                 'status_code': 206,
