@@ -883,7 +883,7 @@ class Accesos(Accesos):
 
     def ocr_acceso_transportista(self, image_source,
                                   extra_instructions: str = None,
-                                  model: str = 'google/gemini-2.5-flash-lite') -> dict:
+                                  model: str = 'google/gemini-2.5-flash') -> dict:
         """
         Analiza uno o varios archivos de un acceso de transportista.
         Acepta mezcla de imágenes y documentos (PDFs, JPGs, PNGs).
