@@ -1346,10 +1346,11 @@ class Accesos(Accesos):
         return resultado
 
     def get_config_flujo_transportistas(self):
-        """Etapas activas del flujo de transportistas para esta cuenta.
-        Registro singleton (un solo record) en la forma "Configuración de Flujo de
-        Transportistas". Si no existe el registro todavía, regresa las 3 etapas
-        opcionales activas (fail-open, mismo comportamiento que antes de este toggle)."""
+        """Etapas activas y columnas visibles del kanban del flujo de transportistas
+        para esta cuenta. Registro singleton (un solo record) en la forma
+        "Configuración de Flujo de Transportistas". Si no existe el registro
+        todavía, regresa los defaults fail-open (mismo comportamiento que antes
+        de estos toggles)."""
         f = self.conf_flujo_transportistas_fields
         query = [
             {'$match': {
@@ -1361,6 +1362,7 @@ class Accesos(Accesos):
             {'$project': {
                 '_id': 0,
                 'etapas_activas': f'$answers.{f["etapas_activas"]}',
+                'kanban_view': f'$answers.{f["kanban_view"]}',
             }},
         ]
         data = self.format_cr(self.cr.aggregate(query), get_one=True)
@@ -1371,7 +1373,15 @@ class Accesos(Accesos):
         etapas_activas = (data or {}).get('etapas_activas') or [
             'inspeccion_de_entrada', 'carga_/_descarga', 'inspeccion_salida', 'inspeccion_materiales',
         ]
-        return {'etapas_activas': etapas_activas}
+        # Kanban View: qué columnas del kanban se muestran para esta cuenta — es
+        # puramente visual, no afecta el flujo/estatus real de la bitácora (a
+        # diferencia de `etapas_activas`). Valores tal cual las opciones del
+        # checkbox `kanban_view` en Linkaform. Fail-open: todas visibles si la
+        # cuenta todavía no configuró este campo.
+        kanban_view = (data or {}).get('kanban_view') or [
+            'programados', 'arribo', 'inspeccion_de_entrada', 'carga_/_descarga', 'inspeccion_salida', 'terminados',
+        ]
+        return {'etapas_activas': etapas_activas, 'kanban_view': kanban_view}
 
     def _resolver_estatus_tras_inspeccion(self, es_salida):
         """A qué estatus debe pasar la bitácora tras guardar una inspección de
