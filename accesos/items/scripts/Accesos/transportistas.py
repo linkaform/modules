@@ -1603,8 +1603,20 @@ class Accesos(Accesos):
                 labeled = self._labels(reg_db, ids_label_dct=fields)
                 fotos = []
                 for key in FOTO_KEYS[tipo]:
-                    if labeled.get(key):
-                        fotos.extend(labeled[key])
+                    imgs = labeled.get(key)
+                    if not imgs:
+                        continue
+                    if key.endswith('_evidencia'):
+                        comentario = labeled.get(key[:-len('_evidencia')] + '_comentarios')
+                    elif tipo == 'sello':
+                        comentario = labeled.get('comentarios')
+                    else:
+                        comentario = None
+                    for img in imgs:
+                        foto = dict(img)
+                        if comentario:
+                            foto['comentario'] = comentario
+                        fotos.append(foto)
                 grupo_key = GRUPO_FOTOS_KEY[tipo]
                 if grupo_key:
                     grupo = labeled.get(grupo_key) or []
