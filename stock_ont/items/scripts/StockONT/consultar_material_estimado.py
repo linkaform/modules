@@ -622,7 +622,7 @@ class Stock(Stock):
                 'Calculado por Conexión' if data_os.get('connection_id') else 'Calculado por Expediente'
             ]
 
-    def calcular_material_estimado(self, ordenes_de_servicio, productos, tipos_tarea_para_material, kits_products, nombre_conexion):
+    def calcular_material_estimado(self, ordenes_de_servicio, productos, tipos_tarea_para_material, kits_products, nombre_conexion, type_report):
         """
         Recorre las ordenes de servicio de una Conexion y calcula el material estimado que le corresponde.
         A diferencia del script original, esta funcion NO crea ningun registro: solo regresa el calculo.
@@ -634,6 +634,14 @@ class Stock(Stock):
         materiales_to_record = {}
         count_folios_metraje = {'fibra': 0, 'cobre': 0}
         areas, tecnologias = set(), set()
+
+        report_produccion_nacional = type_report == 'produccion_nacional_by_area'
+        report_produccion_nacional_global = type_report == 'produccion_nacional_global'
+        report_produccion_nacional_completo = type_report == 'produccion_nacional'
+
+        is_report_produccion_nacional = report_produccion_nacional or report_produccion_nacional_global or report_produccion_nacional_completo
+
+        group_by_area = {}
 
         for orden_servicio in ordenes_de_servicio:
             os_cobre = orden_servicio['form_id'] in self.FORMS_ID_COBRE
@@ -674,13 +682,22 @@ class Stock(Stock):
                     list_productos.extend(product_ont_modem)
 
             list_products_sorted = self.apply_sort_to_products(list_productos, productos)
-            areas.add(orden_servicio.get('area', ''))
+            area_orden_servicio = orden_servicio.get('area', '')
+            areas.add(area_orden_servicio)
 
 
             if os_cobre:
                 folios_aplicados_cobre.append( self.get_row_for_xls( folio_os, orden_servicio, nombre_conexion, tipo_tarea, version=2 ) )
             else:
                 folios_aplicados_fibra.append( self.get_row_for_xls(folio_os, orden_servicio, nombre_conexion, tipo_tarea) )
+
+            if is_report_produccion_nacional:
+                group_by_area.setdefault(area_orden_servicio, {
+                    'produccion': 0, 
+                    'sugerido': 0,
+                    'count_productos': len(list_products_sorted),
+                })
+                group_by_area[area_orden_servicio]['produccion'] += 1
 
             for data_product in list_products_sorted:
                 product = data_product['clave_producto']
@@ -695,6 +712,13 @@ class Stock(Stock):
                     elif count_folios_metraje[tipo_os] == self.cant_minima_folios_para_metraje:
                         cantidad_producto = cantidad_producto * self.cant_minima_folios_para_metraje
 
+                if is_report_produccion_nacional:
+                    group_by_area[area_orden_servicio]['sugerido'] += cantidad_producto
+                    # El reporte completo ademas necesita el desglose normal por material
+                    # (para el nodo `by_material`), asi que no se salta este material.
+                    if not report_produccion_nacional_completo:
+                        continue
+
                 materiales_to_record.setdefault(product, {
                     'nombre': info_product.get('nombre'),
                     'sku': info_product.get('sku'),
@@ -704,6 +728,83 @@ class Stock(Stock):
                 materiales_to_record[product]['cantidad_estimada'] += cantidad_producto
 
         rows_materiales = []
+        if report_produccion_nacional:
+            for area, data_area in group_by_area.items():
+                rows_materiales.append({
+                    "area": area.upper().replace('_', ' '),
+                    "produccion": data_area['produccion'],
+                    "sugerido": round(data_area['sugerido'], 2),
+                })
+            return rows_materiales, folios_aplicados_fibra, folios_aplicados_cobre, folios_no_aplicados_fibra, folios_no_aplicados_cobre, msgs_no_aplica
+
+        if report_produccion_nacional_global:
+            total_produccion = 0
+            total_sugerido = 0
+            total_productos = 0
+            for area, data_area in group_by_area.items():
+                total_produccion += data_area['produccion']
+                total_sugerido += data_area['sugerido']
+                total_productos += data_area['count_productos']
+            rows_materiales.append({
+                # "area": "TOTAL",
+                "total_produccion": total_produccion,
+                "total_sugerido": round(total_sugerido, 2),
+                "total_materiales": total_productos
+            })
+            return rows_materiales, folios_aplicados_fibra, folios_aplicados_cobre, folios_no_aplicados_fibra, folios_no_aplicados_cobre, msgs_no_aplica
+
+        if report_produccion_nacional_completo:
+            # Reporte completo: incluye el desglose por area (report_produccion_nacional),
+            # los totales globales (report_produccion_nacional_global) y el reporte normal
+            # de materiales (por_material, igual al reporte por defecto sin type_report).
+            total_produccion, total_sugerido, total_productos = 0, 0, 0
+            rows_by_area = []
+            for area, data_area in group_by_area.items():
+                rows_by_area.append({
+                    "area": area.upper().replace('_', ' '),
+                    "produccion": data_area['produccion'],
+                    "sugerido": round(data_area['sugerido'], 2),
+                })
+                total_produccion += data_area['produccion']
+                total_sugerido += data_area['sugerido']
+                total_productos += data_area['count_productos']
+
+            rows_by_material = [{
+                "nombre_contratista": nombre_conexion,
+                "area": self.list_to_str([a.upper().replace('_', ' ') for a in areas]),
+                "tecnologia": self.list_to_str(list(tecnologias)),
+                "id_producto": prod_id,
+                "sku": data_prod['sku'],
+                "name": data_prod['nombre'],
+                "unit": data_prod['unidad_medida'],
+                "suggestedQuantity": round(data_prod['cantidad_estimada'], 2),
+            } for prod_id, data_prod in materiales_to_record.items()]
+
+            # Misma info que rows_by_material pero en formato lista de celdas
+            # (igual al reporte normal cuando self.front_request es False), para
+            # poder generar el excel de "Material estimado" sin recorrer de nuevo
+            # las ordenes de servicio.
+            rows_materiales_xls = [[
+                nombre_conexion,
+                self.list_to_str([a.upper().replace('_', ' ') for a in areas]),
+                self.list_to_str(list(tecnologias)),
+                prod_id,
+                data_prod['sku'],
+                data_prod['nombre'],
+                data_prod['unidad_medida'],
+                round(data_prod['cantidad_estimada'], 2),
+            ] for prod_id, data_prod in materiales_to_record.items()]
+
+            rows_materiales.append({
+                "by_area": rows_by_area,
+                "by_material": rows_by_material,
+                "by_material_xls": rows_materiales_xls,
+                "total_produccion": total_produccion,
+                "total_sugerido": round(total_sugerido, 2),
+                "total_materiales": total_productos,
+            })
+            return rows_materiales, folios_aplicados_fibra, folios_aplicados_cobre, folios_no_aplicados_fibra, folios_no_aplicados_cobre, msgs_no_aplica
+
         for prod_id, data_prod in materiales_to_record.items():
 
             if self.front_request:
@@ -752,6 +853,54 @@ class Stock(Stock):
         print('\n+++ +++ response_xls_create =',response_xls_create)
         self.current_record['answers'].update(response_xls_create)
 
+    def build_xls_file(self, header_xls, rows_xls, field_xls, name_to_file=None, rows_fols_no_considerados=None):
+        """
+        Misma logica que make_xls(), pero en vez de actualizar
+        self.current_record['answers'] (que no existe en front request) regresa
+        directamente la respuesta de create_xls_file(), para poder usarla en la
+        respuesta de la consulta (ver get_file_url_from_xls_response).
+        """
+        if not rows_xls:
+            return None
+
+        if rows_fols_no_considerados:
+            sheets_to_xls = {}
+            for sheet_rows, sheet_name in [ (rows_xls, "Folios considerados"), (rows_fols_no_considerados, "NO Considerados") ]:
+                if not sheet_rows:
+                    continue
+
+                sheets_to_xls[sheet_name] = [header_xls, *sheet_rows]
+
+            return self.create_xls_file( self.FORM_BITACORA_TRANSPORTISTA_ID, self.bitacora_transportista_fields['documento'], content_sheets=sheets_to_xls, name_to_file=name_to_file )
+
+        return self.create_xls_file( self.FORM_BITACORA_TRANSPORTISTA_ID, self.bitacora_transportista_fields['documento'], header=header_xls, rows_records=rows_xls, name_to_file=name_to_file )
+
+    def get_file_url_from_xls_response(self, response_xls_create):
+        """
+        Extrae el file_url de la respuesta de create_xls_file()/build_xls_file()
+        (que puede ser None, un str de error, o {field_xls: [{file_url, ...}]}).
+        """
+        if not isinstance(response_xls_create, dict):
+            return None
+        archivos = response_xls_create.get(self.bitacora_transportista_fields['documento']) or []
+        return archivos[0].get('file_url') if archivos else None
+
+    def get_copes_to_filter(self):
+        """
+        Consulta el catálogo de COPES segun el Tipo de Corte (Semanal, Mensual o Todo)
+        """
+        answers_filter = {"$and":[ # TODO : cambiar los valores fijos por los nombres de los almacenes origen y destino
+            {"6aa8238ae98ccc0950307a03": 'Puebla'},
+            {"6aa8238ae98ccc0950307a04": 'Camarones'},
+        ]}
+        records_catalog = self.lkf_api.search_catalog_answers(46944, answers_filter, jwt_settings_key='JWT_ADMIN')
+        
+        return { 
+            rec_cat['5d641731ddd3adcc24778a9d'].lower().replace(' ', '_'): {'area_almacen': rec_cat.get('6923bec17d1ad7bfa869dc59')} 
+            for rec_cat in records_catalog 
+            if rec_cat.get('5d641731ddd3adcc24778a9d') 
+        }
+
     def consultar_material_estimado(self):
         """
         Punto de entrada: calcula el material estimado para el periodo indicado y adjunta
@@ -763,7 +912,9 @@ class Stock(Stock):
             desde = self.data.get('desde')
             hasta = self.data.get('hasta')
             tecnologia = self.data.get('tecnologia')
-            wh_origen = self.data.get('almacen_origen')
+            # wh_origen = self.data.get('almacen_origen')
+            wh_origen = "PCI Puebla" # TODO : cambiar el valor fijo por el nombre del almacen origen que se indique en el formulario
+            type_report = self.data.get('tipo_reporte')
         else:
             self.current_record['answers'].pop('6a032714b2194f0f517accc2', None)
             self.current_record['answers'].pop('6a83a116e0a44de46b0e9f08', None)
@@ -772,6 +923,7 @@ class Stock(Stock):
             hasta = self.answers.get(f['hasta'])
             tecnologia = self.answers.get(f['tecnologia'])
             wh_origen = None
+            type_report = None
 
         periodo_valido, response_periodo = self.validar_periodo(desde, hasta)
         if not periodo_valido:
@@ -787,7 +939,12 @@ class Stock(Stock):
         # print('+++ +++ kits_products =',kits_products)
         # stop
 
-        records_orden_servicio = self.get_records_orden_de_servicio(desde, hasta, tecnologia)
+        copes = None
+        if self.front_request:
+            copes = self.get_copes_to_filter()
+            copes = list( copes.keys() )
+
+        records_orden_servicio = self.get_records_orden_de_servicio(desde, hasta, tecnologia, copes=copes)
         # print('records_orden_servicio =',list(records_orden_servicio))
         # stop
 
@@ -810,7 +967,7 @@ class Stock(Stock):
                 for tecnologia_to, data_location in data_tecnologia.items():
                     for location_to, folios_os in data_location.items():
                         rows_materiales, folios_considerados_fibra, folios_considerados_cobre, no_aplican_fibra, no_aplican_cobre, msgs_no_aplica = self.calcular_material_estimado(
-                            folios_os, dict_productos, tipos_tarea_para_material, kits_products, data_contratista.get('nombre', '')
+                            folios_os, dict_productos, tipos_tarea_para_material, kits_products, data_contratista.get('nombre', ''), type_report
                         )
                         total_rows_materiales.extend(rows_materiales)
                         
@@ -839,26 +996,94 @@ class Stock(Stock):
 
             return self.set_status('terminado', self.list_to_str(total_no_aplican, separator='\n'))
 
+        if type_report in ('produccion_nacional_by_area', 'produccion_nacional_global', 'produccion_nacional'):
+
+            if type_report == 'produccion_nacional_global':
+                totales = {
+                    "total_produccion": 0,
+                    "total_sugerido": 0,
+                    "total_materiales": 0
+                }
+
+                for row in total_rows_materiales:
+                    totales["total_produccion"] += row.get("total_produccion", 0)
+                    totales["total_sugerido"] += row.get("total_sugerido", 0)
+                    totales["total_materiales"] += row.get("total_materiales", 0)
+
+                return [totales]
+
+            if type_report == 'produccion_nacional':
+                # Reporte completo: junta el desglose por area, el desglose por material
+                # (con su actualQuantity, igual al reporte normal) y los totales globales,
+                # de todos los batches (conexion/area/tecnologia/location) procesados.
+                rows_by_area, rows_by_material, rows_materiales_xls = [], [], []
+                totales = {
+                    "total_produccion": 0,
+                    "total_sugerido": 0,
+                    "total_materiales": 0
+                }
+
+                for row in total_rows_materiales:
+                    rows_by_area.extend(row.get("by_area", []))
+                    rows_by_material.extend(row.get("by_material", []))
+                    rows_materiales_xls.extend(row.get("by_material_xls", []))
+                    totales["total_produccion"] += row.get("total_produccion", 0)
+                    totales["total_sugerido"] += row.get("total_sugerido", 0)
+                    totales["total_materiales"] += row.get("total_materiales", 0)
+
+                resp_material_xls = self.build_xls_file(
+                    self.header_material, rows_materiales_xls, self.field_id_file_estimacion, 'Material estimado'
+                )
+                resp_ftth_xls = self.build_xls_file(
+                    self.header_xls_fibra, total_folios_considerados_fibra, '6a032714b2194f0f517accc2',
+                    'Órdenes de Servicio FTTH', total_folios_no_considerados_fibra
+                )
+                resp_cobre_xls = self.build_xls_file(
+                    self.header_xls_cobre, total_folios_considerados_cobre, '6a83a116e0a44de46b0e9f08',
+                    'Órdenes de Servicio COBRE', total_folios_no_considerados_cobre
+                )
+
+                return {
+                    "by_area": rows_by_area,
+                    "by_material": self.add_actual_quantity(rows_by_material, wh_origen),
+                    "global": totales,
+                    "files": {
+                        "material_estimado": self.get_file_url_from_xls_response(resp_material_xls),
+                        "ordenes_ftth": self.get_file_url_from_xls_response(resp_ftth_xls),
+                        "ordenes_cobre": self.get_file_url_from_xls_response(resp_cobre_xls),
+                    },
+                }
+
+            return total_rows_materiales
+        
+        return self.add_actual_quantity(total_rows_materiales, wh_origen)
+
+    def add_actual_quantity(self, rows_materiales, wh_origen):
+        """
+        Agrega `actualQuantity` (existencia actual en `wh_origen`) a cada fila
+        de un reporte de materiales (misma forma que produce el reporte normal
+        de `calcular_material_estimado`, con `id_producto` y `sku`).
+        """
+        if not wh_origen:
+            return rows_materiales
+
         actual_quantity = {}
-        for material in total_rows_materiales:
+        for material in rows_materiales:
+            clave_producto = material.get('id_producto')
+            sku = material.get('sku')
 
-            if wh_origen:
-                clave_producto = material.get('id_producto')
-                sku = material.get('sku')
+            if actual_quantity.get(clave_producto, {}).get(sku) is None:
+                stock_inventory = self.stk.get_product_stock(
+                    clave_producto,
+                    sku=sku,
+                    warehouse='Almacen Distribuidor',
+                    location=wh_origen
+                )
+                actual_quantity.setdefault(clave_producto, {})[sku] = stock_inventory.get('actuals') or 0
 
-                if actual_quantity.get(clave_producto, {}).get(sku) is None:
-                    stock_inventory = self.stk.get_product_stock( 
-                        clave_producto, 
-                        sku=sku, 
-                        warehouse='Almacen Distribuidor', 
-                        location=wh_origen
-                    )
-                    # print('+++ +++ +++ stock_inventory =',stock_inventory)
-                    actual_quantity.setdefault(clave_producto, {})[sku] = stock_inventory.get('actuals') or 0
-                
-                material["actualQuantity"] = actual_quantity[clave_producto][sku]
+            material["actualQuantity"] = actual_quantity[clave_producto][sku]
 
-        return total_rows_materiales
+        return rows_materiales
 
 if __name__ == '__main__':
     script_obj = Stock(settings, sys_argv=sys.argv, use_api=True)

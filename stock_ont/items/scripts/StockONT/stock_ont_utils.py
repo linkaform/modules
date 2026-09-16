@@ -20,6 +20,7 @@ class Stock(Stock):
         self.CATALOG_ID_WH_LOCATIONS = 133014
 
         self.FORM_ID_TRANSFERENCIAS = 166688
+        self.FORM_BITACORA_TRANSPORTISTA_ID = 165688
 
         self.f.update({
             # campos para el Almacen Destino
@@ -105,7 +106,11 @@ class Stock(Stock):
 
             'field_grp_tarimas': '6a9a1a739c43aaa5c435d7b5',
             'field_pallet_id': '6a9a1a8831743950c27599f9',
+            'field_pallet_count': '6aa8c8e2c744764c9641c1aa',
+            'field_boxes_by_pallet': '6aa8c8e2c744764c9641c1ab',
+            'field_units_by_box': '6aa8c8e2c744764c9641c1ac',
             'field_grp_boxes': '6a9a1862d30d583834257566',
+            'field_sku_pallet_association': '6aa8e7a2f2f9a0546363c048',
 
             'field_grp_stages': '6a9a36d231743950c2759a2a',
             'field_stage_name': '6a9a392dc725d11c0c356f7b',
@@ -138,6 +143,7 @@ class Stock(Stock):
             'grupo_fotos_y_documentos': '6a3bee0a7829a4ca9572d3a0',
             'tipo_de_documento': '6a3bee394a7a0748a6fc9a56',
             'documento': '6a3bee394a7a0748a6fc9a57',
+            'is_applicable': '6aa880446724ca7cf3c2091e',
 
             'num_de_pase': '6a31921f07fb9cb5840d1f23',
             'empresa_transportista': '6a31929d0bf8c5fc715d7424',
@@ -192,6 +198,7 @@ class Stock(Stock):
             'cantidad_desglose': '6a6a4b64c6fd2eaaf5f8c0b8',
             'cantidad_sugerida_desglose': '6a6a4b64c6fd2eaaf5f8c015',
             'cantidad_acumulada_desglose': '6a6a4b64c6fd2eaaf5f8c0b9',
+            "cantidad_unidades_sueltas": "6aa8c9398e3c227d7141c1aa",
 
             'grupo_inspecciones': '6a42a7068dcfbf362329a972',
             'tipo_inspeccion': '6a42c80b03f125df7ad2862b',
@@ -275,7 +282,7 @@ class Stock(Stock):
             "limit": 1,
             "skip": 0,
         }
-        record = self.lkf_api.search_catalog(catalog_id, mango_query)
+        record = self.lkf_api.search_catalog(catalog_id, mango_query, jwt_settings_key='APIKEY_JWT_KEY')
 
         if not record:
             return None
@@ -459,13 +466,20 @@ class Stock(Stock):
 
         Args:
             materiales_data (list[dict]): seccion `items` del payload, cada
-            uno con `sku`, `expectedQuantity` y `receivedQuantity`.
+            uno con `sku`, `expectedQuantity`, `receivedQuantity` y, si
+            `is_transfer`, `distribution` ({'palletGroups': [{'id',
+            'palletCount', 'boxesPerPallet', 'unitsPerBox'}], 'looseUnits'}).
 
         Returns:
-            list[dict]: filas para el campo `grupo_desglose_empaque`.
+            list[dict]: filas para el campo `grupo_desglose_empaque`. Si
+            `is_transfer`, regresa ademas (grp_boxes, grp_pallets, grp_series,
+            grp_missing), donde grp_pallets es {pallet_id: {palletCount,
+            boxesPerPallet, unitsPerBox, sku}}; `sku` es el sku normalizado
+            del catalogo del item al que pertenece la tarima, para poder
+            reagruparla de vuelta a su item al consultar.
         """
         grp_materiales, grp_missing = [], []
-        grp_boxes, grp_pallets, grp_series = [], set(), []
+        grp_boxes, grp_pallets, grp_series = [], {}, []
         for data_material in materiales_data:
             info_catalog_sku = self.find_material_catalog_sku( data_material.get('sku') )
             if not info_catalog_sku:
@@ -496,8 +510,28 @@ class Stock(Stock):
 
                 # Se acumulan (no se reasignan) para no perder cajas/series de items anteriores
                 grp_boxes += boxes
-                grp_pallets |= pallets
                 grp_series += series
+
+                # sku normalizado del catalogo, igual al que se guarda en field_box_sku,
+                # para poder reagrupar las tarimas de vuelta a su item al consultar.
+                sku_producto = self.unlist( info_catalog_sku.get(self.f['field_sku']) ) if info_catalog_sku else None
+                for pallet_id in pallets:
+                    grp_pallets.setdefault(pallet_id, {'sku': sku_producto})
+
+                # Distribucion planeada del item: unidades sueltas y tarimas
+                # (palletCount/boxesPerPallet/unitsPerBox por cada groupId).
+                distribution = data_material.get('distribution') or {}
+                info_material[ self.bitacora_transportista_fields['cantidad_unidades_sueltas'] ] = distribution.get('looseUnits', 0)
+                for pallet_group in distribution.get('palletGroups', []):
+                    pallet_id = pallet_group.get('id')
+                    if not pallet_id:
+                        continue
+                    grp_pallets[pallet_id] = {
+                        'palletCount': pallet_group.get('palletCount'),
+                        'boxesPerPallet': pallet_group.get('boxesPerPallet'),
+                        'unitsPerBox': pallet_group.get('unitsPerBox'),
+                        'sku': sku_producto,
+                    }
 
             grp_materiales.append(info_material)
 

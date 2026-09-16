@@ -14,7 +14,7 @@ class Stock(Stock):
         self.FORM_BITACORA_TRANSPORTISTA_ID = 165688
 
         self.map_recibo_stages = {
-            'materialDeclaration': 'declaracion_de_materiales',
+            'materialDeclaration': 'declaración_de_materiales',
             'damageReview': 'evaluación_de_daños',
             'serialScanReview': 'revisión_de_escaneo_de_series',
             'finalReview': 'revisión_final',
@@ -130,12 +130,13 @@ class Stock(Stock):
             list[dict]: lista de un solo elemento con el grupo armado, en
             el formato que espera el campo `field_grp_inspecciones`.
         """
+        documents_data = documents_data or {}
         return [{
-            self.f['field_fotos_carta_porte'] : documents_data.get('cartaPorte', []),
-            self.f['field_fotos_factura'] : documents_data.get('factura', []),
-            self.f['field_fotos_pedimento'] : documents_data.get('pedimento', []),
-            self.f['field_fotos_orden_compra'] : documents_data.get('ordenCompra', []),
-            self.f['field_fotos_docs_transportista'] : self.data.get('carrierDocuments', []),
+            self.f['field_fotos_carta_porte'] : (documents_data.get('cartaPorte') or {}).get('evidence', []),
+            self.f['field_fotos_factura'] : (documents_data.get('factura') or {}).get('evidence', []),
+            self.f['field_fotos_pedimento'] : (documents_data.get('pedimento') or {}).get('evidence', []),
+            self.f['field_fotos_orden_compra'] : (documents_data.get('ordenCompra') or {}).get('evidence', []),
+            self.f['field_fotos_docs_transportista'] : (self.data.get('carrierDocuments') or {}).get('evidence', []),
         }]
 
     def build_grp_evidencias(self, evidence_data):
@@ -162,17 +163,50 @@ class Stock(Stock):
 
         grp_evidencias = []
         for name_evidencia, data_evidencia in evidence_data.items():
-            if not data_evidencia.get('evidence'):
+            not_applicable = data_evidencia.get('notApplicable')
+            if not_applicable is None:
                 continue
+            aplica = 'no' if not_applicable is False else 'sí'
+            documento_evidencia = data_evidencia.get('evidence')
             tipo_documento = map_evidence.get(name_evidencia)
             if not tipo_documento:
                 print(f"ADVERTENCIA: tipo de evidencia desconocido '{name_evidencia}', se omite")
                 continue
-            grp_evidencias.append({
+
+            data_evidencia = {
                 self.f_bitacora['tipo_de_documento']: tipo_documento,
-                self.f_bitacora['documento']: data_evidencia['evidence']
-            })
+                self.f_bitacora['is_applicable']: aplica
+            }
+
+            if documento_evidencia:
+                data_evidencia[self.f_bitacora['documento']] = documento_evidencia
+
+            grp_evidencias.append(data_evidencia)
         return grp_evidencias
+
+    def build_grp_tarimas(self, grp_pallets):
+        """
+        Arma el grupo repetitivo de Tarimas (field_grp_tarimas) a partir de
+        los pallets acumulados en build_grp_materiales, con la informacion
+        de distribucion (palletCount/boxesPerPallet/unitsPerBox) que venga
+        en items[].distribution.palletGroups. Cada tarima guarda ademas el
+        sku del item al que pertenece (field_sku_pallet_association), para
+        poder reagruparla de vuelta a su item al consultar.
+
+        Args:
+            grp_pallets (dict): {pallet_id: {palletCount, boxesPerPallet,
+            unitsPerBox, sku}}, tal como lo regresa build_grp_materiales.
+
+        Returns:
+            list[dict]: filas para el campo `field_grp_tarimas`.
+        """
+        return [{
+            self.f['field_pallet_id']: pallet_id,
+            self.f['field_pallet_count']: info.get('palletCount'),
+            self.f['field_boxes_by_pallet']: info.get('boxesPerPallet'),
+            self.f['field_units_by_box']: info.get('unitsPerBox'),
+            self.f['field_sku_pallet_association']: info.get('sku'),
+        } for pallet_id, info in grp_pallets.items()]
 
     def _get_item_serials(self, data_material):
         """
@@ -427,7 +461,7 @@ class Stock(Stock):
             self.f['field_grp_inspecciones']: self.build_grp_inspecciones(documents_data),
             self.f_bitacora['grupo_fotos_y_documentos']: self.build_grp_evidencias(evidence_data),
             self.f_bitacora['grupo_desglose_empaque']: grp_materiales,
-            self.f['field_grp_tarimas']: [{self.f['field_pallet_id']: pall} for pall in grp_pallets],
+            self.f['field_grp_tarimas']: self.build_grp_tarimas(grp_pallets),
             self.f['field_grp_boxes']: grp_boxes,
             self.f['field_grp_onts']: grp_series,
             self.f['field_grp_bitacora']: self.build_grp_bitacora(self.data.get('events', [])),
