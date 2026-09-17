@@ -141,11 +141,57 @@ class Stock(Stock):
 
         return box_scans_by_sku, loose_unit_by_sku
 
+    def _unbuild_pallets(self, row):
+        """
+        Inversa de build_grp_tarimas() (stock_ont_utils.py): agrupa las
+        tarimas de field_grp_tarimas por el sku con el que se guardaron
+        (field_sku_pallet_association), para poder reagruparlas de vuelta a
+        su item sin depender de que ya tengan cajas escaneadas.
+
+        Returns:
+            dict: {sku: [{id, palletCount, boxesPerPallet, unitsPerBox}, ...]}.
+            Las tarimas sin sku identificable quedan bajo la llave `None`.
+        """
+        pallets_by_sku = {}
+        for row_pallet in row.get(self.f['field_grp_tarimas']) or []:
+            pallet_id = self.unlist(row_pallet.get(self.f['field_pallet_id']))
+            if not pallet_id:
+                continue
+            sku_pallet = self.unlist(row_pallet.get(self.f['field_sku_pallet_association']))
+            pallets_by_sku.setdefault(sku_pallet, []).append({
+                'id': pallet_id,
+                'palletCount': row_pallet.get(self.f['field_pallet_count']),
+                'boxesPerPallet': row_pallet.get(self.f['field_boxes_by_pallet']),
+                'unitsPerBox': row_pallet.get(self.f['field_units_by_box']),
+            })
+        return pallets_by_sku
+
+    def _unbuild_distribution(self, sku, row_material, pallets_by_sku, is_last):
+        """
+        Inversa de la seccion `distribution` de cada item (looseUnits armado
+        en build_grp_materiales, palletGroups armado en build_grp_tarimas).
+
+        Args:
+            sku (str | None): sku del item, para relacionar sus tarimas.
+            row_material (dict): fila de grupo_desglose_empaque del item.
+            pallets_by_sku (dict): ver _unbuild_pallets().
+            is_last (bool): si es el ultimo item, se le agregan tambien las
+                tarimas sin sku identificable (ver _unbuild_items).
+        """
+        pallet_groups = list(pallets_by_sku.get(sku, []))
+        if is_last:
+            pallet_groups += pallets_by_sku.get(None, [])
+        return {
+            'palletGroups': pallet_groups,
+            'looseUnits': row_material.get(self.bitacora_transportista_fields['cantidad_unidades_sueltas'], 0),
+        }
+
     def _unbuild_items(self, row):
         """Inversa de build_grp_materiales()."""
         materiales_rows = row.get(self.bitacora_transportista_fields['grupo_desglose_empaque']) or []
         missing_rows = row.get(self.f['field_grp_missing_report']) or []
         box_scans_by_sku, loose_unit_by_sku = self._unbuild_boxes_series(row)
+        pallets_by_sku = self._unbuild_pallets(row)
 
         items = []
         for idx, row_material in enumerate(materiales_rows):
@@ -169,9 +215,11 @@ class Stock(Stock):
 
             item['missingReports'] = self._unbuild_missing_reports(missing_rows, sku)
 
+            is_last = idx == len(materiales_rows) - 1
+
             box_scans = list(box_scans_by_sku.get(sku, []))
             loose_unit_scan = loose_unit_by_sku.get(sku)
-            if idx == len(materiales_rows) - 1:
+            if is_last:
                 # Cajas/unidades sueltas sin sku identificable (sin serie asociado)
                 # se agregan al ultimo item, a falta de un dato que las ligue a un item.
                 box_scans += box_scans_by_sku.get(None, [])
@@ -180,6 +228,8 @@ class Stock(Stock):
                 item['boxScans'] = box_scans
             if loose_unit_scan:
                 item['looseUnitScan'] = loose_unit_scan
+
+            item['distribution'] = self._unbuild_distribution(sku, row_material, pallets_by_sku, is_last)
 
             items.append(item)
 

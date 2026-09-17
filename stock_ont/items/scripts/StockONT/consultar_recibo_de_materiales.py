@@ -112,7 +112,7 @@ class Stock(Stock):
 
     def _unbuild_pallets(self, row):
         """
-        Inversa de build_grp_tarimas() (recibo_de_materiales.py): agrupa las
+        Inversa de build_grp_tarimas() (stock_ont_utils.py): agrupa las
         tarimas de field_grp_tarimas por el sku con el que se guardaron
         (field_sku_pallet_association), para poder reagruparlas de vuelta a
         su item sin depender de que ya tengan cajas escaneadas.

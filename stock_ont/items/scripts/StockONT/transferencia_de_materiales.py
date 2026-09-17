@@ -150,7 +150,7 @@ class Stock(Stock):
             self.stk.WH.WAREHOUSE_LOCATION_OBJ_ID: self.find_warehouse_location_catalog(self.data.get('originWarehouse')),
             self.stk.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID: self.find_warehouse_dest_catalog(self.data.get('destinationWarehouse')),
             self.bitacora_transportista_fields['grupo_desglose_empaque']: grp_materiales,
-            self.f['field_grp_tarimas']: [{self.f['field_pallet_id']: pall} for pall in grp_pallets],
+            self.f['field_grp_tarimas']: self.build_grp_tarimas(grp_pallets),
             self.f['field_grp_boxes']: grp_boxes,
             self.f['field_grp_onts']: grp_series,
             self.f['field_grp_bitacora']: self.build_grp_bitacora(self.data.get('events', [])),

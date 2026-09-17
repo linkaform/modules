@@ -184,30 +184,6 @@ class Stock(Stock):
             grp_evidencias.append(data_evidencia)
         return grp_evidencias
 
-    def build_grp_tarimas(self, grp_pallets):
-        """
-        Arma el grupo repetitivo de Tarimas (field_grp_tarimas) a partir de
-        los pallets acumulados en build_grp_materiales, con la informacion
-        de distribucion (palletCount/boxesPerPallet/unitsPerBox) que venga
-        en items[].distribution.palletGroups. Cada tarima guarda ademas el
-        sku del item al que pertenece (field_sku_pallet_association), para
-        poder reagruparla de vuelta a su item al consultar.
-
-        Args:
-            grp_pallets (dict): {pallet_id: {palletCount, boxesPerPallet,
-            unitsPerBox, sku}}, tal como lo regresa build_grp_materiales.
-
-        Returns:
-            list[dict]: filas para el campo `field_grp_tarimas`.
-        """
-        return [{
-            self.f['field_pallet_id']: pallet_id,
-            self.f['field_pallet_count']: info.get('palletCount'),
-            self.f['field_boxes_by_pallet']: info.get('boxesPerPallet'),
-            self.f['field_units_by_box']: info.get('unitsPerBox'),
-            self.f['field_sku_pallet_association']: info.get('sku'),
-        } for pallet_id, info in grp_pallets.items()]
-
     def _get_item_serials(self, data_material):
         """
         Junta los numeros de serie capturados para un item del Recibo de
