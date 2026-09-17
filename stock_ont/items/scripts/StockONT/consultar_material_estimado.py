@@ -440,6 +440,12 @@ class Stock(Stock):
                 {f'answers.{f["fecha_liquidacion_2"]}': {'$gte': f'{desde}', '$lte': f'{hasta} 23:59:59'}},
             ],
         }
+
+        # Para la intefaz de SIGA si deben estar activos los filtros de degradados y vale de materiales
+        if self.front_request:
+            match_query[f'answers.633d9f63eb936fb6ec9bf580'] = {'$nin': ['degradado']}
+            match_query[f'answers.6a0be77a2b38ce3a6333e3fc'] = {'$nin': ['sí']}
+
         if conexiones:
             match_query['connection_id'] = {'$in': conexiones}
         if copes:
