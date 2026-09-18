@@ -145,7 +145,7 @@ class Accesos(Accesos):
     def get_bitac_transportista_records(self, date_from=None, date_to=None,
                                          tipo_de_vehiculo=None, proveedor_cliente=None, anden_asignado=None,
                                          estatus=None, tipo_de_operacion=None, conductor=None, material=None,
-                                         search=None, skip=0, limit=None):
+                                         search=None, skip=0, limit=None, pagination=False):
         f = self.bitacora_transportista_fields
         match_filters = {
             'form_id': self.BITACORA_TRANSPORTISTAS,
@@ -190,10 +190,6 @@ class Accesos(Accesos):
                 {f'answers.{f["conductor"]}': search_regex},
                 {f'answers.{f["proveedor_cliente"]}': search_regex},
             ]
-
-        count_query = [{'$match': match_filters}, {'$count': 'total'}]
-        count_result = self.format_cr(self.cr.aggregate(count_query))
-        total_count = count_result[0]['total'] if count_result else 0
 
         query = [
             {'$match': match_filters},
@@ -248,6 +244,17 @@ class Accesos(Accesos):
             }},
             {'$sort': {'_id': -1}},
         ]
+
+        # Gate temporal: la app móvil aún no entiende el shape paginado
+        # ({records, total_records, ...}) y espera la lista plana de siempre.
+        # Solo se activa el nuevo comportamiento si el caller manda pagination=True.
+        if not pagination:
+            return self.format_cr(self.cr.aggregate(query))
+
+        count_query = [{'$match': match_filters}, {'$count': 'total'}]
+        count_result = self.format_cr(self.cr.aggregate(count_query))
+        total_count = count_result[0]['total'] if count_result else 0
+
         if limit:
             query.append({'$skip': skip or 0})
             query.append({'$limit': limit})
@@ -1272,10 +1279,11 @@ class Accesos(Accesos):
         return resultado
 
     def get_config_flujo_transportistas(self):
-        """Etapas activas del flujo de transportistas para esta cuenta.
-        Registro singleton (un solo record) en la forma "Configuración de Flujo de
-        Transportistas". Si no existe el registro todavía, regresa las 3 etapas
-        opcionales activas (fail-open, mismo comportamiento que antes de este toggle)."""
+        """Etapas activas y columnas visibles del kanban del flujo de transportistas
+        para esta cuenta. Registro singleton (un solo record) en la forma
+        "Configuración de Flujo de Transportistas". Si no existe el registro
+        todavía, regresa los defaults fail-open (mismo comportamiento que antes
+        de estos toggles)."""
         f = self.conf_flujo_transportistas_fields
         query = [
             {'$match': {
@@ -1287,6 +1295,7 @@ class Accesos(Accesos):
             {'$project': {
                 '_id': 0,
                 'etapas_activas': f'$answers.{f["etapas_activas"]}',
+                'kanban_view': f'$answers.{f["kanban_view"]}',
             }},
         ]
         data = self.format_cr(self.cr.aggregate(query), get_one=True)
@@ -1297,7 +1306,15 @@ class Accesos(Accesos):
         etapas_activas = (data or {}).get('etapas_activas') or [
             'inspeccion_de_entrada', 'carga_/_descarga', 'inspeccion_salida', 'inspeccion_materiales',
         ]
-        return {'etapas_activas': etapas_activas}
+        # Kanban View: qué columnas del kanban se muestran para esta cuenta — es
+        # puramente visual, no afecta el flujo/estatus real de la bitácora (a
+        # diferencia de `etapas_activas`). Valores tal cual las opciones del
+        # checkbox `kanban_view` en Linkaform. Fail-open: todas visibles si la
+        # cuenta todavía no configuró este campo.
+        kanban_view = (data or {}).get('kanban_view') or [
+            'programados', 'arribo', 'inspeccion_de_entrada', 'carga_/_descarga', 'inspeccion_salida', 'terminados',
+        ]
+        return {'etapas_activas': etapas_activas, 'kanban_view': kanban_view}
 
     def _resolver_estatus_tras_inspeccion(self, es_salida):
         """A qué estatus debe pasar la bitácora tras guardar una inspección de
@@ -1494,8 +1511,20 @@ class Accesos(Accesos):
                 labeled = self._labels(reg_db, ids_label_dct=fields)
                 fotos = []
                 for key in FOTO_KEYS[tipo]:
-                    if labeled.get(key):
-                        fotos.extend(labeled[key])
+                    imgs = labeled.get(key)
+                    if not imgs:
+                        continue
+                    if key.endswith('_evidencia'):
+                        comentario = labeled.get(key[:-len('_evidencia')] + '_comentarios')
+                    elif tipo == 'sello':
+                        comentario = labeled.get('comentarios')
+                    else:
+                        comentario = None
+                    for img in imgs:
+                        foto = dict(img)
+                        if comentario:
+                            foto['comentario'] = comentario
+                        fotos.append(foto)
                 grupo_key = GRUPO_FOTOS_KEY[tipo]
                 if grupo_key:
                     grupo = labeled.get(grupo_key) or []
@@ -1540,6 +1569,7 @@ if __name__ == "__main__":
     search = data.get("search", None)
     skip = data.get("skip", 0)
     limit = data.get("limit", None)
+    pagination = data.get("pagination", False)
     form_ids = data.get("form_ids", [])
     email_to = data.get("email_to")
     ubicacion = data.get("ubicacion")
@@ -1554,7 +1584,7 @@ if __name__ == "__main__":
             date_from=date_from, date_to=date_to,
             tipo_de_vehiculo=tipo_de_vehiculo, proveedor_cliente=proveedor_cliente, anden_asignado=anden_asignado,
             estatus=estatus, tipo_de_operacion=tipo_de_operacion, conductor=conductor, material=material,
-            search=search, skip=skip, limit=limit,
+            search=search, skip=skip, limit=limit, pagination=pagination,
         ),
         "get_horarios_data": lambda: script_obj.get_horarios_data(dia=data.get('dia')),
         "get_pass_transportista": lambda: script_obj.get_pass_transportista(record_id, token),
