@@ -51,6 +51,8 @@ if __name__ == "__main__":
         response = acceso_obj.delete_article_concessioned(folio)
     elif option == 'catalogo_tipo_concesion':
         response = acceso_obj.catalogo_tipo_concesion(tipo=tipo)
+    elif option == 'revisar_disponibilidad_art_concesionado':
+        response = acceso_obj.revisar_disponibilidad_art_concesionado(tipo=tipo)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
