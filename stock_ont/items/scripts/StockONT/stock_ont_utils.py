@@ -18,9 +18,12 @@ class Stock(Stock):
         self.CATALOG_ID_TRANSPORTISTAS = 164728
         self.CATALOG_ID_SKU = 133015
         self.CATALOG_ID_WH_LOCATIONS = 133014
+        self.CATALOG_ID_CONTRATISTAS = 59273
 
         self.FORM_ID_TRANSFERENCIAS = 166688
         self.FORM_BITACORA_TRANSPORTISTA_ID = 165688
+
+        self.FORM_ID_SALIDAS = 167233 # TODO cambiar el ID por el de produccion 179244
 
         self.f.update({
             # campos para el Almacen Destino
@@ -39,6 +42,12 @@ class Stock(Stock):
             # Campos para catalogo del transportista
             "obj_ubi_transportista": "6a83326c1aad519fd56c1ca8",
             "field_nombre_transportista": "6a83326c1aad519fd56c1ca9",
+
+            # Campos para el catalogo de contratistas
+            "obj_catalog_contratistas": "6a87cc65e0e66741ade17c19",
+            "field_nombre_contratista": "5f344a0476c82e1bebc991d7",
+            "field_correo_contratista": "5f344a0476c82e1bebc991d8",
+            "field_razon_social_contratista": "5f344a0476c82e1bebc991db",
 
             # Desglose onts
             "field_grp_onts": "6a8f11770f16c3ecf722fd8e",
@@ -116,6 +125,8 @@ class Stock(Stock):
             'field_stage_name': '6a9a392dc725d11c0c356f7b',
             'field_stage_at': '6a9a392dc725d11c0c356f7c',
             'field_stage_by': '6a9a392dc725d11c0c356f7d',
+            'field_started_at': '6aafdf4162fba9897ccdc20b',
+            'field_started_by': '6aafdf4162fba9897ccdc20c',
             'field_stage_canceled_reason': '6a9a392dc725d11c0c356f7e',
 
             'field_delivery_estimated_date': '6a95c9b2dec9e900acd6facc',
@@ -125,12 +136,39 @@ class Stock(Stock):
             'field_delivery_ev_plates': '6a95c9b2dec9e900acd6face',
             'field_delivery_ev_material': '6a95c9b2dec9e900acd6facf',
 
+            'field_actual_quantity': '6ab1df9924a4eecce2eea38e',
+
             # Ajustes de material en la Transferencia
             'adjust_prev_quantity': '6a9893e11186e5b473216a19',
             'adjust_note': '6a98aa9ad277f6e00aa3534c',
             'adjust_at': '6a9893e11186e5b473216a1d',
             'adjust_by': '6a9893e11186e5b473216a1c',
             'adjust_reason': '6a9893e11186e5b473216a1b',
+
+            ### Campos para la Salida de Material ###
+            'recipient_type': '6aafd7a1837118d5d01ddf87',
+            "dispatch_info_at": "6aaf5d61052e7f8f50f4b8ce",
+            "dispatch_info_by": "6aaf5d61052e7f8f50f4b8cf",
+            'delivery_type': '6aaf5f89ea22354af8f15b19',
+            'captured_via': '6aaf61a923eb005a57bcc4c7',
+            'confirmed_by': '6aaf622685349c45b99e71d1',
+            'field_delivery_ev_ine': '6aaf62a8166aa311df7c41b2',
+            'field_delivery_ev_license': '6aaf62a8166aa311df7c41b3',
+
+            'recipient_stock': '6aafdb657b4e5542019b3f24',
+            'recipient_production': '6aafdb657b4e5542019b3f25',
+
+            'field_supervisor_at': '6aafd1d1857ac404277ab85b',
+            'field_supervisor_by': '6aafd1d1857ac404277ab85c',
+            'field_supervisor_ev_security_seal': '6aafd1d1857ac404277ab85d',
+            'field_supervisor_ev_wrap': '6aafd1d1857ac404277ab85e',
+            'field_supervisor_ev_printed_voucher': '6aafd1d1857ac404277ab85f',
+
+            'field_final_delivery_at': '6aafd3d33a6b1b1d8d13b0c6',
+            'field_final_delivery_by': '6aafd3d33a6b1b1d8d13b0c7',
+            'field_final_delivery_signature': '6aafd3d33a6b1b1d8d13b0c5',
+            'field_final_delivery_captured_at': '6ab0ada077d43414d84a1682',
+            'field_final_delivery_captured_via': '6ab0ada077d43414d84a1683',
         })
 
         # Esto lo debería jalar de accesos_utils
@@ -226,7 +264,14 @@ class Stock(Stock):
             self.stk = StockUtils(self.settings, sys_argv=self.sys_argv, use_api=self.use_api)
 
         self.f.update( self.stk.f )
-        
+
+        # El catalogo de Contratistas (CATALOG_ID_CONTRATISTAS) exige la jwt
+        # admin, igual que en consultar_material_estimado.py.
+        self.config['JWT_ADMIN'] = self.lkf_api.get_jwt(
+            api_key='398bd78880b1675a4a8d06d8a89e712ad9b499fb',
+            user='adminpclink@operacionpci.com.mx'
+        )
+        self.settings.config.update(self.config)
 
     def testing_stock_ont(self):
         print('+++ Importado desde Accesos = ',self.accs.support_guard)
@@ -253,7 +298,76 @@ class Stock(Stock):
             nombre_transportista, field_map
         )
 
-    def _find_catalog_record(self, catalog_id, filter_field, filter_value, field_map, rdOnly_fields=True, field_as_select=[]):
+    def find_contratista_catalog(self, nombre_contratista):
+        field_map = {
+            'nombre_contratista': self.f['field_nombre_contratista'],
+            'correo_contratista': self.f['field_correo_contratista'],
+            'razon_social_contratista': self.f['field_razon_social_contratista'],
+        }
+        # print(f"+++ buscando contratista {nombre_contratista} en catalogo {self.CATALOG_ID_CONTRATISTAS}")
+        # print(f"+++ usando field {self.f['field_nombre_contratista']}")
+        return self._find_catalog_record(
+            self.CATALOG_ID_CONTRATISTAS, self.f['field_nombre_contratista'],
+            nombre_contratista, field_map, jwt_settings_key='JWT_ADMIN'
+        )
+
+    def find_warehouse_location_catalog(self, location):
+        """
+        Busca en el catalogo de Warehouse Locations
+        (self.stk.WH.WAREHOUSE_LOCATION_ID) el registro cuyo campo Location
+        coincida con `location`. Compartido por Transferencia y Salida de
+        Material (ambas usan almacen de origen).
+
+        Args:
+            location (str): valor a buscar en el campo Location del catalogo.
+
+        Returns:
+            dict | None: {location, warehouse}, o None si no se encontro.
+        """
+        field_map = {
+            'location': self.stk.WH.f['warehouse_location'],
+            'warehouse': self.stk.WH.f['warehouse'],
+        }
+        return self._find_catalog_record(
+            self.stk.WH.WAREHOUSE_LOCATION_ID,
+            self.stk.WH.f['warehouse_location'],
+            location,
+            field_map,
+            rdOnly_fields=False
+        )
+
+    def find_warehouse_dest_catalog(self, location, find_by_wh=False):
+        """
+        Busca en el catalogo de Warehouse Dest (self.stk.WH.WAREHOUSE_LOCATION_DEST_ID)
+        el registro cuyo campo Location coincida con `location`.
+
+        Args:
+            location (str): valor a buscar en el campo Location del catalogo.
+
+        Returns:
+            dict | None: {location}, o None si no se encontro.
+        """
+        field_map = {
+            'location': self.stk.WH.f['warehouse_location_dest'],
+            'warehouse': self.stk.WH.f['warehouse_dest'],
+        }
+
+        field_filter = self.stk.WH.f['warehouse_location_dest']
+        extra_filter = None
+        if find_by_wh:
+            field_filter = self.stk.WH.f['warehouse_dest']
+            extra_filter = {self.stk.WH.f['warehouse_location_dest']: {"$eq": 'Almacen Fibra'}}
+
+        return self._find_catalog_record(
+            self.stk.WH.WAREHOUSE_LOCATION_DEST_ID,
+            field_filter,
+            location,
+            field_map,
+            rdOnly_fields=False,
+            extra_filter=extra_filter
+        )
+
+    def _find_catalog_record(self, catalog_id, filter_field, filter_value, field_map, rdOnly_fields=True, field_as_select=[], extra_filter=None, jwt_settings_key='APIKEY_JWT_KEY'):
         """
         Busca el primer registro de un catalogo cuyo campo `filter_field`
         sea igual a `filter_value`, y devuelve solo los campos indicados
@@ -282,7 +396,10 @@ class Stock(Stock):
             "limit": 1,
             "skip": 0,
         }
-        record = self.lkf_api.search_catalog(catalog_id, mango_query, jwt_settings_key='APIKEY_JWT_KEY')
+        if extra_filter:
+            mango_query['selector']['answers'].update(extra_filter)
+        
+        record = self.lkf_api.search_catalog(catalog_id, mango_query, jwt_settings_key=jwt_settings_key)
 
         if not record:
             return None

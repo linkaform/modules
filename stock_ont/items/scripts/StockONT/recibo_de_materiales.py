@@ -355,16 +355,15 @@ class Stock(Stock):
         # print("--- self.f['obj_wh_locations'] =",self.f['obj_wh_locations'])
 
         answers = {
-            self.stk.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID: {
-                self.f['field_location_almacen_destino']: self.unlist(
-                    info_catalog_almacen_destino.get( self.f['field_location_almacen_destino'] )
-                ),
-                self.f['field_wh_name_almacen_destino']: self.unlist(
-                    info_catalog_almacen_destino.get( self.f['field_wh_name_almacen_destino'] )
-                ),
-            },
-            # self.f['obj_almacen_destino'] : info_catalog_almacen_destino,
-            self.f['obj_wh_locations'] : info_catalog_almacen_origen,
+            # self.stk.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID: {
+            #     self.f['field_location_almacen_destino']: self.unlist(
+            #         info_catalog_almacen_destino.get( self.f['field_location_almacen_destino'] )
+            #     ),
+            #     self.f['field_wh_name_almacen_destino']: self.unlist(
+            #         info_catalog_almacen_destino.get( self.f['field_wh_name_almacen_destino'] )
+            #     ),
+            # },
+            # self.f['obj_wh_locations'] : info_catalog_almacen_origen,
             self.f['move_group'] : self.build_move_group_recepcion(materiales_data),
             self.f['fecha_recepcion'] : f"{delivery_date} 00:00:00",
             self.f['stock_status'] : 'to_do',
@@ -374,6 +373,19 @@ class Stock(Stock):
                 "file_url":"https://f001.backblazeb2.com/file/slimey-linkaform/public-client-17860/165688/6a4589aea6675c48f34bb270/6a9089b0d5fce2b5eac47a7f.png"
             }]
         }
+
+        if info_catalog_almacen_destino:
+            answers[self.stk.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID] = {
+                self.f['field_location_almacen_destino']: self.unlist(
+                    info_catalog_almacen_destino.get( self.f['field_location_almacen_destino'] )
+                ),
+                self.f['field_wh_name_almacen_destino']: self.unlist(
+                    info_catalog_almacen_destino.get( self.f['field_wh_name_almacen_destino'] )
+                ),
+            }
+
+        if info_catalog_almacen_origen:
+            answers[self.f['obj_wh_locations']] = info_catalog_almacen_origen
 
         # print('answers recepcion =', simplejson.dumps(answers, indent=4))
         # stop
@@ -430,9 +442,9 @@ class Stock(Stock):
             self.build_grp_materiales(materiales_data, is_transfer=True)
 
         answers = {
-            self.f['obj_almacen_destino'] : info_catalog_almacen_destino,
-            self.f['obj_wh_locations'] : info_catalog_almacen_origen,
-            self.f['obj_ubi_transportista'] : info_catalog_transportista,
+            # self.f['obj_almacen_destino'] : info_catalog_almacen_destino,
+            # self.f['obj_wh_locations'] : info_catalog_almacen_origen,
+            # self.f['obj_ubi_transportista'] : info_catalog_transportista,
             self.f_bitacora['fecha_hora_ingreso'] : f"{delivery_date} 00:00:00",
             self.f['field_grp_inspecciones']: self.build_grp_inspecciones(documents_data),
             self.f_bitacora['grupo_fotos_y_documentos']: self.build_grp_evidencias(evidence_data),
@@ -444,6 +456,13 @@ class Stock(Stock):
             self.f['field_status_transferencia']: self.data.get('stage'),
             self.f['field_grp_stages']: self.build_grp_stages(),
         }
+
+        if info_catalog_almacen_destino:
+            answers[self.f['obj_almacen_destino']] = info_catalog_almacen_destino
+        if info_catalog_almacen_origen:
+            answers[self.f['obj_wh_locations']] = info_catalog_almacen_origen
+        if info_catalog_transportista:
+            answers[self.f['obj_ubi_transportista']] = info_catalog_transportista
 
         signature_data_url = self.data.get('signature', {}).get('signatureDataUrl')
         if signature_data_url:

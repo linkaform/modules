@@ -55,53 +55,6 @@ class Stock(Stock):
         })
         return self.lkf_api.post_forms_answers(metadata)
 
-    def find_warehouse_location_catalog(self, location):
-        """
-        Busca en el catalogo de Warehouse Locations
-        (self.stk.WH.WAREHOUSE_LOCATION_ID) el registro cuyo campo Location
-        coincida con `location`.
-
-        Args:
-            location (str): valor a buscar en el campo Location del catalogo.
-
-        Returns:
-            dict | None: {location, warehouse}, o None si no se encontro.
-        """
-        field_map = {
-            'location': self.stk.WH.f['warehouse_location'],
-            'warehouse': self.stk.WH.f['warehouse'],
-        }
-        return self._find_catalog_record(
-            self.stk.WH.WAREHOUSE_LOCATION_ID,
-            self.stk.WH.f['warehouse_location'],
-            location,
-            field_map,
-            rdOnly_fields=False
-        )
-
-    def find_warehouse_dest_catalog(self, location):
-        """
-        Busca en el catalogo de Warehouse Dest (self.stk.WH.WAREHOUSE_LOCATION_DEST_ID)
-        el registro cuyo campo Location coincida con `location`.
-
-        Args:
-            location (str): valor a buscar en el campo Location del catalogo.
-
-        Returns:
-            dict | None: {location}, o None si no se encontro.
-        """
-        field_map = {
-            'location': self.stk.WH.f['warehouse_location_dest'],
-            'warehouse': self.stk.WH.f['warehouse_dest'],
-        }
-        return self._find_catalog_record(
-            self.stk.WH.WAREHOUSE_LOCATION_DEST_ID,
-            self.stk.WH.f['warehouse_location_dest'],
-            location,
-            field_map,
-            rdOnly_fields=False
-        )
-
     def _build_stage_row(self, stage, name_stage, data_stage):
         stage_at = data_stage.get('cancelledAt' if stage == 'cancellation' else 'confirmedAt')
         stage_by = data_stage.get('cancelledBy' if stage == 'cancellation' else 'confirmedBy')
@@ -133,6 +86,12 @@ class Stock(Stock):
     def build_answers_transferencia(self):
         materiales_data = self.data.get('items', [])
         grp_materiales, grp_boxes, grp_pallets, grp_series, grp_missing = self.build_grp_materiales(materiales_data, is_transfer=True)
+
+        # actualQuantity se calcula/consulta en el momento (front o consultar_
+        # transferencia_de_materiales.py con get_stock=true) y se guarda tal
+        # cual llegue, para poder leerlo despues sin recalcular el stock.
+        for row_material, item in zip(grp_materiales, materiales_data):
+            row_material[self.f['field_actual_quantity']] = item.get('actualQuantity')
 
         # print("\n+++ grp_materiales =",grp_materiales)
         # print("\n+++ grp_boxes =",grp_boxes)

@@ -186,17 +186,47 @@ class Stock(Stock):
             'looseUnits': row_material.get(self.bitacora_transportista_fields['cantidad_unidades_sueltas'], 0),
         }
 
-    def _unbuild_items(self, row):
+    def _get_actual_quantity(self, product_code, sku, warehouse, location, cache):
+        """
+        Inversa/analogo de add_actual_quantity() (consultar_material_estimado.py),
+        pero por (product_code, sku) contra el almacen/ubicacion de origen del
+        propio registro de Transferencia (en vez del almacen fijo 'Almacen
+        Distribuidor' que usa material_estimado, propio de otro flujo).
+        """
+        if not warehouse and not location:
+            return None
+
+        cache_key = (product_code, sku)
+        if cache_key not in cache:
+            stock_inventory = self.stk.get_product_stock(
+                product_code, sku=sku, warehouse=warehouse, location=location
+            )
+            cache[cache_key] = stock_inventory.get('actuals') or 0
+
+        return cache[cache_key]
+
+    def _unbuild_items(self, row, warehouse_origen=None, location_origen=None, get_stock=False):
         """Inversa de build_grp_materiales()."""
         materiales_rows = row.get(self.bitacora_transportista_fields['grupo_desglose_empaque']) or []
         missing_rows = row.get(self.f['field_grp_missing_report']) or []
         box_scans_by_sku, loose_unit_by_sku = self._unbuild_boxes_series(row)
         pallets_by_sku = self._unbuild_pallets(row)
+        actual_quantity_cache = {}
 
         items = []
         for idx, row_material in enumerate(materiales_rows):
             producto = row_material.get(self.f['obj_products']) or {}
             sku = self.unlist(producto.get(self.f['field_sku']))
+            product_code = self.unlist(producto.get(self.f['field_product_code']))
+
+            if get_stock:
+                # Se pidio el stock en vivo (get_stock=true): se consulta contra
+                # el almacen/ubicacion de origen en vez de leer lo ya guardado.
+                actual_quantity = self._get_actual_quantity(
+                    product_code, sku, warehouse_origen, location_origen, actual_quantity_cache
+                )
+            else:
+                actual_quantity = row_material.get(self.f['field_actual_quantity'])
 
             item = {
                 'sku': sku,
@@ -205,6 +235,7 @@ class Stock(Stock):
                 'expectedQuantity': row_material.get(self.bitacora_transportista_fields['cantidad_desglose']),
                 'suggestedQuantity': row_material.get(self.bitacora_transportista_fields['cantidad_sugerida_desglose']),
                 'receivedQuantity': row_material.get(self.bitacora_transportista_fields['cantidad_acumulada_desglose']),
+                'actualQuantity': actual_quantity,
             }
 
             damage_reports = self._unbuild_damage_reports(row_material)
@@ -291,6 +322,10 @@ class Stock(Stock):
         origen = row.get(self.stk.WH.WAREHOUSE_LOCATION_OBJ_ID) or {}
         destino = row.get(self.stk.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID) or {}
 
+        warehouse_origen = self.unlist(origen.get(self.stk.WH.f['warehouse']))
+        location_origen = self.unlist(origen.get(self.stk.WH.f['warehouse_location']))
+        get_stock = bool(self.data.get('get_stock'))
+
         resultado = {
             'folio': folio,
             'stage': self.inv_map_transfer_stages.get(self.unlist(row.get(self.f['field_status_transferencia']))),
@@ -298,9 +333,9 @@ class Stock(Stock):
                 'startDate': self.unlist(row.get(self.f['field_transfer_date_from'])),
                 'endDate': self.unlist(row.get(self.f['field_transfer_date_to'])),
             },
-            'originWarehouse': self.unlist(origen.get(self.stk.WH.f['warehouse_location'])),
+            'originWarehouse': location_origen,
             'destinationWarehouse': self.unlist(destino.get(self.stk.WH.f['warehouse_location_dest'])),
-            'items': self._unbuild_items(row),
+            'items': self._unbuild_items(row, warehouse_origen, location_origen, get_stock=get_stock),
             'events': self._unbuild_bitacora(row.get(self.f['field_grp_bitacora']) or []),
             'delivery': self._unbuild_delivery(row),
         }

@@ -95,6 +95,16 @@ class Stock(Stock):
             'tipo_de_material': '66b10b87a1d4483b5369f409',
             'unidad_medida': '65dec8423199f9a040829246',
             'relevancia': '6914a477499b225caf66fedc',
+            'capture_num_serie': self.f['capture_num_serie'],
+        }
+
+        # Clasificacion de recipient.type para el reporte 'vale_por_contratista'
+        self.NOMBRES_TECNICO_PROPIO = {"Tecnicos PC Carso", "Tecnicos PC Metro", "Tecnicos PC Sureste"}
+        self.NOMBRES_SOCIO_COMERCIAL = {
+            "IASA - Diana Lidia Reyes García",
+            "SR - Guadalupe Avalos Sánchez",
+            "ENDA Blanca Saldaña Solares",
+            "LAT - Carlos Hernández García"
         }
 
         # field_id del catalogo de Tipos de Tarea (aplica material / ONT / modem)
@@ -353,10 +363,21 @@ class Stock(Stock):
                 'tipo_de_material': r.get(f['tipo_de_material']),
                 'unidad_medida': self.unlist(r.get(f['unidad_medida'])),
                 'relevancia': r.get(f['relevancia']),
+                'capture_num_serie': self.unlist(r.get(f['capture_num_serie'])),
             }
             for r in records_products
             if r.get(f['codigo'])
         }
+
+    def classify_recipient_type(self, nombre_contratista):
+        """
+        Clasifica recipient.type para el reporte 'vale_por_contratista'.
+        """
+        if nombre_contratista in self.NOMBRES_TECNICO_PROPIO:
+            return 'tecnico_propio'
+        if nombre_contratista in self.NOMBRES_SOCIO_COMERCIAL:
+            return 'socio_comercial'
+        return 'contratista'
 
     def get_tipos_tarea_aplica_material(self):
         """
@@ -644,6 +665,7 @@ class Stock(Stock):
         report_produccion_nacional = type_report == 'produccion_nacional_by_area'
         report_produccion_nacional_global = type_report == 'produccion_nacional_global'
         report_produccion_nacional_completo = type_report == 'produccion_nacional'
+        report_vale_por_contratista = type_report == 'vale_por_contratista'
 
         is_report_produccion_nacional = report_produccion_nacional or report_produccion_nacional_global or report_produccion_nacional_completo
 
@@ -730,6 +752,7 @@ class Stock(Stock):
                     'sku': info_product.get('sku'),
                     'unidad_medida': info_product.get('unidad_medida'),
                     'cantidad_estimada': 0,
+                    'capture_num_serie': info_product.get('capture_num_serie'),
                 })
                 materiales_to_record[product]['cantidad_estimada'] += cantidad_producto
 
@@ -808,6 +831,22 @@ class Stock(Stock):
                 "total_produccion": total_produccion,
                 "total_sugerido": round(total_sugerido, 2),
                 "total_materiales": total_productos,
+            })
+            return rows_materiales, folios_aplicados_fibra, folios_aplicados_cobre, folios_no_aplicados_fibra, folios_no_aplicados_cobre, msgs_no_aplica
+
+        if report_vale_por_contratista:
+            # Un row por batch (area/tecnologia/location) de este contratista;
+            # se consolidan por nombre_contratista en build_vale_por_contratista().
+            rows_materiales.append({
+                "nombre_contratista": nombre_conexion,
+                "ordenesCount": len(ordenes_de_servicio),
+                "items": [{
+                    "sku": data_prod['sku'],
+                    "name": data_prod['nombre'],
+                    "unit": data_prod['unidad_medida'],
+                    "nsNeed": data_prod.get('capture_num_serie') == 'Si',
+                    "suggestedQuantity": round(data_prod['cantidad_estimada'], 2),
+                } for prod_id, data_prod in materiales_to_record.items()],
             })
             return rows_materiales, folios_aplicados_fibra, folios_aplicados_cobre, folios_no_aplicados_fibra, folios_no_aplicados_cobre, msgs_no_aplica
 
@@ -1061,8 +1100,58 @@ class Stock(Stock):
                 }
 
             return total_rows_materiales
-        
+
+        if type_report == 'vale_por_contratista':
+            return self.build_vale_por_contratista(total_rows_materiales, wh_origen)
+
         return self.add_actual_quantity(total_rows_materiales, wh_origen)
+
+    def build_vale_por_contratista(self, rows_materiales, wh_origen):
+        """
+        Consolida lo que regresa calcular_material_estimado() para
+        type_report == 'vale_por_contratista' (un row por batch de area/
+        tecnologia/location) en un "vale" por nombre_contratista: suma
+        suggestedQuantity de un mismo sku entre batches y el total de
+        ordenes de servicio del contratista (recipientProduction).
+
+        Returns:
+            list[dict]: un vale (misma estructura que recibe
+            salida_de_materiales.py) por cada nombre_contratista encontrado.
+        """
+        vales_by_contratista = {}
+        for row in rows_materiales:
+            nombre_contratista = row['nombre_contratista']
+            vale = vales_by_contratista.setdefault(nombre_contratista, {'items_by_sku': {}, 'ordenesCount': 0})
+            vale['ordenesCount'] += row['ordenesCount']
+            for item in row['items']:
+                acumulado = vale['items_by_sku'].setdefault(item['sku'], {**item, 'suggestedQuantity': 0})
+                acumulado['suggestedQuantity'] += item['suggestedQuantity']
+
+        fecha_evento = datetime.now().strftime('%Y-%m-%dT%H:%M:%S.000Z')
+
+        vales = []
+        for nombre_contratista, vale in vales_by_contratista.items():
+            items_vale = list(vale['items_by_sku'].values())
+            for item in items_vale:
+                item['recipientProduction'] = vale['ordenesCount']
+
+            vales.append({
+                "originWarehouse": wh_origen,
+                "recipient": {
+                    "type": self.classify_recipient_type(nombre_contratista),
+                    "name": nombre_contratista,
+                    "finalContratista": nombre_contratista,
+                },
+                "items": items_vale,
+                "stage": "voucher_generated",
+                "events": [{
+                    "at": fecha_evento,
+                    "type": "calculation_generated",
+                    "detail": "Vale generado con material calculado",
+                }],
+            })
+
+        return vales
 
     def add_actual_quantity(self, rows_materiales, wh_origen):
         """
