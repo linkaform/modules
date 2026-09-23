@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys
+from copy import deepcopy
 from salida_de_materiales import Stock
 from account_settings import *
 
@@ -67,6 +68,38 @@ class Stock(Stock):
 
         return [phases_by_key[stage] for stage in self.map_salida_phases if stage in phases_by_key]
 
+    def build_answers_stock_one_many_one(self, answers_salida):
+        """
+        Arma las respuestas para el nuevo registro de salida en
+        STOCK_ONE_MANY_ONE. El almacen origen y el destino (el del
+        finalContratista, ver build_answers_recipient) se toman de las
+        respuestas ya armadas de la Salida, para no volver a consultar los
+        catalogos; los items salen de self.data.
+
+        Args:
+            answers_salida (dict): respuestas ya armadas de la Salida.
+
+        Returns:
+            dict: respuestas {field_id: valor} para STOCK_ONE_MANY_ONE.
+        """
+        return {
+            self.f['fecha_recepcion']: self.today_str(date_format='datetime'),
+            self.f['stock_status']: 'to_do',
+            self.f['stock_move_comments']: f"Salida entregada - Salida de Material {self.data.get('folio')}",
+            self.stk.WH.WAREHOUSE_LOCATION_OBJ_ID: answers_salida.get(self.stk.WH.WAREHOUSE_LOCATION_OBJ_ID),
+            self.stk.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID: answers_salida.get(self.stk.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID),
+            self.f['move_group']: self.build_move_group_lines(),
+        }
+
+    def generar_traspaso_stock_one_many_one(self, answers_salida):
+        answers_stock_one_many_one = self.build_answers_stock_one_many_one(answers_salida)
+        return self.post_stock_one_many_one(answers_stock_one_many_one, {
+            "process": "Salida de Material",
+            "action": "Generar Salida por Entrega de Material",
+            "script": "actualizar_salida_de_materiales.py",
+            "function": "actualizar_salida_materiales",
+        })
+
     def actualizar_salida_materiales(self):
         """
         Recibe en self.data el `id` (folio) del registro a editar (mas el
@@ -77,7 +110,7 @@ class Stock(Stock):
         se conservan y solo se agrega/actualiza la(s) que vengan en este
         payload (ver build_grp_stages_merge).
         """
-        folio = self.data.get('id')
+        folio = self.data.get('folio')
         if not folio:
             self.LKFException("No se recibio el id/folio de la Salida de Material a actualizar")
 
@@ -86,12 +119,37 @@ class Stock(Stock):
         if not record:
             self.LKFException(f"No se encontro ninguna Salida de Material con folio '{folio}'")
 
-        existing_stage_rows = record.get('answers', {}).get(self.f['field_grp_stages']) or []
+        # Copia de los answers antes del patch, para restaurarlos si falla el traspaso.
+        original_answers = deepcopy(record.get('answers', {}))
+        existing_stage_rows = original_answers.get(self.f['field_grp_stages']) or []
+        existing_status = self.unlist(original_answers.get(self.f['field_status_transferencia']))
 
         answers_salida = self.build_answers_salida()
         answers_salida[ self.f['field_grp_stages'] ] = self.build_grp_stages_merge(existing_stage_rows)
 
-        return self.patch_salida_materiales(record['_id'], answers_salida)
+        # Solo se genera el traspaso cuando la Salida pasa a entregado, para no
+        # duplicar el movimiento de stock si se vuelve a editar ya entregada.
+        status_entregado = self.map_salida_stages['delivered']
+        generar_traspaso = answers_salida[ self.f['field_status_transferencia'] ] == status_entregado \
+            and existing_status != status_entregado
+
+        if generar_traspaso and not answers_salida.get(self.stk.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID):
+            self.LKFException(
+                f"No se encontro el almacen destino del contratista '{(self.data.get('recipient') or {}).get('finalContratista')}', "
+                "no se puede generar el traspaso de la Salida de Material"
+            )
+
+        resp_actualizar = self.patch_salida_materiales(record['_id'], answers_salida)
+
+        if generar_traspaso:
+            resp_stock = self.generar_traspaso_stock_one_many_one(answers_salida)
+            resp_actualizar['stock_one_many_one'] = resp_stock
+            if resp_stock.get('status_code') != 201:
+                self.patch_salida_materiales(record['_id'], original_answers)
+                resp_actualizar['status_code'] = 400
+                resp_actualizar['error'] = "Ocurrio un error al generar la salida del Stock"
+
+        return resp_actualizar
 
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import sys, simplejson
+import sys, simplejson, random
 from copy import deepcopy
 
 sys.path.append('/srv/scripts/addons/modules/accesos/items/scripts/Accesos')
@@ -441,6 +441,101 @@ class Stock(Stock):
             field_map,
             field_as_select=field_as_select
         )
+
+    def _get_item_serials(self, item):
+        """
+        Junta los numeros de serie capturados para un item (cajas escaneadas +
+        la unidad suelta, si aplica).
+
+        Args:
+            item (dict): un elemento de self.data['items'].
+
+        Returns:
+            list[dict]: lista de series (cada una con al menos 'value').
+        """
+        serials = []
+        for box in item.get('boxScans') or []:
+            serials.extend(box.get('serials') or [])
+
+        loose_unit = item.get('looseUnitScan')
+        if loose_unit:
+            serials.extend(loose_unit.get('serials') or [])
+
+        return serials
+
+    def build_move_group_lines(self, items=None):
+        """
+        Arma el grupo repetitivo `move_group` de STOCK_ONE_MANY_ONE a partir
+        de los items (por defecto self.data['items']). Se genera una linea por
+        numero de serie capturado (lot_number); si un item no trae series
+        (material a granel), se genera una sola linea agregada con la cantidad
+        recibida.
+
+        Returns:
+            list[dict]: filas para el campo self.f['move_group'].
+        """
+        if items is None:
+            items = self.data.get('items', [])
+
+        move_group_lines = []
+        for item in items:
+            sku = item.get('sku')
+            info_catalog_sku = self.find_material_catalog_sku(sku, field_as_select=[self.f['product_code']])
+            if not info_catalog_sku:
+                print(f"ADVERTENCIA: no se encontro el sku '{sku}' en el catalogo")
+                continue
+
+            product_info = {
+                self.f['product_code']: self.unlist(info_catalog_sku.get(self.f['product_code'])),
+                self.f['sku']: self.unlist(info_catalog_sku.get(self.f['field_sku'])),
+                self.f['product_name']: [self.unlist(info_catalog_sku.get(self.f['product_name']))]
+            }
+
+            serials = self._get_item_serials(item)
+            if serials:
+                for serial in serials:
+                    move_group_lines.append({
+                        self.CATALOG_INVENTORY_OBJ_ID: {
+                            **product_info,
+                            self.f['lot_number']: serial.get('value'),
+                        },
+                        self.f['move_group_qty']: 1,
+                    })
+            else:
+                product_info[self.f['lot_number']] = "LotePCI001"
+                move_group_lines.append({
+                    self.CATALOG_INVENTORY_OBJ_ID: product_info,
+                    self.f['move_group_qty']: item.get('receivedQuantity') or item.get('expectedQuantity', 0),
+                })
+
+        return move_group_lines
+
+    def post_stock_one_many_one(self, answers, device_properties):
+        """
+        Crea el registro de salida de almacen en STOCK_ONE_MANY_ONE
+        (forma 'Salida Multiple Productos a una ubicacion').
+
+        Args:
+            answers (dict): respuestas {field_id: valor} a guardar.
+            device_properties (dict): process/action/script/function del
+                proceso que genera el traspaso.
+
+        Returns:
+            dict: respuesta de `lkf_api.post_forms_answers`.
+        """
+        metadata = self.lkf_api.get_metadata(self.STOCK_ONE_MANY_ONE, user_id=self.record_user_id)
+        metadata.update({
+            'properties': {
+                "device_properties": {
+                    "system": "Script",
+                    "module": "stock_ont",
+                    **device_properties,
+                }
+            },
+            'answers': answers,
+        })
+        metadata['folio'] = f"TRASPASO-{str(int(random.random() * 1000))}"
+        return self.lkf_api.post_forms_answers(metadata)
 
     def get_damage_reports(self, damage_list):
         if not damage_list:

@@ -128,11 +128,43 @@ class Stock(Stock):
             'looseUnits': row_material.get(self.bitacora_transportista_fields['cantidad_unidades_sueltas'], 0),
         }
 
+    def _get_ns_need_by_sku(self, skus):
+        """
+        Consulta de una sola vez el catalogo de productos y regresa
+        {sku: bool} indicando si el sku requiere captura de numero de serie.
+        El objeto de producto guardado en la Salida no incluye
+        capture_num_serie, por eso se consulta el catalogo.
+        """
+        skus = list({sku for sku in skus if sku})
+        if not skus:
+            return {}
+
+        mango_query = {
+            "selector": {
+                "answers": {
+                    self.f['field_sku']: {"$in": skus},
+                },
+            },
+            "limit": len(skus),
+            "skip": 0,
+        }
+        records = self.lkf_api.search_catalog(self.CATALOG_ID_SKU, mango_query, jwt_settings_key='APIKEY_JWT_KEY') or []
+
+        return {
+            self.unlist(r.get(self.f['field_sku'])): str(self.unlist(r.get(self.f['capture_num_serie'])) or '').strip().lower() in ('si', 'sí')
+            for r in records
+        }
+
     def _unbuild_items(self, row):
         """Inversa de build_grp_materiales_salida()."""
         materiales_rows = row.get(self.bitacora_transportista_fields['grupo_desglose_empaque']) or []
         box_scans_by_sku, loose_unit_by_sku = self._unbuild_boxes_series(row)
         pallets_by_sku = self._unbuild_pallets(row)
+
+        ns_need_by_sku = self._get_ns_need_by_sku(
+            self.unlist((row_material.get(self.f['obj_products']) or {}).get(self.f['field_sku']))
+            for row_material in materiales_rows
+        )
 
         items = []
         for idx, row_material in enumerate(materiales_rows):
@@ -143,6 +175,7 @@ class Stock(Stock):
                 'sku': sku,
                 'name': self.unlist(producto.get(self.f['field_product_name'])),
                 'unit': self.unlist(producto.get(self.f['field_unidad_medida'])),
+                'nsNeed': ns_need_by_sku.get(sku, False),
                 'expectedQuantity': row_material.get(self.bitacora_transportista_fields['cantidad_desglose']),
                 'suggestedQuantity': row_material.get(self.bitacora_transportista_fields['cantidad_sugerida_desglose']),
                 'receivedQuantity': row_material.get(self.bitacora_transportista_fields['cantidad_acumulada_desglose']),
@@ -284,7 +317,7 @@ class Stock(Stock):
         Material y regresa la informacion respetando la misma estructura del
         payload que recibe salida_de_materiales() en salida_de_materiales.py.
         """
-        folio = self.data.get('id')
+        folio = self.data.get('folio')
         if not folio:
             self.LKFException("No se recibio el id/folio de la Salida de Material a consultar")
 
@@ -295,7 +328,7 @@ class Stock(Stock):
         origen = row.get(self.stk.WH.WAREHOUSE_LOCATION_OBJ_ID) or {}
 
         resultado = {
-            'id': folio,
+            'folio': folio,
             'runId': '',
             'stage': self.inv_map_salida_stages.get(self.unlist(row.get(self.f['field_status_transferencia']))),
             'originWarehouse': self.unlist(origen.get(self.stk.WH.f['warehouse_location'])),
