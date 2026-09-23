@@ -12,13 +12,13 @@ class Accesos(Accesos):
     def descartar_transportistas_vencidos(self):
         """
         Descarta automáticamente los registros de bitácora de transportistas
-        que llevan más de 24 horas sin llegar a estatus 'terminado' (y que
+        que llevan más de 48 horas sin llegar a estatus 'terminado' (y que
         todavía no estén 'descartado') — mismo criterio de antigüedad que el
         badge de horas transcurridas en el kanban (basado en fecha_hora_ingreso).
         """
         f = self.bitacora_transportista_fields
         tz_name = self.user.get('timezone', 'America/Mexico_City')
-        limite = datetime.now(pytz.timezone(tz_name)) - timedelta(hours=24)
+        limite = datetime.now(pytz.timezone(tz_name)) - timedelta(hours=48)
         limite_formatted = limite.strftime('%Y-%m-%d %H:%M:%S')
 
         query = [
