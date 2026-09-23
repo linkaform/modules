@@ -51,7 +51,8 @@ class Stock(Stock):
             self.LKFException(f"No se pudo calcular el material estimado por contratista: {vales}")
 
         # TODO: por ahora solo crea 3 vales de prueba, para no saturar la BD de Salidas de Materiales
-        vales = vales[:3]
+        # quito el limite pero lo dejo comentado para pruebas locales, ya que el script puede ser llamado desde el Front y generar muchos vales de golpe.
+        # vales = vales[:3]
 
         registros_creados = []
         for vale in vales:
