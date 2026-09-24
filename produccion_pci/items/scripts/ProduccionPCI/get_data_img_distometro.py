@@ -15,8 +15,59 @@ class DataImgDistometro():
             'v4': self.filtro_v4,
             'v5': self.filtro_v5,
             'v6': self.filtro_v6,
-            'v7': self.filtro_v7
+            'v7': self.filtro_v7,
+            'v8': self.filtro_v8,
+            'v9': self.filtro_v9,
+            'v10': self.filtro_v10,
+            'v11': self.filtro_v11,
         }
+
+    def filtro_v9(self, roi, nombre_img, roi_resize=False):
+        roi = cv2.resize(roi, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+
+        # 2) HSV
+        hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+        
+        # 1️⃣ Detectar TODO el verde del fondo
+        lower_green = np.array([40, 60, 40])
+        upper_green = np.array([80, 255, 255])
+
+        fondo_mask = cv2.inRange(hsv, lower_green, upper_green)
+
+        # 2️⃣ Invertir: quitar fondo
+        texto_mask = cv2.bitwise_not(fondo_mask)
+
+        # 3️⃣ Limpiar ruido leve
+        kernel = np.ones((3,3), np.uint8)
+        texto_mask = cv2.morphologyEx(texto_mask, cv2.MORPH_OPEN, kernel, iterations=1)
+
+        name_v9 = f"/tmp/pre_{nombre_img}_filtro_v9.png"
+        # print(name_v9)
+        # cv2.imwrite(name_v9, texto_mask)
+
+        return texto_mask
+    
+    def filtro_v8(self, roi, nombre_img, roi_resize=False):
+        roi = cv2.resize(roi, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        # 3) Aumentar contraste local (CLAHE)
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+        gray = clahe.apply(gray)
+
+        # 4) Gradiente (resalta bordes del número)
+        grad = cv2.morphologyEx(gray, cv2.MORPH_GRADIENT, np.ones((3,3),np.uint8))
+
+        # 5) Threshold adaptativo (no global)
+        th = cv2.adaptiveThreshold(
+            grad, 255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY,
+            11, 2
+        )
+
+        # 6) Invertir para OCR
+        th = cv2.bitwise_not(th)
+        return th
 
     def filtro_v7(self, roi, nombre_img, roi_resize=False):
         name_v7 = f"/tmp/pre_{nombre_img}_filtro_v7.png"
@@ -45,7 +96,7 @@ class DataImgDistometro():
         if tipo == "metraje":
             patron = r"(\d+\.\d{1,2})"
             texto = pytesseract.image_to_string(imagen, config="--psm 7 --oem 3 -c tessedit_char_whitelist=0123456789.mts").strip()
-            # print(f". . . . . OCR {tipo}: '{texto}'")
+            # print(f"... PSM 7 {tipo}: '{texto}'")
             match = re.search(patron, texto)
             if (re.search(r"\.\d{3}", texto) and texto.endswith('5')) or (texto.endswith('ms.')):
                 # print('variante donde se encuentran 3 decimales y termina en 5')
@@ -54,11 +105,16 @@ class DataImgDistometro():
             # Validar caso donde viene un entero y el color de texto es gris
             if not match:
                 texto = pytesseract.image_to_string(imagen, config="--psm 6 --oem 3 -c tessedit_char_whitelist=0123456789.mts").strip()
-                # print(f"OCR 2 {tipo}: '{texto}'")
+                # print(f"    ... PSM 6 {tipo}: '{texto}'")
                 match = re.search(r"(\d+(\.\d+)?)", texto)
                 
                 if texto.endswith('ms.'):
                     match = None
+                elif '\n' in texto:
+                    for temp_linea in texto.split('\n'):
+                        match = re.search(r"(\d+(\.\d+)?)", temp_linea)
+                        if match:
+                            break
 
                 # if not match:
                 # if True:
@@ -68,17 +124,34 @@ class DataImgDistometro():
             if match:
                 value_match = match.group(1)
 
+                if value_match.strip() == '0':
+                    return '0'
+
                 if float(value_match) < 10 and (texto.endswith('mts. 5') or f'{value_match}\n' in texto):
                     return []
 
                 if float(value_match) > self.metraje_maximo_aceptado or try_psm_11:
                     texto = pytesseract.image_to_string(imagen, config="--psm 11 --oem 3 -c tessedit_char_whitelist=0123456789.mts").strip()
-                    # print(f"OCR 4 {tipo}: '{texto}'")
+                    # print(f"        ... PSM 11 {tipo}: '{texto}'")
                     match = re.search(patron, texto)
                     if match:
                         return [match.group(1), 'psm_11']
 
                 return [value_match]
+            else:
+                texto = pytesseract.image_to_string(imagen, config="--psm 11 --oem 3 -c tessedit_char_whitelist=0123456789.mts").strip()
+                # print(f"        ... PSM 11 (2) {tipo}: '{texto}'")
+                if texto == 'm6':
+                    return []
+                match = re.search(r"(\d+(\.\d+)?)", texto)
+                if match:
+                    return [match.group(1)]
+                elif '\n' in texto:
+                    for temp_linea in texto.split('\n'):
+                        match = re.search(r"(\d+(\.\d+)?)", temp_linea)
+                        if match:
+                            break
+
             return []
         else:  # folio
             config = "--psm 7 --oem 3 -c tessedit_char_whitelist=0123456789"
@@ -215,6 +288,25 @@ class DataImgDistometro():
         cv2.imwrite(f"/tmp/pre_{nombre}_filtro_v6.png", ajustada)
         return ajustada
 
+    def filtro_v11(self, roi, nombre="metraje", roi_resize=False):
+        # 1) Escalar fuerte
+        roi = cv2.resize(roi, None, fx=8, fy=8, interpolation=cv2.INTER_CUBIC)
+
+        # 2) Gris
+        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+
+        # 3) Aumentar contraste
+        gray = cv2.convertScaleAbs(gray, alpha=3, beta=-140)
+
+        # 4) Dilatar en gris (AQUÍ SE SALVA EL PUNTO)
+        kernel = np.ones((2,2), np.uint8)
+        gray = cv2.dilate(gray, kernel, iterations=1)
+
+        # 5) Adaptive threshold
+        th = cv2.adaptiveThreshold( gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2 )
+
+        return th
+
     def extract_num_mts(self, texto):
         match = re.search(r'(\d+(?:\.\d+)?)\s*mts', texto)
         if match:
@@ -226,6 +318,35 @@ class DataImgDistometro():
             return False
         return float( list_metraje[0] ) > self.metraje_maximo_aceptado
 
+    def filtro_v10(self, img_bgr, nombre="metraje", roi_resize=False):
+        # 1) Convertir a HSV
+        hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+
+        # 2) Detectar y eliminar el fondo verde (MUY IMPORTANTE)
+        lower_green = np.array([35, 80, 80])
+        upper_green = np.array([85, 255, 255])
+
+        mask_green = cv2.inRange(hsv, lower_green, upper_green)
+
+        # Invertimos: nos quedamos con TODO lo que NO es verde (números y punto)
+        mask_texto = cv2.bitwise_not(mask_green)
+
+        # 3) Aplicar la máscara a la imagen original
+        solo_texto = cv2.bitwise_and(img_bgr, img_bgr, mask=mask_texto)
+
+        # 4) Ahora sí pasar a gris (ya sin verde)
+        gray = cv2.cvtColor(solo_texto, cv2.COLOR_BGR2GRAY)
+
+        # 5) Aumentar contraste
+        gray = cv2.convertScaleAbs(gray, alpha=2.5, beta=-150)
+
+        # 6) Threshold
+        # _, th = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        th = cv2.adaptiveThreshold( gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2 )
+
+        # cv2.imwrite(f"/tmp/pre_{nombre}_filtro_v10.png", th)
+        return th
+
     def ocr_metraje_combinado(self, roi_metraje, img_name):
         """
         Prueba varios preprocesamientos y retorna el metraje más probable.
@@ -234,7 +355,7 @@ class DataImgDistometro():
         textos_ocr = []
         try_psm_11 = False
         for num_v, preproc in self.preprocesamientos.items():
-            # print(f'     .. evaluando filtro {num_v}')
+            # print(f'=== === === EVALUANDO filtro {num_v}')
             pre_metraje = preproc(roi_metraje, f"{img_name}_metraje")
 
             metrajes = self.extraer_texto_ocr(pre_metraje, "metraje", try_psm_11=try_psm_11)
@@ -374,7 +495,7 @@ class DataImgDistometro():
         elif folio_box:
             x, y, w, h = folio_box
             # Si el recuadro es muy alto, recorta la mitad inferior
-            alto_umbral = 100
+            alto_umbral = 110
             roi_superior = None
             if h > alto_umbral:
                 

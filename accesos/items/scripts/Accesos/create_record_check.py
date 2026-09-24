@@ -152,7 +152,7 @@ class Accesos(Accesos):
         #----Create Dic
         dic_response = {
             self.f['fecha_inicio_rondin']: self.today_str(date_format='datetime'),
-            self.f['status_rondin'] : 'en_proceso', 
+            self.f['status_user'] : 'en_proceso', 
             self.CONFIGURACION_RECORRIDOS_OBJ_ID : {
                 self.mf['ubicacion']:ubication_location,
                 self.f['nombre_recorrido']:config,

@@ -1,15 +1,18 @@
 # -*- coding: utf-8 -*-
-from datetime import datetime, timedelta, time, date
-from linkaform_api import base
-from lkf_addons.addons.accesos.app import Accesos
-import sys, simplejson, json, pytz
-import pytz
+import pytz,threading, random, time, unicodedata, tempfile, os
+import sys, simplejson, json, pytz, base64, requests
+
+from datetime import datetime, timedelta, date
 from math import ceil
 from bson import ObjectId
+from copy import deepcopy
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from linkaform_api import base, generar_qr
+from lkf_addons.addons.accesos.app import Accesos
 
-class Accesos( Accesos):
-    print('Entra a acceos utils')
+class Accesos(Accesos):
+    print('Entra a accesos_utils')
 
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
@@ -18,13 +21,11 @@ class Accesos( Accesos):
             'duracion_traslado_area':'6760a9581e31b10a38a22f1f',
             'fecha_inspeccion_area':'6760a908a43b1b0e41abad6b',
             'fecha_inicio_rondin':'6760a8e68cef14ecd7f8b6fe',
-            'status_rondin':'6639b2744bb44059fc59eb62',
-            'grupo_areas_visitadas':'66462aa5d4a4af2eea07e0d1',
+            'status_user':'6639b2744bb44059fc59eb62',
             'nombre_recorrido':'6644fb97e14dcb705407e0ef',
             
             'option_checkin': '663bffc28d00553254f274e0',
             'image_checkin': '6855e761adab5d93274da7d7',
-            'comment_checkin': '66a5b9bed0c44910177eb724',
             'comment_checkout': '68798dd1205f333d8f53a1c7',
             'start_shift': '6879828d0234f02649cad390',
             'end_shift': '6879828d0234f02649cad391',
@@ -66,26 +67,31 @@ class Accesos( Accesos):
             'documento_check': '692a1b4e005c84ce5cd5167f',
             'datos_requeridos': '6769756fc728a0b63b8431ea',
             'envio_por': '6810180169eeaca9517baa5b',
-            'configuracion_de_accesos': '696e6dda9517e760679e71eb'
+            'configuracion_de_accesos': '696e6dda9517e760679e71eb',
+            'tipo_de_notificacion': '699dfe3b82be0dbe0319d38c',
+            'tipo_rondin': '69b9b98d2a02f4a0dd35f5c1'
         })
 
-        #BORRAR
         self.CONFIGURACION_RECORRIDOS = self.lkm.catalog_id('configuracion_de_recorridos')
         self.CONFIGURACION_RECORRIDOS_ID = self.CONFIGURACION_RECORRIDOS.get('id')
         self.CONFIGURACION_RECORRIDOS_OBJ_ID = self.CONFIGURACION_RECORRIDOS.get('obj_id')
         self.REGISTRO_ASISTENCIA = self.lkm.form_id('registro_de_asistencia','id')
         self.FORMATO_VACACIONES = self.lkm.form_id('formato_vacaciones_aviso','id')
-
-        # self.bitacora_fields.update({
-        #     "catalogo_pase_entrada": "66a83ad652d2643c97489d31",
-        #     "gafete_catalog": "66a83ace56d1e741159ce114"
-        # })
-
-        # self.cons_f.update({
-        #     "catalogo_ubicacion_concesion": "66a83a74de752e12018fbc3c",
-        # })
-
+        self.USUARIOS_FORM = self.lkm.form_id('usuarios', 'id')
+        self.ENVIO_DE_NOTIFICACIONES_FORM = self.lkm.form_id('envio_de_notificaciones', 'id')
         self.CONFIGURACION_DE_RECORRIDOS_FORM = self.lkm.form_id('configuracion_de_recorridos','id')
+        self.CONF_MODULO_SEGURIDAD = self.lkm.form_id('configuracion_modulo_seguridad','id')
+        self.BITACORA_TRANSPORTISTAS = self.lkm.form_id('bitacora_de_transportistas','id')
+        # OJO: el slug real registrado en Linkaform es "configuracin..." (sin "ó") —
+        # Linkaform le quitó el acento de forma imperfecta al generar el nombre técnico
+        # a partir de "Configuración de Flujo de Transportistas". No "corregir" esto sin
+        # antes confirmar el item_name real en LKFModules.
+        self.CONFIGURACION_FLUJO_TRANSPORTISTAS = self.lkm.form_id('configuracin_de_flujo_de_transportistas','id')
+
+        self.INSPECCION_ENTRADA_CTPAT_TRACTOR = self.lkm.form_id('inspeccion_de_entrada_ctpat_tractor_cabezal','id')
+        self.INSPECCION_ENTRADA_CTPAT_REMOLQUE = self.lkm.form_id('inspeccion_de_entrada_ctpat_remolque','id')
+        self.INSPECCION_ENTRADA_CTPAT_CONTENEDOR = self.lkm.form_id('inspeccion_de_entrada_ctpat_contenedor','id')
+        self.INSPECCION_SELLO = self.lkm.form_id('inspeccion_de_sello','id')
 
         self.f.update({
             'areas_del_rondin': '66462aa5d4a4af2eea07e0d1',
@@ -94,6 +100,7 @@ class Accesos( Accesos):
             'estatus_del_recorrido': '6639b2744bb44059fc59eb62',
             'fecha_hora_inspeccion_area': '6760a908a43b1b0e41abad6b',
             'fecha_programacion':'6760a8e68cef14ecd7f8b6fe',
+            'fecha_hora_fin':'6760a8e68cef14ecd7f8b6ff',
             'foto_evidencia_area': '681144fb0d423e25b42818d2',
             'foto_evidencia_area_rondin': '66462b9d7124d1540f962087',
             'grupo_de_areas_recorrido': '6645052ef8bc829a5ccafaf5',
@@ -106,14 +113,12 @@ class Accesos( Accesos):
             'check_status': '681fa6a8d916c74b691e174b',
             'grupo_incidencias_check': '681144fb0d423e25b42818d3',
             'incidente_open': '6811455664dc22ecae83f75b',
-            'incidente_comentario': '681145323d9b5fa2e16e35cc',
             'incidente_area': '663e5d44f5b8a7ce8211ed0f',
             'incidente_location': '663e5c57f5b8a7ce8211ed0b',
             'incidente_evidencia': '681145323d9b5fa2e16e35cd',
             'incidente_documento': '685063ba36910b2da9952697',
             'url_registro_rondin': '6750adb2936622aecd075607',
             'bitacora_rondin_incidencias': '686468a637d014b9e0ab5090',
-            'tipo_de_incidencia': '663973809fa65cafa759eb97',
             'personalizacion_pases': '695d2e1f6be562c3da95c4a7',
             'pases': '695d31b503ccc7766ac28507',
             'grupo_alertas': '695d35b618a37ea04899524f',
@@ -125,3496 +130,1392 @@ class Accesos( Accesos):
             'free_day_end': '55887b7e01a4de2ea71c5ab5',
             'free_day_type': '55887b7e01a4de2ea71c5ab2',
             'free_day_autorization': '55887b7e01a4de2ea71c5ab8',
+            'grupo_incluir': '69974d3806cc6d6a17f8b1fa',
+            'pases_incluir': '69974d55879296015c1cd8d2',
+            'prefijo_telefonico':'6a221532db633d0cf4faf12f',
+            'grupo_requisitos':"676975321df93a68a609f9ce",
         })
         
         self.checkin_fields.update({
             'nombre_suplente':'6927a1176c60848998a157a2'
         })
 
-    def set_boot_status(self, checkin_type):
-        if checkin_type == 'in':
-            set_boot_status = 'abierta'
-        elif checkin_type == 'out':
-            set_boot_status = 'cerrada'
-        return set_boot_status
-
-    def is_boot_available(self, location, area):
-        self.last_check_in = self.get_last_checkin(location, area)
-        last_status = True if self.last_check_in.get('checkin_type') == 'abierta' else False
-        return last_status
-
-    def get_guard_last_checkin(self, user_ids):
-        '''
-            Se realiza busqued del ulisto registro de checkin de un usuario
-        '''
-        match_query = {
-            "deleted_at":{"$exists":False},
-            "form_id": self.CHECKIN_CASETAS,
-            }
-        unwind_query = {
-            f"answers.{self.f['guard_group']}.{self.checkin_fields['checkin_status']}": "entrada"
-        }
-        if user_ids and type(user_ids) == list:
-            if len(user_ids) == 1:
-                #hace la busqueda por directa, para optimizar recuros
-                user_ids = user_ids[0]
-            else:
-                #hace busqueda en lista de opciones
-                match_query.update({
-                    f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.f['user_id_jefes']}":{'$in':user_ids}
-                    })
-        if user_ids and type(user_ids) == int:
-            unwind_query.update({
-                f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.f['user_id_jefes']}":user_ids
-                })
-        if not unwind_query:
-            return self.LKFException({"msg":f"Algo salio mal al intentar buscar el checkin del los ids: {user_id}"})
-        query = [
-            {'$match': match_query },
-            {'$unwind': f"$answers.{self.f['guard_group']}"},
-            {'$match':unwind_query},
-            {'$project': self.project_format(self.checkin_fields)},
-            {'$sort':{'created_at':-1}},
-            {'$limit':1}
-            ]
-        return self.format_cr_result(self.cr.aggregate(query), get_one=True)
-
-    def get_booth_config(self, location):
-        """
-        Se obtiene la configuracion de la ubicacion de la forma Configuracion Modulo Seguridad
-        Opciones actuales: impresion_de_pase, auto_acceso
-        Args:
-            location  (str): Ubicacion de la caseta.
-        Returns:
-            Lista de configuraciones
-        """
-        query = [
-            {'$match': {
-                "deleted_at": {"$exists": False},
-                "form_id": self.CONF_MODULO_SEGURIDAD,
-            }},
-            {'$sort': {'updated_at': -1}},
-            {'$limit': 1},
-            {'$project': {
-                "answers": 1,
-            }},
-            {'$unwind': f"$answers.{self.conf_modulo_seguridad['grupo_requisitos']}"},
-            {'$match': {
-                f"answers.{self.conf_modulo_seguridad['grupo_requisitos']}.{self.UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}": location
-            }}
-        ]
-        data = self.format_cr(self.cr.aggregate(query))
-        format_data = []
-        if data:
-            data = self.unlist(data)
-            configuracion_de_accesos = data.get('configuracion_de_accesos', [])
-            format_data = list(set(configuracion_de_accesos))
-        return format_data
-
-    def get_booth_status(self, booth_area, location):
-        last_chekin = self.get_last_checkin(location, booth_area)
-        booth_status = {
-            "status":'Cerrada',
-            "guard_on_dutty":'',
-            "user_id":'',
-            "stated_at":'',
-            "fotografia_inicio_turno":[],
-            "fotografia_cierre_turno":[],
-            }
-        if last_chekin.get('checkin_type') in ['entrada','apertura','disponible', 'abierta']:
-            #todo
-            #user_id 
-            booth_status['status'] = 'Abierta'
-            booth_status['guard_on_dutty'] = last_chekin.get('employee') 
-            booth_status['stated_at'] = last_chekin.get('boot_checkin_date')
-            booth_status['checkin_id'] = last_chekin.get('_id', last_chekin.get('id', ''))
-            booth_status['fotografia_inicio_turno'] = last_chekin.get('fotografia_inicio_turno',[]) 
-            booth_status['fotografia_cierre_turno'] = last_chekin.get('fotografia_cierre_turno',[]) 
-        return booth_status
-
-    def get_attendance_images(self, user_id):
-        query = [
-            {"$match": {
-                "deleted_at": {"$exists": False},
-                "form_id": self.REGISTRO_ASISTENCIA,
-                "created_by_id": user_id,
-            }},
-            {"$sort": {"created_at": -1}},
-            {"$limit": 1},
-            {"$project": {
-                "_id": 0,
-                "start_turn_image": {"$ifNull": [f"$answers.{self.f['image_checkin']}", ""]},
-                "end_turn_image": {"$ifNull": [f"$answers.{self.f['foto_cierre_turno']}", ""]},
-            }}
-        ]
-        data = self.format_cr(self.cr.aggregate(query))
-        format_data = {}
-        if data:
-            format_data = self.unlist(data)
-        return format_data
-
-    def update_guard_status(self, guard, this_user):
-        attendance_images = self.get_attendance_images(this_user.get('user_id', self.unlist(this_user.get('usuario_id', 0000))))
-        status_turn = 'Turno Cerrado'
-        if this_user.get('status') == 'in':
-            status_turn = 'Turno Abierto'
-
-        this_user['start_turn_image'] = attendance_images.get('start_turn_image', [])
-        this_user['end_turn_image'] = attendance_images.get('end_turn_image', [])
-        this_user['status_turn'] = status_turn
-        return this_user
-
-    def get_shift_data(self, booth_location=None, booth_area=None, search_default=True):
-        """
-        Se obtienen los datos del turno.
-
-        Args:
-            booth_location (str, optional): Ubicacion de la caseta. Defaults to None.
-            booth_area (str, optional): Area de la caseta. Defaults to None.
-            search_default (bool, optional): Buscar caseta por defecto. Defaults to True.
-
-        Returns:
-            dict: Datos del turno.
-        """
-        load_shift_json = {}
-        username = self.user.get('username')
-        user_id = self.user.get('user_id')
-        email = self.user.get('email')
-
-        #! Se obtiene la informacion del usuario, si esta dentro o fuera de turno.
-        this_user = self.get_employee_checkin_status_by_id(user_id, booth_location, booth_area)
-        if not this_user:
-            this_user = self.get_employee_data(email=email, get_one=True)
-            this_user['name'] = this_user.get('worker_name','')
-        
-        #! Se obtienen los puestos de guardia configurados.
-        user_booths = []
-        guards_positions = self.config_get_guards_positions()
-        if not guards_positions:
-            return self.LKFException({'title': 'Advertencia', 'msg': 'No existen puestos de guardias configurados.'})
-
-        check_aux_guard = self.check_in_aux_guard()
-        if this_user and this_user.get('status') == 'out':
-            #! Si el usuario esta fuera de turno, se verifica si se encuentra como guardia de apoyo para obtener la informacion del usuario.
-            for aux_id, aux_data in check_aux_guard.items():
-                if aux_id == user_id:
-                    this_user = aux_data
-                    this_user['status'] = 'in' if aux_data.get('status') == 'in' else 'out'
-                    this_user['location'] = aux_data.get('location')
-                    this_user['area'] = aux_data.get('area')
-                    this_user['checkin_date'] = aux_data.get('checkin_date')
-                    this_user['checkout_date'] = aux_data.get('checkout_date')
-                    this_user['checkin_position'] = aux_data.get('checkin_position')
-
-        #! Si el usuario esta dentro de turno, se obtienen los guardias de apoyo registrados con el.
-        if this_user and this_user.get('status') == 'in':
-            location_employees = {self.chife_guard: {}, self.support_guard:[]}
-            booth_area = this_user['area']
-            booth_location = this_user['location']
-            for aux_id, aux_data in check_aux_guard.items():
-                if aux_id == user_id:
-                    guard = aux_data
-                if aux_data.get('status') == 'in' \
-                    and aux_data.get('location') == booth_location \
-                    and aux_data.get('area') == booth_area \
-                    and aux_data.get('user_id') != user_id:
-                    location_employees[self.support_guard].append(aux_data)
-        else:
-            #! Si el usuario esta fuera de turno, se obtienen los guardias disponibles.
-            default_booth , user_booths = self.get_user_booth(search_default=False)
-            if not booth_location:
-                booth_location = default_booth.get('location', '')
-                booth_area = default_booth.get('area', '')
-            if not default_booth:
-                return self.LKFException({'title': 'Advertencia', 'msg': 'No se encontro la caseta por defecto, revisa la configuracion.'})
-
-            location_employees = self.get_booths_guards(booth_location, booth_area, solo_disponibles=True)
-            guard = self.get_user_guards(location_employees=location_employees)
-            if not guard:
-                #! Si el usuario no esta configurado como guardia se agrega su informacion general.
-                common_user = {
-                    "user_id": self.unlist(this_user.get('usuario_id')),
-                    "name": this_user.get('name'),
-                    "location": booth_location,
-                    "area": booth_area,
-                }
-                load_shift_json["guard"] = common_user
-                return load_shift_json
-
-        #! Se agregan las fotos de los guardias y se filtran los guardias de apoyo.
-        location_employees = self.set_employee_pic(location_employees)
-        support_guards = location_employees.get('guardia_de_apoyo', [])
-        for idx, guard in enumerate(support_guards):
-            if guard.get('user_id') == user_id:
-                support_guards.pop(idx)
-                break
-        location_employees['guardia_de_apoyo'] = support_guards
-        
-        #! Se obtienen los detalles de la caseta..
-        booth_address = self.get_area_address(booth_location, booth_area)
-        load_shift_json["location"] = {
-            "name":  booth_location,
-            "area": booth_area,
-            "city": booth_address.get('city'),
-            "state": booth_address.get('state'),
-            "address": booth_address.get('address'),
-        }
-        
-        #! Se obtienen los detalles del turno.
-        load_shift_json["booth_stats"] = self.get_page_stats( booth_area, booth_location, "Turnos")
-        load_shift_json["booth_status"] = self.get_booth_status(booth_area, booth_location)
-        load_shift_json["support_guards"] = location_employees.get(self.support_guard, "")
-        load_shift_json["guard"] = self.update_guard_status(guard, this_user)
-        load_shift_json["notes"] = self.get_list_notes(booth_location, booth_area, status='abierto')
-        load_shift_json["user_booths"] = user_booths
-        load_shift_json["booth_config"] = self.get_booth_config(booth_location)
-        # print(simplejson.dumps(load_shift_json, indent=4))
-        return load_shift_json
-
-    def get_page_stats(self, booth_area, location, page='', month=None, year=None):
-        timezone = pytz.timezone('America/Mexico_City')
-        today = datetime.now(timezone).strftime("%Y-%m-%d")        
-        res={}
-
-        if page == 'Turnos':
-            #Visitas dentro, Gafetes pendientes y Vehiculos estacionados
-            query_visitas = [
-                {'$match': {
-                    "deleted_at": {"$exists": False},
-                    "form_id": self.BITACORA_ACCESOS,
-                    f"answers.{self.bitacora_fields['status_visita']}": "entrada",
-                    f"answers.{self.PASE_ENTRADA_OBJ_ID}.{self.pase_entrada_fields['status_pase']}": {"$in": ["Activo"]},
-                    f"answers.{self.bitacora_fields['caseta_entrada']}": booth_area,
-                    f"answers.{self.bitacora_fields['ubicacion']}": location,
-                    # f"answers.{self.mf['fecha_entrada']}": {"$gte": f"{today} 00:00:00", "$lte": f"{today} 23:59:59"}
-                }},
-                {'$project': {
-                    '_id': 1,
-                    'vehiculos': {"$ifNull": [f"$answers.{self.mf['grupo_vehiculos']}", []]},
-                    'equipos': {"$ifNull": [f"$answers.{self.mf['grupo_equipos']}", []]},
-                    'status_visita': f"$answers.{self.bitacora_fields['status_visita']}",
-                    'id_gafete': f"$answers.{self.GAFETES_CAT_OBJ_ID}.{self.gafetes_fields['gafete_id']}",
-                    'status_gafete': f"$answers.{self.mf['status_gafete']}"
-                }},
-                {'$group': {
-                    '_id': None,
-                    'total_visitas_dentro': {'$sum': 1},
-                    'total_equipos_dentro': {
-                        '$sum': {
-                            '$cond': {
-                                'if': {'$eq': ['$status_visita', 'entrada']},
-                                'then': {'$size': '$equipos'},
-                                'else': 0
-                            }
-                        }
-                    },
-                    'total_vehiculos_dentro': {'$sum': {'$size': '$vehiculos'}},
-                    'gafetes_info': {
-                        '$push': {
-                            'id_gafete':'$id_gafete',
-                            'status_gafete':'$status_gafete'
-                        }
-                    }
-                }}
-            ]
-
-            resultado = self.format_cr(self.cr.aggregate(query_visitas))
-            total_vehiculos_dentro = resultado[0]['total_vehiculos_dentro'] if resultado else 0
-            total_visitas_dentro = resultado[0]['total_visitas_dentro'] if resultado else 0
-            total_equipos_dentro = resultado[0]['total_equipos_dentro'] if resultado else 0
-            gafetes_info = resultado[0]['gafetes_info'] if resultado else []
-            gafetes_pendientes = sum(1
-                for gafete in gafetes_info
-                    if gafete.get('id_gafete') and gafete.get('status_gafete', '').lower() != 'entregado'
-            )
-            
-            res['total_vehiculos_dentro'] = total_vehiculos_dentro
-            res['in_invitees'] = total_visitas_dentro
-            res['total_equipos_dentro'] = total_equipos_dentro
-            res['gafetes_pendientes'] = gafetes_pendientes
-
-            #Articulos concesionados
-            query_concesionados = [
-                {'$match': {
-                    "deleted_at": {"$exists": False},
-                    "form_id": self.CONCESSIONED_ARTICULOS,
-                    f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}": location,
-                }},
-                {'$project': {
-                    '_id': 1,
-                }},
-                {'$group': {
-                    '_id': None,
-                    'articulos_concesionados': {'$sum': 1}
-                }}
-            ]
-
-            resultado = self.format_cr(self.cr.aggregate(query_concesionados))
-            articulos_concesionados = resultado[0]['articulos_concesionados'] if resultado else 0
-            
-            res['articulos_concesionados'] = articulos_concesionados
-
-            #Incidentes pendientes
-            query_incidentes = [
-                {'$match': {
-                    "deleted_at": {"$exists": False},
-                    "form_id": self.BITACORA_INCIDENCIAS,
-                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.incidence_fields['area_incidencia']}": booth_area,
-                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.incidence_fields['ubicacion_incidencia']}": location,
-                    f"answers.{self.incidence_fields['estatus']}": 'abierto'
-                }},
-                {'$project': {
-                    '_id': 1,
-                }},
-                {'$group': {
-                    '_id': None,
-                    'incidentes_pendientes': {'$sum': 1}
-                }}
-            ]
-
-            resultado = self.format_cr(self.cr.aggregate(query_incidentes))
-            incidentes_pendientes = resultado[0]['incidentes_pendientes'] if resultado else 0
-            
-            res['incidentes_pendites'] = incidentes_pendientes
-
-            #Fallas pendientes
-            query_fallas = [
-                {'$match': {
-                    "deleted_at": {"$exists": False},
-                    "form_id": self.BITACORA_FALLAS,
-                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.fallas_fields['falla_caseta']}": booth_area,
-                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.fallas_fields['falla_ubicacion']}": location,
-                    f"answers.{self.fallas_fields['falla_estatus']}": 'abierto',
-                    # f"answers.{self.incidence_fields['fecha_hora_incidencia']}": {"$gte": today,"$lt": f"{today}T23:59:59"}
-                }},
-                {'$project': {
-                    '_id': 1,
-                }},
-                {'$group': {
-                    '_id': None,
-                    'fallas_pendientes': {'$sum': 1}
-                }}
-            ]
-
-            resultado = self.format_cr(self.cr.aggregate(query_fallas))
-            fallas_pendientes = resultado[0]['fallas_pendientes'] if resultado else 0
-
-            res['fallas_pendientes'] = fallas_pendientes
-
-        elif page == 'Accesos' or page == 'Bitacoras':
-            #Visitas en el dia, personal dentro, vehiculos dentro, salidas registradas y personas dentro
-            match_query_one = {
-                "deleted_at": {"$exists": False},
-                "form_id": self.BITACORA_ACCESOS,
-                f"answers.{self.PASE_ENTRADA_OBJ_ID}.{self.pase_entrada_fields['status_pase']}": {"$in": ["Activo"]},
-                f"answers.{self.bitacora_fields['ubicacion']}": location,
-            }
-
-            match_query_two = {
-                "deleted_at": {"$exists": False},
-                "form_id": self.BITACORA_ACCESOS,
-                f"answers.{self.PASE_ENTRADA_OBJ_ID}.{self.pase_entrada_fields['status_pase']}": {"$in": ["Activo"]},
-                f"answers.{self.bitacora_fields['ubicacion']}": location,
-                f"answers.{self.mf['fecha_entrada']}": {"$gte": f"{today} 00:00:00", "$lte": f"{today} 23:59:59"}
-            }
-
-            if not booth_area == 'todas' and booth_area:
-                match_query_one.update({
-                    f"answers.{self.bitacora_fields['caseta_entrada']}": booth_area,
-                })
-                match_query_two.update({
-                    f"answers.{self.bitacora_fields['caseta_entrada']}": booth_area,
-                })
-
-            query_visitas = [
-                {'$match': match_query_one},
-                {'$project': {
-                    '_id': 1,
-                    'vehiculos': {"$ifNull": [f"$answers.{self.mf['grupo_vehiculos']}", []]},
-                    'equipos': {"$ifNull": [f"$answers.{self.mf['grupo_equipos']}", []]},
-                    'perfil': f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['nombre_perfil']}",
-                    'status_visita': f"$answers.{self.bitacora_fields['status_visita']}",
-                    'fecha_salida': f"$answers.{self.mf['fecha_salida']}"
-                }},
-                {'$group': {
-                    '_id': None,
-                    'visitas_en_dia': {'$sum': 1},
-                    'total_vehiculos_dentro': {
-                        '$sum': {
-                            '$cond': {
-                                'if': {'$eq': ['$status_visita', 'entrada']},
-                                'then': {'$size': '$vehiculos'},
-                                'else': 0
-                            }
-                        }
-                    },
-                    'total_equipos_dentro': {
-                        '$sum': {
-                            '$cond': {
-                                'if': {'$eq': ['$status_visita', 'entrada']},
-                                'then': {'$size': '$equipos'},
-                                'else': 0
-                            }
-                        }
-                    },
-                    'detalle_visitas': {
-                        '$push': {
-                            'perfil': '$perfil',
-                            'status_visita': '$status_visita',
-                            'fecha_salida': '$fecha_salida'
-                        }
-                    }
-                }}
-            ]
-
-            query_visitas_dia = [
-                {'$match': match_query_two},
-                {'$project': {
-                    '_id': 1,
-                    'vehiculos': {"$ifNull": [f"$answers.{self.mf['grupo_vehiculos']}", []]},
-                    'equipos': {"$ifNull": [f"$answers.{self.mf['grupo_equipos']}", []]},
-                    'perfil': f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['nombre_perfil']}",
-                    'status_visita': f"$answers.{self.bitacora_fields['status_visita']}"
-                }},
-                {'$group': {
-                    '_id': None,
-                    'visitas_en_dia': {'$sum': 1},
-                    'total_vehiculos_dentro': {
-                        '$sum': {
-                            '$cond': {
-                                'if': {'$eq': ['$status_visita', 'entrada']},
-                                'then': {'$size': '$vehiculos'},
-                                'else': 0
-                            }
-                        }
-                    },
-                    'total_equipos_dentro': {
-                        '$sum': {
-                            '$cond': {
-                                'if': {'$eq': ['$status_visita', 'entrada']},
-                                'then': {'$size': '$equipos'},
-                                'else': 0
-                            }
-                        }
-                    },
-                    'detalle_visitas': {
-                        '$push': {
-                            'perfil': '$perfil',
-                            'status_visita': '$status_visita'
-                        }
-                    }
-                }}
-            ]
-
-            resultado = self.format_cr(self.cr.aggregate(query_visitas))
-            today_salida = f"{today} 00:00:00"
-            resultado_dia = self.format_cr(self.cr.aggregate(query_visitas_dia))
-
-            total_vehiculos_dentro = resultado[0]['total_vehiculos_dentro'] if resultado else 0
-            total_equipos_dentro = resultado[0]['total_equipos_dentro'] if resultado else 0
-            detalle_visitas_todas = resultado[0]['detalle_visitas'] if resultado else []
-            visitas_en_dia = resultado_dia[0]['visitas_en_dia'] if resultado_dia else 0
-
-            personal_dentro = 0
-            salidas = 0
-            personas_dentro = 0
-
-            for visita in detalle_visitas_todas:
-                status_visita = visita['status_visita'].lower()
-
-                if status_visita == "entrada":
-                    personas_dentro += 1
-                    
-                if visita.get('fecha_salida') and visita.get('fecha_salida') >= today_salida:
-                    salidas += 1
-
-            res['total_vehiculos_dentro'] = total_vehiculos_dentro
-            res['total_equipos_dentro'] = total_equipos_dentro
-            res['visitas_en_dia'] = visitas_en_dia
-            res['personal_dentro'] = personal_dentro
-            res['salidas_registradas'] = salidas
-            res['personas_dentro'] = personas_dentro
-
-            query_paqueteria = [
-                {'$match': {
-                    "deleted_at": {"$exists": False},
-                    "form_id": self.PAQUETERIA,
-                    f"answers.{self.paquetes_fields['estatus_paqueteria']}": "guardado",
-                    f"answers.{self.paquetes_fields['fecha_recibido_paqueteria']}": {"$gte": f"{today} 00:00:00", "$lte": f"{today} 23:59:59"}
-                }},
-                {'$project': {
-                    '_id': 1,
-                }},
-                {'$group': {
-                    '_id': None,
-                    'paquetes_recibidos': {'$sum': 1},
-                }}
-            ]
-
-            resultado_paquetes = self.format_cr(self.cr.aggregate(query_paqueteria))
-            paquetes_recibidos = resultado_paquetes[0]['paquetes_recibidos'] if resultado_paquetes else 0
-
-            res['paquetes_recibidos'] = paquetes_recibidos
-
-        elif page == 'Incidencias':
-            #Incidentes por dia, por semana y por mes
-            now = datetime.now(pytz.timezone("America/Mexico_City"))
-            today_date = now.date()
-            user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
-            zona = user_data.get('timezone','America/Monterrey')
-            dateFromWeek, dateToWeek = self.get_range_dates('this_week', zona)
-
-            match_query_incidentes = {
-                "deleted_at": {"$exists": False},
-                "form_id": self.BITACORA_INCIDENCIAS,
-            }
-
-            if location:
-                match_query_incidentes.update({
-                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.incidence_fields['ubicacion_incidencia']}": location,
-                })
-            if booth_area:
-                match_query_incidentes.update({
-                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.incidence_fields['area_incidencia']}": booth_area,
-                })
-
-            query_incidentes = [
-                {'$match': match_query_incidentes},
-                {'$addFields': {
-                    'fecha_incidencia': {
-                        '$dateFromString': {
-                            'dateString': f"$answers.{self.incidence_fields['fecha_hora_incidencia']}",
-                            'format': "%Y-%m-%d %H:%M:%S"
-                        }
-                    }
-                }},
-                {'$facet': {
-                    'por_dia': [
-                        {'$match': {
-                            'fecha_incidencia': {
-                                '$gte': datetime.combine(today_date, time.min),
-                                '$lte': datetime.combine(today_date, time.max)
-                            }
-                        }},
-                        {'$count': 'incidentes_x_dia'}
-                    ],
-                    'por_semana': [
-                        {'$match': {
-                            'fecha_incidencia': {
-                                '$gte': dateFromWeek,
-                                '$lte': dateToWeek
-                            }
-                        }},
-                        {'$group': {
-                            '_id': {
-                                'year': {'$isoWeekYear': '$fecha_incidencia'},
-                                'week': {'$isoWeek': '$fecha_incidencia'}
-                            },
-                            'incidentes_x_semana': {'$sum': 1}
-                        }}
-                    ],
-                    'por_mes': [
-                        {'$match': {
-                            'fecha_incidencia': {
-                                '$gte': datetime.combine(today_date.replace(day=1), time.min),
-                                '$lte': datetime.combine(today_date, time.max)
-                            }
-                        }},
-                        {'$group': {
-                            '_id': {
-                                'year': {'$year': '$fecha_incidencia'},
-                                'month': {'$month': '$fecha_incidencia'}
-                            },
-                            'incidentes_x_mes': {'$sum': 1}
-                        }}
-                    ]
-                }}
-            ]
-
-            resultado = self.format_cr(self.cr.aggregate(query_incidentes))[0]
-
-            res['incidentes_x_dia'] = resultado['por_dia'][0]['incidentes_x_dia'] if resultado['por_dia'] else 0
-            res['incidentes_x_semana'] = resultado['por_semana'][0]['incidentes_x_semana'] if resultado['por_semana'] else 0
-            res['incidentes_x_mes'] = resultado['por_mes'][0]['incidentes_x_mes'] if resultado['por_mes'] else 0
-
-            match_query_fallas = {
-                "deleted_at": {"$exists": False},
-                "form_id": self.BITACORA_FALLAS,
-                f"answers.{self.fallas_fields['falla_estatus']}": 'abierto',
-            }
-
-            if location:
-                match_query_fallas.update({
-                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.fallas_fields['falla_ubicacion']}": location,
-                })
-            if booth_area:
-                match_query_fallas.update({
-                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.fallas_fields['falla_caseta']}": booth_area,
-                })
-
-            #Fallas pendientes
-            query_fallas = [
-                {'$match': match_query_fallas},
-                {'$project': {
-                    '_id': 1,
-                }},
-                {'$group': {
-                    '_id': None,
-                    'fallas_pendientes': {'$sum': 1}
-                }}
-            ]
-
-            resultado = self.format_cr(self.cr.aggregate(query_fallas))
-            fallas_pendientes = resultado[0]['fallas_pendientes'] if resultado else 0
-
-            res['fallas_pendientes'] = fallas_pendientes
-        elif page == 'Articulos':
-            #Articulos concesionados pendientes
-            query_concesionados = [
-                {'$match': {
-                    "deleted_at": {"$exists": False},
-                    "form_id": self.CONCESSIONED_ARTICULOS,
-                    f"answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}": location,
-                    f"answers.{self.cons_f['status_concesion']}": "abierto",
-                }},
-                {'$project': {
-                    '_id': 1,
-                }},
-                {'$group': {
-                    '_id': None,
-                    'articulos_concesionados_pendientes': {'$sum': 1}
-                }}
-            ]
-
-            resultado = self.format_cr(self.cr.aggregate(query_concesionados))
-            articulos_concesionados_pendientes = resultado[0]['articulos_concesionados_pendientes'] if resultado else 0
-            
-            res['articulos_concesionados_pendientes'] = articulos_concesionados_pendientes
-
-            #Articulos perdidos
-            query_perdidos = [
-                {'$match': {
-                    "deleted_at": {"$exists": False},
-                    "form_id": self.BITACORA_OBJETOS_PERDIDOS,
-                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.perdidos_fields['ubicacion_perdido']}": location,
-                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.perdidos_fields['area_perdido']}": booth_area,
-                }},
-                {'$project': {
-                    '_id': 1,
-                    'status_perdido': f"$answers.{self.perdidos_fields['estatus_perdido']}",
-                }},
-                {'$group': {
-                    '_id': None,
-                    'perdidos_info': {
-                        '$push': {
-                            'status_perdido':'$status_perdido'
-                        }
-                    }
-                }}
-            ]
-
-            resultado = self.format_cr(self.cr.aggregate(query_perdidos))
-            perdidos_info = resultado[0]['perdidos_info'] if resultado else []
-
-            articulos_perdidos = 0
-            for perdido in perdidos_info:
-                status_perdido = perdido.get('status_perdido', '').lower()
-                if status_perdido not in ['entregado', 'donado']:
-                    articulos_perdidos += 1
-
-            res['articulos_perdidos'] = articulos_perdidos
-
-            match_query_paqueteria = {
-                "deleted_at": {"$exists": False},
-                "form_id": self.PAQUETERIA,
-                f"answers.{self.paquetes_fields['estatus_paqueteria']}": "guardado",
-            }
-
-            if location:
-                match_query_paqueteria.update({
-                    f"answers.{self.paquetes_fields['ubicacion_paqueteria']}": location,
-                })
-            if booth_area and not booth_area == "todas" and not booth_area == "":
-                match_query_paqueteria.update({
-                    f"answers.{self.paquetes_fields['area_paqueteria']}": booth_area,
-                })
-
-            query_paqueteria = [
-                {'$match': match_query_paqueteria },
-                {'$project': {
-                    '_id': 1,
-                }},
-                {'$group': {
-                    '_id': None,
-                    'paquetes_recibidos': {'$sum': 1},
-                }}
-            ]
-
-            resultado_paquetes = self.format_cr(self.cr.aggregate(query_paqueteria))
-            paquetes_recibidos = resultado_paquetes[0]['paquetes_recibidos'] if resultado_paquetes else 0
-
-            res['paquetes_recibidos'] = paquetes_recibidos
-
-        elif page == 'Notas':
-            #Notas
-            match_query = {
-                "deleted_at": {"$exists": False},
-                "form_id": self.ACCESOS_NOTAS,
-                f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}": location,
-            }
-
-            if booth_area and not booth_area == "todas" and not booth_area == "":
-                match_query.update({
-                    f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['nombre_area']}": booth_area,
-                })
-                
-            query_notas = [
-                {'$match': match_query},
-                {'$project': {
-                    '_id': 1,
-                    'nota_status': f"$answers.{self.notes_fields['note_status']}",
-                    'fecha_apertura': f"$answers.{self.notes_fields['note_open_date']}",
-                    'fecha_cierre': f"$answers.{self.notes_fields['note_close_date']}"
-                }},
-            ]
-
-            notas = self.format_cr(self.cr.aggregate(query_notas))
-            notas_del_dia = 0
-            notas_abiertas = 0
-            notas_cerradas = 0
-
-            for nota in notas:
-                if(nota.get('nota_status') == 'abierto'):
-                    notas_abiertas += 1
-                if(nota.get('fecha_apertura') >= f"{today} 00:00:00" and nota.get('fecha_apertura') <= f"{today} 23:59:59"):
-                    notas_del_dia += 1
-                if(nota.get('fecha_cierre') and nota.get('nota_status') == 'cerrado'):
-                   notas_cerradas += 1
-
-            res['notas_abiertas'] = notas_abiertas
-            res['notas_del_dia'] = notas_del_dia
-            res['notas_cerradas'] = notas_cerradas
-
-        elif page == 'PasesHistorial':
-            employee = self.get_employee_data(user_id=self.user.get('user_id'), get_one=True)
-            name = employee.get('worker_name')
-
-            query_pases = [
-                {"$match": {
-                    "deleted_at": {"$exists": False},
-                    "form_id": self.PASE_ENTRADA,
-                    f"answers.{self.pase_entrada_fields['status_pase']}": {"$in": ["activo", "proceso"]},
-                    f"answers.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['nombre_guardia_apoyo']}": name
-                }},
-                {
-                    "$group": {
-                        "_id": f"$answers.{self.pase_entrada_fields['status_pase']}",
-                        "total": {"$sum": 1}
-                    }
-                }
-            ]
-            pases = self.format_cr(self.cr.aggregate(query_pases))
-            if pases:
-                for item in pases:
-                    if item.get('_id') == 'activo':
-                        res['pases_activos'] = item.get('total')
-                    if item.get('_id') == 'proceso':
-                        res['pases_proceso'] = item.get('total')
-        elif page == 'Asistencias':
-            year_str = str(year).zfill(4)
-            month_str = str(month).zfill(2)
-            query_asistencias = [
-                {'$match': {
-                    "deleted_at": {"$exists": False},
-                    "form_id": self.REGISTRO_ASISTENCIA,
-                    f"answers.{self.f['status_turn']}": {"$exists": True},
-                    f"answers.{self.f['fecha_inicio_turno']}": {
-                        "$gte": f"{year_str}-{month_str}-01 00:00:00",
-                        "$lte": f"{year_str}-{month_str}-31 23:59:59"
-                    }
-                }},
-                {'$project': {
-                    '_id': 1,
-                    'status_turn': f"$answers.{self.f['status_turn']}",
-                }},
-                {'$group': {
-                    '_id': None,
-                    'total_asistencias': {
-                        '$sum': {
-                            '$cond': {
-                                'if': {'$eq': ['$status_turn', 'presente']},
-                                'then': 1,
-                                'else': 0
-                            }
-                        }
-                    },
-                    'total_retardos': {
-                        '$sum': {
-                            '$cond': {
-                                'if': {'$in': ['$status_turn', ['retardo', 'falta_por_retardo']]},
-                                'then': 1,
-                                'else': 0
-                            }
-                        }
-                    },
-                }}
-            ]
-            data = self.format_cr(self.cr.aggregate(query_asistencias))
-            if data:
-                data = self.unlist(data)
-                res['total_asistencias'] = data.get('total_asistencias', 0)
-                res['total_retardos'] = data.get('total_retardos', 0)
-        return res
-
-    def get_employee_data(self, name=None, user_id=None, username=None, email=None,  get_one=False):
-        match_query = {
-            "deleted_at":{"$exists":False},
-            "form_id": self.EMPLEADOS,
-            }
-        if name:
-            match_query.update(self._get_match_q(self.f['worker_name'], name))
-        if user_id:
-            match_query.update(self._get_match_q(f"{self.USUARIOS_OBJ_ID}.{self.employee_fields['user_id_id']}", user_id))
-        if username:
-            match_query.update(self._get_match_q(self.f['username'], username))
-        if email:
-            match_query.update(self._get_match_q(self.employee_fields['usuario_email'], email)) 
-        query = [
-            {'$match': match_query },    
-            {'$project': self.project_format(self.employee_fields)},
-            {'$sort':{'worker_name':1}},
-            ]
-        res = self.format_cr_result(self.cr.aggregate(query), get_one=get_one)
-        return res
-
-    def check_in_aux_guard(self):
-        match_query = {
-            "deleted_at": {"$exists": False},
-            "form_id": self.CHECKIN_CASETAS,
-        }
-        query = [
-            {'$match': match_query},
-            {'$unwind': f"$answers.{self.f['guard_group']}"},
-            {'$project': {
-                '_id': 1,
-                'folio': "$folio",
-                'created_at': "$created_at",
-                'name': f"$answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.f['worker_name_jefes']}",
-                'user_id': {"$first": f"$answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}"},
-                'location': f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['ubicacion']}",
-                'area': f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_area']}",
-                'checkin_date': f"$answers.{self.f['guard_group']}.{self.f['checkin_date']}",
-                'checkout_date': f"$answers.{self.f['guard_group']}.{self.f['checkout_date']}",
-                'checkin_status': f"$answers.{self.f['guard_group']}.{self.f['checkin_status']}",
-                'checkin_position': f"$answers.{self.f['guard_group']}.{self.f['checkin_position']}",
-            }},
-            {'$match': {'user_id': {'$ne': None}}},
-            {'$sort': {'updated_at': -1}},
-            {'$group': {
-                '_id': {'user_id': '$user_id'},
-                'name': {'$last': '$name'},
-                'location': {'$last': '$location'},
-                'area': {'$last': '$area'},
-                'checkin_date': {'$last': '$checkin_date'},
-                'checkout_date': {'$last': '$checkout_date'},
-                'checkin_status': {'$last': '$checkin_status'},
-                'checkin_position': {'$last': '$checkin_position'},
-            }},
-            {'$project': {
-                '_id': 0,
-                'user_id': '$_id.user_id',
-                'name': '$name',
-                'location': '$location',
-                'area': '$area',
-                'checkin_date': '$checkin_date',
-                'checkout_date': '$checkout_date',
-                'checkin_status': {'$cond': [{'$eq': ['$checkin_status', 'entrada']}, 'in', 'out']},
-                'checkin_position': '$checkin_position',
-            }},
-        ]
-        data = self.format_cr(self.cr.aggregate(query))
-        res = {}
-        for rec in data:
-            status = 'in' if rec.get('checkin_status') in ['in', 'entrada'] else 'out'
-            user_id = rec.get('user_id') or 0
-            res[int(user_id)] = {
-                'status': status,
-                'name': rec.get('name'),
-                'user_id': rec.get('user_id'),
-                'location': rec.get('location'),
-                'area': rec.get('area'),
-                'checkin_date': rec.get('checkin_date'),
-                'checkout_date': rec.get('checkout_date'),
-                'checkin_position': rec.get('checkin_position')
-            }
-        return res
-
-    def get_employee_checkin_status(self, user_ids, as_shift=False,  **kwargs):
-        query = []
-        if kwargs.get('user_id'):
-            user_id = kwargs['user_id']
-        else:
-            user_id = self.user.get('user_id')
-        match_query = {
-            "deleted_at":{"$exists":False},
-            "form_id": self.CHECKIN_CASETAS,
-            }
-        unwind = {'$unwind': f"$answers.{self.f['guard_group']}"}
-        query = [{'$match': match_query }, unwind ]
-
-        unwind_query = {f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": {"$exists":True}}
-        if as_shift:
-            match_query.update({'created_by_id':user_id})
-            query = [
-                {'$match': match_query },
-                {'$sort':{'created_at':-1}},
-                {'$limit':1},
-                unwind
-                ]
-        else:
-            if type(user_ids) == list:
-                unwind_query.update({f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": {"$in": user_ids}})
-            else:
-                unwind_query.update({f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": user_ids })
-        query += [ {'$match': unwind_query }]
-        query += [
-            {'$addFields': {
-                'priority': {
-                    '$cond': [{'$eq': [f"$answers.{self.f['guard_group']}.{self.f['checkin_status']}", 'entrada']}, 1, 0]
-                }
-            }},
-            {'$project':
-                {'_id': 1,
-                    'folio': "$folio",
-                    'created_at': "$created_at",
-                    'name': f"$answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.f['worker_name_jefes']}",
-                    'user_id': {"$first":f"$answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}"},
-                    'location': f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['ubicacion']}",
-                    'area': f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_area']}",
-                    'checkin_date': f"$answers.{self.f['guard_group']}.{self.f['checkin_date']}",
-                    'checkout_date': f"$answers.{self.f['guard_group']}.{self.f['checkout_date']}",
-                    'checkin_status': f"$answers.{self.f['guard_group']}.{self.f['checkin_status']}",
-                    'checkin_position': f"$answers.{self.f['guard_group']}.{self.f['checkin_position']}",
-                    'nombre_suplente': f"$answers.{self.f['guard_group']}.{self.checkin_fields['nombre_suplente']}",
-                    'priority': '$priority'
-                    }
-            },
-            {'$sort':{'priority':-1, 'created_at':-1}},
-            {'$group':{
-                '_id':{
-                    'user_id':'$user_id',
-                    },
-                'name':{'$first':'$name'},
-                'location':{'$first':'$location'},
-                'area':{'$first':'$area'},
-                'checkin_date':{'$first':'$checkin_date'},
-                'checkout_date':{'$first':'$checkout_date'},
-                'checkin_status':{'$first':'$checkin_status'},
-                'checkin_position':{'$first':'$checkin_position'},
-                'folio':{'$first':'$folio'},
-                'id_register':{'$first':'$_id'},
-                'nombre_suplente':{'$first':'$nombre_suplente'}
-            }},
-            {'$project':{
-                '_id':0,
-                'user_id':'$_id.user_id',
-                'name':'$name',
-                'location':'$location',
-                'area':'$area',
-                'checkin_date':'$checkin_date',
-                'checkout_date':'$checkout_date',
-                'checkin_status': {'$cond': [ {'$eq':['$checkin_status','entrada']},'in','out']}, 
-                'checkin_position':'$checkin_position',
-                'folio':'$folio',
-                'id_register':'$id_register',
-                'nombre_suplente':'$nombre_suplente'
-            }}
-            ]
-        data = self.format_cr(self.cr.aggregate(query))
-        res = {}
-        for rec in data:
-            status = 'in' if rec.get('checkin_status') in ['in','entrada'] else 'out'
-            user_id = rec.get('user_id') or 0
-            res[int(user_id)] = {
-                'status':status, 
-                'name': rec.get('name'), 
-                'folio': rec.get('folio'),
-                '_id': str(rec.get('id_register')),
-                'user_id': rec.get('user_id'), 
-                'location':rec.get('location'),
-                'area':rec.get('area'),
-                'checkin_date':rec.get('checkin_date'),
-                'checkout_date':rec.get('checkout_date'),
-                'checkin_position':rec.get('checkin_position'),
-                'nombre_suplente':rec.get('nombre_suplente',"")
-                }
-        return res
-
-    def check_in_out_employees(self,  checkin_type, check_datetime, checkin={}, employee_list=[], **kwargs):
-        checkin_status = 'entrada' if checkin_type == 'in' else 'salida'
-        date_id = 'checkin_date' if checkin_type == 'in' else 'checkout_date'
-        checkin[self.f['guard_group']] = checkin.get(self.f['guard_group'],[])
-        if checkin_type == 'out':
-            for guard in checkin[self.f['guard_group']]:
-                user_id = int(self.unlist(guard.get(self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID,{})\
-                    .get(self.mf['id_usuario'],0)))
-                if guard[self.checkin_fields['checkin_status']] != checkin_status:
-                    if not employee_list:
-                        guard[self.checkin_fields['checkin_status']] = checkin_status
-                        guard[self.checkin_fields[date_id]] = check_datetime                    
-                    elif user_id in employee_list:
-                        guard[self.checkin_fields['checkin_status']] = checkin_status
-                        guard[self.checkin_fields[date_id]] = check_datetime
-        elif employee_list:
-            for idx, guard in enumerate(employee_list):
-                empl_cat = {}
-                empl_cat[self.f['worker_name_b']] = guard.get('name')
-                if isinstance(guard.get('usuario_id'), list):
-                    empl_cat[self.mf['id_usuario']] = [(guard.get('usuario_id', [])[0]),]
-                else:
-                    empl_cat[self.mf['id_usuario']] = [guard.get('user_id'),]
-                guard_data = {
-                        self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID : empl_cat,
-                        self.checkin_fields['checkin_position']:'guardia_de_apoyo',
-                        self.checkin_fields['checkin_status']:checkin_status,
-                        self.checkin_fields[date_id]:check_datetime,
-                        self.checkin_fields['nombre_suplente']:guard.get("nombre_suplente",''),
-                       }
-                if kwargs.get('employee_type'):
-                    guard_data.update({self.checkin_fields['checkin_position']: kwargs['employee_type'] })
-                elif idx == 0:
-                    guard_data.update({self.checkin_fields['checkin_position']: self.chife_guard})
-                else:
-                    guard_data.update({self.checkin_fields['checkin_position']: self.support_guard})
-                checkin[self.f['guard_group']] += [guard_data,]
-        return checkin
-
-    def do_attendance(self, asistencia_answers):
-        metadata = self.lkf_api.get_metadata(form_id=self.REGISTRO_ASISTENCIA)
-        metadata.update({
-            "properties": {
-                "device_properties":{
-                    "System": "Script",
-                    "Module": 'Accesos',
-                    "Process": 'Inicio de turno',
-                    "Action": 'asistencia',
-                    "File": 'accesos/app.py',
-                }
-            },
+        self.pase_entrada_fields.update({
+            'grupo_vehiculos':'663e446cadf967542759ebba',
         })
-        metadata.update({'answers':asistencia_answers})
-        #! Se registra la asistencia.
-        response = self.lkf_api.post_forms_answers(metadata)
-        if response.get('status_code') in [200, 201, 202]:
-            return True
-        else:
-            return self.LKFException({'title': 'Error en registro de asistencia', 'msg': {'response': response}})
 
-    def do_checkin(self, location, area, employee_list=[], fotografia=[], check_in_manual={}, nombre_suplente="", checkin_id=""):
-        """
-        Se encarga de hacer el check in de un guardia.
-
-        Args:
-            location (str): Ubicacion de la caseta.
-            area (str): Area de la caseta.
-            employee_list (list, optional): Lista de guardias a checkear. Defaults to [].
-            fotografia (list, optional): Lista de fotos para el check in. Defaults to [].
-            check_in_manual (dict, optional): Datos del check in manual. Defaults to {}.
-            nombre_suplente (str, optional): Nombre del suplente. Defaults to "".
-            checkin_id (str, optional): ID del check in. Defaults to "".
-
-        Returns:
-            dict: Resultado del check in.
-        """
-        
-        #! Se verifica si la caseta esta abierta.
-        is_caseta_open = self.is_boot_available(location, area)
-        user_id = self.user.get('user_id')
-        user = self.lkf_api.get_user_by_id(user_id)
-        user_name = user.get('name', '')
-        
-        #! Si la caseta esta abierta se actualizan los guardias solamente.
-        if is_caseta_open:
-            res = self.update_guards_checkin([{'user_id': user_id, 'name': user_name}], checkin_id, location, area, user, nombre_suplente, fotografia)
-            format_res = self.unlist(res)
-            if format_res.get('status_code') in [200, 201, 202]:
-                return format_res
-            else:
-                self.LKFException({'title': 'Error al hacer check-in', 'msg': format_res.get('json')})
-
-        #! Se hace una lista de los ids de los guardias, el usuario actual y la lista de guardias por parametro.
-        user_ids = [user_id] + [x['user_id'] for x in employee_list]
-        #! Se obtienen los guardias por ubicacion y area.
-        boot_config = self.get_users_by_location_area(
-            location_name=location, 
-            area_name=area, 
-            user_id=user_ids)
-
-        #! Si el guardia no tiene configurada la caseta actual arroja Exception.
-        if not boot_config:
-            msg = f"El usuario no puede hacer check-in en la caseta: {area} - {location}."
-            msg += f"Por favor verifica la configuracion."
-            return self.LKFException({'title': 'Advertencia', 'msg': msg})
-        else:
-            #! Se hace una lista de los ids de los guardias permitidos.
-            allowed_users = [x['user_id'] for x in boot_config]
-            common_values = list(set(user_ids) & set(allowed_users))
-            not_allowed = [user_id for user_id in user_ids if user_id not in common_values]
-
-        #! Si hay algun guardia que no tiene permiso para hacer check-in arroja Exception.
-        if not_allowed:
-            msg = f"Usuarios con ids {not_allowed}. "
-            msg += f"No tienen permitido hacer check-in en esta caseta: {area} - {location}."
-            return self.LKFException({'title': 'Advertencia', 'msg': msg})
-
-        #! Si alguno de los guardias ya tiene un check-in abierto arroja Exception.
-        validate_status = self.get_employee_checkin_status(user_ids)
-        not_allowed = [user_id for user_id, user_data in validate_status.items() if user_data.get('status') == 'in']
-        if not_allowed:
-            msg = f"El usuario(s) con id(s) {not_allowed}. Se encuentran actualmente registrados en otra caseta."
-            msg += f" Es necesario hacer check-out de cualquier caseta antes de querer entrar a una nueva."
-            return self.LKFException({'title': 'Advertencia', 'msg': msg})
-
-        #! Se obtiene el empleado actual.
-        employee = self.get_employee_data(user_id=user_id, get_one=True)
-        if not employee:
-            msg = f"No se encontro ningun empleado con id: {user_id}"
-            return self.LKFException({'title': 'Advertencia', 'msg': msg})
-        user_data = self.lkf_api.get_user_by_id(user_id)
-        employee['timezone'] = user_data.get('timezone', 'America/Monterrey')
-        employee['name'] = employee['worker_name']
-        employee['position'] = self.chife_guard
-        employee['nombre_suplente'] = nombre_suplente
-        timezone = employee.get('cat_timezone', employee.get('timezone', 'America/Monterrey'))
-        data = self.lkf_api.get_metadata(self.CHECKIN_CASETAS)
-        now_datetime = self.today_str(timezone, date_format='datetime')
-
-        #! Se obtiene la informacion formateada para hacer el check in.
-        checkin = self.checkin_data(employee, location, area, 'in', now_datetime)
-        employee_list.insert(0, employee)
-        checkin = self.check_in_out_employees('in', now_datetime, checkin=checkin, employee_list=employee_list)
-        checkin[self.f['configuracion_de_accesos']] = self.get_booth_config(location)
-
-        #! Se actualiza el check in con la informacion faltante.
-        data.update({
-                'properties': {
-                    "device_properties":{
-                        "system": "Modulo Accesos",
-                        "process": 'Checkin-Checkout',
-                        "action": 'do_checkin',
-                        "archive": "accesos_utils.py"
-                    }
-                },
-                'answers': checkin
-            })
-        if check_in_manual:
-            checkin.update({
-                self.checkin_fields['checkin_image']: check_in_manual.get('image', []),
-                self.checkin_fields['commentario_checkin_caseta']: check_in_manual.get('comment', '')
-            })
-        if fotografia:
-            checkin.update({
-                self.checkin_fields['fotografia_inicio_turno']: fotografia
-            })
-
-        asistencia_answers = {
-            self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID: {
-                self.Location.f['location']: location,
-                self.Location.f['area']: area
-            },
-            self.f['tipo_guardia']: 'guardia_regular',
-            self.checkin_fields['checkin_type']: 'iniciar_turno',
-            self.f['image_checkin']: fotografia
-        }
-
-        if nombre_suplente:
-            asistencia_answers.update({
-                self.f['tipo_guardia']: 'guardia_suplente',
-                self.f['nombre_guardia_suplente']: nombre_suplente
-            })
-
-        registro_de_asistencia = self.do_attendance(asistencia_answers)
-        
-        resp_create = self.lkf_api.post_forms_answers(data)
-        if resp_create.get('status_code') == 201:
-            resp_create['json'].update({'boot_status':{'guard_on_duty':user_data['name']}})
-            resp_create.update({'registro_de_asistencia': 'Correcto'})
-        return resp_create
-
-    def do_checkout(self, checkin_id=None, location=None, area=None, guards=[], forzar=False, comments=False, fotografia=[], guard_id=None):
-        """
-        Se encarga de hacer el check out de un empleado.
-
-        Args:
-            checkin_id (str): Id del check in.
-            location (str): Ubicacion.
-            area (str): Area.
-            guards (list): Lista de guardias.
-            forzar (bool): Forzar el check out.
-            comments (bool): Comentarios.
-            fotografia (list): Fotografia.
-
-        Returns:
-            dict: Response.
-        """
-
-        if guard_id:
-            user_id = guard_id
-        elif guards:
-            user_id = guards[0]
-        else:
-            user_id = self.user.get('user_id')
-        
-        employee =  self.get_employee_data(user_id=user_id, get_one=True)
-        timezone = employee.get('cat_timezone', employee.get('timezone', 'America/Monterrey'))
-        now_datetime =self.today_str(timezone, date_format='datetime')
-        last_chekin = {}
-
-        if not checkin_id:
-            return self.LKFException({"msg":"No encontramos un checking valido del cual podemos hacer checkout...", "title": "Advertencia"})
-        
-        is_caseta_open = self.is_boot_available(location, area)
-        if not is_caseta_open:
-            msg = f"No se puede hacer check-out sin antes haber hecho check-in. Caseta: {location} - {area}."
-            return self.LKFException({"msg":msg, "title": "Advertencia"})
-        
-        record = self.get_record_by_id(checkin_id)
-        checkin_answers = record['answers']
-        folio = record['folio']
-        area = checkin_answers.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID,{}).get(self.f['area'])
-        location = checkin_answers.get(self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID,{}).get(self.f['location'])
-        rec_guards = checkin_answers.get(self.checkin_fields['guard_group'])
-        guards_in = sum(
-            1
-            for guard in rec_guards
-            if not guard.get(self.checkin_fields['checkout_date'])
-        )
-        for guard in rec_guards:
-            fecha_cierre_turno = guard.get(self.checkin_fields['checkout_date'])
-            guard_id = self.unlist(guard.get(self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID, {}).get(self.mf['id_usuario']))
-            actual_guard_id = self.unlist(employee.get('usuario_id'))
-            if not fecha_cierre_turno and guards_in > 1 and guard_id == actual_guard_id:
-                resp = self.do_checkout_aux_guard(user_id=guard_id, checkin_id=checkin_id, guards=[actual_guard_id], location=location, area=area, fotografia=fotografia)
-                return resp
-
-        if not guards:
-            checkin_answers[self.checkin_fields['commentario_checkin_caseta']] = \
-                checkin_answers.get(self.checkin_fields['commentario_checkin_caseta'],'')
-            checkin_answers[self.checkin_fields['checkin_type']] = 'cerrada'
-            checkin_answers[self.checkin_fields['boot_checkout_date']] = now_datetime
-            checkin_answers[self.checkin_fields['forzar_cierre']] = 'regular'
-
-            if comments:
-                checkin_answers[self.checkin_fields['commentario_checkin_caseta']] += comments + ' '
-            if forzar:
-                checkin_answers[self.checkin_fields['commentario_checkin_caseta']] += f"Cerrado por: {employee.get('worker_name')}"
-                checkin_answers[self.checkin_fields['forzar_cierre']] = 'forzar'
-        
-        data = self.lkf_api.get_metadata(self.CHECKIN_CASETAS)
-        checkin_answers = self.check_in_out_employees('out', now_datetime, checkin=checkin_answers, employee_list=guards)
-        data['answers'] = checkin_answers
-
-        if fotografia:
-            checkin_answers.update({
-                self.checkin_fields['fotografia_cierre_turno']: fotografia
-            })
-
-        response = self.lkf_api.patch_record( data=data, record_id=checkin_id)
-        if response.get('status_code') in [200, 201, 202]:
-            print('entra aquiiiiiiii')
-            print('employee', employee)
-            if employee:
-                print('employee', employee)
-                print('location', location)
-                print('area', area)
-                record_id = self.search_guard_asistance(location, area, self.unlist(employee.get('usuario_id')))
-                print('record_id', record_id)
-                asistencia_answers = {
-                    self.f['foto_cierre_turno']: fotografia,
-                    self.checkin_fields['checkin_type']: 'cerrar_turno',
-                }
-                print('asistencia_answers', asistencia_answers)
-                res = self.lkf_api.patch_multi_record(answers=asistencia_answers, form_id=self.REGISTRO_ASISTENCIA, record_id=record_id)
-                print('res', res)
-                if res.get('status_code') in [200, 201, 202]:
-                    response.update({'registro_de_asistencia': 'Correcto'})
-                else:
-                    response.update({'registro_de_asistencia': 'Error'})
-        elif response.get('status_code') == 401:
-            return self.LKFException({"title": "Advertencia", "msg":"El guardia NO tiene permisos sobre el formulario de cierre de casetas"})
-        return response
-
-    def get_cantidades_de_pases(self, x_empresa=False):
-        print('entra a get_cantidades_de_pases')
-        match_query = {
-            "deleted_at":{"$exists":False},
-            "form_id": self.PASE_ENTRADA,
-        }
-
-        proyect_fields = {
-            '_id':1,
-            'folio': f"$folio",
-            'estatus':f"$answers.{self.pase_entrada_fields['status_pase']}",
-            'empresa': { "$first" : f"$answers.{self.VISITA_AUTORIZADA_CAT_OBJ_ID}.{self.mf['empresa']}"},
-            'nombre': f"$answers.{self.mf['nombre_pase']}",
-            'nombre_perfil': f"$answers.{self.pase_entrada_fields['nombre_perfil']}",
-            'fecha_hasta_pase': f"$answers.{self.pase_entrada_fields['fecha_hasta_pase']}",
-            'created_at': 1
-        }
-
-        match_query.update({f"answers.{self.pase_entrada_fields['status_pase']}":{'$exists': True}})
-
-        post_project_match = {}
-
-        group_by = {
-                '_id':{
-                    'estatus': '$estatus',
-                    },
-                'cantidad': {'$sum': 1},
-                }
-        
-        if x_empresa:
-            post_project_match = {
-                "$and": [
-                    {'empresa': {"$ne": None}},
-                    {'empresa': {"$ne": ""}}
-                ]
-            }
-
-            group_by = {
-                '_id':{
-                    'empresa':'$empresa',
-                    'estatus': '$estatus',
-                    },
-                'cantidad': {'$sum': 1},
-            }
-
-        query = [
-            {'$match': match_query },
-            {'$project': proyect_fields},
-            {'$match': post_project_match},
-            {'$group': group_by}
-        ]
-
-        records = self.format_cr(self.cr.aggregate(query))
-        print('/////////records', records)
-        return  records
-    
-    def get_cantidades_de_pases_x_persona(self, contratista=None):
-        print('entra a get_cantidades_de_pases_x_persona')
-        match_query = {
-            "deleted_at":{"$exists":False},
-            "form_id": self.PASE_ENTRADA,
-        }
-
-        if contratista:
-            match_query.update({f"answers.{self.VISITA_AUTORIZADA_CAT_OBJ_ID}.{self.mf['empresa']}":contratista})
-
-        proyect_fields = {
-            '_id':1,
-            'folio': f"$folio",
-            'estatus':f"$answers.{self.pase_entrada_fields['status_pase']}",
-            'empresa': { "$first" : f"$answers.{self.VISITA_AUTORIZADA_CAT_OBJ_ID}.{self.mf['empresa']}"},
-            'nombre': f"$answers.{self.mf['nombre_pase']}",
-            'nombre_perfil': f"$answers.{self.pase_entrada_fields['nombre_perfil']}",
-            'fecha_hasta_pase': f"$answers.{self.pase_entrada_fields['fecha_hasta_pase']}",
-            'created_at': 1
-        }
-
-        match_query.update({f"answers.{self.pase_entrada_fields['status_pase']}":{'$exists': True}})
-
-        group_by = {
-                '_id':{
-                    'folio':'$folio',
-                    'nombre': '$nombre',
-                    'empresa': '$empresa',
-                    'nombre_perfil': '$nombre_perfil',
-                    'fecha_hasta_pase': '$fecha_hasta_pase',
-                    }
-                }
-        
-
-        query = [
-            {'$match': match_query },
-            {'$project': proyect_fields},
-            {'$group': group_by}
-        ]
-
-        records = self.format_cr(self.cr.aggregate(query))
-        print('/////////records', records)
-        return  records
-    
-    def get_catalogo_paquetes(self):
-        catalog_id = self.PROVEEDORES_CAT_ID
-        form_id= self.PAQUETERIA
-        return self.lkf_api.catalog_view(catalog_id, form_id) 
-
-    def create_paquete(self, data_paquete):
-        metadata = self.lkf_api.get_metadata(form_id=self.PAQUETERIA)
-        metadata.update({
-            "properties": {
-                "device_properties":{
-                    "System": "Script",
-                    "Module": "Accesos",
-                    "Process": "Creación de Paquetes",
-                    "Action": "nuevo_paquete",
-                    "File": "accesos/app.py"
-                }
-            },
+        self.envio_correo_fields.update({
+            'phone_to': '699f302213e8f8740c465bfc',
+            'tipo_de_notificacion': '699dfe3b82be0dbe0319d38c'
         })
-        answers = {}
-        for key, value in data_paquete.items():
-            if key == 'ubicacion_paqueteria':
-                answers[self.UBICACIONES_CAT_OBJ_ID] = { self.mf['ubicacion']: value}
-            elif  key == 'area_paqueteria':
-                 answers[self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID] = { self.mf['nombre_area']: value}
-            elif  key == 'guardado_en_paqueteria':
-                answers[self.LOCKERS_CAT_OBJ_ID] ={self.mf['locker_id']:value} 
-            elif key == 'proveedor':
-                answers[self.PROVEEDORES_CAT_OBJ_ID] = {self.paquetes_fields['proveedor']:value}
-            elif key == 'quien_recibe_paqueteria':
-                answers[self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID] = {self.mf['nombre_empleado']:value}
-            else:
-                answers.update({f"{self.paquetes_fields[key]}":value})
-        metadata.update({'answers':answers})
-        res=self.lkf_api.post_forms_answers(metadata)
-        return res
-
-    def update_paquete(self, data_paquete, folio):
-        #---Define Answers
-        answers = {}
-        for key, value in data_paquete.items():
-            if  key == 'ubicacion_perdido':
-                answers[self.cons_f['ubicacion_catalog_concesion']] = { self.mf['ubicacion']: value}
-            elif  key == 'area_paqueteria':
-                 answers[self.cons_f['area_catalog_concesion']] = { self.mf['nombre_area_salida']: value}
-            elif  key == 'guardado_en_paqueteria':
-                answers[self.LOCKERS_CAT_OBJ_ID] ={self.mf['locker_id']:value} 
-            elif key == 'proveedor':
-                answers[self.PROVEEDORES_CAT_OBJ_ID] = {self.paquetes_fields['proveedor']:value}
-            elif key == 'quien_recibe_paqueteria':
-                answers[self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID] = {self.mf['nombre_empleado']:value}
-            else:
-                answers.update({f"{self.paquetes_fields[key]}":value})
-        if answers or folio:
-            return self.lkf_api.patch_multi_record( answers = answers, form_id=self.PAQUETERIA, folios=[folio])
-        else:
-            self.LKFException('No se mandarón parametros para actualizar')
-
-    def get_list_bitacora2(self, location=None, area=None, prioridades=[], dateFrom='', dateTo='', filterDate=""):
-        match_query = {
-            "deleted_at":{"$exists":False},
-            "form_id": self.BITACORA_ACCESOS
-        }
-        if location:
-            match_query.update({f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}":location})
-        if area:
-            match_query.update({f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['nombre_area']}":area})
-        if prioridades:
-            match_query[f"answers.{self.bitacora_fields['status_visita']}"] = {"$in": prioridades}
-  
-        user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
-        zona = user_data.get('timezone','America/Monterrey')
-
-        if filterDate != "range":
-            dateFrom, dateTo = self.get_range_dates(filterDate,zona)
-
-            if dateFrom:
-                dateFrom = str(dateFrom)
-            if dateTo:
-                dateTo = str(dateTo)
-
-        if dateFrom and dateTo:
-           match_query.update({
-                f"answers.{self.mf['fecha_entrada']}": {"$gte": dateFrom, "$lte": dateTo},
-            })
-        elif dateFrom:
-            match_query.update({
-                f"answers.{self.mf['fecha_entrada']}": {"$gte": dateFrom}
-            })
-        elif dateTo:
-            match_query.update({
-                f"answers.{self.mf['fecha_entrada']}": {"$lte": dateTo}
-            })
-        
-        proyect_fields ={
-            '_id': 1,
-            'folio': "$folio",
-            'created_at': "$created_at",
-            'updated_at': "$updated_at",
-            'a_quien_visita':f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_empleado']}",
-            'documento': f"$answers.{self.mf['documento']}",
-            'caseta_entrada':f"$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['nombre_area']}",
-            'codigo_qr':f"$answers.{self.mf['codigo_qr']}",
-            'comentarios':f"$answers.{self.bitacora_fields['grupo_comentario']}",
-            'fecha_salida':f"$answers.{self.mf['fecha_salida']}",
-            'fecha_entrada':f"$answers.{self.mf['fecha_entrada']}",
-            'foto_url': {"$arrayElemAt": [f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['foto']}.file_url", 0]},
-            'equipos':f"$answers.{self.mf['grupo_equipos']}",
-            'grupo_areas_acceso': f"$answers.{self.mf['grupo_areas_acceso']}",
-            'id_gafet': f"$answers.{self.GAFETES_CAT_OBJ_ID}.{self.gafetes_fields['gafete_id']}",
-            'id_locker': f"$answers.{self.LOCKERS_CAT_OBJ_ID}.{self.lockers_fields['locker_id']}",
-            'identificacion':  {"$first":f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['identificacion']}"},
-            'pase_id':{"$toObjectId":f"$answers.{self.mf['codigo_qr']}"},
-            'motivo_visita':f"$answers.{self.CONFIG_PERFILES_OBJ_ID}.{self.mf['motivo']}",
-            'nombre_area_salida':f"$answers.{self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.mf['nombre_area_salida']}",
-            'nombre_visitante':f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['nombre_visita']}",
-            'contratista':f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['empresa']}",
-            'perfil_visita':{'$arrayElemAt': [f"$answers.{self.PASE_ENTRADA_OBJ_ID}.{self.mf['nombre_perfil']}",0]},
-            'status_gafete':f"$answers.{self.mf['status_gafete']}",
-            'status_visita':f"$answers.{self.mf['tipo_registro']}",
-            'ubicacion':f"$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}",
-            'vehiculos':f"$answers.{self.mf['grupo_vehiculos']}",
-            'visita_a': f"$answers.{self.mf['grupo_visitados']}"
-            }
-        lookup = {
-         'from': 'form_answer',
-         'localField': 'pase_id',
-         'foreignField': '_id',
-         "pipeline": [
-                {'$match':{
-                    "deleted_at":{"$exists":False},
-                    "form_id": self.PASE_ENTRADA,
-                    }
-                },
-                {'$project':{
-                    "_id":0, 
-                    'motivo_visita':f"$answers.{self.CONFIG_PERFILES_OBJ_ID}.{self.mf['motivo']}",
-                    'grupo_areas_acceso': f"$answers.{self.mf['grupo_areas_acceso']}",                    
-                    }
-                },
-                ],
-         'as': 'pase',
-        }
-       
-        query = [
-            {'$match': match_query },
-            {'$project': proyect_fields},
-            {'$lookup': lookup},
-        ]
-        # if not filterDate:
-        #     query.append(
-        #         {"$limit":1}
-        #     )
-        if dateFrom:
-            query.append(
-                {'$sort':{'folio':-1}},
-            )
-        else:
-            query.append(
-                {'$sort':{'folio':-1}},
-            )
-           
-        records = self.format_cr(self.cr.aggregate(query))
-        # print( simplejson.dumps(records, indent=4))
-        for r in records:
-            pase = r.pop('pase')
-            pase_id = r.pop('pase_id')
-            # r.pop('pase_id')
-            if len(pase) > 0 :
-                pase = pase[0]
-                r['motivo_visita'] = self.unlist(pase.get('motivo_visita',''))
-                r['grupo_areas_acceso'] = self._labels_list(pase.get('grupo_areas_acceso',[]), self.mf)
-            r['id_gafet'] = r.get('id_gafet','')
-            r['status_visita'] = r.get('status_visita','').title().replace('_', ' ')
-            r['contratista'] = self.unlist(r.get('contratista',[]))
-            r['status_gafete'] = r.get('status_gafete','').title().replace('_', ' ')
-            r['documento'] = r.get('documento','')
-            r['grupo_areas_acceso'] = self._labels_list(r.pop('grupo_areas_acceso',[]), self.mf)
-            r['comentarios'] = self.format_comentarios(r.get('comentarios',[]))
-            r['vehiculos'] = self.format_vehiculos(r.get('vehiculos',[]))
-            r['equipos'] = self.format_equipos(r.get('equipos',[]))
-            r['visita_a'] = self.format_visita(r.get('visita_a',[]))
-            r['pase_id']=str(pase_id)
-        return  records
-
-    def get_pdf_seg(self, qr_code, template_id=491, name_pdf='Pase de Entrada'):
-        return self.lkf_api.get_pdf_record(qr_code, template_id = template_id, name_pdf =name_pdf, send_url=True)
-
-    def get_list_rondines(self, prioridades=[], dateFrom='', dateTo='', filterDate=""):
-        match_query = {
-            "deleted_at":{"$exists":False},
-            "form_id": self.BITACORA_RONDINES
-        }
-        # if location:
-        #     match_query.update({f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}":location})
-        # if area:
-        #     match_query.update({f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['nombre_area']}":area})
-        # if prioridades:
-        #     match_query[f"answers.{self.bitacora_fields['status_visita']}"] = {"$in": prioridades}
-  
-        user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
-        zona = user_data.get('timezone','America/Monterrey')
-
-        if filterDate != "range":
-            dateFrom, dateTo = self.get_range_dates(filterDate,zona)
-
-            if dateFrom:
-                dateFrom = str(dateFrom)
-            if dateTo:
-                dateTo = str(dateTo)
-
-        if dateFrom and dateTo:
-           match_query.update({
-                f"answers.{self.f['fecha_inicio_rondin']}": {"$gte": dateFrom, "$lte": dateTo},
-            })
-        elif dateFrom:
-            match_query.update({
-                f"answers.{self.f['fecha_inicio_rondin']}": {"$gte": dateFrom}
-            })
-        elif dateTo:
-            match_query.update({
-                f"answers.{self.f['fecha_inicio_rondin']}": {"$lte": dateTo}
-            })
-        
-        proyect_fields ={
-            '_id': 1,
-            'folio': "$folio",
-            'duracion_rondin': f"$answers.{self.f['duracion_rondin']}",
-            'duracion_traslado_area':f"$answers.{self.f['duracion_traslado_area']}",
-            'fecha_inspeccion_area':f"$answers.{self.f['fecha_inspeccion_area']}",
-            'fecha_programacion':f"$answers.{self.f['fecha_programacion']}",
-            'fecha_inicio_rondin':f"$answers.{self.f['fecha_inicio_rondin']}",
-            'grupo_areas_visitadas':f"$answers.{self.f['grupo_areas_visitadas']}",
-            
-            # 'areas_del_rondin': '66462aa5d4a4af2eea07e0d1',
-            # 'comentario_area_rondin': '66462b9d7124d1540f962088',
-            # 'comentario_check_area': '681144fb0d423e25b42818d4',
-            # 'estatus_del_recorrido': '6639b2744bb44059fc59eb62',
-            # 'fecha_hora_inspeccion_area': '6760a908a43b1b0e41abad6b',
-            # 'fecha_programacion':'6760a8e68cef14ecd7f8b6fe',
-            # 'foto_evidencia_area': '681144fb0d423e25b42818d2',
-            # 'foto_evidencia_area_rondin': '66462b9d7124d1540f962087',
-            # 'grupo_de_areas_recorrido': '6645052ef8bc829a5ccafaf5',
-            # 'nombre_area':'663e5d44f5b8a7ce8211ed0f',
-            # 'nombre_del_recorrido': '6645050d873fc2d733961eba',
-            # 'nombre_del_recorrido_en_catalog': '6644fb97e14dcb705407e0ef',
-            # 'ubicacion_recorrido': '663e5c57f5b8a7ce8211ed0b',
-            # 'fecha_inicio_rondin': '6818ea068a7f3446f1bae3b3',
-            # 'fecha_fin_rondin': '6760a8e68cef14ecd7f8b6ff',
-            # 'check_status': '681fa6a8d916c74b691e174b',
-            # 'grupo_incidencias_check': '681144fb0d423e25b42818d3',
-            # 'incidente_open': '6811455664dc22ecae83f75b',
-            # 'incidente_comentario': '681145323d9b5fa2e16e35cc',
-            # 'incidente_area': '663e5d44f5b8a7ce8211ed0f',
-            # 'incidente_location': '663e5c57f5b8a7ce8211ed0b',
-            # 'incidente_evidencia': '681145323d9b5fa2e16e35cd',
-            # 'incidente_documento': '685063ba36910b2da9952697',
-            # 'url_registro_rondin': '6750adb2936622aecd075607',
-            # 'bitacora_rondin_incidencias': '686468a637d014b9e0ab5090',
-            # 'tipo_de_incidencia': '663973809fa65cafa759eb97'
-            }
-        # lookup = {
-        #  'from': 'form_answer',
-        #  'localField': 'pase_id',
-        #  'foreignField': '_id',
-        #  "pipeline": [
-        #         {'$match':{
-        #             "deleted_at":{"$exists":False},
-        #             "form_id": self.PASE_ENTRADA,
-        #             }
-        #         },
-        #         {'$project':{
-        #             "_id":0, 
-        #             'motivo_visita':f"$answers.{self.CONFIG_PERFILES_OBJ_ID}.{self.mf['motivo']}",
-        #             'grupo_areas_acceso': f"$answers.{self.mf['grupo_areas_acceso']}",                    
-        #             }
-        #         },
-        #         ],
-        #  'as': 'pase',
-        # }
-       
-        query = [
-            {'$match': match_query },
-            {'$project': proyect_fields},
-            # {'$lookup': lookup},
-        ]
-        # if not filterDate:
-        #     query.append(
-        #         {"$limit":1}
-        #     )
-        if dateFrom:
-            query.append(
-                {'$sort':{'folio':-1}},
-            )
-        else:
-            query.append(
-                {'$sort':{'folio':-1}},
-            )
-           
-        records = self.format_cr(self.cr.aggregate(query))
-        # print( simplejson.dumps(records, indent=4))
-        # for r in records:
-        #     pase = r.pop('pase')
-        #     r.pop('pase_id')
-        #     if len(pase) > 0 :
-        #         pase = pase[0]
-        #         r['motivo_visita'] = self.unlist(pase.get('motivo_visita',''))
-        #         r['grupo_areas_acceso'] = self._labels_list(pase.get('grupo_areas_acceso',[]), self.mf)
-        #     r['id_gafet'] = r.get('id_gafet','')
-        #     r['status_visita'] = r.get('status_visita','').title().replace('_', ' ')
-        #     r['contratista'] = self.unlist(r.get('contratista',[]))
-        #     r['status_gafete'] = r.get('status_gafete','').title().replace('_', ' ')
-        #     r['documento'] = r.get('documento','')
-        #     r['grupo_areas_acceso'] = self._labels_list(r.pop('grupo_areas_acceso',[]), self.mf)
-        #     r['comentarios'] = self.format_comentarios(r.get('comentarios',[]))
-        #     r['vehiculos'] = self.format_vehiculos(r.get('vehiculos',[]))
-        #     r['equipos'] = self.format_equipos(r.get('equipos',[]))
-        #     r['visita_a'] = self.format_visita(r.get('visita_a',[]))
-        print("rondines", simplejson.dumps( records,indent=4))
-        return  records
-
-    # def get_page_stats(self, booth_area, location, page=''):
-    #     print('entra a get_booth_stats')
-    #     print('booth_area', booth_area)
-    #     print('location', location)
-    #     today = datetime.today().strftime("%Y-%m-%d")
-    #     res={}
-
-    #     if page == 'Turnos':
-    #         #Visitas dentro, Gafetes pendientes y Vehiculos estacionados
-    #         match_query_visitas = {
-    #             "deleted_at": {"$exists": False},
-    #             "form_id": self.BITACORA_ACCESOS,
-    #             f"answers.{self.bitacora_fields['status_visita']}": "entrada",
-    #             f"answers.{self.bitacora_fields['catalogo_pase_entrada']}.{self.pase_entrada_fields['status_pase']}": {"$in": ["Activo"]},
-    #             f"answers.{self.bitacora_fields['caseta_entrada']}": booth_area,
-    #             f"answers.{self.bitacora_fields['ubicacion']}": location,
-    #         }
-
-    #         proyect_fields_visitas = {
-    #             '_id': 1,
-    #             'vehiculos': {"$ifNull": [f"$answers.{self.mf['grupo_vehiculos']}", []]},
-    #             'id_gafete': f"$answers.{self.bitacora_fields['gafete_catalog']}.{self.gafetes_fields['gafete_id']}",
-    #             'status_gafete': f"$answers.{self.mf['status_gafete']}"
-    #         }
-
-    #         group_by_visitas = {
-    #             '_id': None,
-    #             'total_visitas_dentro': {'$sum': 1},
-    #             'total_vehiculos_dentro': {'$sum': {'$size': '$vehiculos'}},
-    #             'gafetes_info': {
-    #                 '$push': {
-    #                     'id_gafete':'$id_gafete',
-    #                     'status_gafete':'$status_gafete'
-    #                 }
-    #             }
-    #         }
-
-    #         query_visitas = [
-    #             {'$match': match_query_visitas},
-    #             {'$project': proyect_fields_visitas},
-    #             {'$group': group_by_visitas}
-    #         ]
-
-    #         resultado = self.format_cr(self.cr.aggregate(query_visitas))
-    #         total_vehiculos_dentro = resultado[0]['total_vehiculos_dentro'] if resultado else 0
-    #         total_visitas_dentro = resultado[0]['total_visitas_dentro'] if resultado else 0
-    #         gafetes_info = resultado[0]['gafetes_info'] if resultado else []
-    #         gafetes_pendientes = sum(1
-    #             for gafete in gafetes_info
-    #                 if gafete.get('id_gafete') and gafete.get('status_gafete', '').lower() != 'entregado'
-    #         )
-            
-    #         res['total_vehiculos_dentro'] = total_vehiculos_dentro
-    #         res['in_invitees'] = total_visitas_dentro
-    #         res['gafetes_pendientes'] = gafetes_pendientes
-
-    #         #Articulos concesionados
-    #         match_query_concesionados = {
-    #             "deleted_at": {"$exists": False},
-    #             "form_id": self.CONCESSIONED_ARTICULOS,
-    #             f"answers.{self.cons_f['catalogo_ubicacion_concesion']}.{self.mf['ubicacion']}": location,
-    #         }
-
-    #         proyect_fields_concesionados = {
-    #             '_id': 1,
-    #         }
-
-    #         group_by_concesionados = {
-    #             '_id': None,
-    #             'articulos_concesionados': {'$sum': 1}
-    #         }
-
-    #         query_concesionados = [
-    #             {'$match': match_query_concesionados},
-    #             {'$project': proyect_fields_concesionados},
-    #             {'$group': group_by_concesionados}
-    #         ]
-
-    #         resultado = self.format_cr(self.cr.aggregate(query_concesionados))
-    #         articulos_concesionados = resultado[0]['articulos_concesionados'] if resultado else 0
-            
-    #         res['articulos_concesionados'] = articulos_concesionados
-
-    #         #Incidentes pendientes
-    #         match_query_incidentes = {
-    #             "deleted_at": {"$exists": False},
-    #             "form_id": self.BITACORA_INCIDENCIAS,
-    #             f"answers.{self.incidence_fields['area_incidencia_catalog']}.{self.incidence_fields['area_incidencia']}": booth_area,
-    #             f"answers.{self.incidence_fields['ubicacion_incidencia_catalog']}.{self.incidence_fields['ubicacion_incidencia']}": location
-    #         }
-
-    #         proyect_fields_incidentes = {
-    #             '_id': 1,
-    #             'acciones_tomadas_incidencia': f"$answers.{self.incidence_fields['acciones_tomadas_incidencia']}",
-    #         }
-
-    #         group_by_incidentes = {
-    #             '_id': None,
-    #             'incidentes_pendientes': {'$sum': {'$cond': [{'$or': [{'$eq': [{'$size': {'$ifNull': ['$acciones_tomadas_incidencia', []]}}, 0]},{'$eq': ['$acciones_tomadas_incidencia', None]}]}, 1, 0]}}
-    #         }
-
-    #         query_incidentes = [
-    #             {'$match': match_query_incidentes},
-    #             {'$project': proyect_fields_incidentes},
-    #             {'$group': group_by_incidentes}
-    #         ]
-
-    #         resultado = self.format_cr(self.cr.aggregate(query_incidentes))
-    #         incidentes_pendientes = resultado[0]['incidentes_pendientes'] if resultado else 0
-            
-    #         res['incidentes_pendites'] = incidentes_pendientes
-    #     elif page == 'Accesos' or page == 'Bitacoras':
-    #         #Visitas en el dia, personal dentro, vehiculos dentro y salidas registradas
-    #         match_query_visitas = {
-    #             "deleted_at": {"$exists": False},
-    #             "form_id": self.BITACORA_ACCESOS,
-    #             # f"answers.{self.bitacora_fields['status_visita']}": "entrada",
-    #             f"answers.{self.bitacora_fields['catalogo_pase_entrada']}.{self.pase_entrada_fields['status_pase']}": {"$in": ["Activo"]},
-    #             f"answers.{self.bitacora_fields['caseta_entrada']}": booth_area,
-    #             f"answers.{self.bitacora_fields['ubicacion']}": location,
-    #             f"answers.{self.mf['fecha_entrada']}": {"$gte": today,"$lt": f"{today}T23:59:59"}
-    #         }
-
-    #         proyect_fields_visitas = {
-    #             '_id': 1,
-    #             'vehiculos': {"$ifNull": [f"$answers.{self.mf['grupo_vehiculos']}", []]},
-    #             'perfil': f"$answers.{self.bitacora_fields['catalogo_pase_entrada']}.{self.mf['nombre_perfil']}",
-    #             'status_visita': f"$answers.{self.bitacora_fields['status_visita']}"
-    #         }
-
-    #         group_by_visitas = {
-    #             '_id': None,
-    #             'visitas_en_dia': {'$sum': 1},
-    #             'total_vehiculos_dentro': {'$sum': {'$size': '$vehiculos'}},
-    #             'detalle_visitas': {
-    #                 '$push': {
-    #                     'perfil': '$perfil',
-    #                     'status_visita': '$status_visita'
-    #                 }
-    #             }
-    #         }
-
-    #         query_visitas = [
-    #             {'$match': match_query_visitas},
-    #             {'$project': proyect_fields_visitas},
-    #             {'$group': group_by_visitas}
-    #         ]
-
-    #         resultado = self.format_cr(self.cr.aggregate(query_visitas))
-    #         # print('resultadooooooooooooooooo',resultado)
-    #         total_vehiculos_dentro = resultado[0]['total_vehiculos_dentro'] if resultado else 0
-    #         visitas_en_dia = resultado[0]['visitas_en_dia'] if resultado else 0
-    #         detalle_visitas = resultado[0]['detalle_visitas'] if resultado else []
-    #         personal_dentro = sum(1 for visita in detalle_visitas if visita['perfil'][0].lower() != "visita general")
-    #         salidas = sum(1 for visita in detalle_visitas if visita['status_visita'].lower() == "salida")
-
-    #         res['total_vehiculos_dentro'] = total_vehiculos_dentro
-    #         res['visitas_en_dia'] = visitas_en_dia
-    #         res['personal_dentro'] = personal_dentro
-    #         res['salidas_registradas'] = salidas
-    #     elif page == 'Incidencias':
-    #         #Incidentes por dia
-    #         match_query_incidentes = {
-    #             "deleted_at": {"$exists": False},
-    #             "form_id": self.BITACORA_INCIDENCIAS,
-    #             f"answers.{self.incidence_fields['area_incidencia_catalog']}.{self.incidence_fields['area_incidencia']}": booth_area,
-    #             f"answers.{self.incidence_fields['area_incidencia_catalog']}.{self.incidence_fields['area_incidencia']}": booth_area,
-    #             f"answers.{self.incidence_fields['ubicacion_incidencia_catalog']}.{self.incidence_fields['ubicacion_incidencia']}": location,
-    #             f"answers.{self.incidence_fields['fecha_hora_incidencia']}": {"$gte": today,"$lt": f"{today}T23:59:59"}
-    #         }
-
-    #         proyect_fields_incidentes = {
-    #             '_id': 1,
-    #         }
-
-    #         group_by_incidentes = {
-    #             '_id': None,
-    #             'incidentes_x_dia': {'$sum': 1}
-    #         }
-
-    #         query_incidentes = [
-    #             {'$match': match_query_incidentes},
-    #             {'$project': proyect_fields_incidentes},
-    #             {'$group': group_by_incidentes}
-    #         ]
-
-    #         resultado = self.format_cr(self.cr.aggregate(query_incidentes))
-    #         incidentes_x_dia = resultado[0]['incidentes_x_dia'] if resultado else 0
-
-    #         res['incidentes_x_dia'] = incidentes_x_dia
-
-    #         #Fallas pendientes
-    #         match_query_fallas = {
-    #             "deleted_at": {"$exists": False},
-    #             "form_id": self.BITACORA_FALLAS,
-    #             f"answers.{self.fallas_fields['falla_ubicacion_catalog']}.{self.fallas_fields['falla_caseta']}": booth_area,
-    #             f"answers.{self.fallas_fields['falla_ubicacion_catalog']}.{self.fallas_fields['falla_ubicacion']}": location,
-    #             f"answers.{self.fallas_fields['falla_estatus']}": 'abierto',
-    #             # f"answers.{self.incidence_fields['fecha_hora_incidencia']}": {"$gte": today,"$lt": f"{today}T23:59:59"}
-    #         }
-
-    #         proyect_fields_fallas = {
-    #             '_id': 1,
-    #         }
-
-    #         group_by_fallas = {
-    #             '_id': None,
-    #             'fallas_pendientes': {'$sum': 1}
-    #         }
-
-    #         query_fallas = [
-    #             {'$match': match_query_fallas},
-    #             {'$project': proyect_fields_fallas},
-    #             {'$group': group_by_fallas}
-    #         ]
-
-    #         resultado = self.format_cr(self.cr.aggregate(query_fallas))
-    #         fallas_pendientes = resultado[0]['fallas_pendientes'] if resultado else 0
-
-    #         res['fallas_pendientes'] = fallas_pendientes
-    #     elif page == 'Articulos':
-    #         #Articulos concesionados pendientes
-    #         match_query_concesionados = {
-    #             "deleted_at": {"$exists": False},
-    #             "form_id": self.CONCESSIONED_ARTICULOS,
-    #             f"answers.{self.cons_f['catalogo_ubicacion_concesion']}.{self.mf['ubicacion']}": location,
-    #             f"answers.{self.cons_f['status_concesion']}": "abierto",
-    #         }
-
-    #         proyect_fields_concesionados = {
-    #             '_id': 1,
-    #         }
-
-    #         group_by_concesionados = {
-    #             '_id': None,
-    #             'articulos_concesionados_pendientes': {'$sum': 1}
-    #         }
-
-    #         query_concesionados = [
-    #             {'$match': match_query_concesionados},
-    #             {'$project': proyect_fields_concesionados},
-    #             {'$group': group_by_concesionados}
-    #         ]
-
-    #         resultado = self.format_cr(self.cr.aggregate(query_concesionados))
-    #         articulos_concesionados_pendientes = resultado[0]['articulos_concesionados_pendientes'] if resultado else 0
-            
-    #         res['articulos_concesionados_pendientes'] = articulos_concesionados_pendientes
-
-    #         #Articulos perdidos
-    #         match_query_perdidos = {
-    #             "deleted_at": {"$exists": False},
-    #             "form_id": self.BITACORA_OBJETOS_PERDIDOS,
-    #             f"answers.{self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.perdidos_fields['ubicacion_perdido']}": location,
-    #             f"answers.{self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.perdidos_fields['area_perdido']}": booth_area,
-    #         }
-
-    #         proyect_fields_perdidos = {
-    #             '_id': 1,
-    #             'status_perdido': f"$answers.{self.perdidos_fields['estatus_perdido']}",
-    #         }
-
-    #         group_by_perdidos = {
-    #             '_id': None,
-    #             'perdidos_info': {
-    #                 '$push': {
-    #                     'status_perdido':'$status_perdido'
-    #                 }
-    #             }
-    #         }
-
-    #         query_perdidos = [
-    #             {'$match': match_query_perdidos},
-    #             {'$project': proyect_fields_perdidos},
-    #             {'$group': group_by_perdidos}
-    #         ]
-
-    #         resultado = self.format_cr(self.cr.aggregate(query_perdidos))
-    #         perdidos_info = resultado[0]['perdidos_info'] if resultado else []
-
-    #         articulos_perdidos = 0
-    #         for perdido in perdidos_info:
-    #             status_perdido = perdido.get('status_perdido', '').lower()
-    #             if status_perdido not in ['entregado', 'donado']:
-    #                 articulos_perdidos += 1
-
-    #         res['articulos_perdidos'] = articulos_perdidos
-
-    #     # res ={
-    #     #         "in_invitees":0,
-    #     #         "articulos_concesionados":0,
-    #     #         "incidentes_pendites": incidentes_pendientes,
-    #     #         "vehiculos_estacionados": total_vehiculos,
-    #     #         "gefetes_pendientes": 0,
-    #     #     }
-    #     return res
-    
-    def get_rondines_by_status(self, status_list=['programado', 'en_proceso']):
-        query = [
-            {'$match': {
-                "deleted_at": {"$exists": False},
-                "form_id": self.BITACORA_RONDINES,
-                f"answers.{self.f['estatus_del_recorrido']}": {"$in": status_list},
-            }},
-            {'$project': {
-                '_id': 1,
-                'timezone': 1,
-                'fecha_programacion': f"$answers.{self.f['fecha_programacion']}",
-                'rondinero_id': f"$answers.{self.USUARIOS_OBJ_ID}.{self.mf['id_usuario']}",
-                'answers': f"$answers"
-            }},
-        ]
-
-        rondines = self.format_cr(self.cr.aggregate(query))
-        return rondines
-
-    def close_rondines(self, list_of_rondines, timezone='America/Mexico_City'):
-        #- Expirados son lo que esta en status programados y que tienen mas de 24 de programdos
-        # - en progreso son lo que estan con status progreso y tienen mas de 1 hr de su ultimo check.
-        answers = {}
-        tiz = pytz.timezone(timezone)
-        ahora_cierre = datetime.now(tiz)
-
-        rondines_expirados = []
-        rondines_en_proceso_vencidos = []
-
-        for rondin in list_of_rondines:
-            estatus = rondin.get('estatus_del_recorrido')
-            fecha_programacion_str = rondin.get('fecha_programacion')
-            user_id = self.unlist(rondin.get('rondinero_id', 0))
-            user_data = self.lkf_api.get_user_by_id(user_id)
-            user_timezone = user_data.get('timezone', 'America/Mexico_City')
-            tz = pytz.timezone(user_timezone)
-            ahora = datetime.now(tz)
-
-            if estatus == 'programado' and fecha_programacion_str:
-                fecha_programacion = tz.localize(datetime.strptime(fecha_programacion_str, '%Y-%m-%d %H:%M:%S'))
-                if ahora > fecha_programacion + timedelta(hours=24):
-                    rondines_expirados.append(rondin)
-            elif estatus == 'en_proceso':
-                areas = rondin.get('areas_del_rondin', [])
-                ultima_fecha = None
-                for area in areas:
-                    fecha_str = area.get('fecha_hora_inspeccion_area', '')
-                    if fecha_str:
-                        fecha = tz.localize(datetime.strptime(fecha_str, '%Y-%m-%d %H:%M:%S'))
-                        if not ultima_fecha or fecha > ultima_fecha:
-                            ultima_fecha = fecha
-                if ultima_fecha and ahora > ultima_fecha + timedelta(minutes=15):
-                    rondines_en_proceso_vencidos.append(rondin)
-
-        rondines_ids = []
-        rondines_expirados = rondines_expirados + rondines_en_proceso_vencidos
-        for rondin in rondines_expirados:
-            rondines_ids.append(rondin.get('_id'))
-
-        answers[self.f['estatus_del_recorrido']] = 'cerrado'
-        answers[self.f['fecha_fin_rondin']] = ahora_cierre.strftime('%Y-%m-%d %H:%M:%S')
-
-        # print(stop)
-        if answers:
-            res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=rondines_ids)
-            if res.get('status_code') == 201 or res.get('status_code') == 202:
-                return res
-            else: 
-                return res
-
-    def extends_date_of_pass(self, qr_code, update_obj):
-        if not qr_code:
-            return self.LKFException({'title': 'Error', 'msg': 'No se proporciono el QR code'})
-        if not update_obj.get('fecha_desde'):
-            return self.LKFException({'title': 'Error', 'msg': 'No se proporciono una fecha valida'})
-        
-        answers = {}
-        answers[self.mf['fecha_desde_visita']] = update_obj.get('fecha_desde')
-        answers[self.mf['fecha_desde_hasta']] = update_obj.get('fecha_hasta', None)
-
-        if answers:
-            res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.PASE_ENTRADA, record_id=[qr_code,])
-            if res.get('status_code') == 201 or res.get('status_code') == 202:
-                return res
-            else:
-                return res
-        return False
-
-    def assign_rondin(self, record_id, user_to_assign):
-        if not record_id:
-            return self.LKFException({'title': 'Error', 'msg': 'No se proporciono el record_id'})
-        if not user_to_assign.get('user_name'):
-            return self.LKFException({'title': 'Error', 'msg': 'No se proporciono el usuario a asignar'})
-        
-        answers = {}
-        answers[self.USUARIOS_OBJ_ID] = {
-            self.mf['nombre_usuario']: user_to_assign.get('user_name', ''),
-            self.mf['id_usuario']: [user_to_assign.get('user_id')],
-            self.mf['email_visita_a']: [user_to_assign.get('user_email')]
+        self.cons_f.update({
+            'quien_recibe_otro': '69c47a1ce96590f9dbf494b0',
+        })
+
+        self.configuracion_area = {
+            'area': '663e5d44f5b8a7ce8211ed0f',
+            'create_area': '688a33d9e61fcd2c299ff39e',
+            'comentarios': '68504a3fd3ebdc2e9b9869d2',
+            'foto_area': '68487646684fe30a8f9f3ef4',
+            'nombre_nueva_area': '688a33d9e61fcd2c299ff39f',
+            'option': '68487646684fe30a8f9f3ef2',
+            'status': '689a46342038ded0e949be07',
+            'status_comment': '689a46342038ded0e949be08',
+            'qr_area': '68487646684fe30a8f9f3ef3',
+            'tag_id': '68487646684fe30a8f9f3ef3',
+            'ubicacion': '663e5c57f5b8a7ce8211ed0b',
         }
 
-        if answers:
-            res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=[record_id,])
-            if res.get('status_code') == 201 or res.get('status_code') == 202:
-                return res
-            else:
-                return res
-        return False
+        self.area_update = {
+            'foto_area': '6763096aa99cee046ba766ad',
+            'tag_id_area': '6762f7b0922cc2a2f57d4044',
+            'tipo_area': '663e5e68f5b8a7ce8211ed18',
+            'nombre_direccion': '663a7e0fe48382c5b1230901',
+            'estatus_area': '663e5e4bf5b8a7ce8211ed15',
+            'estatus': '663e5e4bf5b8a7ce8211ed14',
+            'qr_area': '663e5e4bf5b8a7ce8211ed13',
+            'pais_area': '663a7ca6e48382c5b12308fa',
+            'ciudad_area': '6654187fc85ce22aaf8bb070',
+            'colonia_area': '663a7f79e48382c5b123090a',
+            'direccion_area': '663a7e0fe48382c5b1230902',
+            'geolocalizacion_area': '663e5c8cf5b8a7ce8211ed0c',
+            'geolocalizacion_area_ubicacion': '688bac1ecfdcf8b16eb209b5',
+        }
 
-    def LKFResponse(self, msg={}):
+        self.incidence_filter = {
+            'reporta_incidencia': "",
+            'fecha_hora_incidencia':"",
+            'ubicacion_incidencia':"",
+            'area_incidencia': "",
+            'incidencia':"",
+            'comentario_incidencia': "",
+            'tipo_dano_incidencia': "",
+            'dano_incidencia':"",
+            'evidencia_incidencia': [],
+            'documento_incidencia':[],
+            'prioridad_incidencia':"",
+            'notificacion_incidencia':"",
+            'datos_deposito_incidencia': [],
+            'tags':[],
+            'categoria':"",
+            'sub_categoria':"",
+            'incidente':"",
+            'nombre_completo_persona_extraviada':"",
+            'edad':"",
+            'color_piel':"",
+            'color_cabello':"",
+            'estatura_aproximada':"",
+            'descripcion_fisica_vestimenta':"",
+            'nombre_completo_responsable':"",
+            'parentesco':"",
+            'num_doc_identidad':"",
+            'telefono':"",
+            'info_coincide_con_videos':"",
+            'responsable_que_entrega':"",
+            'responsable_que_recibe':"",
+            'afectacion_patrimonial_incidencia':[],
+            'personas_involucradas_incidencia': [],
+            'acciones_tomadas_incidencia':[],
+            'seguimientos_incidencia':[],
+            'valor_estimado':"",
+            'pertenencias_sustraidas':"",
+            'placas':"",
+            'tipo':"",
+            'marca':"",
+            'modelo':"",
+            'color':"",
+        }
+        
+        self.check_area_filter = {
+            "tag_id": "",
+            "ubicacion": "",
+            "area": "",
+            "tipo_de_area": "",
+            "foto_del_area": [],
+            "evidencia_incidencia": [],
+            "documento_incidencia": [],
+            "incidencias": [],
+            "comentario_check_area": "",
+            "status_check_area": "",
+        }
+        
+        self.f.update({
+            'bitacora_rondin_url': '690cefdca2dff2f469da17e0',
+            'cantidad_areas_inspeccionadas': '68a7b68a22ac030a67b7f8f8',
+            'checked_at': '68a7b68a22ac030a67b7f8f8',
+            'form_name':'5d810a982628de5556500d55',
+            'form_id':'5d810a982628de5556500d56',
+        })
+        
+        self.IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.heic'}
+
+        self.pass_fields_transportista = {
+            "tipo_de_operacion": "6a1ddb53f5a36ba1c7dd029c",
+
+            "nombre_crea_el_pase": "6a20741046cc9cdddf3b3c07",
+            "email_crea_el_pase": "6a20741046cc9cdddf3b3c08",
+            "telefono_crea_el_pase": "6a20741046cc9cdddf3b3c09",
+
+            "proveedor": "6a1ddb53f5a36ba1c7dd029d",
+            "proveedor_email": "6a207762cd730fb838ce1bb1",
+            "proveedor_telefono": "6a207762cd730fb838ce1bb2",
+            "empresa_transportista": "6a09fdc32fa9d55259ae9d2b",
+
+            "grupo_documentos_para_ocr": "6a2ae394b8e5ca8fd73705dc",
+            "tipo_de_documento": "6a2ae3d8cf0be6f60c19f85d",
+            "no_de_documento": "6a2ae3d8cf0be6f60c19f85e",
+            "documento_para_ocr": "6a2ae3d8cf0be6f60c19f85f",
+
+            "proveedor_cliente_material": "6a207762cd730fb838ce1bb4",
+            "orden_de_compra": "6a1ddb53f5a36ba1c7dd02a0",
+            "grupo_materiales": "6a2714954a54077ffa2394e6",
+            "contenedor": "6a2714eeca6ac6897ef55d92",
+            "sello":      "6a2714eeca6ac6897ef55d93",
+            "tipo":       "6a2714eeca6ac6897ef55d94",
+            "cantidad":   "6a2714eeca6ac6897ef55d95",
+            "peso":       "6a2714eeca6ac6897ef55d96",
+            "volumen":    "6a2714eeca6ac6897ef55d97",
+            "producto":      "6a3a6c2c9d500676ec5e3fbf",
+            "lote":          "6ade55ab470ae4e36395ba2b",
+            "no_referencia": "6a5b4fc9651b28e19d6352a2",
+
+            "direccion_de_recoleccion": "6a1ddb53f5a36ba1c7dd02a1",
+            "fecha_pase_transportista_desde": "6a1ddcba20dadbb04a29b59f",
+            "fecha_pase_transportista_hasta": "6a1f15aec19e655f79987c34",
+            "hora_inicial": "6a1f15aec19e655f79987c36",
+            "hora_final": "6a1f15aec19e655f79987c37",
+
+            "lugar_de_recoleccion": "6a2079343d463b1222e5d794",
+            "direccion_lugar_de_recoleccion": "6a2079343d463b1222e5d795",
+            "fecha_de_recoleccion": "6a2079343d463b1222e5d796",
+            "hora_inicial_recoleccion": "6a2079343d463b1222e5d797",
+            "hora_final_recoleccion": "6a2079343d463b1222e5d798",
+            "anden_recoleccion": "6a2079343d463b1222e5d799",
+            "responsable": "6a2079343d463b1222e5d79a",
+            "responsable_email": "6a2079343d463b1222e5d79b",
+            "responsable_telefono": "6a2079343d463b1222e5d79c",
+            "metodo_de_embarque": "6a2079343d463b1222e5d79d",
+            "incoterm": "6a2079343d463b1222e5d79e",
+
+            "url_del_pase_transportista": "6a20d4a39ebbf58470fe73b5",
+            "qr_del_pase_transportista": "6a20a8e138dff4ad8155c325",
+            "estado_transportista": "6a20bb99782fe54a2681fc56",
+            "token_transportista": "6a20c1811b6edd566116f483",
+
+            "conductor_foto_licencia": "6a2add8342320b4d1b66db84",
+            "conductor_nombre": "6a2adc08877c6087f9c2326b",
+            "conductor_no_licencia": "6a2adc08877c6087f9c2326c",
+            "conductor_lugar_expedicion": "6a2adc08877c6087f9c2326d",
+            "conductor_vigencia": "6a2adc08877c6087f9c2326e",
+            "ayudante_foto_licencia": "6a2add8342320b4d1b66db85",
+            "ayudante_nombre": "6a2adc08877c6087f9c2326f",
+            "ayudante_no_licencia": "6a2adc08877c6087f9c23270",
+            "ayudante_lugar_expedicion": "6a2adc08877c6087f9c23271",
+            "ayudante_vigencia": "6a2adc08877c6087f9c23272",
+            "vehiculo_tarjeta_circulacion": "6a2add8342320b4d1b66db86",
+            "vehiculo_linea": "6a2add8342320b4d1b66db87",
+            "vehiculo_tipo_unidad": "6a2add8342320b4d1b66db88",
+            "vehiculo_marca": "6a2add8342320b4d1b66db89",
+            "vehiculo_modelo": "6a2add8342320b4d1b66db8a",
+            "vehiculo_year": "6a2add8342320b4d1b66db8b",
+            "vehiculo_placas": "6a2add8342320b4d1b66db8c",
+            "vehiculo_no_economico": "6a2add8342320b4d1b66db8d",
+            "vehiculo_niv": "6a2add8342320b4d1b66db8e",
+            "vehiculo_color": "6afbbf71031d00fe8bd50a41",
+            "conductor_rfc": "6a2c387c7df9203d2f98fcec",
+            "foto_contenedores": "6a2b045ed8034654f212c1bc",
+            "grupo_contenedores": "6a2add8342320b4d1b66db8f",
+            "contenedor_numero": "6a2addcfcee6b93e39ab8a51",
+            "contenedor_sello": "6a2addcfcee6b93e39ab8a52",
+            "contenedor_tipo": "6a2addcfcee6b93e39ab8a53",
+        }
+
+        self.bitacora_transportista_fields = {
+            'estatus': '6a31921f07fb9cb5840d1f22',
+            'fecha_hora_ingreso': '6a3bee0a7829a4ca9572d39e',
+            'fecha_hora_descarga': '6a3bee0a7829a4ca9572d39f',
+            'fecha_hora_terminado': '6a710409eaef5abc8b1a1a69',
+
+            'grupo_fotos_y_documentos': '6a3bee0a7829a4ca9572d3a0',
+            'tipo_de_documento': '6a3bee394a7a0748a6fc9a56',
+            'documento': '6a3bee394a7a0748a6fc9a57',
+
+            'num_de_pase': '6a31921f07fb9cb5840d1f23',
+            'empresa_transportista': '6a31929d0bf8c5fc715d7424',
+            'tipo_de_operacion': '6a31929d0bf8c5fc715d7425',
+            'procedencia': '6a3193dccf1326ad4b7a9a52',
+            'tipo_de_vehiculo': '6a3193dccf1326ad4b7a9a53',
+            'placas_de_vehiculo': '6a31921f07fb9cb5840d1f24',
+            'placas_de_vehiculo_tarjeta_circulacion': '6a5018081d7498e16bbb4b75',
+            'marca_vehiculo': '6a4415c7b7ce8af39efb3aa8',
+            'year_vehiculo': '6a4415c7b7ce8af39efb3aa9',
+            'color_vehiculo': '6a4415c7b7ce8af39efb3aaa',
+            'num_eco_num_rotulo': '6a3193dccf1326ad4b7a9a56',
+            'conductor': '6a3193dccf1326ad4b7a9a57',
+            'ayudante': '6a42cd6385b4d5aa41c2a922',
+            'num_licencia': '6a3193dccf1326ad4b7a9a58',
+            'vigencia_licencia': '6a42e2eab55463ad9f31abf3',
+            'rfc_conductor': '6a42e5143f8adeaa55ef9a4a',
+            'firma_conductor': '6a3193dccf1326ad4b7a9a5b',
+            'anden_asignado': '6a31929d0bf8c5fc715d7427',
+
+            'proveedor_cliente': '6a42dfd48e70db919887e4b0',
+            'orden_de_compra': '6a42dfd48e70db919887e4b1',
+
+            'grupo_materiales': '6a42c5e02196461994770602',
+            'lugar_material': '6a42c7a7a1555d53d6b9194c', # Opciones: vehiculo, remolque, contenedor
+            'no_referencia_material': '6a42c7a7a1555d53d6b9194d',
+            'producto_material': '6a44091a4e3983d839de22ee',
+            'lote_material': '6a4409523a38bb598a0a18a0',
+            'cantidad_material': '6a42c7a7a1555d53d6b91950',
+            'cantidad_fisica_material': '6a454fb37ddcb3993dd90107',
+            'cantidad_buena_material': '6a6ac379fab960f8931dcc77',
+            'cantidad_danada_material': '6a6ac35a71f64d908af42f69',
+            'cantidad_faltante_material': '6a7a4ee0e6092a8d37f6d448',
+            'peso_material': '6a42c7a7a1555d53d6b91951',
+            'volumen_material': '6a42c7a7a1555d53d6b91952',
+            'evidencia_material': '6a9f34d31c217e8c3f8c1702',
+            'comentario_material': '6a9f34d31c217e8c3f8c1703',
+
+            'grupo_remolques': '6a31959ed11ece87f2b0052d',
+            'tipo_remolque': '6a319693884bec802c94fa44',
+            'no_referencia_remolque': '6a443aa0f4bede456259a441',
+            'num_sello': '6a319693884bec802c94fa45',
+            'num_caja_contenedor': '6a319693884bec802c94fa46',
+            'placas_de_caja': '6a319693884bec802c94fa47',
+            'color_remolque_contenedor': '6a440b059581538d55b3565e',
+            'comentarios': '6a319693884bec802c94fa48',
+
+            'grupo_sellos': '6a42c65c03f125df7ad28601',
+
+            'grupo_desglose_empaque': '6a6a4abe639ed7cad54be377',
+            'no_referencia_material_desglose': '6a6a4adc169fc82c5fae8668',
+            'nivel_desglose': '6a6a4b64c6fd2eaaf5f8c0b6',
+            'tipo_unidad_empaque_desglose': '6a6a4b64c6fd2eaaf5f8c0b7',
+            'cantidad_desglose': '6a6a4b64c6fd2eaaf5f8c0b8',
+            'cantidad_acumulada_desglose': '6a6a4b64c6fd2eaaf5f8c0b9',
+
+            'grupo_inspecciones': '6a42a7068dcfbf362329a972',
+            'tipo_inspeccion': '6a42c80b03f125df7ad2862b',
+            'url_inspeccion': '6a42a71aec3f7153a3d2aea3',
+        }
+
+        self.conf_flujo_transportistas_fields = {
+            'etapas_activas': '6a75056924f23eef843cd01b',
+            'kanban_view': '6aa8333f6cbc9b9bbd08fa2d',
+            'configuracion_de_inspecciones': '6a7509cd6e87e5935b853b7b',
+            'tipo_de_inspeccion': '6a750a1afd4ed68d7c57c24d',
+            'norma': '6a7e2c5c23fb366f1918dea8',
+            'subtipo': '6a7e2c5c23fb366f1918dea9',
+        }
+
+        self.inspeccion_entrada_tractor_fields = {
+            'fotos_y_documentos': '6a5fcf869160bd10e1b0b323',
+            'tipo_de_documento': '6a5fe2b0a5af7dac33061ea9',
+            'documento': '6a5fe2b0a5af7dac33061eaa',
+
+            'defensa': '20e7950eaac0054dbb8ca133',  # 1. Defensa (Si/No/N.A)
+            'defensa_comentarios': '7aa52ec9ded1f199a3bfa307',
+            'defensa_evidencia': '529623abe2be9e64816dec78',
+
+            'motor_caja_de_la_bateria_caja_y_filtros_de_aire': '2aa45df8132536520b2a2bdd',  # 2. Motor, caja de la bateria, caja y filtros de aire (Si/No/N.A)
+            'motor_caja_de_la_bateria_caja_y_filtros_de_aire_comentarios': '4604526acf0bf06c658add75',
+            'motor_caja_de_la_bateria_caja_y_filtros_de_aire_evidencia': '8f12a402e6094434d6028246',
+
+            'llantas_y_rines_tractor_y_remolque': '4b58a0007c1730a1ff9cc56f',  # 3. Llantas y rines (tractor y remolque) (Si/No/N.A)
+            'llantas_y_rines_tractor_y_remolque_comentarios': '8e2645d9b0117869c0b93bc1',
+            'llantas_y_rines_tractor_y_remolque_evidencia': 'a9be932860ceeb9face9b24d',
+
+            'piso_tractor': 'acba826a28a8d1d48b743b53',  # 4. Piso (tractor) (Si/No/N.A)
+            'piso_tractor_comentarios': '5e5cc9112d6c74a8c0d96c6b',
+            'piso_tractor_evidencia': '5e0e635e8e5e7788793dc632',
+
+            'tanque_de_combustible': '72e1fe8cf4fad9736fbb141c',  # 5. Tanque de combustible (Si/No/N.A)
+            'tanque_de_combustible_comentarios': 'ddd7b180bcb8a98c556c67ef',
+            'tanque_de_combustible_evidencia': 'cef55b76f55eed057cf64cad',
+
+            'cabina_dormitorio_puertas_y_compartimientos_de_herramientas_seccion_de_pasajero_y_techo': '83ceff5fda79787b48219268',  # 6. Cabina, dormitorio, puertas y compartimientos de herramientas, seccion de pasajero y techo (Si/No/N.A)
+            'cabina_dormitorio_puertas_y_compartimientos_de_herramientas_seccion_de_pasajero_y_techo_comentarios': '700d1c62d264a6c3039f65c1',
+            'cabina_dormitorio_puertas_y_compartimientos_de_herramientas_seccion_de_pasajero_y_techo_evidencia': '6cb1dd20ae67dff1e20b08bd',
+
+            'tanque_de_aire': 'ac82529cb6081ee6327ee04f',  # 7. Tanque de aire (Si/No/N.A)
+            'tanque_de_aire_comentarios': '9cdc267b92fe4c144de7c370',
+            'tanque_de_aire_evidencia': 'e01e5ac0be30514b35bd3d13',
+
+            'ejes_de_transmision': 'bcb4e55eddda4821b9db0304',  # 8. Ejes de transmision (Si/No/N.A)
+            'ejes_de_transmision_comentarios': '8e5bc150c3791c9917314b92',
+            'ejes_de_transmision_evidencia': '5b72adefa1c7c716e0f24941',
+
+            'quinta_rueda': '3ad0cca2f6449042ad664cfd',  # 9. Quinta rueda (Si/No/N.A)
+            'quinta_rueda_comentarios': 'cedf4d6e6f7120c152d9c0fb',
+            'quinta_rueda_evidencia': '35ccd51789e6260465d17ea7',
+
+            'chasis': 'd08cc0f655036b4fb2a09056',  # 10. Chasis (Si/No/N.A)
+            'chasis_comentarios': 'db0dd2a781343effa2a7153d',
+            'chasis_evidencia': 'e957e4cb96e1ef8f999a5938',
+
+            'puertas_externa': '5c100788b4211b8122e4395c',  # 11. Puertas externa (Si/No/N.A)
+            'puertas_externa_comentarios': '87fffff1f65ef97ddc4d23bf',
+            'puertas_externa_evidencia': '666ce737007a5ccc57c9f369',
+
+            'piso_externo_trailer_contenedor_caja': 'f87fd7be1133ee21cc723f7c',  # 12. Piso externo (trailer, contenedor, caja) (Si/No/N.A)
+            'piso_externo_trailer_contenedor_caja_comentarios': 'de6dffa1def019fe589a329a',
+            'piso_externo_trailer_contenedor_caja_evidencia': 'e7c54e4187ee035e6bb3be7b',
+
+            'paredes_externa': 'fc63e8996ccf5c91a80c0e2f',  # 13. Paredes externa (Si/No/N.A)
+            'paredes_externa_comentarios': '531d51796e724cc7f14cb496',
+            'paredes_externa_evidencia': 'b2d3aaf29aa9374130881632',
+
+            'pared_frontal_externa': '731b4abf0672038c57d8d516',  # 14. Pared frontal externa (Si/No/N.A)
+            'pared_frontal_externa_comentarios': '1f3c15fb61a4a143f773809d',
+            'pared_frontal_externa_evidencia': '56d9b00ce47ae297a64aa90b',
+
+            'techo_externo': '8b18d4aa1d62615cacf2776f',  # 15. Techo externo (Si/No/N.A)
+            'techo_externo_comentarios': '85df5aa6a444e9490f14ce86',
+            'techo_externo_evidencia': '5b82b568466ceebc18d49dd3',
+
+            'unidad_de_refrigeracion': '8b4e8a6dec2392c9f267e179',  # 16. Unidad de refrigeracion (Si/No/N.A)
+            'unidad_de_refrigeracion_comentarios': '747090a5b505163130df82e4',
+            'unidad_de_refrigeracion_evidencia': '5544eaaccb74e9d09b7e2f77',
+
+            'escape_mofles': '48de45705387f226f6551c1b',  # 17. Escape / Mofles (Si/No/N.A)
+            'escape_mofles_comentarios': '0307abb04ee4f8b3786cca23',
+            'escape_mofles_evidencia': '32f0559232cbc31f5cc6a472',
+        }
+
+        self.inspeccion_entrada_ctpat_contenedor_fields = {
+            'fotos_y_documentos': '6a5fde6455cec5f5e85ea2a0',
+            'tipo_de_documento': '6a5fe2b0a5af7dac33061ea9',
+            'documento': '6a5fe2b0a5af7dac33061eaa',
+
+            'altura_interior': 'd412fb9f428dfc231c9bc3f0',  # Altura interior (text)
+            'ancho_interior': '6477c73222d9b7e8dd1de3b9',  # Ancho interior (text)
+            'longitud_interior': 'd7c19cbd2cfe6b19f848d697',  # Longitud interior (text)
+            'exterior_parte_inferior_del_contenedor_bastidor_o_chasis': '4a819aa25c6e76080f76317a',  # Exterior / parte inferior del contenedor (bastidor o chasis) (checkbox: Todos/Suciedad/Plagas/Fauna)
+            'puertas_interiores_exteriores': 'b4f2b497790d8fa30739ab05',  # Puertas interiores / exteriores (checkbox: Todos/Suciedad/Plagas/Fauna)
+            'pared_interior_lado_derecho': 'c334bc2360c643779bdcd495',  # Pared interior lado derecho (checkbox: Todos/Suciedad/Plagas/Fauna)
+            'pared_interior_lado_izquierdo': '4c90dcc67f8e9f029878502c',  # Pared interior lado izquierdo (checkbox: Todos/Suciedad/Plagas/Fauna)
+            'pared_interior_frontal': '14aea746aadf15c99edb8592',  # Pared interior frontal (checkbox: Todos/Suciedad/Plagas/Fauna)
+            'techo_cubierta_superior': 'bc75ab3fdb2258286b0b41c0',  # Techo / cubierta superior (checkbox: Todos/Suciedad/Plagas/Fauna)
+            'piso_interior': '371a7d9c3ae8a40a32b3762a',  # Piso (interior) (checkbox: Todos/Suciedad/Plagas/Fauna)
+        }
+
+        self.inspeccion_entrada_ctpat_remolque_fields = {
+            'fotos_y_documentos': '6a5fde3b04fdbbdbcfdfc2a2',
+            'tipo_de_documento': '6a5fe2b0a5af7dac33061ea9',
+            'documento': '6a5fe2b0a5af7dac33061eaa',
+
+            'altura_interior': '6703c4acd45242ffb0eb0839',  # Altura interior (text)
+            'ancho_interior': '7bfa6fe868c1cbec93a051e5',  # Ancho interior (text)
+            'longitud_interior': '2624dc82316e99315084d385',  # Longitud interior (text)
+
+            'tanque_de_aire': 'd1fae4d0b2ec9569fbcf8770',  # 1. Tanque de aire (Si/No)
+            'tanque_de_aire_comentarios': 'd2bacb536ead1a15f56bbe6c',
+            'tanque_de_aire_evidencia': '28538bb0340a0eccc15e150b',
+
+            'ejes_de_transmision': 'd57c0e9a92f8b3b552f2b66a',  # 2. Ejes de transmision (Si/No)
+            'ejes_de_transmision_comentarios': '9f6a0733c5c36bcc4e6051de',
+            'ejes_de_transmision_evidencia': '089e40849794b1edbe667291',
+
+            'quinta_rueda': 'aeed49c20dd20d18904ac28f',  # 3. Quinta rueda (Si/No)
+            'quinta_rueda_comentarios': '481f00fd61a55c0b9aef99e4',
+            'quinta_rueda_evidencia': 'c86cf900756ed0667122d999',
+
+            'chasis': '9a6743b2e92e16e2b727e667',  # 4. Chasis (Si/No)
+            'chasis_comentarios': '6aa6dabeb1430c92bf9c36a9',
+            'chasis_evidencia': 'c420045f52f188fcbd616165',
+
+            'puertas_externa': 'b0dca85ed86edd92560f634c',  # 5. Puertas externa (Si/No)
+            'puertas_externa_comentarios': '3b85b7104be1df0dbe8762e7',
+            'puertas_externa_evidencia': '608def717f6c6f14e1f8ab6e',
+
+            'piso_externo_trailer_contenedor_caja': '2cb78278523b502800a47e2e',  # 6. Piso externo (trailer, contenedor, caja) (Si/No)
+            'piso_externo_trailer_contenedor_caja_comentarios': '7bc7a9a7a58d45946c2e70a6',
+            'piso_externo_trailer_contenedor_caja_evidencia': 'c16b8d4dfc22709c7785cc63',
+
+            'paredes_externa': '198cf876dc13d7bd658a4cbd',  # 7. Paredes externa (Si/No)
+            'paredes_externa_comentarios': '8a9af06c2c1045f46dfa44d2',
+            'paredes_externa_evidencia': '8af47b03f950e87661b5835b',
+
+            'pared_frontal_externa': '36b4b172e38a3dc1b8b226d1',  # 8. Pared frontal externa (Si/No)
+            'pared_frontal_externa_comentarios': 'bb279c901f91c114d1220452',
+            'pared_frontal_externa_evidencia': 'ddff798b400d03d48b9ef808',
+
+            'techo_externo': 'bbc21e44dec3040d81e005f2',  # 9. Techo externo (Si/No)
+            'techo_externo_comentarios': 'e2e3ae0dbf920b1c44502fbb',
+            'techo_externo_evidencia': '59bf2262a664e2b16ba1a299',
+
+            'unidad_de_refrigeracion': 'cbb1c127c08011c3d7d4c344',  # 10. Unidad de refrigeracion (Si/No)
+            'unidad_de_refrigeracion_comentarios': '80ad083a0f6319e6fd63d681',
+            'unidad_de_refrigeracion_evidencia': 'd0240215edecf39a02c5a891',
+
+            'escape_mofles': '545c0b134ab1d2f11cef90a9',  # 11. Escape / Mofles (Si/No)
+            'escape_mofles_comentarios': '736b1fe2e2609d47beef2a03',
+            'escape_mofles_evidencia': 'b7618c209a113ef54ec2b58b',
+        }
+
+        self.inspeccion_de_sello_fields = {
+            'numero_de_sello_fisico': 'ad57d9e43537244dc2f66280',  # Numero de sello fisico (text)
+            'numero_de_sello_esperado_revisado': '22e2974e099b937e4c9c7094',  # Numero de sello esperado (revisado) (text)
+            'tipo_de_sello_clasificacion_iso_17712': '1e534c51db80d867b1922c86',  # Tipo de sello (clasificacion ISO 17712) (radio: Indicative/Security/High Security)
+            'matriz_vttt_marca_cada_accion_verificada': '92ab37dbe06381e6100f88f0',  # Matriz VTTT - Marca cada accion verificada (checkbox: View/Verify/Tug/Twist)
+            '1_foto_del_sello': '1defc3e446a9ebd00c649dbc',  # 1. Foto del sello (images)
+            '2_sello_colocado_en_las_puertas': '26f5f07d55f304e9015ae64d',  # 2. Sello colocado en las puertas (images)
+            '3_puertas_completas_del_remolque': 'be928c48d8a6353077ec5eba',  # 3. Puertas completas del remolque (images)
+            '4_placas_o_economico': 'd7479071e6aabdeaa10ce41b',  # 4. Placas o economico (images)
+            '5_identificacion_del_operador': '718a0a37c5a6965b2127d2c0',  # 5. Identificacion del operador (images)
+            'comentarios': '0e009f7829544463cbf89e1e',  # Comentarios (textarea)
+        }
+
+
+    def flatten_roles(self, roles_raw):
         """
-        Proporciona un mensaje de respuesta con el formato utilizado en LKF
+        Se aplana la estructura de roles (viene como [{ROL_CATALOG_OBJ_ID: {rol: 'Gerente'}}, ...])
+        a una lista simple de strings (['Gerente', ...]) para el frontend.
 
-        Args:
-            msg ({
-                title: str,
-                label: str,
-                msg: str,
-                icon: str,
-                type: str,
-                status: int
-            }): Un diccionario con la informacion del mensaje
-
-        Returns:
-            dict: Un diccionario con la informacion del mensaje
+        Nota: roles_raw ya pasó por format_cr/_labels, que aplana
+        {ROL_CATALOG_OBJ_ID: {rol_field_id: valor}} a {'rol': valor}.
         """
-        title_default = "Addons Statement"
-        type_default  = "success"
-        label_default = "Addons Statement"
-        icon_default = "fa-circle-check"
-        status_default = 200
-        msg_dict = {}
+        return [r.get('rol') for r in roles_raw if r.get('rol')]
 
-        if not isinstance(msg, dict):
-            return 'Error: El mensaje debe ser un diccionario'
-
-        msg_dict['title'] = msg.get('title', title_default)
-        msg_dict['label'] = msg.get('label', label_default)
-        msg_dict['msg'] = [msg.get('msg', "Something went wrong")]
-        msg_dict['icon'] = msg.get('icon', icon_default)
-        msg_dict['type'] = msg.get('type', type_default)
-        msg_dict["status"] = msg.get('status', status_default)
-
-        return msg_dict
-
-    def get_list_notes(self, location, area, status=None, limit=10, offset=0, dateFrom="", dateTo=""):
-        '''
-        Función para obtener las notas, puedes pasarle un area, una ubicacion, un estatus, una fecha desde
-        y una fecha hasta
-        '''
-        response = []
-        match_query = {
-            "deleted_at":{"$exists":False},
-            "form_id": self.ACCESOS_NOTAS,
-            f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['location']}":location
-        }
-        if area and not area == 'todas':
-            match_query.update({
-                f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['area']}":area
-            })
-        if status != 'dia':
-            match_query.update({f"answers.{self.notes_fields['note_status']}":status})
-        if dateFrom and dateTo:
-            if dateFrom == dateTo:
-                if "T" not in dateFrom:
-                    dateFrom += " 00:00:00"
-                    dateTo += " 23:59:59"
-            else:
-                if "T" not in dateFrom:
-                    dateFrom += " 00:00:00"
-                if "T" not in dateTo:
-                    dateTo += " 23:59:59"
-
-            match_query.update({
-                f"answers.{self.notes_fields['note_open_date']}": {"$gte": dateFrom, "$lte": dateTo}
-            })
-        elif dateFrom:
-            if "T" not in dateFrom:
-                dateFrom += " 00:00:00"
-            match_query.update({
-                f"answers.{self.notes_fields['note_open_date']}": {"$gte": dateFrom}
-            })
-        elif dateTo:
-            if "T" not in dateTo:
-                dateTo += " 23:59:59"
-            match_query.update({
-                f"answers.{self.notes_fields['note_open_date']}": {"$lte": dateTo}
-            })
-        query = [
-            {'$match': match_query },
-            {'$project': {
-                "folio":"$folio",
-                "created_at": 1,
-                "created_by_name": f"$created_by_name",
-                "created_by_id": f"$created_by_id",
-                "created_by_email": f"$created_by_email",
-                "note_status": f"$answers.{self.notes_fields['note_status']}",
-                "note_open_date": f"$answers.{self.notes_fields['note_open_date']}",
-                "note_close_date": f"$answers.{self.notes_fields['note_close_date']}",
-                "note_booth": f"$answers.{self.notes_fields['note_catalog_booth']}.{self.notes_fields['note_booth']}",
-                "note_guard": f"$answers.{self.notes_fields['note_catalog_guard']}.{self.notes_fields['note_guard']}",
-                "note_guard_close": f"$answers.{self.notes_fields['note_catalog_guard_close']}.{self.notes_fields['note_guard_close']}",
-                "note": f"$answers.{self.notes_fields['note']}",
-                "note_file": f"$answers.{self.notes_fields['note_file']}",
-                "note_pic": f"$answers.{self.notes_fields['note_pic']}",
-                "note_comments": f"$answers.{self.notes_fields['note_comments_group']}",
-            }},
-            {'$sort':{'created_at':-1}},
-        ]
-        
-        query.append({'$skip': offset})
-        query.append({'$limit': limit})
-        
-        records = self.format_cr(self.cr.aggregate(query))
-
-        count_query = [
-            {'$match': match_query},
-            {'$count': 'total'}
-        ]
-
-        count_result = self.format_cr(self.cr.aggregate(count_query))
-        total_count = count_result[0]['total'] if count_result else 0
-        total_pages = ceil(total_count / limit) if limit else 1
-        current_page = (offset // limit) + 1 if limit else 1
-
-        notes = {
-            'records': records,
-            'total_records': total_count,
-            'total_pages': total_pages,
-            'actual_page': current_page
-        }
-
-        return notes
-    
-    def get_areas_by_locations(self, location_names):
-        catalog_id = self.AREAS_DE_LAS_UBICACIONES_CAT_ID
-        form_id = self.PASE_ENTRADA
-        res_list = []
-        response = {}
-        
-        if not isinstance(location_names, list):
-            location_names = [location_names]
-
-        if location_names:
-            for l in location_names:
-                options = {
-                    'startkey': [l],
-                    'endkey': [f"{l}\n",{}],
-                    'group_level':2
-                }
-                res = self.catalogo_view(catalog_id, form_id, options)
-                if res and isinstance(res, list):
-                    res_list.extend(res)
-
-            response.update({
-                "areas_by_location": list(set(res_list))
-            })
-
-        return response
-
-    def do_access(self, qr_code, location, area, data):
-        '''
-        Valida pase de entrada y crea registro de entrada al pase
-        '''
-        access_pass = self.get_detail_access_pass(qr_code)
-        if not qr_code and not location and not area:
-            return False
-        total_entradas = self.get_count_ingresos(qr_code)
-        
-        diasDisponibles = access_pass.get("limitado_a_dias", [])
-        dias_semana = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
-        tz = pytz.timezone("America/Mexico_City")
-        hoy = datetime.now(tz)
-        dia_semana = hoy.weekday()
-        nombre_dia = dias_semana[dia_semana]
-
-        if access_pass.get('estatus',"") == 'vencido':
-            self.LKFException({'msg':"El pase esta vencido, edita la información o genera uno nuevo.","title":'Revisa la Configuración'})
-        elif access_pass.get('estatus', '') == 'proceso':
-            self.LKFException({'msg':"El pase no se ha sido completado aun, informa al usuario que debe completarlo primero.","title":'Requisitos faltantes'})
-
-        if diasDisponibles:
-            if nombre_dia not in diasDisponibles:
-                dias_capitalizados = [dia.capitalize() for dia in diasDisponibles]
-
-                if len(dias_capitalizados) > 1:
-                    dias_formateados = ', '.join(dias_capitalizados[:-1]) + ' y ' + dias_capitalizados[-1]
-                else:
-                    dias_formateados = dias_capitalizados[0]
-
-                self.LKFException({
-                        'msg': f"Este pase no te permite ingresar hoy {nombre_dia.capitalize()}. Solo tiene acceso los siguientes dias: {dias_formateados}",
-                        "title":'Aviso'
-                    })
-        
-        limite_acceso = access_pass.get('limite_de_acceso')
-        if len(total_entradas) > 0 and limite_acceso and int(limite_acceso) > 0:
-            if total_entradas['total_records']>= int(limite_acceso) :
-                self.LKFException({'msg':"Se ha completado el limite de entradas disponibles para este pase, edita el pase o crea uno nuevo.","title":'Revisa la Configuración'})
-        
-        timezone = pytz.timezone('America/Mexico_City')
-        fecha_actual = datetime.now(timezone).replace(microsecond=0)
-        fecha_caducidad = access_pass.get('fecha_de_caducidad')
-        fecha_obj_caducidad = datetime.strptime(fecha_caducidad, "%Y-%m-%d %H:%M:%S")
-        fecha_caducidad = timezone.localize(fecha_obj_caducidad)
-
-        # Se agrega 1 hora como margen de tolerancia
-        fecha_caducidad_con_margen = fecha_caducidad + timedelta(hours=1)
-
-        if fecha_caducidad_con_margen < fecha_actual:
-            self.LKFException({'msg':"El pase esta vencido, ya paso su fecha de vigencia.","title":'Advertencia'})
-        
-        fecha_visita = access_pass.get('fecha_de_expedicion')
-        if fecha_visita:
-            fecha_obj_visita = datetime.strptime(fecha_visita, "%Y-%m-%d %H:%M:%S")
-            fecha_visita_tz = timezone.localize(fecha_obj_visita)
-            
-            if fecha_actual < fecha_visita_tz - timedelta(minutes=30):
-                self.LKFException({'msg': f"Aún no es hora de entrada. Tu acceso comienza a las {fecha_visita}", "title": 'Aviso'})
-        
-        if location not in access_pass.get("ubicacion",[]):
-            msg = f"La ubicación {location}, no se encuentra en el pase. Pase valido para las siguientes ubicaciones: {access_pass.get('ubicacion',[])}."
-            self.LKFException({'msg':msg,"title":'Revisa la Configuración'})
-        
-        if self.validate_access_pass_location(qr_code, location):
-            self.LKFException("En usuario ya se encuentra dentro de una ubicacion")
-        val_certificados = self.validate_certificados(qr_code, location)
-
-        
-        pass_dates = self.validate_pass_dates(access_pass)
-        comentario_pase =  data.get('comentario_pase',[])
-        if comentario_pase:
-            values = {self.pase_entrada_fields['grupo_instrucciones_pase']:{
-                -1:{
-                self.pase_entrada_fields['comentario_pase']:comentario_pase,
-                self.mf['tipo_de_comentario']:'caseta'
-                }
-            }
-            }
-            # self.update_pase_entrada(values, record_id=[str(access_pass['_id']),])
-        res = self._do_access(access_pass, location, area, data)
-        return res
-
-    def get_config_accesos(self):
-        response = []
-        match_query = {
-            "deleted_at":{"$exists":False},
-            "form_id": self.CONF_ACCESOS,
-            f"answers.{self.EMPLOYEE_OBJ_ID}.{self.employee_fields['user_id_id']}":self.user['user_id'],
-        }
-        query = [
-            {'$match': match_query },
-            {'$project': {
-                "usuario":f"$answers.{self.conf_accesos_fields['usuario_cat']}",
-                "grupos":f"$answers.{self.conf_accesos_fields['grupos']}",
-                "menus": f"$answers.{self.conf_accesos_fields['menus']}",
-            }},
-            {'$limit':1},
-            {'$lookup': {
-                'from': 'form_answer',
-                'pipeline': [
-                    {'$match': {
-                        'deleted_at': {'$exists': False},
-                        'form_id': self.CONF_MODULO_SEGURIDAD,
-                    }},
-                    {'$project': {
-                        "_id": 0,
-                        "excluir": f"$answers.{self.f['personalizacion_pases']}",
-                        "alertas": f"$answers.{self.f['grupo_alertas']}",
-                    }}
-                ],
-                'as': 'personalizaciones'
-            }},
-            {'$unwind': '$personalizaciones'},
-            {'$project': {
-                "usuario":1,
-                "grupos":1,
-                "menus":1,
-                "exclude_inputs": "$personalizaciones.excluir",
-                "alertas": "$personalizaciones.alertas",
-            }}
-        ]
-        data = self.format_cr_result(self.cr.aggregate(query),  get_one=True)
-        format_data = {}
-
-        if data:
-            exclude_inputs = data.get('exclude_inputs', [])
-            format_exclude_inputs = self.unlist([i for i in exclude_inputs])
-
-            alertas = data.get('alertas', [])
-            format_alerts = []
-            for i in alertas:
-                new_item = {}
-                new_item[i.get('nombre_alerta')] = {
-                    'accion': i.get('accion_alerta', '') if len(i.get('accion_alerta', [])) > 1 else self.unlist(i.get('accion_alerta', [])),
-                }
-                if 'llamar' in i.get('accion_alerta') or 'sms' in i.get('accion_alerta'):
-                    new_item[i.get('nombre_alerta')]['number'] = i.get('llamar_num_alerta', 0000000000)
-                if 'email' in i.get('accion_alerta'):
-                    new_item[i.get('nombre_alerta')]['email'] = i.get('email_alerta', '')
-                format_alerts.append(new_item)
-
-            data.update({
-                'exclude_inputs': format_exclude_inputs,
-                'alertas': format_alerts,
-            })
-
-        return data
-
-    def _do_access(self, access_pass, location, area, data):
-        '''
-        Registra el acceso del pase de entrada a ubicación.
-        solo puede ser ejecutado después de revisar los accesos
-        '''
-        employee =  self.get_employee_data(email=self.user.get('email'), get_one=True)
-        metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_ACCESOS)
+    def create_pass_transportista(self, data):
+        print(simplejson.dumps(data, indent=3))
+        f = self.pass_fields_transportista
+        metadata = self.lkf_api.get_metadata(form_id=self.PASE_ENTRADA_TRANSPORTISTA)
         metadata.update({
+            'id': self.object_id(),
             'properties': {
-                "device_properties":{
-                    "System": "Script",
-                    "Module": "Accesos",
-                    "Process": "Ingreso de Personal",
-                    "Action": 'Do Access',
-                    "File": "accesos/app.py"
+                'device_properties': {
+                    'System': 'Script',
+                    'Module': 'Accesos',
+                    'Process': 'Pase Transportista',
+                    'Action': 'create_pass_transportista',
+                    'File': 'modules/accesos/items/scripts/Accesos/accesos_utils.py',
                 }
-            },
+            }
         })
-        # metadata['folio'] = self.create_poruction_lot_number()
+        pass_id = metadata['id']
 
-        try:
-            pase = {
-                    f"{self.mf['nombre_visita']}": access_pass['nombre'],
-                    f"{self.mf['curp']}":access_pass['curp'],
-                    ### Campos Select
-                    f"{self.mf['empresa']}":[access_pass.get('empresa'),],
-                    f"{self.pase_entrada_fields['perfil_pase_id']}": [access_pass['tipo_de_pase'],],
-                    # f"{self.pase_entrada_fields['status_pase']}":[access_pass['estatus'],],
-                    f"{self.pase_entrada_fields['status_pase']}":['Activo',],
-                    f"{self.pase_entrada_fields['foto_pase_id']}": access_pass.get("foto",[]), #[access_pass['foto'],], #.get('foto','')
-                    f"{self.pase_entrada_fields['identificacion_pase_id']}": access_pass.get("identificacion",[]) #[access_pass['identificacion'],], #.get('identificacion','')
-                    }
-        except Exception as e:
-            self.LKFException({"msg":f"Error al crear registro ingreso, no se encontro: {e}"}) 
+        crea  = data.get('crea_el_pase', {})
+        recibe = data.get('recibe_el_pase', {})
+        mat   = data.get('material', {})
+        lugar = data.get('lugar_entrega_recepcion', {})
+
+        horario = lugar.get('horario_disponible', '') or ''
+        hora_inicio, hora_fin = '', ''
+        if '-' in horario:
+            partes = horario.split('-')
+            hora_inicio = partes[0].strip()
+            hora_fin    = partes[1].strip()
+
+        dominio = data.get('dominio', 'http://localhost:3000')
+        parent_id = self.user.get('parent_id')
+        url_pase_transportista = f"{dominio}/transportistas/preview/transportista/{pass_id}?p_id={parent_id}"
+        qr_pase_transportista = self.create_custom_qr(
+            url_pase_transportista,
+            f"qr_code_pase_transportista_{pass_id}",
+            self.PASE_ENTRADA_TRANSPORTISTA,
+            f['qr_del_pase_transportista'])
 
         answers = {
-            f"{self.mf['tipo_registro']}": 'entrada',
-            f"{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}":{
-                f"{self.f['location']}":location,
-                f"{self.f['area']}":area
-                },
-            f"{self.PASE_ENTRADA_OBJ_ID}":pase,
-            f"{self.mf['codigo_qr']}": str(access_pass['_id']),
-            f"{self.mf['fecha_entrada']}":self.today_str(employee.get('timezone', 'America/Monterrey'), date_format='datetime'),
-        }
-        vehiculos = data.get('vehiculo',[])
-        if vehiculos:
-            list_vehiculos = []
-            for item in vehiculos:
-                if item:
-                    tipo = item.get('tipo','')
-                    marca = item.get('marca','')
-                    modelo = item.get('modelo','')
-                    estado = item.get('estado','')
-                    placas = item.get('placas','')
-                    color = item.get('color','')
-                    list_vehiculos.append({
-                        self.TIPO_DE_VEHICULO_OBJ_ID:{
-                            self.mf['tipo_vehiculo']:tipo,
-                            self.mf['marca_vehiculo']:marca,
-                            self.mf['modelo_vehiculo']:modelo,
-                        },
-                        self.ESTADO_OBJ_ID:{
-                            self.mf['nombre_estado']:estado,
-                        },
-                        self.mf['placas_vehiculo']:placas,
-                        self.mf['color_vehiculo']:color,
-                    })
-            answers[self.mf['grupo_vehiculos']] = list_vehiculos  
-
-        equipos = data.get('equipo',[])
-
-        if equipos:
-            list_equipos = []
-            for item in equipos:
-                tipo = item.get('tipo','').lower().replace(' ', '_')
-                nombre = item.get('nombre','')
-                marca = item.get('marca','')
-                modelo = item.get('modelo','')
-                color = item.get('color','')
-                serie = item.get('serie','')
-                list_equipos.append({
-                    self.mf['tipo_equipo']:tipo,
-                    self.mf['nombre_articulo']:nombre,
-                    self.mf['marca_articulo']:marca,
-                    self.mf['modelo_articulo']:modelo,
-                    self.mf['color_articulo']:color,
-                    self.mf['numero_serie']:serie,
-                })
-            answers[self.mf['grupo_equipos']] = list_equipos
-
-        gafete = data.get('gafete',{})
-        if gafete:
-            gafete_ans = {}
-            gafete_ans[self.GAFETES_CAT_OBJ_ID] = {self.gafetes_fields['gafete_id']:gafete.get('gafete_id')}
-            gafete_ans[self.LOCKERS_CAT_OBJ_ID] = {self.mf['locker_id']:gafete.get('locker_id')}
-            gafete_ans[self.mf['documento']] = gafete.get('documento_garantia')
-            answers.update(gafete_ans)
-            self.update_gafet_status(answers)
-
-
-        comment = data.get('comentario_acceso',[])
-        comments_pase = data.get('comentario_pase',[])
-        if comment or comments_pase:
-            comment_list = []
-            for c in comment:
-                comment_list.append(
-                    {
-                        self.bitacora_fields['comentario']:c.get('comentario_pase'),
-                        self.bitacora_fields['tipo_comentario'] :c.get('tipo_de_comentario').lower().replace(' ', '_')
-                    }
-                )
-            for c in comments_pase:
-                comment_list.append(
-                    {
-                        self.bitacora_fields['comentario']:c.get('comentario_pase'),
-                        self.bitacora_fields['tipo_comentario'] :c.get('tipo_de_comentario').lower().replace(' ', '_')
-                    }
-                )
-            answers.update({self.bitacora_fields['grupo_comentario']:comment_list})
-
-        visit_list = data.get('visita_a',[])
-        if visit_list:
-            visit_list2 = []
-            for c in visit_list:
-                visit_list2.append(
-                   { f"{self.bitacora_fields['visita']}":{ 
-                       self.bitacora_fields['visita_nombre_empleado']:c.get('nombre'),
-                       self.mf['id_usuario'] :[c.get('user_id')],
-                       self.bitacora_fields['visita_departamento_empleado']:[c.get('departamento')],
-                       self.bitacora_fields['puesto_empleado']:[c.get('puesto')],
-                       self.mf['email_visita_a'] :[c.get('email')]
-                   }}
-                )
-            answers.update({self.bitacora_fields['visita_a']:visit_list2})
-
-        metadata.update({'answers':answers})
-        response_create = self.lkf_api.post_forms_answers(metadata)
-        return response_create
-
-    def create_access_pass(self, location, access_pass):
-        #---Define Metadata
-        metadata = self.lkf_api.get_metadata(form_id=self.PASE_ENTRADA)
-        metadata.update({
-            "properties": {
-                "device_properties":{
-                    "System": "Script",
-                    "Module": "Accesos",
-                    "Process": "Creación de pase",
-                    "Action": "create_access_pass",
-                    "File": "accesos/app.py"
+            self.pase_entrada_fields['creado_desde']: data.get('creado_desde', 'pase_de_entrada_web'),
+            f['tipo_de_operacion']:              data.get('tipo_de_operacion', ''),
+            f['nombre_crea_el_pase']:            crea.get('nombre', ''),
+            f['email_crea_el_pase']:             crea.get('email', ''),
+            f['telefono_crea_el_pase']:          crea.get('telefono', ''),
+            f['proveedor']:                      recibe.get('nombre', ''),
+            f['proveedor_email']:                recibe.get('email', ''),
+            f['proveedor_telefono']:             recibe.get('telefono', ''),
+            f['empresa_transportista']:          data.get('empresa_transportista', ''),
+            f['proveedor_cliente_material']:     mat.get('proveedor_cliente', ''),
+            f['orden_de_compra']:                mat.get('orden_compra', ''),
+            f['grupo_documentos_para_ocr']:       [
+                {
+                    f['tipo_de_documento']:  doc.get('tipo', ''),
+                    f['no_de_documento']:    doc.get('no_doc', ''),
+                    f['documento_para_ocr']: [{'file_name': doc.get('file_name', ''), 'file_url': doc.get('file_url', '')}] if doc.get('file_url') else [],
                 }
+                for doc in mat.get('documentos', [])
+            ],
+            f['grupo_materiales']:               [
+                {
+                    f['tipo']:       item.get('tipo', ''),
+                    f['cantidad']:   item.get('cantidad', ''),
+                    f['volumen']:    item.get('volumen', ''),
+                    f['peso']:       item.get('peso', ''),
+                    f['sello']:      item.get('sello', ''),
+                    f['contenedor']: item.get('contenedor', ''),
+                    f['producto']:      item.get('producto', ''),
+                    f['lote']:          item.get('lote', ''),
+                    f['no_referencia']: item.get('no_referencia', ''),
+                }
+                for item in mat.get('items', [])
+            ],
+            self.UBICACIONES_CAT_OBJ_ID: {
+                self.mf['ubicacion']:            lugar.get('ubicacion', ''),
+                self.f['address_name']:          [lugar.get('direccion', '')],
             },
-        })
-
-        #---Define Answers
-        answers = {}
-        perfil_pase = access_pass.get('perfil_pase')
-        location_name = access_pass.get('ubicacion')
-        if not location:
-            location = location_name
-        address = self.get_location_address(location_name=location_name)
-        access_pass['direccion'] = [address.get('address', '')]
-        user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
-        timezone = user_data.get('timezone','America/Monterrey')
-        now_datetime =self.today_str(timezone, date_format='datetime')
-        employee = self.get_employee_data(email=self.user.get('email'), get_one=True)
-        company = employee.get('company', 'Soter')
-        nombre_visita_a = employee.get('worker_name')
-
-        if(access_pass.get('site', '') == 'accesos'):
-            nombre_visita_a = access_pass.get('visita_a')
-            access_pass['ubicaciones'] = [location]
-
-        answers[self.UBICACIONES_CAT_OBJ_ID] = {}
-        # answers[self.UBICACIONES_CAT_OBJ_ID][self.f['location']] = location
-        # if access_pass.get('selected_visita_a'):
-        #     nombre_visita_a = access_pass.get('selected_visita_a')
-        if access_pass.get('custom') == True :
-            answers[self.pase_entrada_fields['tipo_visita_pase']] = access_pass.get('tipo_visita_pase',"")
-            answers[self.pase_entrada_fields['fecha_desde_visita']] = access_pass.get('fecha_desde_visita',"")
-            answers[self.pase_entrada_fields['fecha_desde_hasta']] = access_pass.get('fecha_desde_hasta',"")
-            answers[self.pase_entrada_fields['config_dia_de_acceso']] = access_pass.get('config_dia_de_acceso',"")
-            answers[self.pase_entrada_fields['config_dias_acceso']] = access_pass.get('config_dias_acceso',"")
-            answers[self.pase_entrada_fields['catalago_autorizado_por']] =  {self.pase_entrada_fields['autorizado_por']:nombre_visita_a}
-            answers[self.pase_entrada_fields['status_pase']] = access_pass.get('status_pase',"").lower()
-            answers[self.pase_entrada_fields['empresa_pase']] = access_pass.get('empresa',"")
-            # answers[self.pase_entrada_fields['ubicacion_cat']] = {self.mf['ubicacion']:access_pass['ubicacion'], self.mf['direccion']:access_pass.get('direccion',"")}
-            answers[self.pase_entrada_fields['tema_cita']] = access_pass.get('tema_cita',"") 
-            answers[self.pase_entrada_fields['descripcion']] = access_pass.get('descripcion',"") 
-            answers[self.pase_entrada_fields['config_limitar_acceso']] = access_pass.get('config_limitar_acceso',"") 
-
-        else:
-            answers[self.mf['fecha_desde_visita']] = now_datetime
-            answers[self.mf['tipo_visita_pase']] = 'fecha_fija'
-        answers[self.pase_entrada_fields['tipo_visita']] = 'alta_de_nuevo_visitante'
-        answers[self.pase_entrada_fields['walkin_nombre']] = access_pass.get('nombre')
-        answers[self.pase_entrada_fields['walkin_email']] = access_pass.get('email', '')
-        answers[self.pase_entrada_fields['walkin_empresa']] = access_pass.get('empresa')
-        answers[self.pase_entrada_fields['walkin_fotografia']] = access_pass.get('foto')
-        answers[self.pase_entrada_fields['walkin_identificacion']] = access_pass.get('identificacion')
-        answers[self.pase_entrada_fields['walkin_telefono']] = access_pass.get('telefono', '')
-        answers[self.pase_entrada_fields['status_pase']] = access_pass.get('status_pase',"").lower()
-        
-        if access_pass.get('ubicaciones'):
-            ubicaciones = access_pass.get('ubicaciones',[])
-            address_list = self.get_locations_address(list_locations=ubicaciones)
-            if ubicaciones:
-                ubicaciones_list = []
-                for ubi in ubicaciones:
-                    ubicaciones_list.append(
-                        {
-                            self.pase_entrada_fields['ubicacion_cat']: { 
-                                self.mf["ubicacion"]: ubi,
-                                self.mf["direccion"]: [address_list.get(ubi, {}).get('address', '')],
-                                self.f["address_geolocation"]: address_list.get(ubi, {}).get('geolocation', [])
-                            }
-                        }
-                    )
-                answers.update({self.pase_entrada_fields['ubicaciones']:ubicaciones_list})
-                
-        if access_pass.get('comentarios'):
-            comm = access_pass.get('comentarios',[])
-            if comm:
-                comm_list = []
-                for c in comm:
-                    comm_list.append(
-                        {
-                            self.pase_entrada_fields['comentario_pase']:c.get('comentario_pase'),
-                            self.pase_entrada_fields['tipo_comentario'] :c.get('tipo_comentario').lower()
-                        }
-                    )
-                answers.update({self.pase_entrada_fields['grupo_instrucciones_pase']:comm_list})
-
-        if access_pass.get('todas_las_areas'):
-            answers[self.pase_entrada_fields['todas_las_areas']]='sí'
-            todas_areas = [] 
-            for location in access_pass.get('ubicaciones', []):
-                areas = self.get_areas_by_location(location)
-                if isinstance(areas, list):
-                    for area in areas:
-                        todas_areas.append({
-                            "nombre_area": area,
-                            "commentario_area": "" 
-                        })
-            print(f"Todas las áreas hasta ahora: {todas_areas}")
-            access_pass["areas"] = todas_areas
-
-        if access_pass.get('areas'):
-            areas = access_pass.get('areas',[])
-            if areas:
-                areas_list = []
-                for c in areas:
-                    areas_list.append(
-                        {
-                            self.pase_entrada_fields['commentario_area']:c.get('commentario_area'),
-                            self.pase_entrada_fields['area_catalog_normal'] :{self.mf['nombre_area']: c.get('nombre_area')}
-                        }
-                    )
-                answers.update({self.pase_entrada_fields['grupo_areas_acceso']:areas_list})
-
-        print(access_pass.get('areas'))
-
-        #Visita A
-        answers[self.mf['grupo_visitados']] = []
-        nombre_visita_a = access_pass.get('visita_a') if not nombre_visita_a else nombre_visita_a
-        if access_pass.get('selected_visita_a'):
-            nombre_visita_a = access_pass.get('selected_visita_a')
-        visita_set = {
-            self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID:{
-                self.mf['nombre_empleado'] : nombre_visita_a,
-                }
-            }
-        options_vistia = {
-              "group_level": 3,
-              "startkey": [location, nombre_visita_a],
-              "endkey": [location, f"{nombre_visita_a}\n",{}],
-            }
-        cat_visita = self.catalogo_view(self.CONF_AREA_EMPLEADOS_CAT_ID, self.PASE_ENTRADA, options_vistia)
-        if len(cat_visita) > 0:
-            cat_visita =  {key: [value,] for key, value in cat_visita[0].items() if value}
-        else:
-            selector = {}
-            selector.update({f"answers.{self.mf['nombre_empleado']}": nombre_visita_a})
-            fields = ["_id", f"answers.{self.mf['nombre_empleado']}", f"answers.{self.mf['email_visita_a']}", f"answers.{self.mf['id_usuario']}"]
-
-            mango_query = {
-                "selector": selector,
-                "fields": fields,
-                "limit": 1
-            }
-
-            row_catalog = self.lkf_api.search_catalog(self.CONF_AREA_EMPLEADOS_CAT_ID, mango_query)
-            if row_catalog:
-                visita_set[self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID].update({
-                    self.mf['nombre_empleado']: nombre_visita_a,
-                    self.mf['email_visita_a']: [row_catalog[0].get(self.mf['email_visita_a'], "")],
-                    self.mf['id_usuario']: [row_catalog[0].get(self.mf['id_usuario'], "")],
-                })
-
-        visita_set[self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID].update(cat_visita)
-        answers[self.mf['grupo_visitados']].append(visita_set)
-
-        # Perfil de Pase
-        answers[self.CONFIG_PERFILES_OBJ_ID] = {
-            self.mf['nombre_perfil'] : perfil_pase,
+            self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID: {
+                self.mf['nombre_area_salida']:   lugar.get('area', '')
+            },
+            f['fecha_pase_transportista_desde']: lugar.get('fecha_pase_transportista_desde', ''),
+            f['fecha_pase_transportista_hasta']: lugar.get('fecha_pase_transportista_hasta', ''),
+            f['hora_inicial']:                   hora_inicio + ':00' if hora_inicio else '',
+            f['hora_final']:                     hora_fin    + ':00' if hora_fin    else '',
+            self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID: {
+                self.mf['nombre_area']: lugar.get('anden', ''),
+            },
+            f['url_del_pase_transportista']: url_pase_transportista,
+            f['qr_del_pase_transportista']: qr_pase_transportista,
+            f['estado_transportista']: "pendiente"
         }
-        if answers[self.CONFIG_PERFILES_OBJ_ID].get(self.mf['nombre_permiso']) and \
-           type(answers[self.CONFIG_PERFILES_OBJ_ID][self.mf['nombre_permiso']]) == str:
-            answers[self.CONFIG_PERFILES_OBJ_ID][self.mf['nombre_permiso']] = [answers[self.CONFIG_PERFILES_OBJ_ID][self.mf['nombre_permiso']],]
 
-        #---Valor
-        metadata.update({'answers':answers})
-        res = self.lkf_api.post_forms_answers(metadata)
-        qrcode_to_google_pass = ''
-        id_forma = ''
-        if res.get("status_code") ==200 or res.get("status_code")==201:
-            qrcode_to_google_pass = res.get('json', {}).get('id', '')
-            link_info=access_pass.get('link', "")
-            docs=""
-            
-            if link_info:
-                for index, d in enumerate(link_info["docs"]): 
-                    if(d == "agregarIdentificacion"):
-                        docs+="iden"
-                    elif(d == "agregarFoto"):
-                        docs+="foto"
-                    if index==0 :
-                        docs+="-"
-                link_pass= f"{link_info['link']}?id={res.get('json')['id']}&user={link_info['creado_por_id']}&docs={docs}"
-                id_forma = self.PASE_ENTRADA
-                id_campo = self.pase_entrada_fields['archivo_invitacion']
-
-                tema_cita = access_pass.get("tema_cita")
-                descripcion = access_pass.get("descripcion")
-                fecha_desde_visita = access_pass.get("fecha_desde_visita")
-                fecha_desde_hasta = access_pass.get("fecha_desde_hasta")
-                creado_por_email = access_pass.get("link", {}).get("creado_por_email")
-                ubicacion = access_pass.get("ubicacion")
-                nombre = access_pass.get("nombre")
-                visita_a = access_pass.get("visita_a")
-                email = access_pass.get("email")
-
-                start_datetime = datetime.strptime(fecha_desde_visita, "%Y-%m-%d %H:%M:%S")
-
-                if not fecha_desde_hasta:
-                    stop_datetime = start_datetime + timedelta(hours=1)
-                    meeting = [
-                        {
-                            "id": 1,
-                            "start": start_datetime,
-                            "stop": stop_datetime,
-                            "name": tema_cita,
-                            "description": descripcion,
-                            "location": ubicacion,
-                            "allday": False,
-                            "rrule": None,
-                            "alarm_ids": [{"interval": "minutes", "duration": 10, "name": "Reminder"}],
-                            'organizer_name': visita_a,
-                            'organizer_email': creado_por_email,
-                            "attendee_ids": [{"email": email, "nombre": nombre}, {"email": creado_por_email, "nombre": visita_a}],
-                        }
-                    ]
-
-                    try:
-                        respuesta_ics = self.upload_ics(id_forma, id_campo, meetings=meeting)
-                    except Exception as e:
-                        print(f"Error al generar o subir el archivo ICS: {e}")
-                        respuesta_ics = {}
-
-                    file_name = respuesta_ics.get('file_name', '')
-                    file_url = respuesta_ics.get('file_url', '')
-
-                    access_pass_custom={
-                        "link":link_pass,
-                        "enviar_correo_pre_registro": access_pass.get("enviar_correo_pre_registro",[]),
-                        "archivo_invitacion": [
-                            {
-                                "file_name": f"{file_name}",
-                                "file_url": f"{file_url}"
-                            }
-                        ]
-                    }
-                else:
-                    access_pass_custom={
-                        "link":link_pass,
-                        "enviar_correo_pre_registro": access_pass.get("enviar_correo_pre_registro",[])
-                    }
-
-                data_to_google_pass = {
-                    "nombre": access_pass.get("nombre"),
-                    "visita_a": access_pass.get("visita_a"),
-                    "ubicacion": access_pass.get("ubicaciones"),
-                    "address": address.get('address'),
-                    "empresa": company,
-                    "all_data": access_pass
-                }
-
-                google_wallet_pass_url = self.create_class_google_wallet(data=data_to_google_pass, qr_code=qrcode_to_google_pass)
-                access_pass_custom.update({
-                    "google_wallet_pass_url": google_wallet_pass_url,
-                })
-                
-                self.update_pass(access_pass=access_pass_custom, folio=res.get("json")["id"])
-            
-        return res
-
-    def update_full_pass(self, access_pass,folio=None, qr_code=None, location=None):
-        answers = {}
-        perfil_pase = access_pass.get('perfil_pase', 'Visita General')
-        user_data = self.lkf_api.get_user_by_id(self.user.get('user_id'))
-        this_user = self.get_employee_data(user_id=self.user.get('user_id'), get_one=True)
-        this_user_name = this_user.get('worker_name', '')
-        timezone = user_data.get('timezone','America/Monterrey')
-        now_datetime =self.today_str(timezone, date_format='datetime')
-        answers[self.mf['grupo_visitados']] = []
-        # answers[self.UBICACIONES_CAT_OBJ_ID] = {}
-        # answers[self.UBICACIONES_CAT_OBJ_ID][self.f['location']] = location
-        answers[self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID] = {}
-        answers[self.CONFIG_PERFILES_OBJ_ID] = {}
-        answers[self.VISITA_AUTORIZADA_CAT_OBJ_ID] = {}
-        # answers[self.pase_entrada_fields['qr_pase']] = []
-        for key, value in access_pass.items():
-            if key == 'grupo_vehiculos':
-                vehiculos = access_pass.get('grupo_vehiculos',[])
-                if vehiculos:
-                    list_vehiculos = []
-                    for item in vehiculos:
-                        tipo = item.get('tipo_vehiculo', item.get('tipo', ''))
-                        marca = item.get('marca_vehiculo', item.get('marca', ''))
-                        modelo = item.get('modelo_vehiculo', item.get('modelo', ''))
-                        estado = item.get('state', item.get('estado', ''))
-                        placas = item.get('placas_vehiculo', item.get('placas', ''))
-                        color = item.get('color_vehiculo', item.get('color', ''))
-                        list_vehiculos.append({
-                            self.TIPO_DE_VEHICULO_OBJ_ID:{
-                                self.mf['tipo_vehiculo']:tipo,
-                                self.mf['marca_vehiculo']:marca,
-                                self.mf['modelo_vehiculo']:modelo,
-                            },
-                            self.ESTADO_OBJ_ID:{
-                                self.mf['nombre_estado']:estado,
-                            },
-                            self.mf['placas_vehiculo']:placas,
-                            self.mf['color_vehiculo']:color,
-                        })
-                    answers[self.mf['grupo_vehiculos']] = list_vehiculos  
-            elif key == 'grupo_equipos':
-                equipos = access_pass.get('grupo_equipos',[])
-                if equipos:
-                    list_equipos = []
-                    for item in equipos:
-                        tipo = item.get('tipo_equipo', item.get('tipo', '')).lower().replace(' ', '_')
-                        nombre = item.get('nombre_articulo', item.get('nombre', ''))
-                        marca = item.get('marca_articulo', item.get('marca', ''))
-                        modelo = item.get('modelo_articulo', item.get('modelo', ''))
-                        color = item.get('color_articulo', item.get('color', ''))
-                        serie = item.get('numero_serie', item.get('serie', ''))
-                        list_equipos.append({
-                            self.mf['tipo_equipo']:tipo,
-                            self.mf['nombre_articulo']:nombre,
-                            self.mf['marca_articulo']:marca,
-                            self.mf['modelo_articulo']:modelo,
-                            self.mf['color_articulo']:color,
-                            self.mf['numero_serie']:serie,
-                        })
-                    answers[self.mf['grupo_equipos']] = list_equipos
-            elif key == 'grupo_instrucciones_pase':
-                acciones = access_pass.get('grupo_instrucciones_pase',[])
-                if acciones:
-                    acciones_list = []
-                    for c in acciones:
-                        acciones_list.append(
-                            {
-                                self.pase_entrada_fields['tipo_comentario']:c.get('tipo_comentario'),
-                                self.pase_entrada_fields['comentario_pase'] :c.get('comentario_pase')
-                            }
-                        )
-                    answers.update({self.pase_entrada_fields['grupo_instrucciones_pase']:acciones_list})
-            elif key == 'grupo_areas_acceso':
-                acciones = access_pass.get('grupo_areas_acceso',[])
-                if acciones:
-                    acciones_list = []
-                    for c in acciones:
-                        acciones_list.append(
-                            {
-                                self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID : {
-                                    self.pase_entrada_fields['nombre_area']:c.get('nombre_area')
-                                } ,
-                                self.pase_entrada_fields['commentario_area'] :c.get('commentario_area')
-                            }
-                        )
-                    answers.update({self.pase_entrada_fields['grupo_areas_acceso']:acciones_list})
-            elif key == 'autorizado_por':
-                answers[self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID] = {
-                    self.mf['nombre_guardia_apoyo'] : this_user_name,
-                }
-            elif key == 'link':
-                link_info=access_pass.get('link', '')
-                if link_info:
-                    docs=""
-                    for index, d in enumerate(link_info["docs"]): 
-                        if(d == "agregarIdentificacion"):
-                            docs+="iden"
-                        elif(d == "agregarFoto"):
-                            docs+="foto"
-                        if index==0 :
-                            docs+="-"
-                    link_pass= f"{link_info['link']}?id={link_info['qr_code']}&user={link_info['creado_por_id']}&docs={docs}"
-
-                answers.update({f"{self.pase_entrada_fields[key]}":link_pass}) 
-            elif key == 'ubicacion':
-                # answers[self.pase_entrada_fields['ubicacion_cat']] = {self.mf['ubicacion']:access_pass['ubicacion']}
-                ubicaciones = access_pass.get('ubicacion',[])
-                if ubicaciones:
-                    ubicaciones_list = []
-                    for ubi in ubicaciones:
-                        ubicaciones_list.append(
-                            {
-                                self.pase_entrada_fields['ubicacion_cat']:{ self.mf["ubicacion"] : ubi}
-                            }
-                        )
-                    answers.update({self.pase_entrada_fields['ubicaciones']:ubicaciones_list})
-            elif key == 'visita_a': 
-                #Visita A
-                answers[self.mf['grupo_visitados']] = []
-                visita_a = access_pass.get('visita_a')
-                visita_set = {
-                    self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID:{
-                        self.mf['nombre_empleado'] : visita_a,
-                        }
-                    }
-                options_vistia = {
-                      "group_level": 3,
-                      "startkey": [location, visita_a],
-                      "endkey": [location, f"{visita_a}\n",{}],
-                    }
-                cat_visita = self.catalogo_view(self.CONF_AREA_EMPLEADOS_CAT_ID, self.PASE_ENTRADA, options_vistia)
-                if len(cat_visita) > 0:
-                    cat_visita =  {key: [value,] for key, value in cat_visita[0].items() if value}
-                visita_set[self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID].update(cat_visita)
-                answers[self.mf['grupo_visitados']].append(visita_set)
-            elif key == 'perfil_pase':
-                # Perfil de Pase
-                answers[self.CONFIG_PERFILES_OBJ_ID] = {}
-                answers[self.CONFIG_PERFILES_OBJ_ID] = {
-                    self.mf['nombre_perfil'] : perfil_pase,
-                }
-                options = {
-                      "group_level": 2,
-                      "startkey": [perfil_pase],
-                      "endkey": [f"{perfil_pase}\n",{}],
-                    }
-                cat_perfil = self.catalogo_view(self.CONFIG_PERFILES_ID, self.PASE_ENTRADA, options)
-                if len(cat_perfil) > 0:
-                    cat_perfil[0][self.mf['motivo']]= [cat_perfil[0].get(self.mf['motivo'])]
-                    cat_perfil = cat_perfil[0]
-                answers[self.CONFIG_PERFILES_OBJ_ID].update(cat_perfil)
-                if answers[self.CONFIG_PERFILES_OBJ_ID].get(self.mf['nombre_permiso']) and \
-                   type(answers[self.CONFIG_PERFILES_OBJ_ID][self.mf['nombre_permiso']]) == str:
-                    answers[self.CONFIG_PERFILES_OBJ_ID][self.mf['nombre_permiso']] = [answers[self.CONFIG_PERFILES_OBJ_ID][self.mf['nombre_permiso']],]
-            elif key == 'archivo_invitacion':
-                # id_forma = 121736
-                id_forma = self.PASE_ENTRADA
-                # id_campo = '673773741b2adb2d05d99d63'
-                id_campo = self.pase_entrada_fields['archivo_invitacion']
-                tema_cita = access_pass.get("tema_cita")
-                descripcion = access_pass.get("descripcion")
-                fecha_desde_visita = access_pass.get("fecha_desde_visita")
-                fecha_desde_hasta = access_pass.get("fecha_desde_hasta")
-                creado_por_email = access_pass.get("link", {}).get("creado_por_email")
-                ubicacion = access_pass.get("ubicacion",'')
-                nombre = access_pass.get("nombre_pase",'')
-                visita_a = access_pass.get("visita_a",'')
-                email = access_pass.get("email_pase",'')
-
-                start_datetime = datetime.strptime(fecha_desde_visita, "%Y-%m-%d %H:%M:%S")
-
-                if not fecha_desde_hasta:
-                    stop_datetime = start_datetime + timedelta(hours=1)
-                else:
-                    stop_datetime = datetime.strptime(fecha_desde_hasta, "%Y-%m-%d %H:%M:%S")
-
-                meeting = [
-                    {
-                        "id": 1,
-                        "start": start_datetime,
-                        "stop": stop_datetime,
-                        "name": tema_cita,
-                        "description": descripcion,
-                        "location": ubicacion,
-                        "allday": False,
-                        "rrule": None,
-                        "alarm_ids": [{"interval": "minutes", "duration": 10, "name": "Reminder"}],
-                        'organizer_name': visita_a,
-                        'organizer_email': creado_por_email,
-                        "attendee_ids": [{"email": email, "nombre": nombre}, {"email": creado_por_email, "nombre": visita_a}],
-                    }
-                ]
-                respuesta_ics = self.upload_ics(id_forma, id_campo, meetings=meeting)
-                file_name = respuesta_ics.get('file_name', '')
-                file_url = respuesta_ics.get('file_url', '')
-
-                archivo_invitacion= [
-                    {
-                        "file_name": f"{file_name}",
-                        "file_url": f"{file_url}"
-                    }
-                ]
-                answers.update({f"{self.pase_entrada_fields[key]}": archivo_invitacion})
-            else:
-                answers.update({f"{self.pase_entrada_fields[key]}":value})
-
-        if answers or folio:
-            metadata = self.lkf_api.get_metadata(form_id=self.PASE_ENTRADA)
-            metadata.update(self.get_record_by_folio(folio, self.PASE_ENTRADA, select_columns={'_id':1}, limit=1))
-
-            metadata.update({
-                    'properties': {
-                        "device_properties":{
-                            "system": "Addons",
-                            "process":"Actualizacion de Pase de Entrada", 
-                            "accion":'update_full_pass', 
-                            "folio": folio, 
-                            "archive": "pase_acceso.py"
-                        }
-                    },
-                    'answers': answers,
-                    '_id': qr_code
-                })
-            res= self.net.patch_forms_answers(metadata)
-            return res
-        else:
-            self.LKFException('No se mandarón parametros para actualizar')
-
-    def get_more_info_conscessioned_articles(self, articles=[]):
-        """
-        Obtiene informacion adicional de los articulos de concesion
-        Args:
-            articles (list): Lista de articulos
-        Returns:
-            list: Lista de articulos con informacion adicional
-        """
-        query = [
-            {"$match": {
-                "deleted_at": {"$exists": False},
-                "form_id": self.ACTIVOS_FIJOS,
-                f"answers.{self.cons_f['_nombre_equipo']}": {"$in": articles}
-            }},
-            {"$project": {
-                "_id": 0,
-                "article_name": f"$answers.{self.cons_f['_nombre_equipo']}",
-                "article_image": f"$answers.{self.cons_f['_imagen_equipo_concesion']}",
-                "article_cost": f"$answers.{self.cons_f['_costo_equipo_concesion']}"
-            }}
-        ]
-        data = self.format_cr(self.cr.aggregate(query))
-        return data
-
-    def catalogo_tipo_concesion(self,location="", tipo=""):
-        catalog_id = self.ACTIVOS_FIJOS_CAT_ID
-        form_id= self.CONCESSIONED_ARTICULOS
-        options={}
-        response=[]
-        if location and not tipo:
-            response= self.catalogo_view(catalog_id, form_id)
-        else:
-            if location and tipo:
-                options = {
-                    "group_level": 2,
-                    "startkey": [tipo],
-                    "endkey": [f"{tipo}\n"]
-                }
-                response= self.catalogo_view(catalog_id, form_id, options)
-
-            elif tipo and not location:
-                self.LKFException('Location es requerido')
-        
-        format_data = []
-        if response:
-            # Se obtienen datos extras de los articulos
-            # Nombre, imagen y costo.
-            format_data = self.get_more_info_conscessioned_articles(response)
-        return format_data
-
-    def assets_access_pass(self, location):
-        """
-        Regresa diccionario con las areas, personas que puede visitar en esa ubicacion y los perfiles
-            
-        args:
-            location (str|list): Nombre de la ubicacion
-
-        returns:
-            {
-            Areas:[ lista de areas ],
-            Vistia_a:[ lista de personas ]
-            Perfiles:[ lista de prefiles ]
-            }
-        """
-        ### Areas
-        try:
-            areas = self.get_areas_by_location(location)
-        except:
-            areas = []
-        ### Aquien Visita
-        try:
-            visita_a =  self.Employee.get_users_by_location_area(location_name=location)
-            visita_a = [x['name'] for x in visita_a if x.get('name')]
-        except:
-            visita_a = []
-        ### Perfiles de accesos
-        try:
-            perfiles = self.get_pefiles_walkin(location)
-        except:
-            perfiles = []
-        res = {
-            'Areas': areas,
-            'Visita_a': visita_a,
-            'Perfiles': perfiles
-        }
-        return res
-
-    def update_guards_checkin(self, data_guard, record_id, location, area, user_data={}, nombre_suplente="", foto_checkin=[]):
-        response = []
-        timezone = user_data.get('timezone', 'America/Monterrey')
-        now_datetime =self.today_str(timezone, date_format='datetime')
-        checkin = self.check_in_out_employees(
-            'in',
-            now_datetime,
-            checkin={},
-            employee_list=data_guard,
-            **{'employee_type': self.support_guard}
-        )
-        
-        for idx, employee in enumerate(checkin.get(self.mf['guard_group'],[])):
-            user_id = employee[self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID].get(self.mf['id_usuario'])
-            
-            validate_status = self.get_employee_checkin_status(user_id)
-            not_allowed = [user_id for user_id, user_data in validate_status.items() if user_data.get('status') == 'in']
-            if not_allowed:
-                msg = f"El usuario con id {not_allowed}. Se encuentra actualmente registrado en una caseta."
-                msg += f"Es necesario primero cerrar turno de cualquier caseta antes de querer entrar a una nueva."
-                return self.LKFException({'msg': msg, "title": 'Advertencia'})
-
-            answers = {}
-            answers[self.mf['guard_group']] = {'-1': employee}
-
-            asistencia_answers = {
-                self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID: {
-                    self.Location.f['location']: location,
-                    self.Location.f['area']: area
-                },
-                self.f['tipo_guardia']: 'guardia_regular',
-                self.checkin_fields['checkin_type']: 'iniciar_turno',
-                self.f['image_checkin']: foto_checkin
-            }
-
-            if nombre_suplente:
-                asistencia_answers.update({
-                    self.f['tipo_guardia']: 'guardia_suplente',
-                    self.f['nombre_guardia_suplente']: nombre_suplente
-                })
-
-            registro_de_asistencia = self.do_attendance(asistencia_answers)
-
-            data = self.lkf_api.patch_multi_record( answers = answers, form_id=self.CHECKIN_CASETAS, record_id=[record_id])
-            data.update({'registro_de_asistencia': 'Correcto'})
-            response.append(data)
-        return response
-
-    def do_checkout_aux_guard(self, user_id=None, checkin_id=None, location=None, area=None, guards=[], forzar=False, comments=False, fotografia=[]):
-        """
-        Realiza el checkout de los guardias auxiliares especificados en guards.
-        """
-        employee = self.get_employee_data(user_id=user_id, get_one=True)
-        timezone = employee.get('cat_timezone', employee.get('timezone', 'America/Monterrey'))
-        now_datetime = self.today_str(timezone, date_format='datetime')
-        last_chekin = {}
-
-        # Solo buscamos el último checkin de los guards especificados
-        if not checkin_id and guards:
-            last_chekin = self.get_guard_last_checkin(guards)
-            checkin_id = last_chekin.get('_id')
-
-        if not checkin_id:
-            self.LKFException({
-                "msg": "No encontramos un checking valido del cual podemos hacer checkout...", 
-                "title": "Una Disculpa!!!"
+        # lugar_recoleccion — solo tipos 2 y 3
+        recoleccion = data.get('lugar_recoleccion', {})
+        if recoleccion:
+            transporte   = recoleccion.get('transporte', {})
+            horario_rec  = recoleccion.get('horario', '') or ''
+            hora_ini_rec, hora_fin_rec = '', ''
+            if '-' in horario_rec:
+                partes       = horario_rec.split('-')
+                hora_ini_rec = partes[0].strip()
+                hora_fin_rec = partes[1].strip()
+            answers.update({
+                f['lugar_de_recoleccion']:          recoleccion.get('lugar', ''),
+                f['direccion_lugar_de_recoleccion']: recoleccion.get('direccion', ''),
+                f['fecha_de_recoleccion']:          recoleccion.get('fecha', ''),
+                f['hora_inicial_recoleccion']:      hora_ini_rec + ':00' if hora_ini_rec else '',
+                f['hora_final_recoleccion']:        hora_fin_rec + ':00' if hora_fin_rec else '',
+                f['anden_recoleccion']:             recoleccion.get('anden', ''),
+                f['responsable']:                   transporte.get('responsable', ''),
+                f['responsable_email']:             transporte.get('email', ''),
+                f['responsable_telefono']:          transporte.get('telefono', ''),
+                # f['metodo_de_embarque']:            recoleccion.get('metodo_embarque', '').lower(),
+                # f['incoterm']:                      recoleccion.get('incoterm', '').lower(),
             })
 
-        record = self.get_record_by_id(checkin_id)
-        checkin_answers = record['answers']
-        folio = record['folio']
+        metadata.update({'answers': answers})
+        print(simplejson.dumps(answers, indent=3))
+        res = self.lkf_api.post_forms_answers(metadata)
+        if res.get('status_code') not in [200, 201, 202]:
+            self.LKFException({'title': 'Error al crear pase transportista', 'msg': res})
+        res['qr_pase_transportista'] = qr_pase_transportista
 
-        # Realiza el checkout solo de los guards especificados
-        data = self.lkf_api.get_metadata(self.CHECKIN_CASETAS)
-        checkin_answers = self.check_in_out_employees('out', now_datetime, checkin=checkin_answers, employee_list=guards)
-        data['answers'] = checkin_answers
-        response = self.lkf_api.patch_record(data=data, record_id=checkin_id)
-        if response.get('status_code') in [200, 201, 202]:
-            print('entra aquiiiiiiii')
-            if employee:
-                print('employee', employee)
-                print('location', location)
-                print('area', area)
-                record_id = self.search_guard_asistance(location, area, self.unlist(employee.get('usuario_id')))
-                print('record_id', record_id)
-                asistencia_answers = {
-                    self.f['foto_cierre_turno']: fotografia,
-                    self.checkin_fields['checkin_type']: 'cerrar_turno',
+        # Reserva visible en el kanban de bitácora (columna "Programados") desde
+        # que se crea el pase — se liga por num_de_pase y se sustituye por el
+        # registro real de arribo en create_visit_transportista.
+        try:
+            bf = self.bitacora_transportista_fields
+            fecha_programada = (lugar.get('fecha_pase_transportista_desde') or '').strip()
+            if fecha_programada and ' ' not in fecha_programada:
+                fecha_programada = f'{fecha_programada} 00:00:00'
+            # La bitácora solo acepta "entrega"/"recolección" (binario); el pase
+            # maneja 4 valores (entrega_de_materia_prima, recoleccion_de_..., etc.)
+            tipo_operacion_pase = data.get('tipo_de_operacion', '') or ''
+            tipo_operacion_bitacora = 'recolección' if tipo_operacion_pase.startswith('recoleccion') else 'entrega'
+            b_metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_TRANSPORTISTAS)
+            b_metadata.update({
+                'properties': {
+                    'device_properties': {
+                        'System': 'Script',
+                        'Module': 'Accesos',
+                        'Process': 'Pase Transportista',
+                        'Action': 'create_pass_transportista',
+                        'File': 'modules/accesos/items/scripts/Accesos/accesos_utils.py',
+                    }
+                },
+                'answers': {
+                    bf['estatus']:               'programado',
+                    bf['fecha_hora_ingreso']:    fecha_programada,
+                    bf['num_de_pase']:           pass_id,
+                    bf['tipo_de_operacion']:     tipo_operacion_bitacora,
+                    bf['empresa_transportista']: data.get('empresa_transportista', ''),
+                    bf['proveedor_cliente']:     mat.get('proveedor_cliente', ''),
+                    bf['orden_de_compra']:       mat.get('orden_compra', ''),
+                    bf['anden_asignado']:        lugar.get('anden', ''),
+                },
+            })
+            res_stub = self.lkf_api.post_forms_answers(b_metadata)
+            if res_stub.get('status_code') not in [200, 201, 202]:
+                print(f'No se pudo crear el registro programado de bitácora para el pase {pass_id}: {res_stub}')
+        except Exception as e:
+            print(f'No se pudo crear el registro programado de bitácora para el pase {pass_id}: {e}')
+
+        return res
+
+    def create_visit_transportista(self, data):
+        f = self.bitacora_transportista_fields
+        print(simplejson.dumps(data, indent=3))
+        metadata = self.lkf_api.get_metadata(form_id=self.BITACORA_TRANSPORTISTAS)
+        metadata.update({
+            'properties': {
+                'device_properties': {
+                    'System': 'Script',
+                    'Module': 'Accesos',
+                    'Process': 'Bitácora Transportista',
+                    'Action': 'create_visit_transportista',
+                    'File': 'modules/accesos/items/scripts/Accesos/accesos_utils.py',
                 }
-                print('asistencia_answers', asistencia_answers)
-                res = self.lkf_api.patch_multi_record(answers=asistencia_answers, form_id=self.REGISTRO_ASISTENCIA, record_id=record_id)
-                print('res', res)
-                if res.get('status_code') in [200, 201, 202]:
-                    response.update({'registro_de_asistencia': 'Correcto'})
-                else:
-                    response.update({'registro_de_asistencia': 'Error'})
-        elif response.get('status_code') == 401:
-            return self.LKFException({"title": "Advertencia", "msg":"El guardia NO tiene permisos sobre el formulario de cierre de casetas"})
-        return response
+            }
+        })
 
-    def get_user_guards(self, location_employees=[]):
-        location_guards = []
-        for clave in ["guardia_de_apoyo", "guardia_lider"]:
-            if location_employees.get(clave):
-                for usuario in location_employees[clave]:
-                    if usuario.get("user_id") == self.user.get('user_id'):
-                        location_guards = location_employees[clave]
-                
-        location_employees = location_guards
+        vehiculo  = data.get('vehiculo', {}) or {}
+        conductor = data.get('conductor', {}) or {}
+        embarque  = data.get('embarque', {}) or {}
+        firma     = conductor.get('firma') or {}
 
-        for employee in location_employees:
-            if employee.get('user_id',0) == self.user.get('user_id'):
-                    return employee
-        return None
+        tz_name = self.user.get('timezone', 'America/Mexico_City')
+        tz = pytz.timezone(tz_name)
+        fecha_ingreso = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
 
-    def get_employee_checkin_status_by_id(self, user_id, location, area):
+        answers = {
+            f['estatus']:               'arribo',
+            f['fecha_hora_ingreso']:    fecha_ingreso,
+            f['num_de_pase']:           data.get('num_de_pase', ''),
+            f['tipo_de_operacion']:     (data.get('tipo_operacion') or '').lower().replace(' ', '_'),
+            f['empresa_transportista']: vehiculo.get('transportista', ''),
+            f['procedencia']:           vehiculo.get('procedencia', ''),
+            f['tipo_de_vehiculo']:      vehiculo.get('tipo_vehiculo', ''),
+            f['placas_de_vehiculo']:                    vehiculo.get('placa', ''),
+            f['placas_de_vehiculo_tarjeta_circulacion']: vehiculo.get('placa_tarjeta_circulacion', ''),
+            f['num_eco_num_rotulo']:                    vehiculo.get('no_economico', ''),
+            f['marca_vehiculo']:        vehiculo.get('marca', ''),
+            f['year_vehiculo']:         vehiculo.get('modelo', ''),
+            f['color_vehiculo']:        vehiculo.get('color', ''),
+            f['conductor']:             conductor.get('nombre', ''),
+            f['ayudante']:              conductor.get('acompanante', ''),
+            f['num_licencia']:          conductor.get('no_licencia', ''),
+            f['vigencia_licencia']:     conductor.get('vigencia_licencia', ''),
+            f['rfc_conductor']:         conductor.get('rfc', ''),
+            f['firma_conductor']:       firma,
+            f['proveedor_cliente']:     embarque.get('proveedor_cliente', ''),
+            f['orden_de_compra']:       embarque.get('no_orden_compra', ''),
+        }
+
+        # Ubicación + área del turno activo desde donde se registró la visita — se
+        # usa después para resolver qué forma de inspección aplica en ese sitio.
+        # Campo "Áreas de las Ubicaciones" agregado por Paco a esta forma (mismo
+        # catálogo que usan paquetería/incidencias/casetas).
+        ubicacion = data.get('ubicacion')
+        area = data.get('area')
+        if ubicacion or area:
+            answers[self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID] = {
+                self.mf['ubicacion']: ubicacion or '',
+                self.mf['nombre_area']: area or '',
+            }
+
+        remolques    = data.get('remolques', []) or []
+        contenedores = data.get('contenedores', []) or []
+        grupo = remolques + contenedores
+        if grupo:
+            answers[f['grupo_remolques']] = [
+                {
+                    f['tipo_remolque']:             item.get('tipo', ''),
+                    # Los remolques solo traen no_caja; los contenedores traen
+                    # además no_contenedor (su propio ID/ISO), que se prefiere
+                    # cuando está presente — si no, ambos comparten esta columna.
+                    f['num_caja_contenedor']:        item.get('no_contenedor') or item.get('no_caja', ''),
+                    f['num_sello']:                  item.get('no_sello', ''),
+                    f['placas_de_caja']:             item.get('placas', ''),
+                    f['color_remolque_contenedor']:  item.get('color', ''),
+                    f['no_referencia_remolque']:     item.get('ref_remolque', ''),
+                    f['comentarios']:                item.get('comentarios', ''),
+                }
+                for item in grupo
+            ]
+
+        docs = data.get('documentos_adicionales', []) or []
+        if docs:
+            answers[f['grupo_fotos_y_documentos']] = [
+                {
+                    f['tipo_de_documento']: doc.get('tipo', '').lower().replace(' ', '_'),
+                    f['documento']:         [{'file_name': doc.get('file_name', ''), 'file_url': doc['file_url']}] if doc.get('file_url') else [],
+                }
+                for doc in docs
+            ]
+
+        materiales = data.get('materiales', []) or []
+        if materiales:
+            answers[f['grupo_materiales']] = [
+                {
+                    f['producto_material']:        m.get('producto', ''),
+                    f['lote_material']:            m.get('lote', ''),
+                    f['cantidad_material']:        m.get('cant_esperada', ''),
+                    f['cantidad_fisica_material']: m.get('cant_fisica', ''),
+                    f['peso_material']:            m.get('peso', ''),
+                    f['volumen_material']:         m.get('volumen', ''),
+                    f['no_referencia_material']:   m.get('ref', ''),
+                    f['lugar_material']:           'contenedor' if str(m.get('ref', '')).startswith('contenedor') else 'remolque' if str(m.get('ref', '')).startswith('remolque') else 'vehiculo',
+                }
+                for m in materiales
+            ]
+
+        num_de_pase = data.get('num_de_pase')
+        programado = None
+        if num_de_pase:
+            programado = self.cr.find_one({
+                'form_id': self.BITACORA_TRANSPORTISTAS,
+                'deleted_at': {'$exists': False},
+                f'answers.{f["num_de_pase"]}': num_de_pase,
+                f'answers.{f["estatus"]}': 'programado',
+            })
+
+        if programado:
+            # El pase ya reservó su lugar en el kanban (columna "Programados") al
+            # crearse — actualizamos ese mismo registro a "arribo" en vez de crear
+            # uno duplicado. patch_forms_answers reescribe el documento de answers
+            # completo, así que hay que mezclar con lo que ya existía (ej. andén)
+            # o se pierde cualquier campo que este payload no vuelva a mandar.
+            merged_answers = {**programado.get('answers', {}), **answers}
+            metadata.update({'answers': merged_answers, '_id': programado['_id']})
+            res = self.net.patch_forms_answers(metadata)
+            if res.get('status_code') not in [200, 201, 202]:
+                self.LKFException({'title': 'Error al actualizar visita de transportista', 'msg': res})
+            res['id'] = str(programado['_id'])
+            res['folio'] = programado.get('folio')
+            res['created_at'] = self.get_date_str(programado.get('created_at'))
+        else:
+            metadata.update({'answers': answers})
+            res = self.lkf_api.post_forms_answers(metadata)
+            if res.get('status_code') not in [200, 201, 202]:
+                self.LKFException({'title': 'Error al crear visita de transportista', 'msg': res})
+
+        if num_de_pase:
+            try:
+                self.lkf_api.patch_multi_record(
+                    answers={self.pass_fields_transportista['estado_transportista']: 'completado'},
+                    form_id=self.PASE_ENTRADA_TRANSPORTISTA,
+                    record_id=[num_de_pase],
+                )
+            except Exception as e:
+                print(f'No se pudo marcar el pase {num_de_pase} como completado: {e}')
+
+        return res
+
+    def create_custom_qr(self, url_for_qr, name_qr, form_id, img_field_id):
+        lkf_qr = generar_qr.LKF_QR(self.settings)
+        qr_generado = lkf_qr.procesa_qr(url_for_qr, name_qr, form_id, img_field_id)
+        return qr_generado
+
+    def ocr_acceso_transportista(self, image_source,
+                                  extra_instructions: str = None,
+                                  model: str = 'google/gemini-2.5-flash') -> dict:
         """
-        Obtiene el estado de checkin de un empleado
+        Analiza uno o varios archivos de un acceso de transportista.
+        Acepta mezcla de imágenes y documentos (PDFs, JPGs, PNGs).
+
+        Tipos de archivos soportados:
+        - Foto de placas / vehículo
+        - Foto del conductor
+        - Licencia de conducir
+        - Tarjeta de circulación (tractor o remolque)
+        - Bill of Lading (BL) / conocimiento de embarque
+        - Pedimento de importación temporal
+        - Orden de compra / factura / manifiesto de carga
+        - Documento de autorización de salida de puerto
+        - Foto o documento del contenedor
+
         Args:
-            user_id (int): ID del usuario
+            image_source: URL, ruta local, o lista. Acepta imágenes y PDFs remotos.
+                          Cada elemento puede ser un string (URL) o un dict
+                          {'file_url': ..., 'file_name': ..., 'tipo_hint': ...} —
+                          `tipo_hint` es opcional: una etiqueta legible (en español)
+                          que el usuario ya asignó a ese archivo antes de analizar,
+                          usada como prior de alta confianza (no reemplaza la
+                          verificación contra el contenido real de la imagen).
+            model:        Modelo OpenRouter ('google/gemini-2.5-flash' recomendado para docs).
 
         Returns:
-            dict: Estado de checkin del usuario
+            dict con status_code, data, msg.
         """
+        if not self.ai:
+            return {'status_code': 400, 'msg': 'OpenRouter no configurado'}
 
-        match_query = {
-            "deleted_at":{"$exists":False},
-            "form_id": self.CHECKIN_CASETAS,
-        }
+        system = (
+            "You are a certified security supervisor and CTPAT compliance specialist at an industrial facility. "
+            "You process transport access events by analyzing any combination of: vehicle photos, license plates, "
+            "driver photos, driver licenses, vehicle registration cards (tarjeta de circulación) for both tractors "
+            "and trailers, Bills of Lading, temporary import permits (pedimentos), port release documents, "
+            "purchase orders, cargo manifests, and container photos. "
+            "All inputs refer to ONE transport access event, which may include MULTIPLE remolques and MULTIPLE "
+            "contenedores, each with its own tarjeta de circulación or documentation, and each potentially carrying "
+            "DIFFERENT cargo. "
+            "You ONLY extract information that is clearly visible or printed in the provided files. "
+            "You NEVER invent, estimate, or hallucinate data, and you NEVER let data from one vehicle, remolque, "
+            "contenedor, or cargo line overwrite or merge with data belonging to a different one. "
+            "If a field is not present in any document, return null — never guess. "
+            "Always respond with a single valid JSON object and nothing else — "
+            "no markdown, no backticks, no explanation, no preamble."
+        )
 
-        query = [
-            {'$match': match_query},
-            {'$unwind': f"$answers.{self.f['guard_group']}"},
-            {'$match': {
-                f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": {"$exists":True},
-                f"answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}": {"$in": [user_id]},
-            }},
-            {'$addFields': {
-                'priority': {
-                    '$cond': [{'$eq': [f"$answers.{self.f['guard_group']}.{self.f['checkin_status']}", 'entrada']}, 1, 0]
-                }
-            }},
-            {'$sort': {'priority': -1, 'created_at': -1}},
-            {'$limit': 1},
-            {'$project': {
-                '_id': 1,
-                'folio': "$folio",
-                'created_at': "$created_at",
-                'name': f"$answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.f['worker_name_jefes']}",
-                'user_id': {"$first":f"$answers.{self.f['guard_group']}.{self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID}.{self.mf['id_usuario']}"},
-                'location': f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['ubicacion']}",
-                'area': f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.mf['nombre_area']}",
-                'checkin_date': f"$answers.{self.f['guard_group']}.{self.f['checkin_date']}",
-                'checkout_date': f"$answers.{self.f['guard_group']}.{self.f['checkout_date']}",
-                'checkin_status': f"$answers.{self.f['guard_group']}.{self.f['checkin_status']}",
-                'checkin_position': f"$answers.{self.f['guard_group']}.{self.f['checkin_position']}",
-                'nombre_suplente': f"$answers.{self.f['guard_group']}.{self.checkin_fields['nombre_suplente']}",
-            }},
-            {'$group':{
-                '_id': {
-                    'user_id':'$user_id',
-                },
-                'name': {'$last':'$name'},
-                'location': {'$last':'$location'},
-                'area': {'$last':'$area'},
-                'checkin_date': {'$last':'$checkin_date'},
-                'checkout_date': {'$last':'$checkout_date'},
-                'checkin_status': {'$last':'$checkin_status'},
-                'checkin_position': {'$last':'$checkin_position'},
-                'folio': {'$last':'$folio'},
-                'id_register': {'$last':'$_id'},
-                'nombre_suplente': {'$last':'$nombre_suplente'}
-            }},
-            {'$project':{
-                '_id': 0,
-                'user_id': '$_id.user_id',
-                'name': '$name',
-                'location': '$location',
-                'area': '$area',
-                'checkin_date': '$checkin_date',
-                'checkout_date': '$checkout_date',
-                'checkin_status': {'$cond': [ {'$eq':['$checkin_status','entrada']},'in','out']}, 
-                'checkin_position': '$checkin_position',
-                'folio': '$folio',
-                'id_register': '$id_register',
-                'nombre_suplente': '$nombre_suplente'
-            }}
-        ]
-        data = self.format_cr(self.cr.aggregate(query))
-        format_data = {}
-        if data:
-            record = self.unlist(data)
-            status = 'in' if record.get('checkin_status') in ['in', 'entrada'] else 'out'
-            format_data = {
-                'status':status, 
-                'name': record.get('name'), 
-                'folio': record.get('folio'),
-                '_id': str(record.get('id_register')),
-                'user_id': record.get('user_id'), 
-                'location':record.get('location'),
-                'area':record.get('area'),
-                'checkin_date':record.get('checkin_date'),
-                'checkout_date':record.get('checkout_date'),
-                'checkin_position':record.get('checkin_position'),
-                'nombre_suplente':record.get('nombre_suplente',"")
+        prompt = (
+            "Analyze all provided files (images and/or documents) as a single transport access event. "
+            "The files are provided in order: the first is imagen_1, the second is imagen_2, and so on — "
+            "this numbering is PER FILE, not per page. A single file can be a multi-page PDF containing "
+            "several distinct photos or document pages (e.g. a PDF with 9 different evidence photos, or a "
+            "PDF with 3 pages: cover letter, invoice, packing list). When that happens, EVERY page/photo "
+            "found inside that one file still gets the SAME `fuente` value (that file's imagen_N) — never "
+            "invent a new imagen_N for a page just because it is the file's 2nd, 3rd, etc. internal page. "
+            "Use the `pagina` field on each `documentos_detectados` entry to indicate which page/photo "
+            "number WITHIN that file it corresponds to (1 for the first page/photo of that file, 2 for the "
+            "second, etc.), so a page can still be told apart from others in the same file. "
+            "WORKED EXAMPLE: suppose the input list has 2 files — file 1 is a 3-page PDF (a driver photo, a "
+            "container photo, and a Carta de Ruta) and file 2 is a 1-page Bill of Lading. The CORRECT output "
+            "has THREE `documentos_detectados` entries with `fuente`:\"imagen_1\" (using `pagina` 1, 2, and 3 "
+            "respectively, one per internal page, each with its own `tipo`), and ONE entry with "
+            "`fuente`:\"imagen_2\", `pagina`:1. It would be WRONG to output fuente values imagen_1, imagen_2, "
+            "imagen_3, imagen_4 for that example — there are only 2 actual files, so fuente can never exceed "
+            "the number of files provided, no matter how many total pages/photos are found across all of them. "
+            "HARD RULE: count the DISTINCT `fuente` values you use across the entire `documentos_detectados` "
+            "array — that count must be EXACTLY equal to the number of files given to you, never more. Before "
+            "moving on to describe the next page/photo you find, first check whether it belongs to a file whose "
+            "imagen_N you already used for a previous entry — if so, reuse that same `fuente` and only increase "
+            "`pagina`; only introduce a new, higher `fuente` value once you have moved on to inspecting the next "
+            "actual file in the input list. "
+            "Files may include vehicle photos, driver photos, driver licenses, vehicle registration cards, "
+            "Bills of Lading, pedimentos, port documents, purchase orders, container photos, or a Carta de "
+            "Ruta (Dominican customs internal-transit authorization). "
+            "Extract every field you can find. If a field is absent from all provided files, use null. "
+            "\n\n"
+            "IMPORTANT ON CARGO-TO-UNIT LINKING: when a document (Bill of Lading, packing list, manifest) breaks "
+            "down cargo per container or trailer — e.g. a container number is followed by its own weight, volume, "
+            "package count, and product description — that cargo line belongs EXCLUSIVELY inside that container's "
+            "own `materiales` array (nested inside its entry in `contenedores[]`), matched by container number "
+            "first, or by the weight/volume/package figures printed right next to that container's row if the "
+            "number match is unclear. Do the same for remolques when cargo is described per-trailer. "
+            "A cargo line may also carry its OWN purchase-order reference distinct from the shipment-level PO — "
+            "capture it in that material's own `no_orden_compra` field when present, without overwriting "
+            "`embarque.no_orden_compra`. "
+            "If a summary line states a type/quantity that applies to multiple units (e.g. '2 x 40HC CONTAINER' "
+            "before individual container rows), apply that type to EACH of those containers' `tipo` field unless a "
+            "specific row overrides it — do not leave it null just because it was only stated once at the top. "
+            "Only use the top-level `materiales` array as a FALLBACK, for cargo that cannot be attributed to any "
+            "specific contenedor or remolque (e.g. loose cargo directly on a rigid vehicle with no container/trailer "
+            "breakdown, or a generic document that does not specify per-unit contents). Never duplicate the same "
+            "cargo line in both a specific unit's materiales and the top-level materiales. "
+            "\n\n"
+            "IMPORTANT ON REPEATING ITEM#/PART-NUMBER SHIPMENT MANIFESTS (e.g. OEM/EDI-style forms with a "
+            "'Details' section listing multiple ITEM#, SERIAL#, SHIPPED QTY, PO# blocks — common in automotive/"
+            "GM-style shipment paperwork such as ASN or MGO shipment forms): each such block is ONE DISTINCT "
+            "cargo line — extract it as its own entry in `materiales`, never merge multiple blocks into one "
+            "entry or drop all but one. Map `producto` to that block's ITEM#/part number (or its description if "
+            "one is printed), `cant_esperada` to that block's SHIPPED QTY with its unit, and `no_orden_compra` to "
+            "that block's own PO# — when the PO# differs between blocks, record each on its own material rather "
+            "than collapsing them into a single shipment-level PO. Do NOT invent a new contenedor or remolque "
+            "entry per ITEM# block — these forms usually describe cargo riding on a SINGLE trailer/container "
+            "already identified elsewhere in the same event (e.g. by a CARRIER REF NO, CONVEYANCE IDENTIF., or a "
+            "remolque number matching another document). Attach all these materiales entries to that one unit's "
+            "`materiales` array (or to the top-level `materiales` fallback if no unit is otherwise identified) — "
+            "never one manufactured contenedor/remolque per row. "
+            "A field like 'PACKAGE TYPE' or 'CONTAINER QTY' on this kind of form describes HOW the cargo is "
+            "packaged (a packaging code, or a count of packages) — it is NEVER a unique container/box "
+            "identifier, even if the exact same value repeats identically across every row. Never copy it into "
+            "`no_caja` or `no_contenedor` just because it sits in a container-labeled column; only put a value "
+            "there when it is a genuinely distinct identifier per unit (an ISO container number, an internal "
+            "asset/box number, etc.) — otherwise leave it null. "
+            "`producto` must always be an actual description of the cargo/goods (an item or part description, a "
+            "part number, or a commodity name) — never a company name (carrier, shipper/remitente, consignee/"
+            "destinatario, customer, or any party name) copied over from a different field or a different "
+            "document in the same batch. If the manifest itself provides no product description, use its ITEM#/"
+            "part number as `producto` instead of leaving it null, and only use null if that cargo line has "
+            "truly no identifying text at all. This rule OVERRIDES any company/party name that also appears "
+            "elsewhere in the same batch of documents — a shipper/remitente name belongs ONLY in "
+            "`embarque.proveedor_cliente`, and must never be substituted as `producto` for a cargo line just "
+            "because no better description was found; using the ITEM#/part number is always preferable to using "
+            "a party name. WORKED EXAMPLE: a 'Details' table with 3 blocks — ITEM# 85750949 / RECORD YEAR 6 / "
+            "SHIPPED QTY 98 Each / PO# 3NF801G0, ITEM# 85750950 / RECORD YEAR 6 / SHIPPED QTY 49 Each / PO# "
+            "3NF801G0, ITEM# 85757065 / RECORD YEAR 6 / SHIPPED QTY 49 Each / PO# 3NF801GV — must produce THREE "
+            "materiales: {producto: \"85750949\", cant_esperada: \"98 Each\", no_orden_compra: \"3NF801G0\"}, "
+            "{producto: \"85750950\", cant_esperada: \"49 Each\", no_orden_compra: \"3NF801G0\"}, {producto: "
+            "\"85757065\", cant_esperada: \"49 Each\", no_orden_compra: \"3NF801GV\"} — never the shipper's "
+            "company name as producto, and never RECORD YEAR (a record-keeping/catalog year, unrelated to "
+            "quantity) as cant_esperada. `cant_esperada` must come EXCLUSIVELY from a field explicitly labeled as "
+            "a quantity/qty/amount shipped (SHIPPED QTY, CYTD QTY, cantidad, etc.) — never from RECORD YEAR, "
+            "ITEM#, PO#, or any other unrelated numeric field on the same row, even if it is the closest number "
+            "to the quantity column. "
+            "\n\n"
+            "IMPORTANT ON CLOSED-LIST FIELDS (tipo_vehiculo, remolques[].tipo, contenedores[].tipo): these values "
+            "feed a form with FIXED dropdown options — there is NO 'otro' catch-all option available downstream. "
+            "If the document clearly states a type that matches one of the listed options, use that exact listed "
+            "value. If the document states a type that does NOT match any listed option (e.g. 'furgón' when it's "
+            "not in the list), do NOT force it into the closest option and do NOT return null — instead return the "
+            "type EXACTLY as written/stated in the document, as free text, so a human can review and map it "
+            "manually. Only return null if no type information is present at all. "
+            "\n\n"
+            "IMPORTANT ON VEHICLE ARTICULATION (camion vs. trailer): "
+            "A camion (rigid/straight truck) has the cab and cargo box built on ONE single chassis — they cannot "
+            "be separated. A trailer (tractocamion articulado) is TWO separable pieces joined by a fifth wheel "
+            "(quinta rueda): the tracto (cab + engine, no cargo box of its own) pulling a semirremolque (the box, "
+            "which can be unhitched and stands alone on its own landing gear). "
+            "DECISION RULE: if the vehicle has a separable remolque (i.e. you will be listing one or more entries "
+            "in remolques[]), set vehiculo.tipo_vehiculo to \"trailer\" — do NOT also describe the box type "
+            "(caja_seca, plataforma, etc.) at the vehiculo level, that belongs exclusively in remolques[].tipo. "
+            "If there is NO separable remolque (rigid single-chassis vehicle), set vehiculo.tipo_vehiculo to "
+            "whichever rigid type applies (torton, camion, van, pick_up, pipa, volteo), following the closed-list "
+            "rule above. Leave remolques[] empty in that case. "
+            "\n\n"
+            "IMPORTANT: remolques are trailers/flatbeds pulled by the truck. "
+            "contenedores are ISO shipping containers (they have an alphanumeric container number like ECMU7740351, "
+            "distinct from any internal box/asset number the facility may also assign). "
+            "A remolque may carry a contenedor — if so, list the trailer in remolques and the container in "
+            "contenedores. There may be MORE THAN ONE remolque and MORE THAN ONE contenedor in the same event — "
+            "keep each one as a separate entry in its array, never merge two different units into one entry. "
+            "\n\n"
+            "IMPORTANT ON PLATES: a plate value must come from a field EXPLICITLY labeled as a plate (\"PLACAS\", "
+            "\"No. de Placas\", a physical plate photo, etc.). Do NOT confuse a plate with a nearby barcode, folio, "
+            "or document-verification code — these are different alphanumeric strings that often sit next to a "
+            "barcode graphic for document authentication purposes, not the physical plate, even if their format "
+            "superficially resembles a plate. When in doubt, prefer the value under an explicit plate label over "
+            "any other nearby code. "
+            "A single physical vehicle or remolque can have its plate appear in more than one source — a photo of "
+            "the plate itself, an incidental mention in another document, AND its own tarjeta de circulación / "
+            "pedimento. These are DIFFERENT sources describing the SAME plate, and must be kept in SEPARATE fields, "
+            "never overwriting one another: use `placa`/`placas` for what you read from a photo or an incidental/ "
+            "general mention, and `placa_tarjeta_circulacion`/`placas_tarjeta_circulacion` EXCLUSIVELY for the plate "
+            "printed under an explicit plate label on that specific entity's own registration/import document. "
+            "If there are multiple remolques, each with its own tarjeta/pedimento document, match each document to "
+            "the correct remolque using its no_caja/unit number/no_economico or contextual order. If you cannot "
+            "confidently match a document to a specific remolque, still record its plate value in the most likely "
+            "remolque's `placas_tarjeta_circulacion` and note the ambiguity in that remolque's `comentarios` — never "
+            "drop the value just because the match is uncertain. "
+            "\n\n"
+            "IMPORTANT ON SEAL NUMBERS (no_sello_documento / no_sello_fisico): a container or trailer can show MORE "
+            "THAN ONE physical seal in photos (e.g. a carrier lock seal, a security tag, AND the official customs/"
+            "shipper seal), and their numbers will differ from what is printed in text documents — this is normal "
+            "and does not mean any of them is wrong. Do NOT try to decide which one is 'the real seal' yourself: "
+            "just report each source into its own field, exactly as it appears there. `no_sello_documento` is "
+            "whatever seal number is printed in text on a BL/factura/packing list/carta de ruta/pedimento/"
+            "manifiesto for that unit — leave it null if no document prints one. `no_sello_fisico` is whatever seal "
+            "number you read directly off a photograph of a physical seal/tag on that unit — leave it null if no "
+            "such photo is provided. Fill BOTH independently whenever both kinds of source exist, even if their "
+            "values disagree; the decision of which one to trust is made downstream in code, not by you. "
+            "\n\n"
+            "IMPORTANT ON DRIVER IDENTIFICATION (conductor.nombre / conductor.no_licencia): `no_licencia` must come "
+            "EXCLUSIVELY from an official government-issued driving license/permit document. Never use a number "
+            "from a company badge, employee ID card, lanyard, or gafete as `no_licencia` — those are internal/"
+            "corporate identifiers, not driving licenses; if that is the only ID-like number visible, leave "
+            "`no_licencia` null and, if useful, mention the badge number in `observaciones` instead. "
+            "`conductor.nombre`, in contrast, is NOT limited to license/permit documents — it can also appear on an "
+            "official transit/customs authorization document such as a Carta de Ruta, which typically lists the "
+            "assigned driver by name alongside the container/seal/carrier data. These forms are often photographed "
+            "at an angle where a column's header label is cropped or unreadable, but the name value itself is still "
+            "legible — in that case, use the document's standard layout and the surrounding fields (container "
+            "number, seal, compañía transportista, sindicato de camioneros) to infer that a legible person's name "
+            "sitting in that position is the driver, and fill `conductor.nombre` accordingly rather than returning "
+            "null just because the column label itself was cut off. "
+            "\n\n"
+            "IMPORTANT ON DATES: interpret dates according to the document's own convention before converting to "
+            "YYYY-MM-DD — English-language documents (BL, invoices) typically use MM/DD/YYYY, Mexican documents "
+            "(pedimentos, tarjetas, licencias) typically use DD/MM/YYYY. If the convention is genuinely ambiguous "
+            "for a given date, keep the original string as printed instead of guessing day vs. month. "
+            "If different documents in the same event show dates that are inconsistent with each other in a way "
+            "that cannot be explained by normal shipment lead times (e.g. a loading date years apart from the "
+            "invoice or BL issue date), do not silently pick one and treat it as resolved — report the value you "
+            "found and flag the inconsistency in `observaciones`, and let it lower `confianza` accordingly. "
+            "\n\n"
+            "Return ONLY a JSON object with this exact structure:\n"
+            "{\n"
+
+            # ── VEHÍCULO ──────────────────────────────────────────────────
+            '  "vehiculo": {\n'
+            '    "transportista": "string — carrier company name (e.g. TRAMO TRANSPORTES MONTERREY SA DE CV), or null",\n'
+            '    "procedencia": "string — city or state of origin of the vehicle/shipment if visible on any document, or null",\n'
+            '    "tipo_vehiculo": "string — one of: torton, camion, van, pick_up, pipa, volteo, trailer, or null. See DECISION RULE and CLOSED-LIST rule above. Never use caja_seca/caja_refrigerada/plataforma/etc here — those belong to remolques[].tipo.",\n'
+            '    "marca": "string — truck/tractor brand (Kenworth, Freightliner, International, Volvo, etc.), or null",\n'
+            '    "modelo": "string — truck model year if visible (e.g. 2019), or null",\n'
+            '    "color": "string — main cab color. PRIORITY: extract visually from vehicle/plate photos if provided. Fall back to text on registration card only if no vehicle photo is present. Use Spanish color names (Blanco, Negro, Rojo, Azul, Gris, Verde, Amarillo, Naranja, Cafe, Plateado, etc.), or null",\n'
+            '    "placa": "string — tractor/cab license plate as read from a vehicle/plate photo or an incidental mention in another document, exactly as printed, or null",\n'
+            '    "placa_tarjeta_circulacion": "string — tractor/cab license plate extracted EXCLUSIVELY from an explicit plate label on a tarjeta_circulacion_vehiculo document, exactly as printed, or null",\n'
+            '    "no_economico": "string — carrier economic number / rótulo on the vehicle, or null"\n'
+            '  },\n'
+
+            # ── CONDUCTOR ─────────────────────────────────────────────────
+            '  "conductor": {\n'
+            '    "nombre": "string — driver full name from license or permit document, or null",\n'
+            '    "no_licencia": "string — driver license number exactly as printed, or null",\n'
+            '    "vigencia_licencia": "string — license expiration date in YYYY-MM-DD format, or null",\n'
+            '    "rfc": "string — RFC if shown on any document, or null",\n'
+            '    "acompanante": "string — co-driver or helper full name if visible on any document, or null"\n'
+            '  },\n'
+
+            # ── REMOLQUES ─────────────────────────────────────────────────
+            '  "remolques": [\n'
+            '    {\n'
+            '      "tipo": "string — trailer box type: caja_seca, plataforma, caja_refrigerada, ganadero, basculante, portavehiculos, caravana, or null. This is a CLOSED LIST (no otro option downstream) — see CLOSED-LIST rule above.",\n'
+            '      "no_caja": "string — trailer box/unit number (número económico de caja) from registration card or visible on unit, or null",\n'
+            '      "no_sello_documento": "string — seal number for this trailer EXACTLY as printed in any text document (BL, factura, packing list, carta de ruta, pedimento, manifiesto), or null if no document states one. See IMPORTANT ON SEAL NUMBERS below — do NOT put a photo-only reading here.",\n'
+            '      "no_sello_fisico": "string — seal number read directly off a photograph of the physical seal/tag on this trailer, or null if no such photo is provided or none is legible.",\n'
+            '      "placas": "string — trailer license plate as read from a photo or an incidental mention, exactly as printed, or null",\n'
+            '      "placas_tarjeta_circulacion": "string — trailer license plate extracted EXCLUSIVELY from an explicit plate label on this trailer\'s own tarjeta/pedimento document, exactly as printed, or null",\n'
+            '      "color": "string — trailer color in Spanish (Blanco, Gris, Rojo, etc.), or null",\n'
+            '      "comentarios": "string — any relevant note about this trailer (damage, anomaly, ambiguous document match, tipo that did not match the closed list, etc.), or null",\n'
+            '      "materiales": [\n'
+            '        {\n'
+            '          "producto": "string — cargo/product description, or null",\n'
+            '          "lote": "string — lot or batch number if stated, or null",\n'
+            '          "cant_esperada": "string — expected quantity with unit if stated, or null",\n'
+            '          "peso": "string — gross weight with unit, or null",\n'
+            '          "volumen": "string — volume with unit if stated, or null",\n'
+            '          "no_orden_compra": "string — PO number specific to THIS cargo line, if different from embarque.no_orden_compra, or null"\n'
+            '        }\n'
+            '      ]\n'
+            '    }\n'
+            '  ],\n'
+
+            # ── CONTENEDORES ──────────────────────────────────────────────
+            '  "contenedores": [\n'
+            '    {\n'
+            '      "tipo": "string — ISO container type: 20GP, 40GP, 40HC, 20RF, 40RF, 40HR, 20OT, 40OT, 20FR, 40FR, iso_tank, 20VH, open_side, or null. This is a CLOSED LIST (no otro option downstream) — see CLOSED-LIST rule above. Remember to apply a type stated once in a summary line to every matching container (see CARGO-TO-UNIT LINKING above).",\n'
+            '      "no_contenedor": "string — official ISO container number exactly as printed (e.g. ECMU7740351, EGHU9785216), or null",\n'
+            '      "no_caja": "string — internal facility box/asset number for this container, if separately assigned and distinct from no_contenedor, or null",\n'
+            '      "no_sello_documento": "string — seal number for this container EXACTLY as printed in any text document (BL, factura, packing list, carta de ruta, pedimento, manifiesto), or null if no document states one. See IMPORTANT ON SEAL NUMBERS below — do NOT put a photo-only reading here.",\n'
+            '      "no_sello_fisico": "string — seal number read directly off a photograph of the physical seal/tag on this container, or null if no such photo is provided or none is legible.",\n'
+            '      "placas": "string — chassis plate if visible, or null",\n'
+            '      "color": "string — container color in Spanish, or null",\n'
+            '      "comentarios": "string — any relevant note about this container (damage, anomaly, tipo that did not match the closed list, etc.), or null",\n'
+            '      "materiales": [\n'
+            '        {\n'
+            '          "producto": "string — cargo/product description for THIS container specifically (e.g. from its own row in the BL), or null",\n'
+            '          "lote": "string — lot or batch number if stated, or null",\n'
+            '          "cant_esperada": "string — expected quantity with unit as stated for THIS container (e.g. 1820 CAS), or null",\n'
+            '          "peso": "string — gross weight with unit for THIS container (e.g. 22944.063 KG), or null",\n'
+            '          "volumen": "string — volume with unit for THIS container (e.g. 32.684 M3), or null",\n'
+            '          "no_orden_compra": "string — PO number specific to THIS cargo line, if different from embarque.no_orden_compra, or null"\n'
+            '        }\n'
+            '      ]\n'
+            '    }\n'
+            '  ],\n'
+
+            # ── MATERIALES SIN ASIGNAR ──────────────────────────────────
+            '  "materiales": [\n'
+            '    {\n'
+            '      "producto": "string — cargo/product description that could NOT be attributed to a specific contenedor or remolque, or null",\n'
+            '      "lote": "string — lot or batch number if stated, or null",\n'
+            '      "cant_esperada": "string — expected quantity with unit if stated, or null",\n'
+            '      "peso": "string — gross weight with unit, or null",\n'
+            '      "volumen": "string — volume with unit if stated, or null"\n'
+            '    }\n'
+            '  ],\n'
+
+            # ── EMBARQUE ──────────────────────────────────────────────────
+            '  "embarque": {\n'
+            '    "proveedor_cliente": "string — shipper, supplier or consignee company name, or null",\n'
+            '    "no_orden_compra": "string — shipment-level purchase order / OC number, or null. If multiple containers each carry their own distinct PO, list those in each material\'s own no_orden_compra instead, and put here only a PO that applies to the whole shipment (or leave null if there is none at that level).",\n'
+            '    "no_bl": "string — Bill of Lading number, or null",\n'
+            '    "no_pedimento": "string — pedimento or customs document number, or null",\n'
+            '    "no_autorizacion_puerto": "string — port release authorization number, or null",\n'
+            '    "origen": "string — place/port of loading or origin, or null",\n'
+            '    "destino": "string — place/port of discharge or delivery, or null",\n'
+            '    "fecha_embarque": "string — on-board or shipment date (YYYY-MM-DD if possible), or null"\n'
+            '  },\n'
+
+            # ── METADATA ──────────────────────────────────────────────────
+            '  "documentos_detectados": [\n'
+            '    {\n'
+            '      "fuente": "string — imagen_1 / imagen_2 / imagen_3 ... — the position of the FILE in the input list (never a running page count across files — see numbering rule at the top of this prompt)",\n'
+            '      "pagina": "integer — page/photo number WITHIN that file (1 for the first page/photo of that file, 2 for the second, etc.), so distinct pages of the same multi-page file can be told apart even though they share the same fuente",\n'
+            '      "tipo": "string — one of: identificacion_chofer, foto_conductor, tarjeta_circulacion_vehiculo, tarjeta_circulacion_remolque, carta_porte, carta_de_ruta, factura_orden_compra, foto_placa_vehiculo, evidencia_carga, conocimiento_embarque_bl. IMPORTANT: identificacion_chofer is an official ID document (INE, passport, license) showing the driver\'s personal data. foto_conductor is a photo of the driver\'s face. tarjeta_circulacion_vehiculo belongs to the tractor/cab; tarjeta_circulacion_remolque belongs to a trailer (this also covers a pedimento de importación temporal de remolques, which functions like a trailer registration document) — never confuse the two, and never confuse either with identificacion_chofer / foto_conductor. carta_de_ruta is a Dominican Ministerio de Hacienda / Dirección General de Aduanas internal-transit authorization (fields typically include propietario, sello control, número de contenedor, chofer, compañía transportista, sindicato de camioneros) — this is DIFFERENT from carta_porte (a waybill/manifest), do not conflate the two. THIS FIELD HAS NO otro CATCH-ALL: this value is shown directly to the end user as a label under the uploaded file in the access form, so it must always be informative. If a file does not clearly match any of the listed types, do NOT return \'otro\' — instead return a short, specific description in Spanish of what the document/photo actually is (e.g. \'foto general del contenedor\', \'manifiesto de carga\', \'foto de sello de seguridad\', \'documento no identificado — ilegible\'), written the way a person reviewing the access would want to see it as a label, so it is never a dead-end value like \'otro\'."\n'
+            '    }\n'
+            '  ],\n'
+            '  "observaciones": "string — CTPAT flags, anomalies, damage, incomplete docs, ambiguous plate/document matches, tipos that did not match a closed list, cargo that could not be attributed to a specific unit, or anything security-relevant, or null",\n'
+            '  "confianza": "string — alto: all key documents present and legible, no null in critical fields (vehiculo.placa, conductor.nombre, at least one remolque or contenedor if cargo is present), and no unresolved conflicts | medio: 1-2 documents illegible or secondary fields missing | bajo: key documents missing/illegible, or inconsistencies (e.g. unmatched tarjeta/plate, unlinked cargo, conflicting seal numbers, conflicting dates) across sources"\n'
+            "}"
+        )
+
+        if extra_instructions:
+            prompt += f"\n\nAdditional instructions: {extra_instructions}"
+
+        hints = {}
+        if isinstance(image_source, str):
+            image_source = [image_source]
+        elif isinstance(image_source, list):
+            hints = {
+                f'imagen_{i+1}': img['tipo_hint']
+                for i, img in enumerate(image_source)
+                if isinstance(img, dict) and img.get('tipo_hint')
             }
-        return format_data
+            image_source = [
+                img['file_url'] if isinstance(img, dict) else img
+                for img in image_source
+            ]
 
-    def search_guard_asistance(self, location, area, guard):
-        query = [
-            {"$match": {
-                "deleted_at":{"$exists":False},
-                "form_id": self.REGISTRO_ASISTENCIA,
-                f"answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.f['location']}": location,
-                f"answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.f['area']}": area,
-                f"answers.{self.f['fecha_cierre_turno']}": {"$exists": False},
-                "created_by_id": guard,
-            }},
-            {"$sort": {"created_at": -1}},
-            {"$project": {
-                "_id": 1,
-            }}
-        ]
-        resp = self.format_cr(self.cr.aggregate(query))
-        format_resp = []
-        if resp:
-            format_resp = [r.get('_id', r.get('id', '')) for r in resp]
-        return format_resp
+        if hints:
+            hint_lines = "\n".join(f"- {k}: {v}" for k, v in hints.items())
+            prompt += (
+                "\n\nUser-provided type hints per file (high-confidence priors from the "
+                "person uploading, but still verify against the actual visual content — "
+                "if an image clearly does not match its hint, trust the image and note the "
+                f"discrepancy in `observaciones`):\n{hint_lines}"
+            )
 
-    def checkout_all(self, record_id=None):
-        """
-        WORK IN PROGRESS
-        """
-        if not record_id:
-            self.LKFException({'title': 'Error', 'msg': 'No se proporciono el record_id'})
-
-        query = [
-            {"$match": {
-                "deleted_at": {"$exists": False},
-                "form_id": self.CHECKIN_CASETAS,
-                "_id": ObjectId(record_id),
-            }},
-            {"$limit": 1},
-            {"$project": {
-                "_id": 0,
-                "empleados_dentro": f"$answers.{self.mf['guard_group']}"
-            }}
-        ]
-        data = self.format_cr(self.cr.aggregate(query))
-        format_data = {}
-        if data:
-            format_data = self.unlist(data)
-            empleados_dentro = format_data.get('empleados_dentro', [])
-            now_datetime = self.today_str('America/Monterrey', date_format='datetime')
-            answers = {}
-            format_empleados_dentro = {}
-            employees_ids = []
-
-            for index, empleado in enumerate(empleados_dentro):
-                employees_ids.append(self.unlist(empleado.get('id_usuario', [])))
-
-                if empleado.get('checkin_status') == 'entrada':
-                    empleado['checkin_status'] = 'salida'
-                    empleado['checkout_date'] = now_datetime
-                
-                item = {
-                    self.CONF_AREA_EMPLEADOS_AP_CAT_OBJ_ID: {
-                        self.mf['nombre_guardia_apoyo']: empleado.get('note_guard_close', ''),
-                        self.mf['id_usuario']: empleado.get('id_usuario', [])
-                    },
-                    self.checkin_fields['nombre_suplente']: empleado.get('nombre_suplente', ''),
-                    self.checkin_fields['checkin_position']: empleado.get('checkin_position', ''),
-                    self.checkin_fields['checkin_status']: empleado.get('checkin_status', ''),
-                    self.checkin_fields['checkin_date']: empleado.get('checkin_date', ''),
-                    self.checkin_fields['checkout_date']: empleado.get('checkout_date', ''),
-                }
-                format_empleados_dentro[str(index)] = item
-
-            answers[self.mf['guard_group']] = format_empleados_dentro
-            answers[self.checkin_fields['checkin_type']] = 'cerrada'
-            answers[self.checkin_fields['boot_checkout_date']] = now_datetime
-            # response_checkout_all = self.lkf_api.patch_multi_record(answers=answers, form_id=self.CHECKIN_CASETAS, record_id=[record_id])
-            # print('response', simplejson.dumps(response_checkout_all, indent=4))
-            print('employees_ids', list(set(employees_ids)))
-
-    def force_quit_all_persons(self, location: str):
-        match = {
-            "deleted_at": {"$exists": False},
-            "form_id": self.BITACORA_ACCESOS,
-            f"answers.{self.PASE_ENTRADA_OBJ_ID}.{self.pase_entrada_fields['status_pase']}": {"$in": ["Activo"]},
-            f"answers.{self.mf['tipo_registro']}": "entrada",
-        }
-
-        if location:
-            match[f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf['ubicacion']}"] = location
-
-        query = [
-            {'$match': match},
-            {'$project': {
-                '_id': 1,
-            }},
-        ]
-        data = self.format_cr(self.cr.aggregate(query))
-        format_data = {"data": data,
-            "status_code": 200,
-            "json": {   
-                "msg": "No hay personas dentro por registrar salida."
-            }
-        }
-        if data:
-            record_ids = [record.get('_id') for record in data]
-            tz_mexico = pytz.timezone('America/Mexico_City')
-            now = datetime.now(tz_mexico)
-            fecha_hora_str = now.strftime("%Y-%m-%d %H:%M:%S")
-            replace_answers = {
-                self.mf['fecha_salida']: fecha_hora_str,
-                self.mf['tipo_registro']: 'salida',
-            }
-            response = self.lkf_api.patch_multi_record(answers=replace_answers, form_id=self.BITACORA_ACCESOS, record_id=record_ids)
-            if response.get('status_code') in [200, 201, 202]:
-                response['json']['msg'] = f'Salida masiva en {location} ejecutada correctamente.'
-                format_data = response
+        sources = []
+        for src in image_source:
+            if isinstance(src, str) and src.lower().endswith('.pdf') and src.startswith('http'):
+                r = requests.get(src, timeout=30)
+                r.raise_for_status()
+                b64 = base64.b64encode(r.content).decode('utf-8')
+                sources.append(f'data:application/pdf;base64,{b64}')
             else:
-                print('========== Log:', simplejson.dumps(response, indent=2, default=str))
-                self.LKFException({'title': 'Error', 'msg': 'Hubo un error al actualizar los registros.'})
-        return format_data
+                sources.append(src)
+
+        source_index = {f'imagen_{i+1}': src for i, src in enumerate(image_source)}
+        print('>>> ocr_acceso_transportista sources=', [s[:80] for s in sources])
+
+        try:
+            raw_text = self.ai.ocr_general(sources, system, prompt, model=model, max_tokens=6000)
+        except ValueError as e:
+            return {'status_code': 500, 'msg': f'Error al parsear respuesta del modelo: {e}'}
+        except RuntimeError as e:
+            return {'status_code': 500, 'msg': f'Error al llamar a OpenRouter: {e}'}
+
+        datos = {}
+        if raw_text.get('choices'):
+            choices = raw_text['choices']
+            if isinstance(choices, list) and len(choices) > 0:
+                content = choices[0].get('message', {}).get('content')
+                if content:
+                    datos = content
+
+        print('ocr_acceso_transportista datos=', simplejson.dumps(datos, indent=3))
+
+        datos = self._ocr_normalizar(datos)
+
+        # Enriquecer documentos_detectados con la URL original de cada fuente
+        if isinstance(datos, dict) and isinstance(datos.get('documentos_detectados'), list):
+            for doc in datos['documentos_detectados']:
+                fuente = doc.get('fuente', '')
+                if fuente in source_index:
+                    doc['url'] = source_index[fuente]
+
+        # Resolver no_sello de forma determinista (código, no el LLM) — el LLM solo
+        # reporta lo que ve en cada fuente (no_sello_documento / no_sello_fisico); el
+        # sello impreso en documentos de texto (BL/factura/carta de ruta) siempre gana
+        # sobre uno leído únicamente de una foto, porque suele repetirse/confirmarse en
+        # varios documentos independientes mientras que la foto es una sola lectura.
+        if isinstance(datos, dict):
+            for unidad in (datos.get('remolques') or []) + (datos.get('contenedores') or []):
+                if not isinstance(unidad, dict):
+                    continue
+                sello_doc = unidad.pop('no_sello_documento', None)
+                sello_foto = unidad.pop('no_sello_fisico', None)
+                if sello_doc:
+                    unidad['no_sello'] = sello_doc
+                    if sello_foto and sello_foto != sello_doc:
+                        nota = f"Sello fotografiado ({sello_foto}) no coincide con el sello documentado ({sello_doc}); se usó el documentado."
+                        unidad['comentarios'] = f"{unidad['comentarios']} {nota}" if unidad.get('comentarios') else nota
+                else:
+                    unidad['no_sello'] = sello_foto or None
+
+        errores = self._ocr_validar_id(datos)
+
+        # Validación determinista: si el propio modelo reportó una observación o una
+        # confianza no-alta, no confiar en que ya resolvió el conflicto en el campo
+        # correspondiente (p.ej. no_sello) — forzar revisión humana en vez de aceptarlo.
+        if isinstance(datos, dict):
+            if datos.get('observaciones'):
+                errores.append(f"Observación del modelo: {datos['observaciones']}")
+            if datos.get('confianza') and datos['confianza'].lower() != 'alto':
+                errores.append(f"Confianza reportada por el modelo: {datos['confianza']}")
+
+        if errores:
+            return {
+                'status_code': 206,
+                'msg': 'Extracción con advertencias',
+                'data': datos,
+                'warnings': errores,
+            }
+
+        return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
+    # PRUEBAS
+
+    def ocr_persona(self, image_source,
+                    extra_instructions: str = None,
+                    model: str = 'google/gemini-2.5-flash-lite') -> dict:
+        """
+        Analiza una foto para detectar si hay una persona visible
+        y extrae sus características físicas descriptivas.
+
+        Args:
+            image_source: URL remota, ruta local, o lista de imágenes.
+            model:        Modelo OpenRouter a usar.
+
+        Returns:
+            dict con:
+                - status_code : 200 OK / 206 advertencias / 400 config / 500 error
+                - data        : campos extraídos
+                - msg         : mensaje de resultado
+        """
+        if not self.ai:
+            return {'status_code': 400, 'msg': 'OpenRouter no configurado'}
+
+        system = (
+            "You are a security system specialist trained to analyze images "
+            "and determine whether a person is present, and describe their "
+            "visible physical characteristics for identification purposes. "
+            "You are objective and descriptive. Never make assumptions about "
+            "identity, ethnicity, or personal data beyond what is visually evident. "
+            "Always respond with a single valid JSON object and nothing else — "
+            "no markdown, no backticks, no explanation, no preamble."
+        )
+
+        prompt = (
+            "Analyze the provided image and determine if a person is visible. "
+            "If a person is present, extract all visible physical characteristics. "
+            "If no person is detected, return es_persona: false and all other fields as null. "
+            "\n\n"
+            "Return ONLY a JSON object with this exact structure:\n"
+            "{\n"
+            '  "es_persona": true,\n'
+            '  "cantidad_personas": "integer — number of people visible in the image",\n'
+            '  "rostro_visible": "boolean — true if face is clearly visible",\n'
+            '  "genero_aparente": "string — masculino / femenino / no determinado",\n'
+            '  "edad_estimada": "string — estimated age range e.g. 20-30",\n'
+            '  "complexion": "string — delgado / normal / robusto / corpulento",\n'
+            '  "estatura_estimada": "string — bajo / mediano / alto based on context clues",\n'
+            '  "color_piel": "string — descriptive skin tone in Spanish",\n'
+            '  "color_cabello": "string — hair color in Spanish, or null if not visible",\n'
+            '  "tipo_cabello": "string — corto / mediano / largo / calvo, or null",\n'
+            '  "color_ojos": "string — eye color if visible, else null",\n'
+            '  "rasgos_faciales": "string — notable facial features: beard, glasses, mustache, etc., or null",\n'
+            '  "ropa_superior": "string — describe upper garment color and type, or null",\n'
+            '  "ropa_inferior": "string — describe lower garment color and type, or null",\n'
+            '  "accesorios": "string — hat, backpack, bag, jewelry, or null",\n'
+            '  "postura": "string — de pie / sentado / en movimiento / acostado, or null",\n'
+            '  "calidad_imagen": "string — buena / regular / mala",\n'
+            '  "observaciones": "string — anything unusual, suspicious behavior, or notable context",\n'
+            '  "confianza": "string — alto / medio / bajo"\n'
+            "}"
+        )
+        prompt += (
+            "\n\nKeep every field extremely concise (1-4 words max per field, "
+            "except 'observaciones' which can be a short phrase). "
+            "Never omit the closing brace of the JSON object."
+        )
+        if extra_instructions:
+            prompt += f"\n\nAdditional instructions: {extra_instructions}"
+
+        # Sanitizar image_source
+        if isinstance(image_source, str):
+            image_source = [image_source]
+        elif isinstance(image_source, list):
+            image_source = [
+                img['file_url'] if isinstance(img, dict) else img
+                for img in image_source
+            ]
+
+        print('>>> ocr_persona image_source=', image_source)
+
+        try:
+            raw_text = self.ai.ocr_general(image_source, system, prompt, model=model, max_tokens=1500)
+        except ValueError as e:
+            return {'status_code': 500, 'msg': f'Error al parsear respuesta del modelo: {e}'}
+        except RuntimeError as e:
+            return {'status_code': 500, 'msg': f'Error al llamar a OpenRouter: {e}'}
+
+        datos = {}
+        if raw_text.get('choices'):
+            choices = raw_text['choices']
+            if isinstance(choices, list) and len(choices) > 0:
+                content = choices[0].get('message', {}).get('content')
+                if content:
+                    datos = content
+
+        print('ocr_persona datos=', datos)
+
+        datos = self._ocr_normalizar(datos)
+
+        errores = self._ocr_validar_id(datos)
+        if errores:
+            return {
+                'status_code': 206,
+                'msg': 'Extracción con advertencias',
+                'data': datos,
+                'warnings': errores,
+            }
+
+        return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
+
+    def ocr_identificacion(self, image_source: str, form_id: int = None,
+                           model: str = 'google/gemini-2.5-flash-lite', 
+                           name: str = None, is_employee: bool = False) -> dict:
+        """
+        Extrae los datos de una identificación (INE, pasaporte, licencia, etc.)
+        y opcionalmente crea el registro en LinkaForm.
+
+        Args:
+            image_source: URL remota o ruta local de la imagen.
+            form_id:      Si se proporciona, crea el registro en ese formulario.
+            model:        Modelo OpenRouter a usar (opcional).
+            MODEL = "anthropic/claude-haiku-4.5"  # excelente OCR, precio razonable
+            MODEL = "google/gemini-2.5-flash"  # un escalón arriba, más caro pero mejor
+            name:         Si se indica, valida que la identificación pertenezca a esa persona.
+            is_employee:  Si es True, busca a la persona de la identificación en el
+                          catálogo de empleados (self.Employee.get_employee_data por
+                          nombre) y agrega 'es_empleado' (bool) y 'datos_empleado' a
+                          cada identificación extraída.
+
+        Returns:
+            dict con:
+                - status_code: 200/201/400/500
+                - data: campos extraídos por el OCR (incluye 'es_empleado' si is_employee=True)
+                - folio: folio del registro creado (si se pasó form_id)
+                - msg: mensaje de resultado
+
+        Ejemplo de uso en script:
+            response = acceso_obj.ocr_identificacion(
+                image_source="https://s3.../ine.jpg",
+                form_id=self.EMPLEADOS_FORM,
+            )
+        """
+
+        if not self.ai:
+            return {'status_code': 400, 'msg': 'OpenRouter no configurado'}
+
+        # 1. Extraer datos con el LLM
+        try:
+            raw_text = self.ai.ocr_id(image_source, model=model, name=name)
+        except ValueError as e:
+            return {'status_code': 500, 'msg': f'Error OCR: {e}'}
+        except Exception as e:
+            return {'status_code': 500, 'msg': f'Error inesperado: {e}'}
+
+        # 2. Normalizar — esto es código, no LLM
+        datos = {}
+        if raw_text.get('choices'):
+            if isinstance(raw_text['choices'], list) and len(raw_text['choices']) >0:
+                if raw_text['choices'][0].get('message',{}).get('content'):
+                    datos = raw_text['choices'][0]['message']['content']
+
+        datos = self._ocr_normalizar(datos)
+        # 2.5 Verificar si la persona de la identificación es empleado (opcional)
+        if is_employee:
+            datos = self._ocr_verificar_empleado(datos)
+
+        # 3. Validar
+        errores = self._ocr_validar_id(datos)
+        if errores:
+            return {
+                'status_code': 206,  # partial content — extrajo pero hay campos inválidos
+                'msg': 'Extracción con advertencias',
+                'data': datos,
+                'warnings': errores,
+            }
+        # 4. Crear registro en LinkaForm si se solicitó
+        if form_id:
+            try:
+                result = self._ocr_crear_registro(datos, form_id)
+                return {
+                    'status_code': 201,
+                    'msg': 'Registro creado exitosamente',
+                    'data': datos,
+                    'folio': result.get('folio'),
+                }
+            except Exception as e:
+                return {
+                    'status_code': 500,
+                    'msg': f'OCR OK pero error al crear registro: {e}',
+                    'data': datos,
+                }
+
+        status = 200 if isinstance(datos, list) else datos.get('status_code', 200)
+        return {'status_code': status, 'msg': 'OK', 'data': datos}
