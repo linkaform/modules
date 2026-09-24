@@ -51,7 +51,15 @@ class Base(Base):
                     self.SCRIPT_PASE_ACCESO,
                     self.SCRIPT_PASE_ACCESO_API,
                 ],
-                'scripts':[self.OFFLINE_SERVICES, self.SCRIPT_MENUS, self.FILTERS, self.SCRIPT_TRANSPORTISTAS]
+                'scripts':[
+                    self.OFFLINE_SERVICES,
+                    self.SCRIPT_MENUS,
+                    self.FILTERS,
+                    self.SCRIPT_TRANSPORTISTAS,
+                    self.SCRIPT_PASE_ACCESO,
+                    self.GET_STATS,
+                    self.SCRIPT_PASE_ACCESO_API
+                ]
             },
             'accesos':{
                 'forms':[self.Accesos.CHECKIN_CASETAS, self.Accesos.REGISTRO_ASISTENCIA, self.Accesos.BITACORA_GAFETES_LOCKERS, self.Accesos.CHECK_UBICACIONES, self.Accesos.BITACORA_ACCESOS],
@@ -64,14 +72,14 @@ class Base(Base):
                 'scripts':[self.SCRIPT_RONDINES, self.FALLAS, self.SCRIPT_INCIDENCIAS]
             },
             'activos':{
-                'forms':[self.Accesos.CONCESSIONED_ARTICULOS, self.Accesos.BITACORA_OBJETOS_PERDIDOS],
+                'forms':[self.Accesos.CONCESSIONED_ARTICULOS, self.Accesos.BITACORA_OBJETOS_PERDIDOS, self.Accesos.PAQUETERIA],
                 'catalogs':[self.Accesos.ACTIVOS_FIJOS_CAT_ID, ],
-                'scripts':[self.Accesos.PAQUETERIA, self.GET_STATS, self.GAFETES_LOCKERS, self.FALLAS, self.ARTICULOS_PERDIDOS, self.ARTICULOS_CONSECIONADOS]
+                'scripts':[self.Accesos.SCRIPT_PAQUETERIA, self.GET_STATS, self.GAFETES_LOCKERS, self.FALLAS, self.ARTICULOS_PERDIDOS, self.ARTICULOS_CONSECIONADOS]
             },
             'notas':{
-                'forms':[self.ACCESOS_NOTAS],
+                'forms':[self.Accesos.ACCESOS_NOTAS],
                 'catalogs':[],
-                'scripts':[self.NOTAS]
+                'scripts':[self.SCRIPT_NOTAS]
             },
             'pases_de_entrada':{
                 'forms':[self.Accesos.PASE_ENTRADA],
@@ -79,9 +87,9 @@ class Base(Base):
                 'scripts':[self.SCRIPT_PASE_ACCESO, self.GET_STATS, self.SCRIPT_PASE_ACCESO_API]
             },
             'caseta':{
-                'forms':[self.Accesos.CHECKIN_CASETAS, self.Accesos.REGISTRO_ASISTENCIA, self.Accesos.FORMATO_VACACIONES],
+                'forms':[self.Accesos.CHECKIN_CASETAS, self.Accesos.REGISTRO_ASISTENCIA, self.Accesos.FORMATO_VACACIONES, self.Accesos.ACCESOS_NOTAS],
                 'catalogs':[],
-                'scripts':[self.SCRIPT_TURNOS]
+                'scripts':[self.SCRIPT_TURNOS, self.SCRIPT_NOTAS]
             },
         }
 
