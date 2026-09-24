@@ -91,6 +91,13 @@ class Accesos(Accesos):
         }
 
     @get_mongo_distinct_list
+    def get_incidencias_prioridad(self):
+        return {
+            "form_id": self.BITACORA_INCIDENCIAS,
+            "field": f"answers.{self.incidence_fields['prioridad_incidencia']}"
+        }
+
+    @get_mongo_distinct_list
     def get_incidencias_tipo(self):
         return {
             "form_id": self.BITACORA_INCIDENCIAS,
@@ -393,7 +400,14 @@ class Accesos(Accesos):
         tipos     = self.get_incidencias_tipo()
         reportado_por = self.get_employees_names()
         areas = self.get_areas()
-        
+        # Orden de menor a mayor gravedad; valores fuera de la escala actual (registros viejos) van al final.
+        orden_gravedad = ['leve', 'moderada', 'critica']
+        gravedades = sorted(
+            {i.lower() for i in self.get_incidencias_prioridad() if i},
+            key=lambda g: (orden_gravedad.index(g) if g in orden_gravedad else len(orden_gravedad), g)
+        )
+        labels_gravedad = {'critica': 'Crítica'}
+
         return [
             {
                 "defaultDisplayOpen": True,
@@ -401,6 +415,13 @@ class Accesos(Accesos):
                 "label": "Estatus",
                 "type": "multiple",
                 "options": [{"label": i.capitalize(), "value": i} for i in estatuses]
+            },
+            {
+                "defaultDisplayOpen": True,
+                "key": "prioridad_incidencia",
+                "label": "Gravedad",
+                "type": "multiple",
+                "options": [{"label": labels_gravedad.get(i, i.capitalize()), "value": i} for i in gravedades]
             },
             {
                 "defaultDisplayOpen": False,
