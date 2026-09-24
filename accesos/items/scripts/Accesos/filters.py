@@ -91,6 +91,13 @@ class Accesos(Accesos):
         }
 
     @get_mongo_distinct_list
+    def get_incidencias_prioridad(self):
+        return {
+            "form_id": self.BITACORA_INCIDENCIAS,
+            "field": f"answers.{self.incidence_fields['prioridad_incidencia']}"
+        }
+
+    @get_mongo_distinct_list
     def get_incidencias_tipo(self):
         return {
             "form_id": self.BITACORA_INCIDENCIAS,
@@ -153,7 +160,7 @@ class Accesos(Accesos):
     def get_perdidos_art(self):
         return {
             "form_id": self.BITACORA_OBJETOS_PERDIDOS,
-            "field": f"answers.{self.perdidos_fields['articulo_seleccion_catalog']}.{self.perdidos_fields['nombre_articulo_perdido']}"
+            "field": f"answers.{self.perdidos_fields['articulo_seleccion_catalog']}.{self.fallas_fields['falla_objeto_afectado']}"
         }
     @get_mongo_distinct_list
     def get_perdidos_color(self):
@@ -167,6 +174,43 @@ class Accesos(Accesos):
             "form_id": self.BITACORA_FALLAS,
             "field": f"answers.{self.LISTA_FALLAS_CAT_OBJ_ID}.{self.fallas_fields['falla']}"
         }
+    @get_mongo_distinct_list
+    def get_notas_estatus(self):
+        return {
+            "form_id": self.ACCESOS_NOTAS,
+            "field": f"answers.{self.notes_fields['note_status']}"
+        }
+    @get_mongo_distinct_list
+    def get_transportistas_estatus(self):
+        return {
+            "form_id": self.BITACORA_TRANSPORTISTAS,
+            "field": f"answers.{self.bitacora_transportista_fields['estatus']}"
+        }
+    @get_mongo_distinct_list
+    def get_transportistas_tipo_vehiculo(self):
+        return {
+            "form_id": self.BITACORA_TRANSPORTISTAS,
+            "field": f"answers.{self.bitacora_transportista_fields['tipo_de_vehiculo']}"
+        }
+    @get_mongo_distinct_list
+    def get_transportistas_empresa(self):
+        return {
+            "form_id": self.BITACORA_TRANSPORTISTAS,
+            "field": f"answers.{self.bitacora_transportista_fields['proveedor_cliente']}"
+        }
+    @get_mongo_distinct_list
+    def get_transportistas_anden(self):
+        return {
+            "form_id": self.BITACORA_TRANSPORTISTAS,
+            "field": f"answers.{self.bitacora_transportista_fields['anden_asignado']}"
+        }
+    @get_mongo_distinct_list
+    def get_proveedores(self):
+        return {
+            "form_id": self.PAQUETERIA,
+            "field": f"answers.{self.paquetes_fields['proveedor_cat']}.{self.paquetes_fields['proveedor']}"
+        }
+    @get_mongo_distinct_list
     def get_pases_status(self):
         return {
             "form_id": self.PASE_ENTRADA,
@@ -356,7 +400,14 @@ class Accesos(Accesos):
         tipos     = self.get_incidencias_tipo()
         reportado_por = self.get_employees_names()
         areas = self.get_areas()
-        
+        # Orden de menor a mayor gravedad; valores fuera de la escala actual (registros viejos) van al final.
+        orden_gravedad = ['leve', 'moderada', 'critica']
+        gravedades = sorted(
+            {i.lower() for i in self.get_incidencias_prioridad() if i},
+            key=lambda g: (orden_gravedad.index(g) if g in orden_gravedad else len(orden_gravedad), g)
+        )
+        labels_gravedad = {'critica': 'Crítica'}
+
         return [
             {
                 "defaultDisplayOpen": True,
@@ -364,6 +415,13 @@ class Accesos(Accesos):
                 "label": "Estatus",
                 "type": "multiple",
                 "options": [{"label": i.capitalize(), "value": i} for i in estatuses]
+            },
+            {
+                "defaultDisplayOpen": True,
+                "key": "prioridad_incidencia",
+                "label": "Gravedad",
+                "type": "multiple",
+                "options": [{"label": labels_gravedad.get(i, i.capitalize()), "value": i} for i in gravedades]
             },
             {
                 "defaultDisplayOpen": False,
@@ -451,6 +509,7 @@ class Accesos(Accesos):
         reportado_por = self.get_employees_names()
         areas = self.get_areas()
         lockers = self.get_lockers()
+        proveedor = self.get_proveedores()
         return [
             {
                 "defaultDisplayOpen": True,
@@ -472,6 +531,13 @@ class Accesos(Accesos):
                 "label": "Locker ",
                 "type": "multiselect",
                 "options": [{"label": i, "value": i} for i in lockers]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "proveedor",
+                "label": "Proveedor",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in proveedor]
             },
             {
                 "defaultDisplayOpen": False,
@@ -501,6 +567,13 @@ class Accesos(Accesos):
                 "defaultDisplayOpen": False,
                 "key": "persona_nombre_concesion",
                 "label": "Solicitante ",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in reportado_por]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "created_by",
+                "label": "Creado por ",
                 "type": "multiselect",
                 "options": [{"label": i, "value": i} for i in reportado_por]
             },
@@ -564,13 +637,69 @@ class Accesos(Accesos):
                 "type": "multiselect",
                 "options": [{"label": i, "value": i} for i in color]
             },
-      
             {
                 "defaultDisplayOpen": False,
                 "key": "area_paqueteria",
                 "label": "Área",
                 "type": "multiselect",
                 "options": [{"label": i, "value": i} for i in areas]
+            },
+        ]
+        
+    def get_filters_notas(self):
+        reportado_por = self.get_employees_names()
+        estatus = self.get_notas_estatus()
+        return [
+            {
+                "defaultDisplayOpen": True,
+                "key": "estatus",
+                "label": "Estatus",
+                "type": "multiple",
+                "options": [{"label": i.capitalize(), "value": i} for i in estatus]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "creador_por",
+                "label": "Creado por",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in reportado_por]
+            },
+   
+        ]
+
+    def get_filters_transportistas(self):
+        estatus = self.get_transportistas_estatus()
+        tipo_vehiculo = self.get_transportistas_tipo_vehiculo()
+        empresa = self.get_transportistas_empresa()
+        anden = self.get_transportistas_anden()
+        return [
+            {
+                "defaultDisplayOpen": True,
+                "key": "estatus",
+                "label": "Estatus",
+                "type": "multiple",
+                "options": [{"label": i.capitalize().replace('_', ' '), "value": i} for i in estatus]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "tipo_de_vehiculo",
+                "label": "Tipo de vehículo",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in tipo_vehiculo]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "proveedor_cliente",
+                "label": "Empresa / Transportista",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in empresa]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "anden_asignado",
+                "label": "Andén asignado",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in anden]
             },
         ]
 
@@ -588,10 +717,12 @@ if __name__ == "__main__":
         "incidencias": lambda: script_obj.get_filters_incidencias(),
         "fallas":      lambda: script_obj.get_filters_fallas(),
         "in_and_out":  lambda: script_obj.get_filters_in_and_out(),
+        "transportistas": lambda: script_obj.get_filters_transportistas(),
         "pases":       lambda: script_obj.get_filters_pases(),
         "paqueteria": lambda:script_obj.get_filters_paqueteria(),
         "concesionados": lambda:script_obj.get_filters_concesionados(),
-        "perdidos": lambda:script_obj.get_filters_perdidos()
+        "perdidos": lambda:script_obj.get_filters_perdidos(),
+        "notas": lambda:script_obj.get_filters_notas()
     }
 
     action = dispatcher.get(option)
