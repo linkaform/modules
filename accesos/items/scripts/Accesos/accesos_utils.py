@@ -165,7 +165,23 @@ class Accesos(Accesos):
             'tag_id': '68487646684fe30a8f9f3ef3',
             'ubicacion': '663e5c57f5b8a7ce8211ed0b',
         }
-        
+
+        self.area_update = {
+            'foto_area': '6763096aa99cee046ba766ad',
+            'tag_id_area': '6762f7b0922cc2a2f57d4044',
+            'tipo_area': '663e5e68f5b8a7ce8211ed18',
+            'nombre_direccion': '663a7e0fe48382c5b1230901',
+            'estatus_area': '663e5e4bf5b8a7ce8211ed15',
+            'estatus': '663e5e4bf5b8a7ce8211ed14',
+            'qr_area': '663e5e4bf5b8a7ce8211ed13',
+            'pais_area': '663a7ca6e48382c5b12308fa',
+            'ciudad_area': '6654187fc85ce22aaf8bb070',
+            'colonia_area': '663a7f79e48382c5b123090a',
+            'direccion_area': '663a7e0fe48382c5b1230902',
+            'geolocalizacion_area': '663e5c8cf5b8a7ce8211ed0c',
+            'geolocalizacion_area_ubicacion': '688bac1ecfdcf8b16eb209b5',
+        }
+
         self.incidence_filter = {
             'reporta_incidencia': "",
             'fecha_hora_incidencia':"",
@@ -386,6 +402,7 @@ class Accesos(Accesos):
 
         self.conf_flujo_transportistas_fields = {
             'etapas_activas': '6a75056924f23eef843cd01b',
+            'kanban_view': '6aa8333f6cbc9b9bbd08fa2d',
             'configuracion_de_inspecciones': '6a7509cd6e87e5935b853b7b',
             'tipo_de_inspeccion': '6a750a1afd4ed68d7c57c24d',
             'norma': '6a7e2c5c23fb366f1918dea8',
@@ -882,7 +899,7 @@ class Accesos(Accesos):
 
     def ocr_acceso_transportista(self, image_source,
                                   extra_instructions: str = None,
-                                  model: str = 'google/gemini-2.5-flash-lite') -> dict:
+                                  model: str = 'google/gemini-2.5-flash') -> dict:
         """
         Analiza uno o varios archivos de un acceso de transportista.
         Acepta mezcla de imágenes y documentos (PDFs, JPGs, PNGs).
