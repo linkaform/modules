@@ -23,7 +23,7 @@ class Stock(Stock):
         self.FORM_ID_TRANSFERENCIAS = 166688
         self.FORM_BITACORA_TRANSPORTISTA_ID = 165688
 
-        self.FORM_ID_SALIDAS = 167233 # TODO cambiar el ID por el de produccion 179244
+        self.FORM_ID_SALIDAS = 179244
 
         self.f.update({
             # campos para el Almacen Destino
@@ -297,6 +297,33 @@ class Stock(Stock):
             self.CATALOG_ID_TRANSPORTISTAS, self.f['field_nombre_transportista'],
             nombre_transportista, field_map
         )
+
+    def create_transportista_catalog(self, nombre_transportista):
+        """
+        Crea el registro del transportista en CATALOG_ID_TRANSPORTISTAS
+        con su nombre.
+
+        Args:
+            nombre_transportista (str): nombre del transportista (carrierName).
+
+        Returns:
+            dict | None: {field_nombre_transportista: nombre}, o None si no se
+            recibio nombre o no se pudo crear el registro.
+        """
+        if not nombre_transportista:
+            return None
+
+        metadata = self.lkf_api.get_catalog_metadata(catalog_id=self.CATALOG_ID_TRANSPORTISTAS)
+        metadata['answers'] = {
+            self.f['field_nombre_transportista']: nombre_transportista,
+        }
+        res = self.lkf_api.post_catalog_answers(metadata, jwt_settings_key='APIKEY_JWT_KEY')
+        if res.get('status_code') not in (200, 201, 202):
+            print(f"ADVERTENCIA: no se pudo crear el transportista '{nombre_transportista}' en catalogo: {res}")
+            return None
+
+        print(f"Se creo el transportista '{nombre_transportista}' en el catalogo {self.CATALOG_ID_TRANSPORTISTAS}")
+        return {self.f['field_nombre_transportista']: nombre_transportista}
 
     def find_contratista_catalog(self, nombre_contratista):
         field_map = {

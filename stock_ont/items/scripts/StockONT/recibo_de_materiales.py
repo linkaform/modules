@@ -92,7 +92,8 @@ class Stock(Stock):
         if not info_catalog_almacen_origen:
             print(f"ADVERTENCIA: no se encontro almacen origen para providerName='{delivery_data.get('providerName')}'")
         if not info_catalog_transportista:
-            print(f"ADVERTENCIA: no se encontro transportista para carrierName='{delivery_data.get('carrierName')}'")
+            print(f"ADVERTENCIA: no se encontro transportista para carrierName='{delivery_data.get('carrierName')}', se crea en catalogo")
+            info_catalog_transportista = self.create_transportista_catalog(delivery_data.get('carrierName'))
 
         return info_catalog_almacen_destino, info_catalog_almacen_origen, info_catalog_transportista
 
