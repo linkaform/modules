@@ -300,6 +300,8 @@ class Stock(Stock):
             'evidence': {
                 'transport': {'evidence': row.get(self.f['field_delivery_ev_transport'], [])},
                 'plates': {'evidence': row.get(self.f['field_delivery_ev_plates'], [])},
+                'ine': {'evidence': row.get(self.f['field_delivery_ev_ine'], [])},
+                'license': {'evidence': row.get(self.f['field_delivery_ev_license'], [])},
                 'material': {'evidence': row.get(self.f['field_delivery_ev_material'], [])},
             },
             'carrierName': self.unlist(transportista.get(self.f['field_nombre_transportista'])),

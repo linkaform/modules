@@ -121,6 +121,8 @@ class Stock(Stock):
             self.f['field_delivery_signature_at']: self.format_fecha_evento(delivery_data.get('signedAt')),
             self.f['field_delivery_ev_transport']: delivery_data.get('evidence', {}).get('transport', {}).get('evidence', []),
             self.f['field_delivery_ev_plates']: delivery_data.get('evidence', {}).get('plates', {}).get('evidence', []),
+            self.f['field_delivery_ev_ine']: delivery_data.get('evidence', {}).get('ine', {}).get('evidence', []),
+            self.f['field_delivery_ev_license']: delivery_data.get('evidence', {}).get('license', {}).get('evidence', []),
             self.f['field_delivery_ev_material']: delivery_data.get('evidence', {}).get('material', {}).get('evidence', []),
         }
 
