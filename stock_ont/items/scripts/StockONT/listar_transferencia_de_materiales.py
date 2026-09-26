@@ -55,6 +55,7 @@ class Stock(Stock):
 
             resultado.append({
                 'folio': registro.get('folio'),
+                'createdAt': self.format_created_at(registro.get('created_at')),
                 'originWarehouse': self._get_origin_warehouse(answers),
                 'destinationWarehouse': self._get_destination_warehouse(answers),
                 'items': len(materiales_rows),

@@ -28,11 +28,9 @@ class Stock(Stock):
             folio (int|str): folio del registro a consultar.
 
         Returns:
-            dict | None: respuestas (answers) del registro encontrado, o None si no existe.
+            dict | None: registro encontrado (folio, created_at, answers, ...), o None si no existe.
         """
-        folio_query = int(folio) if str(folio).isdigit() else folio
-        record = self.get_record_by_folio(folio_query, self.FORM_ID_TRANSFERENCIAS)
-        return record.get('answers') if record else None
+        return self.get_record_by_folio(folio, self.FORM_ID_TRANSFERENCIAS) or None
 
     def unformat_fecha_evento(self, val):
         """Inversa de format_fecha_evento(): "YYYY-MM-DD HH:MM:SS" -> "YYYY-MM-DDTHH:MM:SS" """
@@ -317,9 +315,10 @@ class Stock(Stock):
         if not folio:
             self.LKFException("No se recibio el folio de la Transferencia de Materiales a consultar")
 
-        row = self.get_transferencia_by_folio(folio)
-        if not row:
+        record = self.get_transferencia_by_folio(folio)
+        if not record:
             self.LKFException(f"No se encontro ninguna Transferencia de Materiales con folio '{folio}'")
+        row = record.get('answers') or {}
 
         origen = row.get(self.stk.WH.WAREHOUSE_LOCATION_OBJ_ID) or {}
         destino = row.get(self.stk.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID) or {}
@@ -330,6 +329,7 @@ class Stock(Stock):
 
         resultado = {
             'folio': folio,
+            'createdAt': self.format_created_at(record.get('created_at')),
             'stage': self.inv_map_transfer_stages.get(self.unlist(row.get(self.f['field_status_transferencia']))),
             'analysisRange': {
                 'startDate': self.unlist(row.get(self.f['field_transfer_date_from'])),

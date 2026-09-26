@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson, random
 from copy import deepcopy
+from pytz import timezone, utc
 
 sys.path.append('/srv/scripts/addons/modules/accesos/items/scripts/Accesos')
 from accesos_utils import Accesos as AccesosUtils
@@ -288,6 +289,23 @@ class Stock(Stock):
         fecha, hora = val.split("T")
         hora = hora.split(".")[0]
         return f"{fecha} {hora}"
+
+    def format_created_at(self, created_at, str_format='%Y-%m-%d %H:%M:%S'):
+        """
+        Convierte el `created_at` de un registro (datetime en UTC guardado en
+        mongo) a string en hora de America/Monterrey.
+
+        Args:
+            created_at (datetime | None): `created_at` del registro.
+
+        Returns:
+            str | None
+        """
+        if not created_at:
+            return None
+        if not created_at.tzinfo:
+            created_at = utc.localize(created_at)
+        return created_at.astimezone(timezone('America/Monterrey')).strftime(str_format)
 
     def find_transportista_catalog(self, nombre_transportista):
         field_map = {
