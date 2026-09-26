@@ -51,7 +51,8 @@ if __name__ == "__main__":
     elif option == 'catalogo_tipo_concesion':
         response = acceso_obj.catalogo_tipo_concesion(tipo=tipo)
     elif option == 'revisar_disponibilidad_art_concesionado':
-        response = acceso_obj.revisar_disponibilidad_art_concesionado(tipo=tipo)
+        # El front manda el nombre del equipo en "nombre_equipo", no en "tipo"
+        response = acceso_obj.revisar_disponibilidad_art_concesionado(tipo=data.get("nombre_equipo") or tipo)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
