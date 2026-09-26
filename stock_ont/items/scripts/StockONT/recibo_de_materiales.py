@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import sys, simplejson
 from copy import deepcopy
+from datetime import datetime
+from pytz import timezone
 from stock_ont_utils import Stock
 from account_settings import *
 
@@ -393,6 +395,34 @@ class Stock(Stock):
 
         return self.post_recepcion_materiales_proveedor(answers)
 
+    def get_next_folio_bitacora(self, prefix='REC'):
+        """
+        Calcula el folio del nuevo registro de la Bitacora de Transportistas con
+        la estructura PREFIJO-CONSECUTIVO-FECHA (p.ej. REC-01-260926). El
+        consecutivo es global (no se reinicia por dia) y se obtiene del ultimo
+        registro creado en BD con un folio de esta estructura; la fecha es la
+        actual en America/Monterrey con formato %d%m%y.
+
+        Args:
+            prefix (str): prefijo constante del folio.
+
+        Returns:
+            str: folio siguiente, p.ej. 'REC-02-260926'.
+        """
+        fecha = datetime.now(tz=timezone('America/Monterrey')).strftime('%d%m%y')
+        ultimo_record = self.cr.find_one(
+            {
+                'form_id': self.FORM_BITACORA_TRANSPORTISTA_ID,
+                'deleted_at': {'$exists': False},
+                'folio': {'$regex': f'^{prefix}-'},
+            },
+            {'folio': 1},
+            sort=[('created_at', -1)],
+        )
+
+        ultimo_consecutivo = int(ultimo_record['folio'].split('-')[1]) if ultimo_record else 0
+        return f"{prefix}-{ultimo_consecutivo + 1:02d}-{fecha}"
+
     def post_bitacora_transportista(self, answers):
         """
         Crea el registro en la forma Bitacora de Transportistas
@@ -404,8 +434,10 @@ class Stock(Stock):
         Returns:
             dict: respuesta de `lkf_api.post_forms_answers`.
         """
+        folio_bitacora = self.get_next_folio_bitacora()
         metadata = self.lkf_api.get_metadata(self.FORM_BITACORA_TRANSPORTISTA_ID, user_id=self.record_user_id)
         metadata.update({
+            'folio': folio_bitacora,
             'properties': {
                 "device_properties": {
                     "system": "Script",
@@ -419,7 +451,10 @@ class Stock(Stock):
             },
             'answers': answers,
         })
-        return self.lkf_api.post_forms_answers(metadata)
+        resp_bitacora = self.lkf_api.post_forms_answers(metadata)
+        if resp_bitacora.get('status_code') not in (200, 201):
+            self.LKFException(f"Error al crear la Bitacora de Transportista con folio '{folio_bitacora}': {resp_bitacora}")
+        return resp_bitacora
 
     def build_answers_bitacora_transportista(self):
         """
