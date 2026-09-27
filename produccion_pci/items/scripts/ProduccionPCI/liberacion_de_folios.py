@@ -443,6 +443,11 @@ class Produccion_PCI( Produccion_PCI ):
             return True
 
         return False
+
+    def retry_patch(self, order_to_retry, id_os, order_folio, num_try=1):
+        patch_res_retry = lkf_api.bulk_patch([order_to_retry], id_os, jwt_settings_key='USER_JWT_KEY', threading=True)
+        print(f'     ... re-try patch {num_try} para {order_folio}')
+        return patch_res_retry.get(order_folio, {})
     
     def make_liberaciones_for_fibra(self, current_record, record_id, answers, header, records, tecnologia, division, id_os, id_lib, fols_sin_pdf, **kwargs):
         # CONCEPTOS MINIMOS PARA A4 EN LAS POSICIONES = 34 a 42
@@ -637,9 +642,10 @@ class Produccion_PCI( Produccion_PCI ):
                 print(f'... [ERROR 502] en bulk_patch {order_folio} : {response} .... Reintentando')
                 order_to_retry = self.get_order_by_folio(orders_to_patch, order_folio)
                 if order_to_retry:
-                    patch_res_retry = lkf_api.bulk_patch([order_to_retry], id_os, jwt_settings_key='USER_JWT_KEY', threading=True)
-                    # print(f'     ... patch_res_retry = {patch_res_retry}')
-                    response = patch_res_retry.get(order_folio, {})
+                    response = self.retry_patch(order_to_retry, id_os, order_folio)
+                    # Un intento mas
+                    if response.get('status_code') == 502:
+                        response = self.retry_patch(order_to_retry, id_os, order_folio, num_try=2)
             if response.get('status_code') != 202:
                 print(f'... error en bulk_patch {order_folio} : {response}')
             if detail_records.get(order_folio):
