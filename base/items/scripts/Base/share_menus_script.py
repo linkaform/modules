@@ -1,6 +1,6 @@
 # coding: utf-8
 #####
-# Script para compartir el script de menus con el usuario del registro
+# Script para compartir el script y el catalogo de menus con el usuario del registro
 # Forma: Usuarios
 #####
 import sys, simplejson, json
@@ -19,7 +19,7 @@ if __name__ == "__main__":
     userId = base_obj.answers.get(base_obj.menu_form_fields.get('usuario_id'))
 
     response = base_obj.share_menus_script(user_id=userId)
-    status_code = response.get('status_code', 400)
+    status_code = 201 if response.get('ok') else 400
 
     sys.stdout.write(simplejson.dumps({
         'status': status_code,
