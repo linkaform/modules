@@ -46,13 +46,15 @@ if __name__ == "__main__":
 
 
     if option == 'nuevo_paquete':
-        response = acceso_obj.create_paquete(data_paquete)
+        response = acceso_obj.create_paquete(data_paquete, notificacion=data.get('notificacion'))
     elif option == 'get_paquetes':
         response = acceso_obj.get_paquetes(location, area, status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate)
     elif option == 'actualizar_paquete':
         response = acceso_obj.update_paquete(data_paquete_actualizar, folio)
     elif option == 'eliminar_paquete':
         response = acceso_obj.delete_paquete(folio)
+    elif option == 'catalogo_destinatarios':
+        response = acceso_obj.get_destinatarios_paqueteria()
     elif option == 'get_catalogo_paquetes':
         response = acceso_obj.get_catalogo_paquetes()
     else :
