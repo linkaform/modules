@@ -31,6 +31,10 @@ class Accesos(Accesos):
         username = self.answers.get(self.EMPLOYEE_OBJ_ID, {}).get(self.mf['username'])
         menus = data.get('menus', [])
 
+        # Script + catalogo de menus directo, sin esperar al workflow de CONFIGURACION_MENUS.
+        if user_id:
+            self.share_menus_script(user_id)
+
         new_menus = []
         for menu in menus:
             new_menus.extend(self.PERMISSION_MODULE_MAP.get(menu, []))
