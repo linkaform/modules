@@ -47,9 +47,6 @@ class Base(Base):
                     self.Accesos.USUARIOS_ID,
                     self.Accesos.VISITA_AUTORIZADA_CAT_ID,
                     self.Accesos.MENUS_CATALOG_ID,
-                    self.OCR_DOCS,
-                    self.SCRIPT_PASE_ACCESO,
-                    self.SCRIPT_PASE_ACCESO_API,
                 ],
                 'scripts':[
                     self.OFFLINE_SERVICES,
@@ -58,7 +55,8 @@ class Base(Base):
                     self.SCRIPT_TRANSPORTISTAS,
                     self.SCRIPT_PASE_ACCESO,
                     self.GET_STATS,
-                    self.SCRIPT_PASE_ACCESO_API
+                    self.SCRIPT_PASE_ACCESO_API,
+                    self.OCR_DOCS,
                 ]
             },
             'accesos':{
