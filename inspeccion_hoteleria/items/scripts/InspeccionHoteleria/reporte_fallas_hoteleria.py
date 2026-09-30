@@ -353,7 +353,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         # Finalize Cards
         grade_max = max(cards_grades) if cards_grades else 0
         grade_min = min(cards_grades) if cards_grades else 0
-        grade_avg = round(sum(cards_grades) / len(cards_grades), 2) if cards_grades else 0
+        grade_avg = round(sum(cards_grades) / len(cards_grades), 4) if cards_grades else 0
         
         cards_result = {
             'habitaciones_remodeladas': total_habitaciones_remodeladas, # reusing this count
@@ -1222,7 +1222,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
         grade_max = max(grades) if grades else 0
         grade_min = min(grades) if grades else 0
-        grade_avg = round(sum(grades) / len(grades), 2) if grades else 0
+        grade_avg = round(sum(grades) / len(grades), 4) if grades else 0
 
         return {
             'habitaciones_remodeladas': habitaciones_remodeladas,
@@ -1306,6 +1306,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 'habitacion_remodelada': {"$ifNull": [f"$answers.{self.f['habitacion_remodelada']}", "No"]},
                 'status_auditoria': f"$answers.{self.f['status_auditoria']}",
                 'created_at': '$created_at',
+                'points': '$points',
             }},
             {
                 '$lookup': {
@@ -1327,8 +1328,16 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 }
             }
         ]
-        result = self.cr.aggregate(query)
-        return list(result)
+        result = list(self.cr.aggregate(query))
+        # Calificacion = puntos nativos de la forma / puntos maximos, mismo
+        # criterio que el PDF (las preguntas con N/A dan sus puntos segun la
+        # configuracion de la forma). Se guarda como fraccion sin redondear.
+        for insp in result:
+            detalle = insp.get('inspeccion')
+            max_points = (detalle or {}).get('max_points')
+            if detalle and insp.get('points') is not None and max_points:
+                detalle['grade'] = round(insp['points'] / max_points, 4)
+        return result
     
     def get_report(self, anio=None, cuatrimestres=None, hoteles=[]):
         # Normaliza los nombres de hoteles usando las abreviaturas si corresponde
