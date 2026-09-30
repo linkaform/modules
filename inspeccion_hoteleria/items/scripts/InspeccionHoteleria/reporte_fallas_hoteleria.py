@@ -280,6 +280,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         if not inspecciones:
             return {
                 'total_inspecciones_completadas': 0,
+                'total_habitaciones_inspeccionadas': 0,
                 'total_habitaciones_remodeladas': 0,
                 'cards': {},
                 'fallas': {'por_hotel': [], 'totales': []},
@@ -288,6 +289,9 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
         total_inspecciones_completadas = 0
         total_habitaciones_remodeladas = 0
+        # Un cuarto con varias inspecciones en el periodo cuenta como una sola
+        # habitacion inspeccionada (cualquier estatus).
+        habitaciones_inspeccionadas = set()
         
         # Cards metrics
         cards_fallas = 0
@@ -305,6 +309,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             # 1. Cantidad inspecciones y remodeladas
             if insp.get('status_auditoria') == 'completada':
                 total_inspecciones_completadas += 1
+            habitaciones_inspeccionadas.add((insp.get('hotel'), insp.get('habitacion')))
             
             remodelada = str(insp.get('habitacion_remodelada', '')).lower()
             if remodelada in ['sí', 'si']:
@@ -352,7 +357,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         
         cards_result = {
             'habitaciones_remodeladas': total_habitaciones_remodeladas, # reusing this count
-            'inspecciones_realizadas': len(inspecciones),
+            'inspecciones_realizadas': len(habitaciones_inspeccionadas),
             'total_fallas': cards_fallas,
             'total_aciertos': cards_aciertos,
             'grade_max': grade_max,
@@ -401,6 +406,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
 
         return {
             'total_inspecciones_completadas': total_inspecciones_completadas,
+            'total_habitaciones_inspeccionadas': len(habitaciones_inspeccionadas),
             'total_habitaciones_remodeladas': total_habitaciones_remodeladas,
             'cards': cards_result,
             'fallas': fallas_result,
@@ -801,7 +807,8 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                         {'$eq': ['$form_id', form_id]},
                         {'$eq': [f"$answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area_habitacion']}", "$$nombre_hab"]}
                         ]
-                    }
+                    },
+                    'deleted_at': {'$exists': False}
                 }
             }
         ]
@@ -858,16 +865,17 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             if match_date:
                 lookup_pipeline.append({'$match': match_date})
 
+        # La mas reciente del periodo + cuantas hubo, para marcar en la
+        # cuadricula los cuartos con mas de una inspeccion.
         lookup_pipeline.extend([
             {
                 '$sort': {'created_at': -1}
             },
             {
-                '$limit': 1
-            },
-            {
-                '$project': {
-                    '_id': 1
+                '$group': {
+                    '_id': None,
+                    'ultima_id': {'$first': '$_id'},
+                    'total': {'$sum': 1}
                 }
             }
         ])
@@ -899,9 +907,12 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 'inspeccion_id': {
                     '$cond': [
                         {'$gt': [{'$size': '$inspeccion'}, 0]},
-                        {'$arrayElemAt': ['$inspeccion._id', 0]},
+                        {'$arrayElemAt': ['$inspeccion.ultima_id', 0]},
                         None
                     ]
+                },
+                'total_inspecciones': {
+                    '$ifNull': [{'$arrayElemAt': ['$inspeccion.total', 0]}, 0]
                 }
             }
             },
@@ -909,7 +920,8 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 '$project': {
                     'nombre_area_habitacion': 1,
                     'numero_habitacion': 1,
-                    'inspeccion_id': 1
+                    'inspeccion_id': 1,
+                    'total_inspecciones': 1
                 }
             }
         ]
@@ -1348,7 +1360,7 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         total_habitaciones = self.get_cantidad_habitaciones(ubicaciones_list=hoteles)
         
         # 3. Propiedades Inspeccionadas
-        total_inspecciones = metrics.get('total_inspecciones_completadas', 0)
+        total_inspecciones = metrics.get('total_habitaciones_inspeccionadas', 0)
         propiedades_inspeccionadas = self.porcentaje_propiedades_inspeccionadas(
             total_habitaciones.get('totalHabitaciones', 0), 
             total_inspecciones
