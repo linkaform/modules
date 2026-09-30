@@ -41,6 +41,9 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
             'lista_acciones_correctivas': '693c4cee4e2fb04b6804de13',
             'status_accion_correctiva': '693c4d96fcc55a23bd20cba1',
             'costo_inversion': '693c4d96fcc55a23bd20cba2',
+            # Evidencia del "despues" dentro de cada renglon del grupo de acciones
+            'accion_foto_despues': '693c4d96fcc55a23bd20cb9f',
+            'actividad_realizada': '69497e5ca450f68b01205084',
         })
         
         self.labels_to_exclude = [
@@ -275,6 +278,10 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 hab_num = data.get(self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {}).get(self.Location.f['area'])
                 question = falla_data.get(self.f['desviacion'])
                 inversion = accion.get(self.f['costo_inversion'], 0)
+                # La foto y la actividad viven en el renglon; la raiz queda como
+                # respaldo para registros de la version anterior de la forma.
+                foto_despues = accion.get(self.f['accion_foto_despues']) or data.get(self.f['accion_correctiva_foto'], [])
+                comentario_despues = accion.get(self.f['actividad_realizada']) or data.get(self.f['accion_correctiva_comentario'], "")
 
                 falla_record = self.get_acciones_correctivas(hotel_name, hab_num, question, limit=1)
                 if not falla_record:
@@ -291,11 +298,11 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
                 
                 inspeccion_id = self.get_inspeccion_id(search_hotel, hotel_name, hab_num, falla_id)
                 print('====log: inspeccion_id', inspeccion_id)
-                format_resp = self.update_record_in_inspeccion_hoteleria(record_id=inspeccion_id, falla_id=falla_id, falla=falla_record, data=data, inversion=inversion) if inspeccion_id else {"success": False, "message": "No se encontró la inspección correspondiente"}
+                format_resp = self.update_record_in_inspeccion_hoteleria(record_id=inspeccion_id, falla_id=falla_id, falla=falla_record, data=data, inversion=inversion, foto_despues=foto_despues, comentario_despues=comentario_despues) if inspeccion_id else {"success": False, "message": "No se encontró la inspección correspondiente"}
                 responses.append(format_resp)
         return responses
 
-    def update_record_in_inspeccion_hoteleria(self, record_id, falla_id, falla, data, inversion):
+    def update_record_in_inspeccion_hoteleria(self, record_id, falla_id, falla, data, inversion, foto_despues=None, comentario_despues=""):
         doc = self.cr_inspeccion.find_one({"_id": ObjectId(record_id)})
         if not doc:
             return {"success": False, "message": "Documento no encontrado"}
@@ -311,9 +318,9 @@ class Inspeccion_Hoteleria(Inspeccion_Hoteleria):
         if falla_id in field_label:
             acciones_correctivas[falla_id] = field_label.pop(falla_id)
             media_acciones_correctivas.setdefault(falla_id, {})['before'] = media.pop(falla_id, [])
-            media_acciones_correctivas.setdefault(falla_id, {})['after'] = data.get(self.f['accion_correctiva_foto'], [])
+            media_acciones_correctivas.setdefault(falla_id, {})['after'] = foto_despues or []
             comments_acciones_correctivas.setdefault(falla_id, {})['before'] = comments.pop(falla_id, "")
-            comments_acciones_correctivas.setdefault(falla_id, {})['after'] = data.get(self.f['accion_correctiva_comentario'], "")
+            comments_acciones_correctivas.setdefault(falla_id, {})['after'] = comentario_despues or ""
             inversion_x_acciones[falla_id] = inversion
 
             update_data = {
