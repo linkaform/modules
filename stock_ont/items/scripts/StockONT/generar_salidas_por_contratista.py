@@ -29,6 +29,24 @@ class Stock(Stock):
         """
         return f"SAL-{datetime.now().strftime('%Y-%m-%d')}-{time.time_ns()}"
 
+    def post_firmas_externas(self, firmas_externas):
+        """
+        Crea de golpe los registros de Firmas de Usuarios Externos
+        (FORM_FIRMAS_EXTERNAS) de todos los vales creados, en lugar de uno a
+        uno como en salida_de_materiales().
+
+        Args:
+            firmas_externas (list[dict]): metadatas armadas con
+                build_metadata_firma_externa().
+
+        Returns:
+            respuesta de `lkf_api.post_forms_answers_list`, o None si no hay
+            registros por crear.
+        """
+        if not firmas_externas:
+            return None
+        return self.lkf_api.post_forms_answers_list(firmas_externas, jwt_settings_key='APIKEY_JWT_KEY')
+
     def generar_salidas_por_contratista(self):
         """
         Calcula el material estimado agrupado por contratista (tipo_reporte
@@ -50,11 +68,12 @@ class Stock(Stock):
         if not isinstance(vales, list):
             self.LKFException(f"No se pudo calcular el material estimado por contratista: {vales}")
 
-        # TODO: por ahora solo crea 3 vales de prueba, para no saturar la BD de Salidas de Materiales
+        # TODO: por ahora solo crea 10 vales de prueba, para no saturar la BD de Salidas de Materiales
         # quito el limite pero lo dejo comentado para pruebas locales, ya que el script puede ser llamado desde el Front y generar muchos vales de golpe.
-        # vales = vales[:3]
+        vales = vales[:10]
 
         registros_creados = []
+        firmas_externas = []
         for vale in vales:
             self.data = vale
 
@@ -64,6 +83,10 @@ class Stock(Stock):
             if resp_salida.get('status_code') != 201:
                 continue
 
+            metadata_firma = self.build_metadata_firma_externa(resp_salida, 'salida', 'generar_salidas_por_contratista.py')
+            if metadata_firma:
+                firmas_externas.append(metadata_firma)
+
             registros_creados.append({
                 'folio': resp_salida.get('json', {}).get('folio'),
                 'originWarehouse': vale.get('originWarehouse'),
@@ -71,6 +94,8 @@ class Stock(Stock):
                 'items': vale.get('items', []),
                 'stage': 'created',
             })
+
+        self.post_firmas_externas(firmas_externas)
 
         return self.build_individual_and_grouped_response(registros_creados)
 

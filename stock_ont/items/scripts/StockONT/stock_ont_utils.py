@@ -23,6 +23,7 @@ class Stock(Stock):
 
         self.FORM_ID_TRANSFERENCIAS = 166688
         self.FORM_BITACORA_TRANSPORTISTA_ID = 165688
+        self.FORM_FIRMAS_EXTERNAS = 179777 # TODO : cambiar este id por el de produccion (180412)
 
         self.FORM_ID_SALIDAS = 179244
 
@@ -38,7 +39,6 @@ class Stock(Stock):
             "obj_wh_locations": "6824e62e7c8af42c04a73d28",
             "field_wh_name_transportista": "6442e4831198daf81456f274",
             "field_location_transportista": "65ac6fbc070b93e656bd7fbe",
-
 
             # Campos para catalogo del transportista
             "obj_ubi_transportista": "6a83326c1aad519fd56c1ca8",
@@ -170,6 +170,14 @@ class Stock(Stock):
             'field_final_delivery_signature': '6aafd3d33a6b1b1d8d13b0c5',
             'field_final_delivery_captured_at': '6ab0ada077d43414d84a1682',
             'field_final_delivery_captured_via': '6ab0ada077d43414d84a1683',
+
+            # Campos para la forma de firmas de usuarios externos
+            'field_public_id_folio': '6abbe8b0e9d959e350cee926',
+            'field_public_tipo_operacion': '6abbe8b0e9d959e350cee927',
+            'field_public_firma': '6abd345af63bb66f491ad573',
+            'field_public_fecha_firma': '6abd352aedbaa505923a8d6b',
+            'field_public_nombre_firma': '6abd352aedbaa505923a8d6c',
+            'field_public_estatus': '6abd352aedbaa505923a8d6d'
         })
 
         # Esto lo debería jalar de accesos_utils
@@ -581,6 +589,71 @@ class Stock(Stock):
         })
         metadata['folio'] = f"TRASPASO-{str(int(random.random() * 1000))}"
         return self.lkf_api.post_forms_answers(metadata)
+
+    def create_record_firma_externa(self, resp_record, tipo_operacion, script_name):
+        """
+        Crea el registro en la forma de Firmas de Usuarios Externos
+        (form_id FORM_FIRMAS_EXTERNAS) ligado al folio del registro recien
+        creado en Transferencias o Salidas. Los campos de firma se dejan
+        vacios porque se llenan despues con otra operacion.
+
+        Args:
+            resp_record (dict): respuesta de `lkf_api.post_forms_answers` del
+                registro de Transferencia o Salida.
+            tipo_operacion (str): 'transferencia' o 'salida'.
+            script_name (str): script que genera el registro.
+
+        Returns:
+            dict | None: respuesta de `lkf_api.post_forms_answers`, o None si
+            el registro origen no se creo correctamente.
+        """
+        metadata = self.build_metadata_firma_externa(resp_record, tipo_operacion, script_name)
+        if not metadata:
+            return None
+        return self.lkf_api.post_forms_answers(metadata, jwt_settings_key='APIKEY_JWT_KEY')
+
+    def build_metadata_firma_externa(self, resp_record, tipo_operacion, script_name):
+        """
+        Arma la metadata del registro de Firmas de Usuarios Externos
+        (form_id FORM_FIRMAS_EXTERNAS) sin crearlo, para poder crearlo uno a
+        uno (create_record_firma_externa) o varios de golpe con
+        `lkf_api.post_forms_answers_list`.
+
+        Args:
+            resp_record (dict): respuesta de `lkf_api.post_forms_answers` del
+                registro de Transferencia o Salida.
+            tipo_operacion (str): 'transferencia' o 'salida'.
+            script_name (str): script que genera el registro.
+
+        Returns:
+            dict | None: metadata lista para enviar, o None si el registro
+            origen no se creo correctamente.
+        """
+        folio = (resp_record.get('json') or {}).get('folio')
+        if resp_record.get('status_code') not in (200, 201) or not folio:
+            print(f"ADVERTENCIA: no se crea la firma externa, el registro de {tipo_operacion} no se creo correctamente")
+            return None
+
+        metadata = self.lkf_api.get_metadata(self.FORM_FIRMAS_EXTERNAS, user_id=self.record_user_id)
+        metadata.update({
+            'properties': {
+                "device_properties": {
+                    "system": "Script",
+                    "process": "Firmas Externas",
+                    "action": f"Crear Firma Externa de {tipo_operacion}",
+                    "from_folio": folio,
+                    "script": script_name,
+                    "module": "stock_ont",
+                    "function": "create_record_firma_externa",
+                }
+            },
+            'answers': {
+                self.f['field_public_id_folio']: folio,
+                self.f['field_public_tipo_operacion']: tipo_operacion,
+                self.f['field_public_estatus']: 'pendiente',
+            },
+        })
+        return metadata
 
     def get_damage_reports(self, damage_list):
         if not damage_list:

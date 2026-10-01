@@ -136,7 +136,9 @@ class Stock(Stock):
 
     def tranferencia_de_materiales(self):
         answers_transferencia = self.build_answers_transferencia()
-        return self.post_transferencia_materiales(answers_transferencia)
+        resp_transferencia = self.post_transferencia_materiales(answers_transferencia)
+        self.create_record_firma_externa(resp_transferencia, 'transferencia', 'transferencia_de_materiales.py')
+        return resp_transferencia
 
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv)

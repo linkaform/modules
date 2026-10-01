@@ -476,6 +476,7 @@ class Stock(Stock):
 
         return self.cr_admin.aggregate([
             {'$match': match_query},
+            {'$limit': 100}, # TODO : quitar este limit... lo puse para pruebas en preprod
             {'$project': data_project},
             {'$group': {
                 '_id': {'connection_email': '$connection_email'},
@@ -934,6 +935,8 @@ class Stock(Stock):
         """
         Consulta el catálogo de COPES segun el Tipo de Corte (Semanal, Mensual o Todo)
         """
+        # TODO : esto del almacen origen y destino solo aplica para Traspasos.
+        # en las salidas tomar almacén destino como el origen. Si está vacío el default es Puebla.
         answers_filter = {"$and":[ # TODO : cambiar los valores fijos por los nombres de los almacenes origen y destino
             {"6aa8238ae98ccc0950307a03": 'Puebla'},
             {"6aa8238ae98ccc0950307a04": 'Camarones'},
@@ -1143,7 +1146,7 @@ class Stock(Stock):
                     "finalContratista": nombre_contratista,
                 },
                 "items": items_vale,
-                "stage": "voucher_generated",
+                "stage": "pending_authorization",
                 "events": [{
                     "at": fecha_evento,
                     "type": "calculation_generated",
