@@ -83,9 +83,10 @@ class Stock(Stock):
             if resp_salida.get('status_code') != 201:
                 continue
 
-            metadata_firma = self.build_metadata_firma_externa(resp_salida, 'salida', 'generar_salidas_por_contratista.py')
-            if metadata_firma:
-                firmas_externas.append(metadata_firma)
+            # La firma externa ahora se crea en actualizar_salida_de_materiales.py con la bandera requestExternalSignature
+            # metadata_firma = self.build_metadata_firma_externa(resp_salida.get('json', {}).get('folio'), 'salida', 'generar_salidas_por_contratista.py')
+            # if metadata_firma:
+            #     firmas_externas.append(metadata_firma)
 
             registros_creados.append({
                 'folio': resp_salida.get('json', {}).get('folio'),
@@ -95,7 +96,7 @@ class Stock(Stock):
                 'stage': 'created',
             })
 
-        self.post_firmas_externas(firmas_externas)
+        # self.post_firmas_externas(firmas_externas)
 
         return self.build_individual_and_grouped_response(registros_creados)
 

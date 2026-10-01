@@ -9,29 +9,6 @@ class Stock(Stock):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
         self.data = self.data.get('data')
 
-    def get_record_firma_externa(self, folio, tipo_operacion):
-        """
-        Busca el registro de Firmas de Usuarios Externos (FORM_FIRMAS_EXTERNAS)
-        ligado al folio del registro padre (Transferencia o Salida).
-
-        Args:
-            folio (str): folio del registro padre.
-            tipo_operacion (str): 'transferencia' o 'salida'.
-
-        Returns:
-            dict | None: registro encontrado o None.
-        """
-        return self.cr.find_one(
-            {
-                'form_id': self.FORM_FIRMAS_EXTERNAS,
-                'deleted_at': {'$exists': False},
-                f"answers.{self.f['field_public_id_folio']}": folio,
-                f"answers.{self.f['field_public_tipo_operacion']}": tipo_operacion,
-            },
-            {'_id': 1, 'folio': 1, 'answers': 1},
-            sort=[('created_at', -1)],
-        )
-
     def patch_firma_externa(self, record_id, answers):
         """
         Actualiza el registro existente en la forma de Firmas de Usuarios

@@ -221,7 +221,8 @@ class Stock(Stock):
     def salida_de_materiales(self):
         answers_salida = self.build_answers_salida()
         resp_salida = self.post_salida_materiales(answers_salida)
-        self.create_record_firma_externa(resp_salida, 'salida', 'salida_de_materiales.py')
+        # La firma externa ahora se crea en actualizar_salida_de_materiales.py con la bandera requestExternalSignature
+        # self.create_record_firma_externa((resp_salida.get('json') or {}).get('folio'), 'salida', 'salida_de_materiales.py')
         return resp_salida
 
     def _get_disponible_quantity(self, sku, warehouse, location, cache):

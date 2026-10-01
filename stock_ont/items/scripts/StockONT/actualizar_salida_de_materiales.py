@@ -148,6 +148,12 @@ class Stock(Stock):
                 self.patch_salida_materiales(record['_id'], original_answers)
                 resp_actualizar['status_code'] = 400
                 resp_actualizar['error'] = "Ocurrio un error al generar la salida del Stock"
+                return resp_actualizar
+
+        if self.data.get('requestExternalSignature'):
+            resp_firma = self.create_record_firma_externa(record.get('folio'), 'salida', 'actualizar_salida_de_materiales.py')
+            if resp_firma:
+                resp_actualizar['firma_externa'] = resp_firma
 
         return resp_actualizar
 

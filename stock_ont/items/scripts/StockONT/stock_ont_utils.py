@@ -590,29 +590,56 @@ class Stock(Stock):
         metadata['folio'] = f"TRASPASO-{str(int(random.random() * 1000))}"
         return self.lkf_api.post_forms_answers(metadata)
 
-    def create_record_firma_externa(self, resp_record, tipo_operacion, script_name):
+    def get_record_firma_externa(self, folio, tipo_operacion):
         """
-        Crea el registro en la forma de Firmas de Usuarios Externos
-        (form_id FORM_FIRMAS_EXTERNAS) ligado al folio del registro recien
-        creado en Transferencias o Salidas. Los campos de firma se dejan
-        vacios porque se llenan despues con otra operacion.
+        Busca el registro de Firmas de Usuarios Externos (FORM_FIRMAS_EXTERNAS)
+        ligado al folio del registro padre (Transferencia o Salida).
 
         Args:
-            resp_record (dict): respuesta de `lkf_api.post_forms_answers` del
-                registro de Transferencia o Salida.
+            folio (str): folio del registro padre.
+            tipo_operacion (str): 'transferencia' o 'salida'.
+
+        Returns:
+            dict | None: registro encontrado o None.
+        """
+        return self.cr.find_one(
+            {
+                'form_id': self.FORM_FIRMAS_EXTERNAS,
+                'deleted_at': {'$exists': False},
+                f"answers.{self.f['field_public_id_folio']}": folio,
+                f"answers.{self.f['field_public_tipo_operacion']}": tipo_operacion,
+            },
+            {'_id': 1, 'folio': 1, 'answers': 1},
+            sort=[('created_at', -1)],
+        )
+
+    def create_record_firma_externa(self, folio, tipo_operacion, script_name):
+        """
+        Crea el registro en la forma de Firmas de Usuarios Externos
+        (form_id FORM_FIRMAS_EXTERNAS) ligado al folio de un registro de
+        Transferencias o Salidas. Los campos de firma se dejan vacios porque
+        se llenan despues con actualizar_firma_externa.py. Si ya existe un
+        registro de firma para el mismo folio y tipo de operacion (pendiente
+        o firmado), no se crea otro.
+
+        Args:
+            folio (str): folio del registro de Transferencia o Salida.
             tipo_operacion (str): 'transferencia' o 'salida'.
             script_name (str): script que genera el registro.
 
         Returns:
             dict | None: respuesta de `lkf_api.post_forms_answers`, o None si
-            el registro origen no se creo correctamente.
+            no se recibio el folio o la firma ya existia.
         """
-        metadata = self.build_metadata_firma_externa(resp_record, tipo_operacion, script_name)
+        if self.get_record_firma_externa(folio, tipo_operacion):
+            return None
+
+        metadata = self.build_metadata_firma_externa(folio, tipo_operacion, script_name)
         if not metadata:
             return None
         return self.lkf_api.post_forms_answers(metadata, jwt_settings_key='APIKEY_JWT_KEY')
 
-    def build_metadata_firma_externa(self, resp_record, tipo_operacion, script_name):
+    def build_metadata_firma_externa(self, folio, tipo_operacion, script_name):
         """
         Arma la metadata del registro de Firmas de Usuarios Externos
         (form_id FORM_FIRMAS_EXTERNAS) sin crearlo, para poder crearlo uno a
@@ -620,18 +647,16 @@ class Stock(Stock):
         `lkf_api.post_forms_answers_list`.
 
         Args:
-            resp_record (dict): respuesta de `lkf_api.post_forms_answers` del
-                registro de Transferencia o Salida.
+            folio (str): folio del registro de Transferencia o Salida.
             tipo_operacion (str): 'transferencia' o 'salida'.
             script_name (str): script que genera el registro.
 
         Returns:
-            dict | None: metadata lista para enviar, o None si el registro
-            origen no se creo correctamente.
+            dict | None: metadata lista para enviar, o None si no se recibio
+            el folio.
         """
-        folio = (resp_record.get('json') or {}).get('folio')
-        if resp_record.get('status_code') not in (200, 201) or not folio:
-            print(f"ADVERTENCIA: no se crea la firma externa, el registro de {tipo_operacion} no se creo correctamente")
+        if not folio:
+            print(f"ADVERTENCIA: no se crea la firma externa de {tipo_operacion}, no se recibio el folio")
             return None
 
         metadata = self.lkf_api.get_metadata(self.FORM_FIRMAS_EXTERNAS, user_id=self.record_user_id)

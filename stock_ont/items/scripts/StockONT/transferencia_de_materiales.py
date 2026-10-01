@@ -137,7 +137,8 @@ class Stock(Stock):
     def tranferencia_de_materiales(self):
         answers_transferencia = self.build_answers_transferencia()
         resp_transferencia = self.post_transferencia_materiales(answers_transferencia)
-        self.create_record_firma_externa(resp_transferencia, 'transferencia', 'transferencia_de_materiales.py')
+        # La firma externa ahora se crea en actualizar_transferencia_de_materiales.py con la bandera requestExternalSignature
+        # self.create_record_firma_externa((resp_transferencia.get('json') or {}).get('folio'), 'transferencia', 'transferencia_de_materiales.py')
         return resp_transferencia
 
 if __name__ == '__main__':
