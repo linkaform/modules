@@ -554,6 +554,8 @@ if __name__ == "__main__":
         "resync_all_permissions": lambda: script_obj.resync_all_permissions(),
         "list_users_missing_menu_config": lambda: script_obj.list_users_missing_menu_config(),
         "list_users_only_in_legacy_accesos": lambda: script_obj.list_users_only_in_legacy_accesos(),
+        "get_menu_permission_gaps": lambda: script_obj.get_menu_permission_gaps(),
+        "reapply_menu_permissions": lambda: script_obj.reapply_menu_permissions(data.get("user_ids") or []),
     }
 
     action = dispatcher.get(option)
