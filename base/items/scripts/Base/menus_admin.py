@@ -72,6 +72,15 @@ class Base(Base):
         return None
 
     def _save_one_item(self, payload):
+        metadata = self._build_item_metadata(payload)
+        record_id = payload.get('_id')
+        if record_id:
+            res = self.lkf_api.update_catalog_answers(metadata, record_id=record_id)
+        else:
+            res = self.lkf_api.post_catalog_answers(metadata)
+        return res
+
+    def _build_item_metadata(self, payload):
         f = self.menu_catalog_fields
         platform_value = (payload.get('platforms') or 'web').lower()
         answers = {
@@ -100,12 +109,7 @@ class Base(Base):
         }
         metadata = self.lkf_api.get_catalog_metadata(catalog_id=self.MENUS_CATALOG_ID)
         metadata['answers'] = answers
-        record_id = payload.get('_id')
-        if record_id:
-            res = self.lkf_api.update_catalog_answers(metadata, record_id=record_id)
-        else:
-            res = self.lkf_api.post_catalog_answers(metadata)
-        return res
+        return metadata
 
     def save_menu_item(self, payload):
         """
@@ -216,15 +220,42 @@ class Base(Base):
         new_keys = {i.get('key') for i in (items or [])}
         removed_keys = [k for k in existing_keys if k and k not in new_keys]
 
-        for row in existing:
-            self.lkf_api.delete_catalog_record(self.MENUS_CATALOG_ID, row.get('_id'), row.get('_rev'))
+        # En paralelo: en serie son ~2 llamadas por item y el import completo
+        # pasaba el timeout del runner; el reintento duplicaba filas.
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            list(executor.map(
+                lambda row: self.lkf_api.delete_catalog_record(self.MENUS_CATALOG_ID, row.get('_id'), row.get('_rev')),
+                existing,
+            ))
 
-        created = 0
-        for payload in items or []:
+        # post_catalog_answers no es seguro entre hilos (comparte thread_result)
+        # y post_catalog_answers_list usa 128 hilos que saturan el API:
+        # se llama al mismo dispatch con 10 workers.
+        set_answer_url = self.lkf_api.api_url.catalog['set_catalog_answer']
+
+        def _create(payload):
             create_payload = dict(payload)
             create_payload.pop('_id', None)
-            self._save_one_item(create_payload)
-            created += 1
+            return self.lkf_api.network.dispatch(set_answer_url, data=self._build_item_metadata(create_payload))
+
+        created = 0
+        errors = []
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {executor.submit(_create, p): p for p in items or []}
+            for future in as_completed(futures):
+                try:
+                    res = future.result()
+                    status_code = res.get('status_code') if isinstance(res, dict) else None
+                except Exception as e:
+                    status_code, res = None, str(e)
+                if status_code in (200, 201, 202):
+                    created += 1
+                else:
+                    errors.append({"key": futures[future].get('key'), "error": str(res)[:200]})
+
+        # Si otra ejecucion corrio al mismo tiempo (reintento tras timeout),
+        # quedan filas repetidas: se conserva la mas vieja de cada una.
+        duplicates_removed = self._remove_duplicate_catalog_rows()
 
         if removed_keys:
             self._cleanup_deleted_item_keys(removed_keys)
@@ -232,8 +263,30 @@ class Base(Base):
         return {
             "deleted": len(existing),
             "created": created,
+            "errors": errors,
+            "duplicates_removed": duplicates_removed,
             "cleaned_keys": len(removed_keys),
         }
+
+    def _remove_duplicate_catalog_rows(self):
+        f = self.menu_catalog_fields
+        rows = self.lkf_api.search_catalog(self.MENUS_CATALOG_ID, {"selector": {}, "limit": 10000})
+        seen = set()
+        duplicates = []
+        # _id de CouchDB inicia con el timestamp: ordenar por _id deja primero la fila mas vieja
+        for row in sorted(rows, key=lambda r: r.get('_id') or ''):
+            ident = (
+                row.get(f['catalog_key']),
+                str(row.get(f['catalog_plataforms']) or '').lower(),
+                row.get(f['catalog_seccion_key']),
+            )
+            if ident in seen:
+                duplicates.append(row)
+            else:
+                seen.add(ident)
+        for row in duplicates:
+            self.lkf_api.delete_catalog_record(self.MENUS_CATALOG_ID, row.get('_id'), row.get('_rev'))
+        return len(duplicates)
 
     def delete_menu_item(self, record_id):
         """
