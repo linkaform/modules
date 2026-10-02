@@ -1,5 +1,5 @@
 # coding: utf-8
-import sys, simplejson
+import re, sys, simplejson
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from linkaform_api import settings
@@ -603,6 +603,16 @@ class Accesos(Accesos):
             "summarize any unit, even if there are dozens of them. "
             "If a field cannot be determined from the image, use null. "
             "\n\n"
+            "CHARACTER ACCURACY (critical): SN and MAC values are uppercase hexadecimal "
+            "(only 0-9 and A-F; MACs are 12 chars). In this font the letter 'B' and the digit '8' look very similar, "
+            "as do 'D' and '0': read every character individually, zooming in mentally. "
+            "'B' has a straight, flat vertical stroke on its LEFT side and square corners "
+            "on the left; '8' is rounded/curved on BOTH sides and narrower at the waist. "
+            "'D' has a straight left side; '0' is an oval curved on both sides. "
+            "Do NOT infer characters from the pattern of the other units' serials — "
+            "transcribe exactly what is printed on each label. "
+            "Do not include the 'SN:' / 'MAC:' prefixes, spaces, colons or hyphens in the values. "
+            "\n\n"
             "Return ONLY a JSON object with this exact structure:\n"
             "{\n"
             '  "tipo_equipo": "string — equipment type description printed on the label, e.g. TERMINAL PARA RED DE FIBRA OPTICA, or null",\n'
@@ -645,10 +655,24 @@ class Accesos(Accesos):
 
         print('>>> ocr_packing_list image_source=', image_source)
 
+        # El modelo recibe la foto completa reducida y en caracteres tan pequeños
+        # confunde 'B' con '8'. Además de las fotos originales se le mandan
+        # recortes ampliados de cada foto para que lea los SN/MAC con más detalle.
+        imagenes = self._cargar_imagenes(image_source)
+        recortes = self._recortes_ampliados(imagenes)
+        if recortes:
+            prompt += (
+                f"\n\nThe first {len(image_source)} image(s) are the full carton photo(s). "
+                f"The remaining {len(recortes)} images are ZOOMED, overlapping sections of "
+                "those same photos: use them to read every SN and MAC character by "
+                "character. Units that appear in more than one section are the SAME unit — "
+                "list each unit only once."
+            )
+
         # Llamada al modelo de OpenRouter: le mandamos la(s) imagen(es) + system + prompt.
         # Si son varias imágenes (varias caras del cartón), el modelo las analiza como
         # un solo cartón, por eso el prompt dice "different faces/photos of the SAME carton".
-        raw_text = self.ai.ocr_general(image_source, system, prompt, model=model, max_tokens=max_tokens)
+        raw_text = self.ai.ocr_general(image_source + recortes, system, prompt, model=model, max_tokens=max_tokens)
 
         # La respuesta viene con la forma típica de una API tipo OpenAI/OpenRouter:
         # {'choices': [{'message': {'content': <el JSON que pedimos>}}], ...}
@@ -670,6 +694,17 @@ class Accesos(Accesos):
         # de las funciones de este archivo.
         datos = self._ocr_normalizar(datos)
 
+        # Los recortes se traslapan, así que una unidad puede venir repetida.
+        if recortes and isinstance(datos.get('serials'), list):
+            unicos, vistos = [], set()
+            for serial in datos['serials']:
+                llave = (serial.get('prod_id') or serial.get('sn') or '').strip().upper()
+                if llave and llave in vistos:
+                    continue
+                vistos.add(llave)
+                unicos.append(serial)
+            datos['serials'] = unicos
+
         # Igual que arriba: _ocr_validar_id valida formatos de CURP/RFC/fecha de
         # nacimiento. Para un Packing List siempre regresa una lista vacía (sin
         # advertencias), pero se deja para mantener el mismo flujo de respuesta
@@ -681,6 +716,13 @@ class Accesos(Accesos):
             ZoneInfo("America/Monterrey")
         )
         datos['confirmedAt'] = fecha_monterrey.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
+
+        # El LLM a veces confunde 'B' con '8' (y 'D' con '0') en el SN/MAC. Cada
+        # unidad trae su SN y MAC también en código de barras, así que cuando se
+        # logran decodificar se usan para corregir lo leído por el modelo.
+        correcciones = self._packing_list_corregir_con_barcodes(datos, imagenes)
+        if correcciones:
+            datos['correcciones'] = correcciones
 
         modelo_series = datos.get('modelo') or ''
         marca_series = datos.get('marca') or ''
@@ -699,6 +741,131 @@ class Accesos(Accesos):
             }
 
         return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
+
+    # Caracteres que el OCR suele confundir entre sí en etiquetas hexadecimales.
+    # Se normalizan a un mismo valor para comparar lo leído por el LLM contra
+    # lo decodificado de los códigos de barras.
+    _OCR_CONFUSIONES = str.maketrans({'B': '8', 'D': '0', 'O': '0'})
+
+    def _cargar_imagenes(self, image_source: list) -> list:
+        """
+        Descarga/abre las fotos del cartón como imágenes PIL para poder generar
+        recortes ampliados y leer códigos de barras. Requiere Pillow; si no está
+        instalado (o una foto no se puede abrir) esa foto se omite y el flujo
+        sigue solo con lo que lea el LLM de la foto original.
+        """
+        try:
+            import io
+            import requests
+            from PIL import Image
+        except ImportError as e:
+            print('>>> _cargar_imagenes: Pillow no disponible', e)
+            return []
+
+        imagenes = []
+        for src in image_source:
+            try:
+                if str(src).startswith('http'):
+                    resp = requests.get(src, timeout=30)
+                    resp.raise_for_status()
+                    img = Image.open(io.BytesIO(resp.content))
+                else:
+                    img = Image.open(src)
+                imagenes.append(img.convert('RGB'))
+            except Exception as e:
+                print('>>> _cargar_imagenes error en', src, e)
+        return imagenes
+
+    def _recortes_ampliados(self, imagenes: list, columnas: int = 2, filas: int = 2,
+                            traslape: float = 0.12, escala: int = 2) -> list:
+        """
+        Divide cada foto en una cuadrícula de secciones que se traslapan (para no
+        partir una etiqueta a la mitad) y amplía cada sección. Regresa los recortes
+        como data URLs JPEG listos para mandarse al modelo junto con la foto original.
+        """
+        import base64
+        import io
+        from PIL import Image
+
+        recortes = []
+        for img in imagenes:
+            ancho, alto = img.size
+            paso_x, paso_y = ancho / columnas, alto / filas
+            extra_x, extra_y = paso_x * traslape, paso_y * traslape
+            for fila in range(filas):
+                for col in range(columnas):
+                    caja = (
+                        int(max(0, col * paso_x - extra_x)),
+                        int(max(0, fila * paso_y - extra_y)),
+                        int(min(ancho, (col + 1) * paso_x + extra_x)),
+                        int(min(alto, (fila + 1) * paso_y + extra_y)),
+                    )
+                    rec = img.crop(caja)
+                    rec = rec.resize((rec.width * escala, rec.height * escala), Image.LANCZOS)
+                    buf = io.BytesIO()
+                    rec.save(buf, format='JPEG', quality=90)
+                    b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+                    recortes.append(f'data:image/jpeg;base64,{b64}')
+        return recortes
+
+    def _leer_barcodes(self, imagenes: list) -> set:
+        """
+        Decodifica los códigos de barras Code128 de las imágenes del cartón.
+        Las barras de cada unidad son pequeñas, por eso se intenta también con la
+        imagen ampliada. Requiere zxing-cpp; si no está instalado regresa un set
+        vacío y el flujo sigue solo con lo leído por el LLM.
+        """
+        try:
+            import zxingcpp
+            from PIL import Image, ImageOps
+        except ImportError as e:
+            print('>>> _leer_barcodes: lectura de códigos de barras deshabilitada', e)
+            return set()
+
+        valores = set()
+        for img in imagenes:
+            try:
+                img = ImageOps.grayscale(img)
+                for escala in (1, 2, 3):
+                    im = img if escala == 1 else img.resize(
+                        (img.width * escala, img.height * escala), Image.LANCZOS)
+                    for r in zxingcpp.read_barcodes(im, formats=zxingcpp.BarcodeFormat.Code128):
+                        if r.text:
+                            valores.add(r.text.strip().upper())
+            except Exception as e:
+                print('>>> _leer_barcodes error', e)
+        print('>>> _leer_barcodes valores=', valores)
+        return valores
+
+    def _packing_list_corregir_con_barcodes(self, datos: dict, imagenes: list) -> list:
+        """
+        Corrige el SN y la MAC de cada unidad usando los códigos de barras.
+        Solo se reemplaza un valor si existe exactamente un código de barras que
+        coincide con él salvo por confusiones B/8, D/0, O/0. Regresa la lista de
+        correcciones hechas (para dejar rastro en la respuesta).
+        """
+        serials = datos.get('serials') or []
+        if not serials:
+            return []
+        barcodes = self._leer_barcodes(imagenes)
+        if not barcodes:
+            return []
+
+        avisos = []
+        for serial in serials:
+            for campo in ('sn', 'mac'):
+                valor = re.sub(r'[\s:\-]', '', serial.get(campo) or '').upper()
+                if not valor or valor in barcodes:
+                    continue
+                clave = valor.translate(self._OCR_CONFUSIONES)
+                candidatos = [
+                    b for b in barcodes
+                    if len(b) == len(valor) and b.translate(self._OCR_CONFUSIONES) == clave
+                ]
+                if len(candidatos) == 1:
+                    serial[campo] = candidatos[0]
+                    avisos.append(f"{campo} corregido por código de barras: {valor} -> {candidatos[0]}")
+        return avisos
 
 
 if __name__ == "__main__":
