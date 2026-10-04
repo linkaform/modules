@@ -2857,7 +2857,8 @@ if __name__ == "__main__":
     tipo=data.get("tipo", "")
     data_script = class_obj.current_record
     locations=data.get("locations", [])
-    class_obj.timezone = data_script.get('timezone', 'America/Mexico_City')
+    # timezone es propiedad de solo lectura (lee self.user['timezone'])
+    class_obj.user['timezone'] = data_script.get('timezone', 'America/Mexico_City')
 
     tz = pytz.timezone(class_obj.timezone)
     if option == 'create_rondin':
