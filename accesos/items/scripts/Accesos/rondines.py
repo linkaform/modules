@@ -836,7 +836,7 @@ class Accesos(Accesos):
 
         return format_data
 
-    def format_check_by_id(self, data: dict, record_id: str):
+    def format_check_by_id(self, data: dict, record_id: str, checks_cache=None):
         """
         Formatea los detalles de un check por su ID de registro.
         Args:
@@ -861,7 +861,7 @@ class Accesos(Accesos):
             }
             incidencias_area.append(incidencia_formateada)
 
-        checks_mes = self.get_rondin_checks_mes(data.get('rondin_area', ''), data.get('ubicacion', ''), data.get('nombre_recorrido', ''), record_id)
+        checks_mes = self.get_rondin_checks_mes(data.get('rondin_area', ''), data.get('ubicacion', ''), data.get('nombre_recorrido', ''), record_id, checks_cache=checks_cache)
 
         format_data = {
             'area': data.get('rondin_area', ''),
@@ -1011,7 +1011,7 @@ class Accesos(Accesos):
             format_response = self.unlist(response).get('average_duration', 0)
         return format_response
 
-    def format_bitacora_record(self, record, area_details=False):
+    def format_bitacora_record(self, record, area_details=False, checks_cache=None):
             areas = record.get("areas", [])
             if not isinstance(areas, list):
                 areas = [areas] if areas else []
@@ -1029,7 +1029,7 @@ class Accesos(Accesos):
                     "incidencias": record.get("incidencias", []),
                 }
                 record_id = str(area.get("url_registro_rondin", ""))
-                detalle = self.format_check_by_id(area_con_contexto, record_id)
+                detalle = self.format_check_by_id(area_con_contexto, record_id, checks_cache=checks_cache)
                 if area_details:
                     detalle = self.get_area_images([detalle], location=record.get("ubicacion", ""))
                     detalle = detalle[0] if detalle else detalle
@@ -1144,8 +1144,10 @@ class Accesos(Accesos):
         elif date_to:
             match_filters["created_at"] = {"$lte": date_to}
         else:
-            match_filters["$expr"] = {
-                "$eq": [{"$year": "$created_at"}, año]
+            # rango en vez de $expr/$year: permite usar el indice de created_at
+            match_filters["created_at"] = {
+                "$gte": datetime(año, 1, 1),
+                "$lt": datetime(año + 1, 1, 1)
             }
 
         if ubicacion:
@@ -1157,6 +1159,10 @@ class Accesos(Accesos):
 
         query = [
             {"$match": match_filters},
+            # paginar antes de los $lookup: solo se enriquecen las `limit` bitacoras de la pagina
+            {"$sort": {"created_at": -1, "_id": -1}},
+            {"$skip": offset},
+            {"$limit": limit},
             {"$project": {
                 "_id": 1,
                 "folio": 1,
@@ -1249,12 +1255,10 @@ class Accesos(Accesos):
                 "as": "checks_data"
             }},
             {"$unset": "area_record_ids"},
-            {"$sort": {"created_at": -1}},
-            {"$skip": offset},
-            {"$limit": limit}
         ]
         response = self.format_cr(self.cr.aggregate(query))
-        result = [self.format_bitacora_record(record, area_details) for record in response]
+        checks_cache = self.get_checks_mes_batch(response)
+        result = [self.format_bitacora_record(record, area_details, checks_cache=checks_cache) for record in response]
         # print("RESPUESTA DEL SERVICIO", simplejson.dumps(result, indent=4))
         return {"data": result, "total": len(result)}
 
@@ -2334,7 +2338,90 @@ class Accesos(Accesos):
             format_response = self.format_bitacoras_mes(response, nombre_recorrido)
         return format_response
 
-    def get_rondin_checks_mes(self, area, location, nombre_recorrido, record_id):
+    def _mes_actual_utc(self):
+        """Inicio del mes actual y del siguiente (UTC), igual que $$NOW en el $expr anterior."""
+        now = datetime.utcnow()
+        inicio = datetime(now.year, now.month, 1)
+        fin = datetime(now.year + 1, 1, 1) if now.month == 12 else datetime(now.year, now.month + 1, 1)
+        return inicio, fin
+
+    def get_checks_mes_batch(self, bitacoras):
+        """Trae en UNA consulta los checks del mes de todas las areas de las bitacoras dadas.
+
+        Evita una aggregate por area (N+1). Devuelve {(area, ubicacion, nombre_recorrido): [checks]}
+        con los checks ya formateados (format_cr); las llaves que no se pudieron resolver aqui
+        (por ejemplo areas que no son texto) no estan en el dict y get_rondin_checks_mes
+        las consulta individualmente.
+        """
+        def valores(answers, catalogo, campo):
+            """Valores de answers[catalogo][campo] como lista (el catalogo puede ser dict o lista de dicts)."""
+            grupo = answers.get(catalogo, {})
+            grupo = grupo if isinstance(grupo, list) else [grupo]
+            res = []
+            for g in grupo:
+                v = g.get(campo) if isinstance(g, dict) else None
+                res.extend(v if isinstance(v, list) else [v])
+            return res
+
+        pedidos = set()
+        for bitacora in bitacoras:
+            areas = bitacora.get('areas', [])
+            if not isinstance(areas, list):
+                areas = [areas] if areas else []
+            ubicacion = bitacora.get('ubicacion', '')
+            recorrido = bitacora.get('nombre_recorrido', '')
+            for area in areas:
+                nombre_area = area.get('rondin_area', '')
+                if all(isinstance(v, str) for v in (nombre_area, ubicacion, recorrido)):
+                    pedidos.add((nombre_area, ubicacion, recorrido))
+        if not pedidos:
+            return {}
+
+        inicio, fin = self._mes_actual_utc()
+        cat_areas = self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID
+        cat_recorridos = self.CONFIGURACION_RECORRIDOS_OBJ_ID
+        loc_key, area_key, rec_key = self.Location.f['location'], self.Location.f['area'], self.mf['nombre_del_recorrido']
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.CHECK_UBICACIONES,
+                f"answers.{cat_areas}.{loc_key}": {"$in": list({p[1] for p in pedidos})},
+                f"answers.{cat_areas}.{area_key}": {"$in": list({p[0] for p in pedidos})},
+                f"answers.{cat_recorridos}.{rec_key}": {"$in": list({p[2] for p in pedidos})},
+                "created_at": {"$gte": inicio, "$lt": fin},
+            }},
+            {"$project": {
+                "_id": 1,
+                "answers": 1,
+                "created_at": {
+                    "$dateToString": {
+                        "format": "%Y-%m-%d %H:%M",
+                        "date": "$created_at",
+                        "timezone": "America/Mexico_City"
+                    }
+                }
+            }}
+        ]
+        crudos = list(self.cr.aggregate(query))
+        formateados = self.format_cr(crudos)
+
+        cache = {llave: [] for llave in pedidos}
+        for crudo, check in zip(crudos, formateados):
+            answers = crudo.get('answers', {})
+            ubicaciones = valores(answers, cat_areas, loc_key)
+            areas_check = valores(answers, cat_areas, area_key)
+            recorridos = valores(answers, cat_recorridos, rec_key)
+            for nombre_area, ubicacion, recorrido in pedidos:
+                if nombre_area in areas_check and ubicacion in ubicaciones and recorrido in recorridos:
+                    cache[(nombre_area, ubicacion, recorrido)].append(check)
+        return cache
+
+    def get_rondin_checks_mes(self, area, location, nombre_recorrido, record_id, checks_cache=None):
+        llave = (area, location, nombre_recorrido)
+        if checks_cache is not None and llave in checks_cache:
+            response = checks_cache[llave]
+            return self.format_rondin_checks(response, record_id) if response else []
+        inicio, fin = self._mes_actual_utc()
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
@@ -2342,12 +2429,7 @@ class Accesos(Accesos):
                 f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": location,
                 f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['area']}": area,
                 f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}": nombre_recorrido,
-                "$expr": {
-                    "$and": [
-                        {"$eq": [{"$year": "$created_at"}, {"$year": "$$NOW"}]},
-                        {"$eq": [{"$month": "$created_at"}, {"$month": "$$NOW"}]}
-                    ]
-                }
+                "created_at": {"$gte": inicio, "$lt": fin},
             }},
             {"$project": {
                 "_id": 1,
