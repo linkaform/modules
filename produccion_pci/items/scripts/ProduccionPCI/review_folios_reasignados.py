@@ -13,32 +13,32 @@ class ReviewReasignados( Produccion_PCI ):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
 
         # SR
-        self.account_id_base = 1953
-        self.form_id_carga = 142284
-        self.map_forms_admin_account = {
-            11044: self.ORDEN_SERVICIO_FIBRA,
-            10540: self.ORDEN_SERVICIO_COBRE,
-            21953: self.ORDEN_SERVICIO_FIBRA_OCCIDENTE,
-            25929: self.ORDEN_SERVICIO_COBRE_OCCIDENTE,
-            21954: self.ORDEN_SERVICIO_FIBRA_NORTE,
-            25928: self.ORDEN_SERVICIO_COBRE_NORTE,
-            16343: self.ORDEN_SERVICIO_FIBRA_SURESTE,
-            25927: self.ORDEN_SERVICIO_COBRE_SURESTE
-        }
+        # self.account_id_base = 1953
+        # self.form_id_carga = 142284
+        # self.map_forms_admin_account = {
+        #     11044: self.ORDEN_SERVICIO_FIBRA,
+        #     10540: self.ORDEN_SERVICIO_COBRE,
+        #     21953: self.ORDEN_SERVICIO_FIBRA_OCCIDENTE,
+        #     25929: self.ORDEN_SERVICIO_COBRE_OCCIDENTE,
+        #     21954: self.ORDEN_SERVICIO_FIBRA_NORTE,
+        #     25928: self.ORDEN_SERVICIO_COBRE_NORTE,
+        #     16343: self.ORDEN_SERVICIO_FIBRA_SURESTE,
+        #     25927: self.ORDEN_SERVICIO_COBRE_SURESTE
+        # }
 
         # IASA
-        # self.account_id_base = 1940
-        # self.form_id_carga = 84721
-        # self.map_forms_admin_account = {
-        #     11044: None,
-        #     10540: None,
-        #     21953: 84725,
-        #     25929: 84727,
-        #     21954: 84724,
-        #     25928: 84726,
-        #     16343: None,
-        #     25927: None,
-        # }
+        self.account_id_base = 1940
+        self.form_id_carga = 84721
+        self.map_forms_admin_account = {
+            11044: None,
+            10540: None,
+            21953: 84725,
+            25929: 84727,
+            21954: 84724,
+            25928: 84726,
+            16343: None,
+            25927: None,
+        }
 
     def review_record(self, record_os, field_cliente='58e6d4cff851c244a78f35ca'):
         # print(f"... {record_os['folio']} {record_os['form_id']}")
@@ -125,15 +125,15 @@ class ReviewReasignados( Produccion_PCI ):
 
                     metadata_os['properties'] = rec_admin['properties']
                     metadata_os['folio'] = rec_admin['folio']
-                    # resp_create = lkf_obj.lkf_api.post_forms_answers(metadata_os, jwt_settings_key='JWT_TEMP_IASA')
-                    resp_create = lkf_obj.lkf_api.post_forms_answers(metadata_os)
+                    resp_create = lkf_obj.lkf_api.post_forms_answers(metadata_os, jwt_settings_key='JWT_TEMP_IASA')
+                    # resp_create = lkf_obj.lkf_api.post_forms_answers(metadata_os)
                     print('-- -- -- -- -- -- resp_create =',resp_create)
                     if resp_create.get('status_code') == 201:
                         new_record = '/api/infosync/form_answer/' + str(resp_create.get('json', {}).get('id')) +'/'
                         print('new_record =',new_record)
                         print('*** asignando a:',conexion_carga)
-                        # response_assign = lkf_obj.lkf_api.assigne_connection_records( conexion_carga, [new_record,], jwt_settings_key='JWT_TEMP_IASA')
-                        response_assign = lkf_obj.lkf_api.assigne_connection_records( conexion_carga, [new_record,])
+                        response_assign = lkf_obj.lkf_api.assigne_connection_records( conexion_carga, [new_record,], jwt_settings_key='JWT_TEMP_IASA')
+                        # response_assign = lkf_obj.lkf_api.assigne_connection_records( conexion_carga, [new_record,])
                         print('----->response assigne for update:',response_assign)
                     # stop
 
@@ -176,11 +176,19 @@ class ReviewReasignados( Produccion_PCI ):
             'form_id': self.form_id_carga,
             'deleted_at': {'$exists': False},
             'answers.f1074100a010000000000003': {'$exists': True},
-            # 'folio': {
-            #     '$in': ["4543-1953",]
-            # },
+            'folio': {
+                '$in': [
+                    "290451-1940", "299608-1940", "303668-1940", "298094-1940", "284631-1940", 
+                    "284682-1940", "310444-1940", "286328-1940", "284156-1940", "285160-1940", 
+                    "290666-1940", "286374-1940", "310336-1940", "290728-1940", "301175-1940", 
+                    "316404-1940", "324159-1940", "292872-1940", "304340-1940", "295530-1940", 
+                    "298120-1940", "301345-1940", "286443-1940", "285126-1940", "293596-1940", 
+                    "311378-1940", "319831-1940", "310404-1940", "314940-1940", "307771-1940", 
+                    "318606-1940", "292932-1940", "322684-1940", "309969-1940", 
+                ]
+            },
             # 'created_at': {'$gte': datetime.strptime("2025-09-09", "%Y-%m-%d"), '$lte': datetime.strptime("2025-09-16", "%Y-%m-%d")}
-            'created_at': {'$gte': datetime.strptime("2026-01-01", "%Y-%m-%d"), '$lte': datetime.strptime("2026-01-08", "%Y-%m-%d")}
+            # 'created_at': {'$gte': datetime.strptime("2026-01-01", "%Y-%m-%d"), '$lte': datetime.strptime("2026-01-08", "%Y-%m-%d")}
         }, select_columns)
 
         for rec_carga_prod in records_carga_prod:
@@ -208,8 +216,8 @@ if __name__ == '__main__':
     colection_account = CollectionConnection(lkf_obj.account_id_base, settings)
     cr_account = colection_account.get_collections_connection()
 
-    # config['JWT_TEMP_IASA'] = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImRpYW5hcmV5ZXNpdGVzYUBvcGVyYWNpb25wY2kuY29tLm14IiwidXNlcl9pZCI6MTk0MCwicGFyZW50X2lkIjoxOTQwLCJpc19tb2JpbGUiOmZhbHNlLCJleHAiOjE3NTg1ODU5MDcsImRldmljZV9vcyI6IndlYiIsImVtYWlsIjoiZGlhbmFyZXllc2l0ZXNhQG9wZXJhY2lvbnBjaS5jb20ubXgifQ.S-kbknmPAFIwe1mWdM5H14h1LdRJVTl_mKsTps3Yjmp_1ts2LTPSl7MxxVKeU5SZDuZuKyqvTdTPQ7rTQ65J7asLq896R4kOzTvKt5SLpiYghDt8T6Z8U5bz8Z-N48Y3PbRMsTKzyT9zvebexIe-40rrXi4gd_-kjADdcwap_jX583ivt7adVGMBEkwyCRYcUaxxvBa7MOa2x8MhHMfgc0J35desIBKtc_zo3Axc0GzwEuwsd2cGEkrkijSbhyZXEabzZrEH55MZODLEx5Y4sbF3EoSY591Xqwtkr65yOUVCtErG6Hz45l1_sIAmZT24xIZ0w7mjVSGpP4ocmw5y1sdp954jQinRssD0RkR6ztV8HixVxB5Mhs533m3DDaXhUKPgl_60EUJqVmVBr7zXg0rYof3aIPr29mllIRQI-I4f0KppR1dtxkosmDaV1B8Hc-i094dP252PBDxosv6PC5erL85JwGMGEE8IEDK3QkE6eRWwe3uw6HgTK532Yy5BrsQPhKVbzfSXCOOEQM0kaSCOT_sSxG8aPNWk_gACi0QdLR8EVBmRdQMuv-9dvNVQAkegYm8eeO1ACV5noe6_GVtkZxcwma4CwQJCm9hbJpJE-n1hgOzyP0YCDROImw0EJIZIlfYyf0Dxx9IRieoFpfGLIwSaG2c_Q9YWLDqaSEo'
-    # settings.config.update(config)
+    config['JWT_TEMP_IASA'] = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImRpYW5hcmV5ZXNpdGVzYUBvcGVyYWNpb25wY2kuY29tLm14IiwicGFyZW50X2lkIjoxOTQwLCJ1c2VyX2lkIjoxOTQwLCJleHAiOjE3OTE2NzUwMzYsInRpbWV6b25lIjoiQW1lcmljYS9Nb250ZXJyZXkiLCJpc19tb2JpbGUiOmZhbHNlLCJkZXZpY2Vfb3MiOiJ3ZWIiLCJlbWFpbCI6ImRpYW5hcmV5ZXNpdGVzYUBvcGVyYWNpb25wY2kuY29tLm14In0.F83Yc_J-nlE7kD9p0Ga0bV7BcpjNRpJXWdLaoBAebrht-8f7VOf77p1tLx9AxrTPUCpLEfGs8x2pdKmr8c22NlZ8LHDBTZgis4_SkJpHX3VvYIquRnJoCYi17kJt7fbmsPp8BoVVAJlzGa_5mTDRYhb_eWGoU_9Zu9fx_ywVzPtLzrtNrxZbz7Kbqu6dNs-dNYkMZmfK1y9yZt2A_A1vBOm8A2E36RMSF57lweQ3QIog0fF0uMagxcKDq3ViNhJ713aEuvaaW3hdz5UmhC85ZEypOVw8lqu6YUn-Wg9QS1KVtc63zPRgRQfjqsv3Qm4sb8EkwvSKSYjbT0MdUAptFsAVUZ-441FeLjiks4uf_4aOCWTVuFueMjvxXsSBDhirSEQUYHxdCK7jhr4V_vHip-9GQsjCGba716oF4qAflNNmlyF0EpSNzR5O0nbaPLvFnzPWPuTgiiP2f3gPcI2H2LEdeNaf0Wq8SVljpiBMJnxJtf7BHIeLWH3QHFIEoE3NaiowLHLA5lqXUGvg8KWBzVsWcaiHr4BZyMJxdP_1FDczG-_3Dhs5Yhs4vyZxZKTuJBcUsxW1qj2YEcRdVywv9jJA7CXTFQQu4ZDzXY9zsjRkeSACJR4dY3CCFdAGvUJBz9Iacot6omjH2QMm0lifXIdluqInbjWwgG0U823d_to'
+    settings.config.update(config)
 
     # cr_account = lkf_obj.cr
 
