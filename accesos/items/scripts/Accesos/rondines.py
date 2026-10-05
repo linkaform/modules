@@ -2587,6 +2587,7 @@ class Accesos(Accesos):
     
     def update_inspeccion(self, folio, rondin_data: dict = {}):
         answers = {}
+        print('solfio', folio)
         existing_record = self.get_rondin_by_id(folio)
         folio = existing_record.get("folio", "")
         existing_areas = existing_record.get("areas", [])
@@ -2600,6 +2601,10 @@ class Accesos(Accesos):
         updated_areas = []
         for i, area_item in enumerate(existing_areas):
             area_nombre = area_item.get('rondin_area', '')
+            # get_rondin_by_id devuelve las areas aplanadas: la forma actual viene en
+            # form_name/form_id, no dentro del catalogo. Se conserva en las no editadas.
+            forma_actual = area_item.get('form_name', '')
+            form_id_actual = area_item.get('form_id') or ['129870']
             should_update = (
                 not areas_targets or
                 areas_targets == ["todas"] or
@@ -2613,8 +2618,8 @@ class Accesos(Accesos):
                     self.f['geolocalizacion_area_ubicacion']: area_item.get('geolocalizacion_area_ubicacion', []),
                 },
                 self.CATALOGO_FORMAS_OBJ_ID: {
-                    self.mf['nombre_forma']: inspeccion if should_update else area_item.get(self.CATALOGO_FORMAS_OBJ_ID, {}).get(self.mf['nombre_forma'], ''),
-                    self.rondin_keys['grupo_id']: area_item.get(self.CATALOGO_FORMAS_OBJ_ID, {}).get(self.rondin_keys['grupo_id'], ['129870'])
+                    self.mf['nombre_forma']: inspeccion if should_update else forma_actual,
+                    self.rondin_keys['grupo_id']: form_id_actual
                 },
                 self.rondin_keys['prompt_inspeccion']: prompt_inspeccion if should_update else area_item.get(self.rondin_keys['prompt_inspeccion'], '')
             }

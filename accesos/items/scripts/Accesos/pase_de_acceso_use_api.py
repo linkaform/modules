@@ -72,6 +72,8 @@ if __name__ == "__main__":
             response = acceso_obj.get_pdf(qr_code, template_id=553)
         else:
             response = acceso_obj.get_pdf(qr_code)
+    elif option == 'get_pdf_multi':
+        response = acceso_obj.get_pdf_multi(record_ids)
     elif option == 'get_pdf_incidencias':
             response = acceso_obj.get_pdf(qr_code, template_id=template_id)
     elif option == 'get_user_contacts':
