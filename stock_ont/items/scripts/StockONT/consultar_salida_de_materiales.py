@@ -248,7 +248,7 @@ class Stock(Stock):
 
         return {
             'type': self.unlist(row.get(self.f['recipient_type'])),
-            'name': '',  # TODO: pendiente field_id de recipient.name.
+            'name': row.get(self.f['field_supervisor']) or '',
             'finalContratista': final_contratista,
         }
 

@@ -155,6 +155,7 @@ class Stock(Stock):
             'confirmed_by': '6aaf622685349c45b99e71d1',
             'field_delivery_ev_ine': '6aaf62a8166aa311df7c41b2',
             'field_delivery_ev_license': '6aaf62a8166aa311df7c41b3',
+            'field_supervisor': '6abad8e1a21c4f6501e0b3b1',
 
             'recipient_stock': '6aafdb657b4e5542019b3f24',
             'recipient_production': '6aafdb657b4e5542019b3f25',

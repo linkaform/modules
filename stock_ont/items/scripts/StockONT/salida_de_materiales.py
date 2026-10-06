@@ -128,7 +128,7 @@ class Stock(Stock):
     def build_answers_recipient(self, recipient_data):
         answers_recipient = {
             self.f['recipient_type']: recipient_data.get('type'),
-            # TODO: falta el field_id para recipient.name, pendiente de definir.
+            self.f['field_supervisor']: recipient_data.get('name') or '',
         }
 
         final_contratista = recipient_data.get('finalContratista')
@@ -246,7 +246,7 @@ class Stock(Stock):
         """
         Arma el formato {individual, grouped_by_sku} que espera el Front, a
         partir de una lista de registros ya armados: {folio, originWarehouse,
-        recipient: {type, finalContratista}, items: [{sku, name,
+        recipient: {type, name, finalContratista}, items: [{sku, name,
         suggestedQuantity}], stage}. Usado por generar_salidas_por_
         contratista.py (recien creados) y listar_salida_de_materiales.py (ya
         existentes en la BD).
@@ -262,6 +262,7 @@ class Stock(Stock):
             folio = registro.get('folio')
             recipient_data = registro.get('recipient') or {}
             recipient_type = recipient_data.get('type')
+            recipient_name = recipient_data.get('name') or ''
             final_contratista = recipient_data.get('finalContratista')
             origin_warehouse = registro.get('originWarehouse')
 
@@ -270,6 +271,7 @@ class Stock(Stock):
                 'originWarehouse': origin_warehouse,
                 'recipient': {
                     'recipientType': recipient_type,
+                    'name': recipient_name,
                     'finalContratista': final_contratista,
                 },
                 'totalItems': len(registro.get('items', [])),
@@ -296,6 +298,7 @@ class Stock(Stock):
                     'folio': folio,
                     'quantity': quantity,
                     'recipientType': recipient_type,
+                    'name': recipient_name,
                     'finalContratista': final_contratista,
                 })
 

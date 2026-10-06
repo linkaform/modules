@@ -369,15 +369,28 @@ class Stock(Stock):
             if r.get(f['codigo'])
         }
 
-    def classify_recipient_type(self, nombre_contratista):
+    def classify_recipient_type(self, nombre_contratista, supervisor=None):
         """
         Clasifica recipient.type para el reporte 'vale_por_contratista'.
+        Prioridad: tecnico_propio, socio_comercial, supervisor (si el cope del contratista tiene supervisor_responsable).
         """
         if nombre_contratista in self.NOMBRES_TECNICO_PROPIO:
             return 'tecnico_propio'
         if nombre_contratista in self.NOMBRES_SOCIO_COMERCIAL:
             return 'socio_comercial'
+        if supervisor:
+            return 'supervisor'
         return 'contratista'
+
+    def get_supervisor_from_copes(self, copes_contratista, data_copes):
+        """
+        Regresa el primer supervisor_responsable encontrado en el catalogo de COPES para los copes del contratista
+        """
+        for cope in copes_contratista:
+            supervisor = data_copes.get(cope, {}).get('supervisor_responsable')
+            if supervisor:
+                return supervisor
+        return None
 
     def get_tipos_tarea_aplica_material(self):
         """
@@ -459,7 +472,7 @@ class Stock(Stock):
             '$or': [
                 {f'answers.{f["fecha_liquidacion_1"]}': {'$gte': f'{desde}', '$lte': f'{hasta} 23:59:59'}},
                 {f'answers.{f["fecha_liquidacion_2"]}': {'$gte': f'{desde}', '$lte': f'{hasta} 23:59:59'}},
-            ],
+            ]
         }
 
         # Para la intefaz de SIGA si deben estar activos los filtros de degradados y vale de materiales
@@ -661,7 +674,7 @@ class Stock(Stock):
 
         materiales_to_record = {}
         count_folios_metraje = {'fibra': 0, 'cobre': 0}
-        areas, tecnologias = set(), set()
+        areas, tecnologias, copes = set(), set(), []
 
         report_produccion_nacional = type_report == 'produccion_nacional_by_area'
         report_produccion_nacional_global = type_report == 'produccion_nacional_global'
@@ -713,6 +726,10 @@ class Stock(Stock):
             list_products_sorted = self.apply_sort_to_products(list_productos, productos)
             area_orden_servicio = orden_servicio.get('area', '')
             areas.add(area_orden_servicio)
+
+            cope_orden_servicio = orden_servicio.get('cope')
+            if cope_orden_servicio and cope_orden_servicio not in copes:
+                copes.append(cope_orden_servicio)
 
 
             if os_cobre:
@@ -840,6 +857,7 @@ class Stock(Stock):
             # se consolidan por nombre_contratista en build_vale_por_contratista().
             rows_materiales.append({
                 "nombre_contratista": nombre_conexion,
+                "copes": copes,
                 "ordenesCount": len(ordenes_de_servicio),
                 "items": [{
                     "sku": data_prod['sku'],
@@ -944,7 +962,10 @@ class Stock(Stock):
         records_catalog = self.lkf_api.search_catalog_answers(46944, answers_filter, jwt_settings_key='JWT_ADMIN')
         
         return { 
-            rec_cat['5d641731ddd3adcc24778a9d'].lower().replace(' ', '_'): {'area_almacen': rec_cat.get('6923bec17d1ad7bfa869dc59')} 
+            rec_cat['5d641731ddd3adcc24778a9d'].lower().replace(' ', '_'): {
+                'area_almacen': rec_cat.get('6923bec17d1ad7bfa869dc59'),
+                'supervisor_responsable': rec_cat.get(self.f['field_supervisor']),
+            } 
             for rec_cat in records_catalog 
             if rec_cat.get('5d641731ddd3adcc24778a9d') 
         }
@@ -987,10 +1008,10 @@ class Stock(Stock):
         # print('+++ +++ kits_products =',kits_products)
         # stop
 
-        copes = None
+        copes, data_copes = None, {}
         if self.front_request:
-            copes = self.get_copes_to_filter()
-            copes = list( copes.keys() )
+            data_copes = self.get_copes_to_filter()
+            copes = list( data_copes.keys() )
 
         records_orden_servicio = self.get_records_orden_de_servicio(desde, hasta, tecnologia, copes=copes)
         # print('records_orden_servicio =',list(records_orden_servicio))
@@ -1105,11 +1126,11 @@ class Stock(Stock):
             return total_rows_materiales
 
         if type_report == 'vale_por_contratista':
-            return self.build_vale_por_contratista(total_rows_materiales, wh_origen)
+            return self.build_vale_por_contratista(total_rows_materiales, wh_origen, data_copes)
 
         return self.add_actual_quantity(total_rows_materiales, wh_origen)
 
-    def build_vale_por_contratista(self, rows_materiales, wh_origen):
+    def build_vale_por_contratista(self, rows_materiales, wh_origen, data_copes):
         """
         Consolida lo que regresa calcular_material_estimado() para
         type_report == 'vale_por_contratista' (un row por batch de area/
@@ -1124,8 +1145,9 @@ class Stock(Stock):
         vales_by_contratista = {}
         for row in rows_materiales:
             nombre_contratista = row['nombre_contratista']
-            vale = vales_by_contratista.setdefault(nombre_contratista, {'items_by_sku': {}, 'ordenesCount': 0})
+            vale = vales_by_contratista.setdefault(nombre_contratista, {'items_by_sku': {}, 'ordenesCount': 0, 'copes': []})
             vale['ordenesCount'] += row['ordenesCount']
+            vale['copes'].extend(c for c in row.get('copes', []) if c not in vale['copes'])
             for item in row['items']:
                 acumulado = vale['items_by_sku'].setdefault(item['sku'], {**item, 'suggestedQuantity': 0})
                 acumulado['suggestedQuantity'] += item['suggestedQuantity']
@@ -1138,11 +1160,14 @@ class Stock(Stock):
             for item in items_vale:
                 item['recipientProduction'] = vale['ordenesCount']
 
+            supervisor = self.get_supervisor_from_copes(vale['copes'], data_copes)
+            recipient_type = self.classify_recipient_type(nombre_contratista, supervisor)
+
             vales.append({
                 "originWarehouse": wh_origen,
                 "recipient": {
-                    "type": self.classify_recipient_type(nombre_contratista),
-                    "name": nombre_contratista,
+                    "type": recipient_type,
+                    "name": supervisor if recipient_type == 'supervisor' else '',
                     "finalContratista": nombre_contratista,
                 },
                 "items": items_vale,
