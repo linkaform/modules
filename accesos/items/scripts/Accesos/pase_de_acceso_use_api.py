@@ -36,6 +36,7 @@ if __name__ == "__main__":
     form_id   = acceso_obj.data.get('form_id')
     is_employee = data.get('is_employee', data.get('is_employee'))
     uso = data.get("uso", None)
+    record_ids = data.get("record_ids", [])
 
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
@@ -73,6 +74,8 @@ if __name__ == "__main__":
             response = acceso_obj.get_pdf(qr_code, template_id=553)
         else:
             response = acceso_obj.get_pdf(qr_code)
+    elif option == 'get_pdf_multi':
+        response = acceso_obj.get_pdf_multi(record_ids)
     elif option == 'get_pdf_incidencias':
             response = acceso_obj.get_pdf(qr_code, template_id=template_id)
     elif option == 'get_user_contacts':
