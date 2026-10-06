@@ -21,8 +21,11 @@ class Accesos(Accesos):
         self.load(module='Location', **self.kwargs)
 
         self.CONFIGURACION_RECORRIDOS_FORM = self.lkm.form_id('configuracion_de_recorridos','id')
+        self.CATALOGO_ITEMS_FORM = self.lkm.form_id('catalogo_de_items','id')
 
         self.f.update({
+            'tipo_de_item': 'ccccc0000000000000000002',
+            'tipo_de_formulario': '6ac43687e43586b5c009d397',
             'rondin_area': '663e5d44f5b8a7ce8211ed0f',
             'foto_area': '6763096aa99cee046ba766ad',
             'porcentaje_de_areas_inspeccionadas': '689a7ecfbf2b4be31039388e',
@@ -1734,10 +1737,32 @@ class Accesos(Accesos):
         form_id = self.CONFIGURACION_RECORRIDOS_FORM
         return self.catalogo_view(catalog_id, form_id)
 
-    def catalogo_inspecciones(self): 
-        catalog_id = self.CATALOGO_FORMAS_CAT_ID
-        form_id = self.CONFIGURACION_RECORRIDOS_FORM
-        return self.catalogo_view(catalog_id, form_id)
+    def catalogo_inspecciones(self, inspeccion_id=None):
+        """
+        Formas de tipo inspeccion registradas en Catalogo de Items.
+        Regresa [{'nombre': str, 'id': int}, ...] ordenado por nombre; con `inspeccion_id`
+        regresa solo esa forma (sirve para validar que el id exista en el catalogo).
+        """
+        match = {
+            "deleted_at": {"$exists": False},
+            # form_id de Mongo: solo registros de la forma Catalogo de Items
+            "form_id": self.CATALOGO_ITEMS_FORM,
+            f"answers.{self.f['tipo_de_item']}": "form",
+            f"answers.{self.f['tipo_de_formulario']}": "inspeccion",
+        }
+        if inspeccion_id is not None:
+            # campo "ID de la forma" dentro de cada fila del catalogo (acepta int o str)
+            match[f"answers.{self.rondin_keys['grupo_id']}"] = {"$in": [inspeccion_id, str(inspeccion_id)]}
+        query = [
+            {"$match": match},
+            {"$project": {
+                "_id": 0,
+                "nombre": f"$answers.{self.mf['nombre_forma']}",
+                "id": f"$answers.{self.rondin_keys['grupo_id']}",
+            }},
+            {"$sort": {"nombre": 1}},
+        ]
+        return list(self.cr.aggregate(query))
 
     def get_catalog_areas_formatted(self, locations=[], limit=25, skip=0, search="", search_fields=[], dynamic_filters=[]):
         #Obtener areas disponibles para rondin. `locations` es una lista de
@@ -2694,14 +2719,23 @@ class Accesos(Accesos):
     
     def update_inspeccion(self, folio, rondin_data: dict = {}):
         answers = {}
-        print('solfio', folio)
+        # El id es obligatorio: '' = quitar la inspeccion; sin la llave = peticion mal formada.
+        if 'inspeccion_id' not in rondin_data:
+            return {'status_code': 400, 'type': 'error', 'msg': 'inspeccion_id es requerido', 'data': {}}
+        inspeccion_id = str(rondin_data.get('inspeccion_id') or '').strip()
+        inspeccion = ''
+        if inspeccion_id:
+            # El nombre sale del catalogo, no del front, para que nombre e id no se desalineen.
+            forma = self.catalogo_inspecciones(inspeccion_id=int(inspeccion_id) if inspeccion_id.isdigit() else inspeccion_id)
+            if not forma:
+                return {'status_code': 400, 'type': 'error', 'msg': f'inspeccion_id {inspeccion_id} no existe en Catalogo de Items', 'data': {}}
+            inspeccion = self.unlist(forma[0].get('nombre', ''))
         existing_record = self.get_rondin_by_id(folio)
         folio = existing_record.get("folio", "")
         existing_areas = existing_record.get("areas", [])
         if existing_areas and isinstance(existing_areas[0], list):
             existing_areas = existing_areas[0]
 
-        inspeccion = rondin_data.get('inspeccion', '')
         prompt_inspeccion = rondin_data.get('prompt_inspeccion', '')
         areas_targets = rondin_data.get('areas', [])
 
@@ -2711,7 +2745,7 @@ class Accesos(Accesos):
             # get_rondin_by_id devuelve las areas aplanadas: la forma actual viene en
             # form_name/form_id, no dentro del catalogo. Se conserva en las no editadas.
             forma_actual = area_item.get('form_name', '')
-            form_id_actual = area_item.get('form_id') or ['129870']
+            form_id_actual = area_item.get('form_id')
             should_update = (
                 not areas_targets or
                 areas_targets == ["todas"] or
@@ -2726,7 +2760,7 @@ class Accesos(Accesos):
                 },
                 self.CATALOGO_FORMAS_OBJ_ID: {
                     self.mf['nombre_forma']: inspeccion if should_update else forma_actual,
-                    self.rondin_keys['grupo_id']: form_id_actual
+                    self.rondin_keys['grupo_id']: ([inspeccion_id] if inspeccion_id else []) if should_update else form_id_actual
                 },
                 self.rondin_keys['prompt_inspeccion']: prompt_inspeccion if should_update else area_item.get(self.rondin_keys['prompt_inspeccion'], '')
             }
