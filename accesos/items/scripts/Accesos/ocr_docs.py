@@ -1,5 +1,6 @@
 # coding: utf-8
-import re, sys, simplejson
+import os, re, sys, simplejson
+from urllib.parse import urlparse
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from linkaform_api import settings
@@ -541,10 +542,134 @@ class Accesos(Accesos):
             }
         return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
 
+    # Campos del panel de la etiqueta del cartón (datos generales, no por unidad).
+    _PACKING_LIST_HEADER = ('tipo_equipo', 'marca', 'modelo', 'codigo_carton', 'sku',
+                            'item', 'order', 'qty', 'code', 'notes', 'confianza')
+
     def ocr_packing_list(self, image_source,
                           extra_instructions: str = None,
                           model: str = 'google/gemini-2.5-flash',
                           max_tokens: int = 8000) -> dict:
+        """
+        Procesa una o varias fotos de etiquetas de cartón (una URL o una lista de
+        URLs). Cada imagen se procesa por separado con _ocr_packing_list_carton y
+        sus NS se juntan en una sola lista 'serials'. Si una NS aparece en más de
+        una imagen se deja una sola vez y se reporta en el nodo 'duplicados' con
+        la observación correspondiente.
+
+        Returns:
+            dict con:
+                - status_code : 200 OK / 206 advertencias / 400 config / 500 error
+                - data        : datos generales (de la primera imagen con datos),
+                                'serials' de todas las imágenes, 'cartones' con el
+                                detalle por imagen y 'duplicados' (si los hay)
+                - msg         : mensaje de resultado
+        """
+        if not self.ai:
+            return {'status_code': 400, 'msg': 'OpenRouter no configurado'}
+
+        if isinstance(image_source, str):
+            image_source = [image_source]
+        image_source = [
+            img['file_url'] if isinstance(img, dict) else img
+            for img in (image_source or [])
+        ]
+        image_source = [img for img in image_source if img]
+        if not image_source:
+            return {'status_code': 400, 'msg': 'Se requiere al menos una imagen'}
+
+        datos = {campo: None for campo in self._PACKING_LIST_HEADER}
+        serials, cartones, warnings, correcciones = [], [], [], []
+        vistos = {}      # sn -> serial (primera aparición)
+        duplicados = {}  # sn -> {'sn', 'imagenes'} (nombres de archivo)
+
+        for idx, url in enumerate(image_source, start=1):
+            try:
+                res = self._ocr_packing_list_carton(
+                    url, extra_instructions=extra_instructions,
+                    model=model, max_tokens=max_tokens)
+            except Exception as e:
+                print('>>> ocr_packing_list error en imagen', idx, url, e)
+                warnings.append(f'Imagen {idx}: error al procesar ({e})')
+                continue
+
+            data = res.get('data') or {}
+            if not data:
+                warnings.append(f"Imagen {idx}: {res.get('msg', 'sin datos')}")
+                continue
+            # Una foto que no es etiqueta puede regresar JSON válido pero sin unidades.
+            if not data.get('serials'):
+                warnings.append(f'Imagen {idx}: no se encontraron NS')
+                continue
+            warnings.extend(f'Imagen {idx}: {w}' for w in res.get('warnings') or [])
+            correcciones.extend(f'Imagen {idx}: {c}' for c in data.get('correcciones') or [])
+
+            # Los datos generales se toman de la primera imagen que los traiga.
+            for campo in self._PACKING_LIST_HEADER:
+                if datos[campo] is None and data.get(campo) is not None:
+                    datos[campo] = data[campo]
+
+            # Nombre del archivo de la imagen, ej. 6abf1be4b3877b8ab33880c1.jpeg
+            nombre_imagen = os.path.basename(urlparse(url).path) or url
+            serials_imagen = data.get('serials') or []
+            cartones.append({
+                **{campo: data.get(campo) for campo in self._PACKING_LIST_HEADER},
+                'imagen': nombre_imagen,
+                'total_serials': len(serials_imagen),
+            })
+
+            for serial in serials_imagen:
+                sn = (serial.get('sn') or '').strip().upper()
+                if sn and sn in vistos:
+                    original = vistos[sn]
+                    dup = duplicados.setdefault(sn, {'sn': sn, 'imagenes': [original['imagen'][0]]})
+                    dup['imagenes'].append(nombre_imagen)
+                    if nombre_imagen not in original['imagen']:
+                        original['imagen'].append(nombre_imagen)
+                    continue
+                serial['imagen'] = [nombre_imagen]
+                serial['duplicado'] = False
+                if sn:
+                    vistos[sn] = serial
+                serials.append(serial)
+
+        if not cartones:
+            return {
+                'status_code': 500,
+                'msg': 'No se pudo procesar ninguna imagen',
+                'warnings': warnings,
+            }
+
+        for sn, dup in duplicados.items():
+            imagenes = ', '.join(dup['imagenes'])
+            dup['observacion'] = f'La NS {sn} se encontró duplicada en las imágenes {imagenes}'
+            vistos[sn]['duplicado'] = True
+
+        datos['serials'] = serials
+        datos['cartones'] = cartones
+        if duplicados:
+            datos['duplicados'] = list(duplicados.values())
+        if correcciones:
+            datos['correcciones'] = correcciones
+        datos['labelPhotos'] = image_source
+        fecha_monterrey = datetime.now(timezone.utc).astimezone(
+            ZoneInfo("America/Monterrey")
+        )
+        datos['confirmedAt'] = fecha_monterrey.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
+
+        if warnings:
+            return {
+                'status_code': 206,
+                'msg': 'Extracción con advertencias',
+                'data': datos,
+                'warnings': warnings,
+            }
+        return {'status_code': 200, 'msg': 'OK', 'data': datos}
+
+    def _ocr_packing_list_carton(self, image_source,
+                                 extra_instructions: str = None,
+                                 model: str = 'google/gemini-2.5-flash',
+                                 max_tokens: int = 8000) -> dict:
         """
         Extrae los datos de una foto de la etiqueta de un cartón/caja de equipo
         de telecomunicaciones (ej. ONTs Huawei): los datos generales impresos en
@@ -998,9 +1123,10 @@ if __name__ == "__main__":
             extra_instructions=extra_instructions,
         )
     elif option == 'ocr_packing_list':
-        images = data.get('images', [])
-        if not images and image_source:
-            images = [image_source]
+        # image_source puede ser una URL o una lista de URLs (una por cartón)
+        images = data.get('images') or image_source
+        if isinstance(images, (str, dict)):
+            images = [images]
         response = acceso_obj.ocr_packing_list(
             image_source=images,
             extra_instructions=extra_instructions,
