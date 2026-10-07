@@ -37,6 +37,8 @@ class Stock(Stock):
         self.front_request = not self.current_record
         self.data = self.data.get('data',{})
 
+        self.process_outputs = self.data.get('tipo_reporte') == 'vale_por_contratista'
+
         # form_id / catalog_id (iguales a crear_vales_de_materiales.py)
         self.FORM_ID_KITS = 164757 # 164626 # PREPROD
         self.CATALOG_ID_SKU = 133015 # Este ya está OK en Prod y Preprod.
@@ -949,16 +951,30 @@ class Stock(Stock):
         archivos = response_xls_create.get(self.bitacora_transportista_fields['documento']) or []
         return archivos[0].get('file_url') if archivos else None
 
-    def get_copes_to_filter(self):
+    def get_source_and_destination_warehouse_names(self, wh_origen):
+        """
+        Determina el nombre del almacén origen y destino según el valor recibido en el formulario.
+        """
+        if not wh_origen or wh_origen == 'PCI Puebla':
+            return "Puebla", "Camarones"
+        if wh_origen == "Camarones":
+            return "Camarones", "Puebla"
+        return wh_origen, "Camarones"
+    
+    def get_copes_to_filter(self, wh_origen=None):
         """
         Consulta el catálogo de COPES segun el Tipo de Corte (Semanal, Mensual o Todo)
         """
-        # TODO : esto del almacen origen y destino solo aplica para Traspasos.
-        # en las salidas tomar almacén destino como el origen. Si está vacío el default es Puebla.
-        answers_filter = {"$and":[ # TODO : cambiar los valores fijos por los nombres de los almacenes origen y destino
-            {"6aa8238ae98ccc0950307a03": 'Puebla'},
-            {"6aa8238ae98ccc0950307a04": 'Camarones'},
+        FIELD_WH_ORIGEN = "6aa8238ae98ccc0950307a03"
+        FIELD_WH_DESTINO = "6aa8238ae98ccc0950307a04"
+
+        val_wh_origen, val_wh_destino = self.get_source_and_destination_warehouse_names(wh_origen)
+        
+        answers_filter = {"$and":[
+            {FIELD_WH_ORIGEN: val_wh_origen},
+            {FIELD_WH_DESTINO: val_wh_destino},
         ]}
+
         records_catalog = self.lkf_api.search_catalog_answers(46944, answers_filter, jwt_settings_key='JWT_ADMIN')
         
         return { 
@@ -969,6 +985,21 @@ class Stock(Stock):
             for rec_cat in records_catalog 
             if rec_cat.get('5d641731ddd3adcc24778a9d') 
         }
+
+    def set_source_warehouse_name(self, wh_origen):
+        """
+        Determina el nombre del almacén origen según el valor recibido en el formulario.
+        """
+        if not wh_origen:
+            return "PCI Puebla"
+        
+        wh_origen_lower = wh_origen.lower()
+        if "puebla" in wh_origen_lower:
+            return "PCI Puebla"
+        elif "camarones" in wh_origen_lower:
+            return "Camarones"
+        
+        return wh_origen
 
     def consultar_material_estimado(self):
         """
@@ -981,8 +1012,7 @@ class Stock(Stock):
             desde = self.data.get('desde')
             hasta = self.data.get('hasta')
             tecnologia = self.data.get('tecnologia')
-            # wh_origen = self.data.get('almacen_origen')
-            wh_origen = "PCI Puebla" # TODO : cambiar el valor fijo por el nombre del almacen origen que se indique en el formulario
+            wh_origen = self.set_source_warehouse_name( self.data.get('almacen_origen') )
             type_report = self.data.get('tipo_reporte')
         else:
             self.current_record['answers'].pop('6a032714b2194f0f517accc2', None)
@@ -1010,8 +1040,11 @@ class Stock(Stock):
 
         copes, data_copes = None, {}
         if self.front_request:
-            data_copes = self.get_copes_to_filter()
+            data_copes = self.get_copes_to_filter(wh_origen)
             copes = list( data_copes.keys() )
+            if not copes:
+                val_wh_origen, val_wh_destino = self.get_source_and_destination_warehouse_names(wh_origen)
+                return self.set_status('error', f'No hay COPES configurados en el catálogo para la pareja de almacenes "{val_wh_origen} → {val_wh_destino}"')
 
         records_orden_servicio = self.get_records_orden_de_servicio(desde, hasta, tecnologia, copes=copes)
         # print('records_orden_servicio =',list(records_orden_servicio))
