@@ -197,6 +197,25 @@ class Stock(Stock):
             self.f['field_final_delivery_captured_via']: final_signature.get('capturedVia'),
         }
 
+    def build_answers_calculation(self, calculation_data):
+        """
+        Arma las respuestas con los datos del calculo de material
+        (`calculation`, ver build_vale_por_contratista() en
+        consultar_material_estimado.py) que despues se usan para crear el
+        Vale de Materiales. Los campos tienen el mismo id en la Salida y en
+        el Vale. Si no viene `calculation` no se agrega nada, para no
+        sobreescribir lo ya guardado.
+        """
+        if not calculation_data:
+            return {}
+
+        return {
+            self.f['field_vale_periodo']: calculation_data.get('periodo'),
+            self.f['field_vale_area']: calculation_data.get('areas'),
+            self.f['field_vale_tecnologia']: calculation_data.get('tecnologias'),
+            self.f['field_vale_num_instalaciones']: calculation_data.get('instalacionesCount'),
+        }
+
     def build_answers_salida(self):
         materiales_data = self.data.get('items', [])
         grp_materiales, grp_boxes, grp_pallets, grp_series = self.build_grp_materiales_salida(materiales_data)
@@ -213,6 +232,7 @@ class Stock(Stock):
         }
         answers_salida.update(self.build_answers_recipient(self.data.get('recipient', {}) or {}))
         answers_salida.update(self.build_answers_delivery(self.data.get('delivery', {}) or {}))
+        answers_salida.update(self.build_answers_calculation(self.data.get('calculation')))
 
         # print('answers_salida =', simplejson.dumps(answers_salida, indent=4))
 

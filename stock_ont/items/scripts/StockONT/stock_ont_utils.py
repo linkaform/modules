@@ -26,6 +26,7 @@ class Stock(Stock):
         self.FORM_FIRMAS_EXTERNAS = 179777 # TODO : cambiar este id por el de produccion (180412)
 
         self.FORM_ID_SALIDAS = 179244
+        self.FORM_ID_VALES_MATERIALES = 130402
 
         self.f.update({
             # campos para el Almacen Destino
@@ -178,7 +179,24 @@ class Stock(Stock):
             'field_public_firma': '6abd345af63bb66f491ad573',
             'field_public_fecha_firma': '6abd352aedbaa505923a8d6b',
             'field_public_nombre_firma': '6abd352aedbaa505923a8d6c',
-            'field_public_estatus': '6abd352aedbaa505923a8d6d'
+            'field_public_estatus': '6abd352aedbaa505923a8d6d',
+
+            ### Campos para la forma vales de materiales ###
+            # area, tecnologia, periodo y num_instalaciones tienen el mismo id en la forma de Salida
+            'field_vale_area': '68e6ffccf2be866f14ee57d7',
+            'field_vale_tecnologia': '68ffcd20fa8718eda2ef02ed',
+            'field_vale_periodo': '68ff976ef1bcefbefaef026e',
+            'field_vale_num_instalaciones': '689268ca4fbc02ec732c1641',
+            'field_vale_fecha_corte': '686df40dea45ebbc6a049285',
+            'obj_vale_contratista': '5f344a0476c82e1bebc991d5',
+            'obj_vale_wh_origen': '66881dacbc4fe9d135e82a87',
+            'obj_vale_wh_destino': '66881daa15f531ebda59dbf5',
+            'field_vale_grp_materiales': '67cef5c1ba32f128036ae851',
+            'obj_vale_sku': '66881da1becbd45ac5122f61',
+            'field_vale_cantidad': '67cef5fa66b66341d27a249b',
+
+            # Folio del Vale de Materiales generado (solo en la forma de Salida)
+            'field_salida_folio_vale': '6ac719fefced217e102d49cd',
         })
 
         # Esto lo debería jalar de accesos_utils
@@ -496,6 +514,14 @@ class Stock(Stock):
             field_as_select=field_as_select
         )
 
+    def get_delivered_quantity(self, item):
+        """
+        Cantidad entregada de un item (receivedQuantity, o expectedQuantity si
+        no hay). Se usa en el traspaso de stock y en el Vale de Materiales
+        para que ambos registros cuadren.
+        """
+        return item.get('receivedQuantity') or item.get('expectedQuantity', 0)
+
     def _get_item_serials(self, item):
         """
         Junta los numeros de serie capturados para un item (cajas escaneadas +
@@ -559,7 +585,7 @@ class Stock(Stock):
                 product_info[self.f['lot_number']] = "LotePCI001"
                 move_group_lines.append({
                     self.CATALOG_INVENTORY_OBJ_ID: product_info,
-                    self.f['move_group_qty']: item.get('receivedQuantity') or item.get('expectedQuantity', 0),
+                    self.f['move_group_qty']: self.get_delivered_quantity(item),
                 })
 
         return move_group_lines

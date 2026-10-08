@@ -860,7 +860,11 @@ class Stock(Stock):
             rows_materiales.append({
                 "nombre_contratista": nombre_conexion,
                 "copes": copes,
+                "areas": [a for a in areas if a],
+                "tecnologias": list(tecnologias),
                 "ordenesCount": len(ordenes_de_servicio),
+                # Igual que "No. Instalaciones" de PCI: solo los folios que si aplicaron material
+                "instalacionesCount": len(folios_aplicados_fibra) + len(folios_aplicados_cobre),
                 "items": [{
                     "sku": data_prod['sku'],
                     "name": data_prod['nombre'],
@@ -1159,17 +1163,22 @@ class Stock(Stock):
             return total_rows_materiales
 
         if type_report == 'vale_por_contratista':
-            return self.build_vale_por_contratista(total_rows_materiales, wh_origen, data_copes)
+            return self.build_vale_por_contratista(total_rows_materiales, wh_origen, data_copes, f'{desde} - {hasta}')
 
         return self.add_actual_quantity(total_rows_materiales, wh_origen)
 
-    def build_vale_por_contratista(self, rows_materiales, wh_origen, data_copes):
+    def build_vale_por_contratista(self, rows_materiales, wh_origen, data_copes, periodo):
         """
         Consolida lo que regresa calcular_material_estimado() para
         type_report == 'vale_por_contratista' (un row por batch de area/
         tecnologia/location) en un "vale" por nombre_contratista: suma
         suggestedQuantity de un mismo sku entre batches y el total de
         ordenes de servicio del contratista (recipientProduction).
+
+        En `calculation` van los datos que despues se necesitan para crear el
+        Vale de Materiales (periodo, areas, tecnologias, No. Instalaciones),
+        ya con el formato de la forma (ver build_answers_calculation() en
+        salida_de_materiales.py).
 
         Returns:
             list[dict]: un vale (misma estructura que recibe
@@ -1178,9 +1187,13 @@ class Stock(Stock):
         vales_by_contratista = {}
         for row in rows_materiales:
             nombre_contratista = row['nombre_contratista']
-            vale = vales_by_contratista.setdefault(nombre_contratista, {'items_by_sku': {}, 'ordenesCount': 0, 'copes': []})
+            vale = vales_by_contratista.setdefault(nombre_contratista, {
+                'items_by_sku': {}, 'ordenesCount': 0, 'instalacionesCount': 0, 'copes': [], 'areas': [], 'tecnologias': []
+            })
             vale['ordenesCount'] += row['ordenesCount']
-            vale['copes'].extend(c for c in row.get('copes', []) if c not in vale['copes'])
+            vale['instalacionesCount'] += row.get('instalacionesCount', 0)
+            for key in ('copes', 'areas', 'tecnologias'):
+                vale[key].extend(v for v in row.get(key, []) if v not in vale[key])
             for item in row['items']:
                 acumulado = vale['items_by_sku'].setdefault(item['sku'], {**item, 'suggestedQuantity': 0})
                 acumulado['suggestedQuantity'] += item['suggestedQuantity']
@@ -1204,6 +1217,12 @@ class Stock(Stock):
                     "finalContratista": nombre_contratista,
                 },
                 "items": items_vale,
+                "calculation": {
+                    "periodo": periodo,
+                    "areas": self.list_to_str([a.upper().replace('_', ' ') for a in vale['areas']]),
+                    "tecnologias": self.list_to_str(vale['tecnologias']),
+                    "instalacionesCount": vale['instalacionesCount'],
+                },
                 "stage": "pending_authorization",
                 "events": [{
                     "at": fecha_evento,
