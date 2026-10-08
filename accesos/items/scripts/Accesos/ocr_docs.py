@@ -780,10 +780,23 @@ class Accesos(Accesos):
 
         print('>>> ocr_packing_list image_source=', image_source)
 
+        # Los códigos de barras se leen antes de llamar al modelo: sus valores sirven
+        # para corregir el SN/MAC al final y su orientación para enderezar las fotos.
+        imagenes = self._cargar_imagenes(image_source)
+        lectura = self._leer_barcodes(imagenes)
+
+        # Si la foto viene girada (ej. de cabeza) el modelo lee el texto al revés y
+        # confunde más caracteres. Se endereza y se le manda la versión derecha.
+        imagenes_llm = list(image_source)
+        for i, grados in enumerate(lectura['orientaciones']):
+            if grados:
+                print(f'>>> ocr_packing_list: enderezando imagen {i + 1} ({grados}°)')
+                imagenes[i] = imagenes[i].rotate(-grados, expand=True)
+                imagenes_llm[i] = self._imagen_a_data_url(imagenes[i])
+
         # El modelo recibe la foto completa reducida y en caracteres tan pequeños
         # confunde 'B' con '8'. Además de las fotos originales se le mandan
         # recortes ampliados de cada foto para que lea los SN/MAC con más detalle.
-        imagenes = self._cargar_imagenes(image_source)
         recortes = self._recortes_ampliados(imagenes)
         if recortes:
             prompt += (
@@ -797,7 +810,7 @@ class Accesos(Accesos):
         # Llamada al modelo de OpenRouter: le mandamos la(s) imagen(es) + system + prompt.
         # Si son varias imágenes (varias caras del cartón), el modelo las analiza como
         # un solo cartón, por eso el prompt dice "different faces/photos of the SAME carton".
-        raw_text = self.ai.ocr_general(image_source + recortes, system, prompt, model=model, max_tokens=max_tokens)
+        raw_text = self.ai.ocr_general(imagenes_llm + recortes, system, prompt, model=model, max_tokens=max_tokens)
 
         # La respuesta viene con la forma típica de una API tipo OpenAI/OpenRouter:
         # {'choices': [{'message': {'content': <el JSON que pedimos>}}], ...}
@@ -845,9 +858,18 @@ class Accesos(Accesos):
         # El LLM a veces confunde 'B' con '8' (y 'D' con '0') en el SN/MAC. Cada
         # unidad trae su SN y MAC también en código de barras, así que cuando se
         # logran decodificar se usan para corregir lo leído por el modelo.
-        correcciones = self._packing_list_corregir_con_barcodes(datos, imagenes)
-        if correcciones:
-            datos['correcciones'] = correcciones
+        if not lectura['disponible']:
+            errores.append('No está instalada la lectura de códigos de barras (zxing-cpp): '
+                           'las NS/MAC no se verificaron')
+        elif not lectura['valores']:
+            errores.append('No se pudieron leer los códigos de barras de la foto: '
+                           'las NS/MAC no se verificaron')
+        else:
+            correcciones, sin_verificar = self._packing_list_corregir_con_barcodes(
+                datos, lectura['valores'])
+            if correcciones:
+                datos['correcciones'] = correcciones
+            errores.extend(sin_verificar)
 
         modelo_series = datos.get('modelo') or ''
         marca_series = datos.get('marca') or ''
@@ -875,9 +897,10 @@ class Accesos(Accesos):
     def _cargar_imagenes(self, image_source: list) -> list:
         """
         Descarga/abre las fotos del cartón como imágenes PIL para poder generar
-        recortes ampliados y leer códigos de barras. Requiere Pillow; si no está
-        instalado (o una foto no se puede abrir) esa foto se omite y el flujo
-        sigue solo con lo que lea el LLM de la foto original.
+        recortes ampliados y leer códigos de barras. Regresa una lista alineada
+        con image_source: si Pillow no está instalado o una foto no se puede abrir,
+        en su lugar va None y el flujo sigue solo con lo que lea el LLM de la foto
+        original.
         """
         try:
             import io
@@ -885,7 +908,7 @@ class Accesos(Accesos):
             from PIL import Image
         except ImportError as e:
             print('>>> _cargar_imagenes: Pillow no disponible', e)
-            return []
+            return [None] * len(image_source)
 
         imagenes = []
         for src in image_source:
@@ -899,7 +922,18 @@ class Accesos(Accesos):
                 imagenes.append(img.convert('RGB'))
             except Exception as e:
                 print('>>> _cargar_imagenes error en', src, e)
+                imagenes.append(None)
         return imagenes
+
+    def _imagen_a_data_url(self, img, quality: int = 90) -> str:
+        """Convierte una imagen PIL en data URL JPEG para mandarla al modelo."""
+        import base64
+        import io
+
+        buf = io.BytesIO()
+        img.save(buf, format='JPEG', quality=quality)
+        b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+        return f'data:image/jpeg;base64,{b64}'
 
     def _recortes_ampliados(self, imagenes: list, columnas: int = 2, filas: int = 2,
                             traslape: float = 0.12, escala: int = 2) -> list:
@@ -908,12 +942,12 @@ class Accesos(Accesos):
         partir una etiqueta a la mitad) y amplía cada sección. Regresa los recortes
         como data URLs JPEG listos para mandarse al modelo junto con la foto original.
         """
-        import base64
-        import io
         from PIL import Image
 
         recortes = []
         for img in imagenes:
+            if img is None:
+                continue
             ancho, alto = img.size
             paso_x, paso_y = ancho / columnas, alto / filas
             extra_x, extra_y = paso_x * traslape, paso_y * traslape
@@ -927,28 +961,42 @@ class Accesos(Accesos):
                     )
                     rec = img.crop(caja)
                     rec = rec.resize((rec.width * escala, rec.height * escala), Image.LANCZOS)
-                    buf = io.BytesIO()
-                    rec.save(buf, format='JPEG', quality=90)
-                    b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
-                    recortes.append(f'data:image/jpeg;base64,{b64}')
+                    recortes.append(self._imagen_a_data_url(rec))
         return recortes
 
-    def _leer_barcodes(self, imagenes: list) -> set:
+    def _leer_barcodes(self, imagenes: list) -> dict:
         """
         Decodifica los códigos de barras Code128 de las imágenes del cartón.
         Las barras de cada unidad son pequeñas, por eso se intenta también con la
-        imagen ampliada. Requiere zxing-cpp; si no está instalado regresa un set
-        vacío y el flujo sigue solo con lo leído por el LLM.
+        imagen ampliada. Requiere zxing-cpp.
+
+        Returns:
+            dict con:
+                - disponible    : False si zxing-cpp no está instalado
+                - valores       : set con el texto de todos los códigos leídos
+                - orientaciones : por cada imagen (alineado con 'imagenes'), los
+                                  grados (0/90/180/270) en que viene girada según
+                                  sus códigos de barras, o None si no se leyó ninguno
         """
+        from collections import Counter
+
+        lectura = {
+            'disponible': True,
+            'valores': set(),
+            'orientaciones': [None] * len(imagenes),
+        }
         try:
             import zxingcpp
             from PIL import Image, ImageOps
         except ImportError as e:
             print('>>> _leer_barcodes: lectura de códigos de barras deshabilitada', e)
-            return set()
+            lectura['disponible'] = False
+            return lectura
 
-        valores = set()
-        for img in imagenes:
+        for idx, img in enumerate(imagenes):
+            if img is None:
+                continue
+            giros = Counter()
             try:
                 img = ImageOps.grayscale(img)
                 for escala in (1, 2, 3):
@@ -956,28 +1004,31 @@ class Accesos(Accesos):
                         (img.width * escala, img.height * escala), Image.LANCZOS)
                     for r in zxingcpp.read_barcodes(im, formats=zxingcpp.BarcodeFormat.Code128):
                         if r.text:
-                            valores.add(r.text.strip().upper())
+                            lectura['valores'].add(r.text.strip().upper())
+                            # La orientación viene en grados; se redondea al cuarto de
+                            # vuelta más cercano para tolerar fotos un poco chuecas.
+                            giros[round(r.orientation / 90) * 90 % 360] += 1
             except Exception as e:
                 print('>>> _leer_barcodes error', e)
-        print('>>> _leer_barcodes valores=', valores)
-        return valores
+            if giros:
+                lectura['orientaciones'][idx] = giros.most_common(1)[0][0]
+        print('>>> _leer_barcodes valores=', lectura['valores'])
+        print('>>> _leer_barcodes orientaciones=', lectura['orientaciones'])
+        return lectura
 
-    def _packing_list_corregir_con_barcodes(self, datos: dict, imagenes: list) -> list:
+    def _packing_list_corregir_con_barcodes(self, datos: dict, barcodes: set) -> tuple:
         """
         Corrige el SN y la MAC de cada unidad usando los códigos de barras.
         Solo se reemplaza un valor si existe exactamente un código de barras que
-        coincide con él salvo por confusiones B/8, D/0, O/0. Regresa la lista de
-        correcciones hechas (para dejar rastro en la respuesta).
-        """
-        serials = datos.get('serials') or []
-        if not serials:
-            return []
-        barcodes = self._leer_barcodes(imagenes)
-        if not barcodes:
-            return []
+        coincide con él salvo por confusiones B/8, D/0, O/0.
 
-        avisos = []
-        for serial in serials:
+        Returns:
+            tupla (correcciones, sin_verificar): las correcciones hechas (para dejar
+            rastro en la respuesta) y las advertencias de los valores que no
+            coinciden con ningún código de barras leído.
+        """
+        avisos, sin_verificar = [], []
+        for serial in datos.get('serials') or []:
             for campo in ('sn', 'mac'):
                 valor = re.sub(r'[\s:\-]', '', serial.get(campo) or '').upper()
                 if not valor or valor in barcodes:
@@ -990,7 +1041,10 @@ class Accesos(Accesos):
                 if len(candidatos) == 1:
                     serial[campo] = candidatos[0]
                     avisos.append(f"{campo} corregido por código de barras: {valor} -> {candidatos[0]}")
-        return avisos
+                else:
+                    sin_verificar.append(
+                        f"{campo} {valor} no coincide con ningún código de barras, revisarlo manualmente")
+        return avisos, sin_verificar
 
 
 if __name__ == "__main__":
