@@ -2,7 +2,6 @@
 from datetime import date
 import re
 import sys, simplejson, pytz
-from tkinter import N
 from bson import ObjectId
 from linkaform_api import settings
 from account_settings import *
