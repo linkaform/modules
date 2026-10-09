@@ -901,8 +901,7 @@ class Accesos(Accesos):
         # if modelo_series.lower() == 'huawei':
         if 'huawei' in modelo_series.lower() or 'huawei' in marca_series.lower():
             for serial in datos.get('serials', []):
-                sn = serial.get('sn', '')
-                serial['sn'] = f"HWTC{sn[8:]}" if sn else None
+                serial['sn'] = self._formatear_sn_huawei(serial.get('sn', ''))
 
         if errores:
             return {
@@ -913,6 +912,37 @@ class Accesos(Accesos):
             }
 
         return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
+
+    @staticmethod
+    def _formatear_sn_huawei(sn: str):
+        """
+        El SN de Huawei viene con el prefijo 'HWTC' en hexadecimal (48575443);
+        se reemplazan esos 8 caracteres por 'HWTC'.
+        """
+        return f"HWTC{sn[8:]}" if sn else None
+
+    def formatear_serials(self, serials: list, marca: str = None) -> dict:
+        """
+        Recibe una lista de NS capturadas a mano (sin imagen) y las regresa en el
+        mismo formato que ocr_packing_list: data.serials como lista de
+        {'sn': ...}. Si la marca es Huawei, a cada NS se le aplica el mismo
+        formato que a las leídas de la etiqueta.
+        """
+        if isinstance(serials, str):
+            serials = [serials]
+        serials = [str(sn).strip() for sn in (serials or []) if str(sn or '').strip()]
+        if not serials:
+            return {'status_code': 400, 'msg': 'Se requiere al menos un número de serie'}
+
+        es_huawei = 'huawei' in (marca or '').lower()
+        datos = {
+            'marca': marca,
+            'serials': [
+                {'sn': self._formatear_sn_huawei(sn) if es_huawei else sn}
+                for sn in serials
+            ],
+        }
+        return {'status_code': 200, 'msg': 'OK', 'data': datos}
 
     # S/N de los módems ZTE, ej. ZTEG26193C9E ('ZTEG' + 8 hexadecimales).
     _RE_SN_ZTE = re.compile(r'ZTEG[0-9A-F]{8}')
@@ -1244,7 +1274,15 @@ if __name__ == "__main__":
     print('option=', option)
     is_employee = True
     
-    if not acceso_obj.ai:
+    if option == 'formatear_serials':
+        # No usa imagen ni OpenRouter: solo da formato a NS capturadas a mano.
+        # data.serials: ["48575443A1B2C3D4", ...]  data.marca: "huawei" u otra
+        response = acceso_obj.formatear_serials(
+            serials=data.get('serials', []),
+            marca=data.get('marca'),
+        )
+
+    elif not acceso_obj.ai:
         # El usuario no configuró OPENROUTER_API_KEY en account_settings.py
         response = {
             'status_code': 400,
@@ -1350,6 +1388,6 @@ if __name__ == "__main__":
             extra_instructions=extra_instructions,
         )
     else:
-        response = {'msg': 'Empty', 'valid_options': ['ocr_id', 'ocr_doc', 'ocr_batch', 'ocr_paquete', 'ocr_truck', 'ocr_vehiculo', 'ocr_persona', 'ocr_equipo', 'ocr_articulo_perdido', 'ocr_articulo', 'ocr_packing_list']}
+        response = {'msg': 'Empty', 'valid_options': ['ocr_id', 'ocr_doc', 'ocr_batch', 'ocr_paquete', 'ocr_truck', 'ocr_vehiculo', 'ocr_persona', 'ocr_equipo', 'ocr_articulo_perdido', 'ocr_articulo', 'ocr_packing_list', 'formatear_serials']}
 
     acceso_obj.HttpResponse({'data': response})
