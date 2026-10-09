@@ -923,16 +923,57 @@ class Accesos(Accesos):
         """
         return f"HWTC{sn[8:]}" if sn else None
 
-    def formatear_serials(self, serials: list, marca: str = None) -> dict:
+    # Encabezados (ya normalizados por read_file: minúsculas, espacios -> '_')
+    # que se aceptan como columna de NS.
+    _COLUMNAS_SN = ('sn', 's/n', 'serial', 'serie', 'ns', 'n/s',
+                    'numero_de_serie', 'número_de_serie', 'no._serie', 'num_serie')
+
+    @staticmethod
+    def _limpiar_sn(sn) -> str:
         """
-        Recibe una lista de NS capturadas a mano (sin imagen) y las regresa en el
-        mismo formato que ocr_packing_list: data.serials como lista de
-        {'sn': ...}. Si la marca es Huawei, a cada NS se le aplica el mismo
-        formato que a las leídas de la etiqueta.
+        Normaliza un NS a texto: los float enteros pierden el '.0'
+        (123456.0 -> '123456') y los int se pasan a str. Regresa '' si viene vacío.
         """
-        if isinstance(serials, str):
+        if sn is None or isinstance(sn, bool):
+            return ''
+        if isinstance(sn, float):
+            sn = int(sn) if sn.is_integer() else sn
+        return str(sn).strip()
+
+    def _serials_desde_excel(self, file_url: str) -> dict:
+        """
+        Lee el Excel de file_url con upfile.read_file y regresa en data los
+        valores de la primera columna cuyo encabezado esté en _COLUMNAS_SN.
+        """
+        try:
+            header, records = self.upfile.read_file(file_url=file_url)
+        except Exception as e:
+            return {'status_code': 400, 'msg': f'No se pudo leer el Excel de números de serie: {e}'}
+
+        idx = next((i for i, col in enumerate(header) if col in self._COLUMNAS_SN), None)
+        if idx is None:
+            return {
+                'status_code': 400,
+                'msg': f'El Excel no tiene una columna de números de serie. Encabezados encontrados: {header}',
+            }
+        return {'status_code': 200, 'msg': 'OK', 'data': [row[idx] for row in records if len(row) > idx]}
+
+    def formatear_serials(self, serials, marca: str = None) -> dict:
+        """
+        Recibe una lista de NS capturadas a mano (sin imagen) o la URL de un
+        Excel con encabezado y una NS por renglón, y las regresa en el mismo
+        formato que ocr_packing_list: data.serials como lista de {'sn': ...}.
+        Si la marca es Huawei, a cada NS se le aplica el mismo formato que a
+        las leídas de la etiqueta.
+        """
+        if isinstance(serials, str) and serials.strip().lower().startswith(('http://', 'https://')):
+            excel = self._serials_desde_excel(serials.strip())
+            if excel['status_code'] != 200:
+                return excel
+            serials = excel['data']
+        elif isinstance(serials, str):
             serials = [serials]
-        serials = [str(sn).strip() for sn in (serials or []) if str(sn or '').strip()]
+        serials = [sn for sn in map(self._limpiar_sn, serials or []) if sn]
         if not serials:
             return {'status_code': 400, 'msg': 'Se requiere al menos un número de serie'}
 
@@ -1285,8 +1326,10 @@ if __name__ == "__main__":
     is_employee = True
     
     if option == 'formatear_serials':
-        # No usa imagen ni OpenRouter: solo da formato a NS capturadas a mano.
-        # data.serials: ["48575443A1B2C3D4", ...]  data.marca: "huawei" u otra
+        # No usa imagen ni OpenRouter: solo da formato a NS capturadas a mano
+        # o leídas de un Excel (con encabezado; columna según _COLUMNAS_SN).
+        # data.serials: ["48575443A1B2C3D4", ...] o "https://.../serials.xlsx"
+        # data.marca: "huawei" u otra
         response = acceso_obj.formatear_serials(
             serials=data.get('serials', []),
             marca=data.get('marca'),
