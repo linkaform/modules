@@ -21,8 +21,11 @@ class Accesos(Accesos):
         self.load(module='Location', **self.kwargs)
 
         self.CONFIGURACION_RECORRIDOS_FORM = self.lkm.form_id('configuracion_de_recorridos','id')
+        self.CATALOGO_ITEMS_FORM = self.lkm.form_id('catalogo_de_items','id')
 
         self.f.update({
+            'tipo_de_item': 'ccccc0000000000000000002',
+            'tipo_de_formulario': '6ac43687e43586b5c009d397',
             'rondin_area': '663e5d44f5b8a7ce8211ed0f',
             'foto_area': '6763096aa99cee046ba766ad',
             'porcentaje_de_areas_inspeccionadas': '689a7ecfbf2b4be31039388e',
@@ -940,7 +943,7 @@ class Accesos(Accesos):
 
         return format_data
 
-    def format_check_by_id(self, data: dict, record_id: str):
+    def format_check_by_id(self, data: dict, record_id: str, checks_cache=None):
         """
         Formatea los detalles de un check por su ID de registro.
         Args:
@@ -965,7 +968,7 @@ class Accesos(Accesos):
             }
             incidencias_area.append(incidencia_formateada)
 
-        checks_mes = self.get_rondin_checks_mes(data.get('rondin_area', ''), data.get('ubicacion', ''), data.get('nombre_recorrido', ''), record_id)
+        checks_mes = self.get_rondin_checks_mes(data.get('rondin_area', ''), data.get('ubicacion', ''), data.get('nombre_recorrido', ''), record_id, checks_cache=checks_cache)
 
         format_data = {
             'area': data.get('rondin_area', ''),
@@ -1115,7 +1118,7 @@ class Accesos(Accesos):
             format_response = self.unlist(response).get('average_duration', 0)
         return format_response
 
-    def format_bitacora_record(self, record, area_details=False):
+    def format_bitacora_record(self, record, area_details=False, checks_cache=None):
             areas = record.get("areas", [])
             if not isinstance(areas, list):
                 areas = [areas] if areas else []
@@ -1133,7 +1136,7 @@ class Accesos(Accesos):
                     "incidencias": record.get("incidencias", []),
                 }
                 record_id = str(area.get("url_registro_rondin", ""))
-                detalle = self.format_check_by_id(area_con_contexto, record_id)
+                detalle = self.format_check_by_id(area_con_contexto, record_id, checks_cache=checks_cache)
                 if area_details:
                     detalle = self.get_area_images([detalle], location=record.get("ubicacion", ""))
                     detalle = detalle[0] if detalle else detalle
@@ -1279,8 +1282,10 @@ class Accesos(Accesos):
         elif date_to:
             match_filters["created_at"] = {"$lte": date_to}
         else:
-            match_filters["$expr"] = {
-                "$eq": [{"$year": "$created_at"}, año]
+            # rango en vez de $expr/$year: permite usar el indice de created_at
+            match_filters["created_at"] = {
+                "$gte": datetime(año, 1, 1),
+                "$lt": datetime(año + 1, 1, 1)
             }
 
         if ubicacion:
@@ -1307,8 +1312,8 @@ class Accesos(Accesos):
 
         query = [
             {"$match": match_filters},
-            # Se pagina antes de las uniones ($lookup): solo se hacen para la página.
-            {"$sort": {"created_at": -1}},
+            # paginar antes de los $lookup: solo se enriquecen las `limit` bitacoras de la pagina
+            {"$sort": {"created_at": -1, "_id": -1}},
             {"$skip": offset},
             {"$limit": limit},
             {"$project": {
@@ -1403,10 +1408,10 @@ class Accesos(Accesos):
                 "as": "checks_data"
             }},
             {"$unset": "area_record_ids"},
-            {"$sort": {"created_at": -1}},
         ]
         response = self.format_cr(self.cr.aggregate(query))
-        result = [self.format_bitacora_record(record, area_details) for record in response]
+        checks_cache = self.get_checks_mes_batch(response)
+        result = [self.format_bitacora_record(record, area_details, checks_cache=checks_cache) for record in response]
         # print("RESPUESTA DEL SERVICIO", simplejson.dumps(result, indent=4))
         res = {"data": result, "total": len(result)}
         if paginated:
@@ -1943,10 +1948,32 @@ class Accesos(Accesos):
         form_id = self.CONFIGURACION_RECORRIDOS_FORM
         return self.catalogo_view(catalog_id, form_id)
 
-    def catalogo_inspecciones(self): 
-        catalog_id = self.CATALOGO_FORMAS_CAT_ID
-        form_id = self.CONFIGURACION_RECORRIDOS_FORM
-        return self.catalogo_view(catalog_id, form_id)
+    def catalogo_inspecciones(self, inspeccion_id=None):
+        """
+        Formas de tipo inspeccion registradas en Catalogo de Items.
+        Regresa [{'nombre': str, 'id': int}, ...] ordenado por nombre; con `inspeccion_id`
+        regresa solo esa forma (sirve para validar que el id exista en el catalogo).
+        """
+        match = {
+            "deleted_at": {"$exists": False},
+            # form_id de Mongo: solo registros de la forma Catalogo de Items
+            "form_id": self.CATALOGO_ITEMS_FORM,
+            f"answers.{self.f['tipo_de_item']}": "form",
+            f"answers.{self.f['tipo_de_formulario']}": "inspeccion",
+        }
+        if inspeccion_id is not None:
+            # campo "ID de la forma" dentro de cada fila del catalogo (acepta int o str)
+            match[f"answers.{self.rondin_keys['grupo_id']}"] = {"$in": [inspeccion_id, str(inspeccion_id)]}
+        query = [
+            {"$match": match},
+            {"$project": {
+                "_id": 0,
+                "nombre": f"$answers.{self.mf['nombre_forma']}",
+                "id": f"$answers.{self.rondin_keys['grupo_id']}",
+            }},
+            {"$sort": {"nombre": 1}},
+        ]
+        return list(self.cr.aggregate(query))
 
     def get_catalog_areas_formatted(self, locations=[], limit=25, skip=0, search="", search_fields=[], dynamic_filters=[]):
         #Obtener areas disponibles para rondin. `locations` es una lista de
@@ -2609,7 +2636,90 @@ class Accesos(Accesos):
             format_response = self.format_bitacoras_mes(response, nombre_recorrido)
         return format_response
 
-    def get_rondin_checks_mes(self, area, location, nombre_recorrido, record_id):
+    def _mes_actual_utc(self):
+        """Inicio del mes actual y del siguiente (UTC), igual que $$NOW en el $expr anterior."""
+        now = datetime.utcnow()
+        inicio = datetime(now.year, now.month, 1)
+        fin = datetime(now.year + 1, 1, 1) if now.month == 12 else datetime(now.year, now.month + 1, 1)
+        return inicio, fin
+
+    def get_checks_mes_batch(self, bitacoras):
+        """Trae en UNA consulta los checks del mes de todas las areas de las bitacoras dadas.
+
+        Evita una aggregate por area (N+1). Devuelve {(area, ubicacion, nombre_recorrido): [checks]}
+        con los checks ya formateados (format_cr); las llaves que no se pudieron resolver aqui
+        (por ejemplo areas que no son texto) no estan en el dict y get_rondin_checks_mes
+        las consulta individualmente.
+        """
+        def valores(answers, catalogo, campo):
+            """Valores de answers[catalogo][campo] como lista (el catalogo puede ser dict o lista de dicts)."""
+            grupo = answers.get(catalogo, {})
+            grupo = grupo if isinstance(grupo, list) else [grupo]
+            res = []
+            for g in grupo:
+                v = g.get(campo) if isinstance(g, dict) else None
+                res.extend(v if isinstance(v, list) else [v])
+            return res
+
+        pedidos = set()
+        for bitacora in bitacoras:
+            areas = bitacora.get('areas', [])
+            if not isinstance(areas, list):
+                areas = [areas] if areas else []
+            ubicacion = bitacora.get('ubicacion', '')
+            recorrido = bitacora.get('nombre_recorrido', '')
+            for area in areas:
+                nombre_area = area.get('rondin_area', '')
+                if all(isinstance(v, str) for v in (nombre_area, ubicacion, recorrido)):
+                    pedidos.add((nombre_area, ubicacion, recorrido))
+        if not pedidos:
+            return {}
+
+        inicio, fin = self._mes_actual_utc()
+        cat_areas = self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID
+        cat_recorridos = self.CONFIGURACION_RECORRIDOS_OBJ_ID
+        loc_key, area_key, rec_key = self.Location.f['location'], self.Location.f['area'], self.mf['nombre_del_recorrido']
+        query = [
+            {"$match": {
+                "deleted_at": {"$exists": False},
+                "form_id": self.CHECK_UBICACIONES,
+                f"answers.{cat_areas}.{loc_key}": {"$in": list({p[1] for p in pedidos})},
+                f"answers.{cat_areas}.{area_key}": {"$in": list({p[0] for p in pedidos})},
+                f"answers.{cat_recorridos}.{rec_key}": {"$in": list({p[2] for p in pedidos})},
+                "created_at": {"$gte": inicio, "$lt": fin},
+            }},
+            {"$project": {
+                "_id": 1,
+                "answers": 1,
+                "created_at": {
+                    "$dateToString": {
+                        "format": "%Y-%m-%d %H:%M",
+                        "date": "$created_at",
+                        "timezone": "America/Mexico_City"
+                    }
+                }
+            }}
+        ]
+        crudos = list(self.cr.aggregate(query))
+        formateados = self.format_cr(crudos)
+
+        cache = {llave: [] for llave in pedidos}
+        for crudo, check in zip(crudos, formateados):
+            answers = crudo.get('answers', {})
+            ubicaciones = valores(answers, cat_areas, loc_key)
+            areas_check = valores(answers, cat_areas, area_key)
+            recorridos = valores(answers, cat_recorridos, rec_key)
+            for nombre_area, ubicacion, recorrido in pedidos:
+                if nombre_area in areas_check and ubicacion in ubicaciones and recorrido in recorridos:
+                    cache[(nombre_area, ubicacion, recorrido)].append(check)
+        return cache
+
+    def get_rondin_checks_mes(self, area, location, nombre_recorrido, record_id, checks_cache=None):
+        llave = (area, location, nombre_recorrido)
+        if checks_cache is not None and llave in checks_cache:
+            response = checks_cache[llave]
+            return self.format_rondin_checks(response, record_id) if response else []
+        inicio, fin = self._mes_actual_utc()
         query = [
             {"$match": {
                 "deleted_at": {"$exists": False},
@@ -2617,12 +2727,7 @@ class Accesos(Accesos):
                 f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}": location,
                 f"answers.{self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.Location.f['area']}": area,
                 f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}": nombre_recorrido,
-                "$expr": {
-                    "$and": [
-                        {"$eq": [{"$year": "$created_at"}, {"$year": "$$NOW"}]},
-                        {"$eq": [{"$month": "$created_at"}, {"$month": "$$NOW"}]}
-                    ]
-                }
+                "created_at": {"$gte": inicio, "$lt": fin},
             }},
             {"$project": {
                 "_id": 1,
@@ -2887,14 +2992,23 @@ class Accesos(Accesos):
     
     def update_inspeccion(self, folio, rondin_data: dict = {}):
         answers = {}
-        print('solfio', folio)
+        # El id es obligatorio: '' = quitar la inspeccion; sin la llave = peticion mal formada.
+        if 'inspeccion_id' not in rondin_data:
+            return {'status_code': 400, 'type': 'error', 'msg': 'inspeccion_id es requerido', 'data': {}}
+        inspeccion_id = str(rondin_data.get('inspeccion_id') or '').strip()
+        inspeccion = ''
+        if inspeccion_id:
+            # El nombre sale del catalogo, no del front, para que nombre e id no se desalineen.
+            forma = self.catalogo_inspecciones(inspeccion_id=int(inspeccion_id) if inspeccion_id.isdigit() else inspeccion_id)
+            if not forma:
+                return {'status_code': 400, 'type': 'error', 'msg': f'inspeccion_id {inspeccion_id} no existe en Catalogo de Items', 'data': {}}
+            inspeccion = self.unlist(forma[0].get('nombre', ''))
         existing_record = self.get_rondin_by_id(folio)
         folio = existing_record.get("folio", "")
         existing_areas = existing_record.get("areas", [])
         if existing_areas and isinstance(existing_areas[0], list):
             existing_areas = existing_areas[0]
 
-        inspeccion = rondin_data.get('inspeccion', '')
         prompt_inspeccion = rondin_data.get('prompt_inspeccion', '')
         areas_targets = rondin_data.get('areas', [])
 
@@ -2904,7 +3018,7 @@ class Accesos(Accesos):
             # get_rondin_by_id devuelve las areas aplanadas: la forma actual viene en
             # form_name/form_id, no dentro del catalogo. Se conserva en las no editadas.
             forma_actual = area_item.get('form_name', '')
-            form_id_actual = area_item.get('form_id') or ['129870']
+            form_id_actual = area_item.get('form_id')
             should_update = (
                 not areas_targets or
                 areas_targets == ["todas"] or
@@ -2919,7 +3033,7 @@ class Accesos(Accesos):
                 },
                 self.CATALOGO_FORMAS_OBJ_ID: {
                     self.mf['nombre_forma']: inspeccion if should_update else forma_actual,
-                    self.rondin_keys['grupo_id']: form_id_actual
+                    self.rondin_keys['grupo_id']: ([inspeccion_id] if inspeccion_id else []) if should_update else form_id_actual
                 },
                 self.rondin_keys['prompt_inspeccion']: prompt_inspeccion if should_update else area_item.get(self.rondin_keys['prompt_inspeccion'], '')
             }
