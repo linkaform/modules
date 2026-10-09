@@ -106,7 +106,7 @@ if __name__ == "__main__":
         else:
             response = acceso_obj.sync_records(records)
     elif option == 'clean_db':
-        response = acceso_obj.clean_db()
+        response = acceso_obj.clean_and_purge_db()
     elif option == 'fix':
         response = acceso_obj.fix_rondines()
 
