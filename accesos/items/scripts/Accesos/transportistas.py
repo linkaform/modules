@@ -152,12 +152,35 @@ class Accesos(Accesos):
             'deleted_at': {'$exists': False},
         }
         fecha_field = f'answers.{f["fecha_hora_ingreso"]}'
+        # El front manda el rango ya resuelto; un date_to de solo día ("AAAA-MM-DD")
+        # se extiende al final del día porque las fechas se comparan como texto.
+        if date_to and len(date_to) == 10:
+            date_to = f"{date_to} 23:59:59"
         if date_from and date_to:
             match_filters[fecha_field] = {'$gte': date_from, '$lte': date_to}
         elif date_from:
             match_filters[fecha_field] = {'$gte': date_from}
         elif date_to:
             match_filters[fecha_field] = {'$lte': date_to}
+        return match_filters
+
+    def get_search_fields_transportistas(self):
+        return self.search_fields_config(self.transportistas_search_fields())
+
+    def get_search_counts_transportistas(self, date_from=None, date_to=None, facets=[], candidates=[]):
+        base_match = self.transportistas_base_match(date_from, date_to)
+        return self.count_facet_candidates(base_match, self.transportistas_search_fields(), facets, candidates)
+
+    def get_bitac_transportista_records(self, date_from=None, date_to=None,
+                                         tipo_de_vehiculo=None, proveedor_cliente=None, anden_asignado=None,
+                                         estatus=None, tipo_de_operacion=None, conductor=None, material=None,
+                                         search=None, skip=0, limit=None, pagination=False, facets=[]):
+        f = self.bitacora_transportista_fields
+        match_filters = self.transportistas_base_match(date_from, date_to)
+        # Buscador avanzado: los filtros del panel y las búsquedas llegan como facets.
+        facet_conditions = self.build_facets_match(self.transportistas_search_fields(), facets)
+        if facet_conditions:
+            match_filters['$and'] = facet_conditions
 
         if tipo_de_vehiculo:
             values = tipo_de_vehiculo if isinstance(tipo_de_vehiculo, list) else [tipo_de_vehiculo]
