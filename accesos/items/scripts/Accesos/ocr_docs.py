@@ -14,7 +14,7 @@ class Accesos(Accesos):
 
     def ocr_equipo(self, image_source,
                    extra_instructions: str = None,
-                   model: str = 'google/gemini-2.5-flash-lite') -> dict:
+                   model: str = 'google/gemini-2.5-flash') -> dict:
         """
         Extrae los datos de una foto de un equipo/herramienta:
         tipo, marca, modelo, número de serie y color.
@@ -99,7 +99,7 @@ class Accesos(Accesos):
 
     def ocr_vehiculo(self, image_source, fields: dict = {},
                      extra_instructions: str = None,
-                     model: str = 'google/gemini-2.5-flash-lite') -> dict:
+                     model: str = 'google/gemini-2.5-flash') -> dict:
         """
         Extrae los datos de una foto de un vehículo:
         tipo, marca, modelo, año estimado, color, placas,
@@ -111,7 +111,7 @@ class Accesos(Accesos):
             extra_instructions:  Instrucciones extra al modelo (opcional).
             model:               Modelo OpenRouter a usar.
                                  Opciones recomendadas:
-                                   'google/gemini-2.5-flash-lite'   ← default, rápido y barato
+                                   'google/gemini-2.5-flash'   ← default, rápido y barato
                                    'google/gemini-2.5-flash'        ← mejor OCR, más caro
                                    'anthropic/claude-haiku-4-5'     ← excelente para placas
 
@@ -210,7 +210,7 @@ class Accesos(Accesos):
 
     def ocr_articulo_concesionado(self, image_source,
                                    extra_instructions: str = None,
-                                   model: str = 'google/gemini-2.5-flash-lite') -> dict:
+                                   model: str = 'google/gemini-2.5-flash') -> dict:
         """
         Identifica un artículo concesionado a partir de su foto. Puede tratarse de:
           - Un artículo genérico identificable a simple vista (guantes, casco, chaleco,
@@ -393,7 +393,7 @@ class Accesos(Accesos):
 
     def ocr_truck(self, image_source: list, fields: dict = {},
                            extra_instructions: str = None,
-                           model: str = 'google/gemini-2.5-flash-lite') -> dict:
+                           model: str = 'google/gemini-2.5-flash') -> dict:
         """
         Extrae los datos de una foto de un paquete para identificar, 
         Proveedor (paqueteria), Remitente, Destinatario.
@@ -545,6 +545,9 @@ class Accesos(Accesos):
     # Campos del panel de la etiqueta del cartón (datos generales, no por unidad).
     _PACKING_LIST_HEADER = ('tipo_equipo', 'marca', 'modelo', 'codigo_carton', 'sku',
                             'item', 'order', 'qty', 'code', 'notes', 'confianza')
+    # Campos que solo trae la etiqueta de ZTE; solo se agregan a la respuesta si
+    # vienen con valor, para no cambiar la respuesta de las demás etiquetas.
+    _PACKING_LIST_EXTRA = ('lote', 'fecha_produccion', 'en_desde', 'en_hasta')
 
     def ocr_packing_list(self, image_source,
                           extra_instructions: str = None,
@@ -608,12 +611,16 @@ class Accesos(Accesos):
             for campo in self._PACKING_LIST_HEADER:
                 if datos[campo] is None and data.get(campo) is not None:
                     datos[campo] = data[campo]
+            extra = {c: data[c] for c in self._PACKING_LIST_EXTRA if data.get(c) is not None}
+            for campo, valor in extra.items():
+                datos.setdefault(campo, valor)
 
             # Nombre del archivo de la imagen, ej. 6abf1be4b3877b8ab33880c1.jpeg
             nombre_imagen = os.path.basename(urlparse(url).path) or url
             serials_imagen = data.get('serials') or []
             cartones.append({
                 **{campo: data.get(campo) for campo in self._PACKING_LIST_HEADER},
+                **extra,
                 'imagen': nombre_imagen,
                 'total_serials': len(serials_imagen),
             })
@@ -785,6 +792,15 @@ class Accesos(Accesos):
         imagenes = self._cargar_imagenes(image_source)
         lectura = self._leer_barcodes(imagenes)
 
+        # Las etiquetas de ZTE tienen otro formato (sin Prod ID ni MAC por unidad),
+        # se reconocen por sus S/N 'ZTEG...' en los códigos de barras y llevan su
+        # propio prompt. Cualquier otra etiqueta sigue con el prompt de Huawei.
+        if any(self._RE_SN_ZTE.fullmatch(b) for b in lectura['valores']):
+            print('>>> ocr_packing_list: formato ZTE')
+            system, prompt = self._packing_list_prompt_zte()
+            if extra_instructions:
+                prompt += f"\n\nAdditional instructions: {extra_instructions}"
+
         # Si la foto viene girada (ej. de cabeza) el modelo lee el texto al revés y
         # confunde más caracteres. Se endereza y se le manda la versión derecha.
         imagenes_llm = list(image_source)
@@ -867,6 +883,15 @@ class Accesos(Accesos):
         else:
             correcciones, sin_verificar = self._packing_list_corregir_con_barcodes(
                 datos, lectura['valores'])
+            # La pasada normal no siempre lee todas las barras (las más angostas
+            # fallan) y entonces NS/MAC bien leídas por el LLM quedan sin verificar.
+            # Solo en ese caso se hace la lectura intensiva, sobre las fotos ya
+            # enderezadas, y se vuelve a intentar.
+            if sin_verificar:
+                intensiva = self._leer_barcodes(imagenes, intensivo=True)
+                extra, sin_verificar = self._packing_list_corregir_con_barcodes(
+                    datos, lectura['valores'] | intensiva['valores'])
+                correcciones += extra
             if correcciones:
                 datos['correcciones'] = correcciones
             errores.extend(sin_verificar)
@@ -888,6 +913,71 @@ class Accesos(Accesos):
             }
 
         return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
+
+    # S/N de los módems ZTE, ej. ZTEG26193C9E ('ZTEG' + 8 hexadecimales).
+    _RE_SN_ZTE = re.compile(r'ZTEG[0-9A-F]{8}')
+
+    def _packing_list_prompt_zte(self) -> tuple:
+        """
+        Prompt para la etiqueta de cartón de ZTE: un panel con nombre del producto,
+        modelo, cantidad, código de material, lote, fecha de producción, PO y SKU;
+        un código de barras 'Telmex S/N' por unidad (sin Prod ID ni MAC) y al final
+        los EN 'From'/'To' y el 'Carton Code'. Regresa el mismo JSON que el formato
+        de Huawei (prod_id y mac en null) más los campos propios de ZTE.
+        """
+        system = (
+            "You are a logistics specialist trained to read carton/box labels for "
+            "telecommunications equipment (ONTs, modems, routers, network gear). "
+            "This label is from ZTE: a header panel with product name, model, quantity, "
+            "material code, production lot, production date, PO and SKU, followed by one "
+            "barcode per unit packed inside the carton, each captioned 'Telmex S/N: ...', "
+            "and at the bottom the 'From' / 'To' EN codes and the carton code. "
+            "Always respond with a single valid JSON object and nothing else — "
+            "no markdown, no backticks, no explanation, no preamble."
+        )
+        prompt = (
+            "Analyze the provided carton label image(s) as a single combined carton "
+            "(if there are multiple images, treat them as different faces/photos of "
+            "the SAME carton/box). Transcribe the header panel data and, for EVERY "
+            "'Telmex S/N: ...' caption visible, extract its serial number exactly as "
+            "printed — do not skip or summarize any unit. "
+            "If a field cannot be determined from the image, use null. "
+            "\n\n"
+            "CHARACTER ACCURACY (critical): each S/N is 'ZTEG' followed by 8 uppercase "
+            "hexadecimal characters (only 0-9 and A-F), e.g. ZTEG26193C9E. In this font "
+            "the letter 'B' and the digit '8' look very similar, as do 'D' and '0': read "
+            "every character individually. "
+            "Do NOT infer characters from the pattern of the other units' serials — "
+            "transcribe exactly what is printed on each caption. "
+            "Do not include the 'Telmex S/N:' / 'EN:' prefixes, spaces or colons in the values. "
+            "\n\n"
+            "Return ONLY a JSON object with this exact structure:\n"
+            "{\n"
+            '  "tipo_equipo": "string — Nombre del Producto, e.g. Módem Fibra Óptica, or null",\n'
+            '  "marca": "string — always ZTE",\n'
+            '  "modelo": "string — Modelo field, e.g. ZXHN F670L1FXS, or null",\n'
+            '  "codigo_carton": "string — EN value under (Carton Code), e.g. EQUCT4FC1138, or null",\n'
+            '  "sku": "string — SKU number, or null",\n'
+            '  "item": "string — ZTE Codigo de Material value, or null",\n'
+            '  "order": "string — PO value, or null",\n'
+            '  "qty": "number — Cantidad value (only the number, e.g. 15), or null",\n'
+            '  "code": null,\n'
+            '  "notes": null,\n'
+            '  "lote": "string — Lote de Produccion value, or null",\n'
+            '  "fecha_produccion": "string — Fecha de Produccion value exactly as printed, e.g. 20260415, or null",\n'
+            '  "en_desde": "string — EN value next to From, or null",\n'
+            '  "en_hasta": "string — EN value next to To, or null",\n'
+            '  "serials": [\n'
+            '    {\n'
+            '      "prod_id": null,\n'
+            '      "sn": "string — Telmex S/N of this unit, e.g. ZTEG26193C9E",\n'
+            '      "mac": null\n'
+            '    }\n'
+            '  ],\n'
+            '  "confianza": "string — alto / medio / bajo — overall confidence based on image clarity"\n'
+            "}"
+        )
+        return system, prompt
 
     # Caracteres que el OCR suele confundir entre sí en etiquetas hexadecimales.
     # Se normalizan a un mismo valor para comparar lo leído por el LLM contra
@@ -964,11 +1054,16 @@ class Accesos(Accesos):
                     recortes.append(self._imagen_a_data_url(rec))
         return recortes
 
-    def _leer_barcodes(self, imagenes: list) -> dict:
+    def _leer_barcodes(self, imagenes: list, intensivo: bool = False) -> dict:
         """
         Decodifica los códigos de barras Code128 de las imágenes del cartón.
         Las barras de cada unidad son pequeñas, por eso se intenta también con la
         imagen ampliada. Requiere zxing-cpp.
+
+        Con intensivo=True se prueban más escalas, una versión con más nitidez y
+        otro método de binarización (FixedThreshold). Lee barras que la pasada
+        normal no logra (ej. las más angostas), pero tarda ~3 s por foto, por eso
+        solo se usa cuando quedaron NS/MAC sin verificar.
 
         Returns:
             dict con:
@@ -987,7 +1082,7 @@ class Accesos(Accesos):
         }
         try:
             import zxingcpp
-            from PIL import Image, ImageOps
+            from PIL import Image, ImageFilter, ImageOps
         except ImportError as e:
             print('>>> _leer_barcodes: lectura de códigos de barras deshabilitada', e)
             lectura['disponible'] = False
@@ -999,15 +1094,31 @@ class Accesos(Accesos):
             giros = Counter()
             try:
                 img = ImageOps.grayscale(img)
-                for escala in (1, 2, 3):
-                    im = img if escala == 1 else img.resize(
-                        (img.width * escala, img.height * escala), Image.LANCZOS)
-                    for r in zxingcpp.read_barcodes(im, formats=zxingcpp.BarcodeFormat.Code128):
-                        if r.text:
-                            lectura['valores'].add(r.text.strip().upper())
-                            # La orientación viene en grados; se redondea al cuarto de
-                            # vuelta más cercano para tolerar fotos un poco chuecas.
-                            giros[round(r.orientation / 90) * 90 % 360] += 1
+                if intensivo:
+                    bases = (img, img.filter(ImageFilter.SHARPEN))
+                    escalas = (1, 1.5, 2, 2.5, 3, 4)
+                    binarizadores = (zxingcpp.Binarizer.LocalAverage,
+                                     zxingcpp.Binarizer.FixedThreshold)
+                else:
+                    bases, escalas = (img,), (1, 2, 3)
+                    binarizadores = (zxingcpp.Binarizer.LocalAverage,)
+                for base in bases:
+                    for escala in escalas:
+                        im = base if escala == 1 else base.resize(
+                            (int(base.width * escala), int(base.height * escala)), Image.LANCZOS)
+                        for binarizador in binarizadores:
+                            for r in zxingcpp.read_barcodes(
+                                    im, formats=zxingcpp.BarcodeFormat.Code128,
+                                    binarizer=binarizador):
+                                texto = (r.text or '').strip()
+                                # Las etiquetas solo traen mayúsculas y dígitos; algo
+                                # distinto (ej. '21z&080ADELLS...') es una lectura falsa.
+                                if not re.fullmatch(r'[0-9A-Z]+', texto):
+                                    continue
+                                lectura['valores'].add(texto)
+                                # La orientación viene en grados; se redondea al cuarto de
+                                # vuelta más cercano para tolerar fotos un poco chuecas.
+                                giros[round(r.orientation / 90) * 90 % 360] += 1
             except Exception as e:
                 print('>>> _leer_barcodes error', e)
             if giros:
@@ -1019,15 +1130,22 @@ class Accesos(Accesos):
     def _packing_list_corregir_con_barcodes(self, datos: dict, barcodes: set) -> tuple:
         """
         Corrige el SN y la MAC de cada unidad usando los códigos de barras.
-        Solo se reemplaza un valor si existe exactamente un código de barras que
-        coincide con él salvo por confusiones B/8, D/0, O/0.
+        1. Se reemplaza un valor si existe exactamente un código de barras que
+           coincide con él salvo por confusiones B/8, D/0, O/0.
+        2. Lo que siga sin coincidir se compara contra los códigos de barras que
+           no le corresponden a ninguna otra unidad: si exactamente uno difiere en
+           un solo carácter (ej. 'B' leída en lugar de 'C', o un carácter de más o
+           de menos), se usa ese.
+        3. Por eliminación: si de un campo (sn o mac) queda un solo valor sin
+           verificar y sobra un solo código de barras del mismo tipo (misma
+           longitud y mismo prefijo, ej. '60A2C6'), ese código es el de la unidad.
 
         Returns:
             tupla (correcciones, sin_verificar): las correcciones hechas (para dejar
             rastro en la respuesta) y las advertencias de los valores que no
             coinciden con ningún código de barras leído.
         """
-        avisos, sin_verificar = [], []
+        avisos, pendientes = [], []
         for serial in datos.get('serials') or []:
             for campo in ('sn', 'mac'):
                 valor = re.sub(r'[\s:\-]', '', serial.get(campo) or '').upper()
@@ -1042,9 +1160,55 @@ class Accesos(Accesos):
                     serial[campo] = candidatos[0]
                     avisos.append(f"{campo} corregido por código de barras: {valor} -> {candidatos[0]}")
                 else:
-                    sin_verificar.append(
-                        f"{campo} {valor} no coincide con ningún código de barras, revisarlo manualmente")
+                    pendientes.append((serial, campo, valor))
+
+        # Códigos de barras que no son el valor de ninguna unidad: solo con esos se
+        # intenta la corrección por un carácter, para no asignarle a una unidad el
+        # SN/MAC de otra que difiera en un carácter.
+        usados = {
+            re.sub(r'[\s:\-]', '', serial.get(campo) or '').upper()
+            for serial in datos.get('serials') or [] for campo in ('sn', 'mac')
+        }
+        libres = barcodes - usados
+        propuestas = []
+        for serial, campo, valor in pendientes:
+            candidatos = [b for b in libres if self._difiere_un_caracter(b, valor)]
+            propuestas.append(candidatos[0] if len(candidatos) == 1 else None)
+
+        restantes = []
+        for (serial, campo, valor), propuesta in zip(pendientes, propuestas):
+            # Si dos valores apuntan al mismo código de barras no se corrige ninguno.
+            if propuesta and propuestas.count(propuesta) == 1:
+                serial[campo] = propuesta
+                libres.discard(propuesta)
+                avisos.append(f"{campo} corregido por código de barras: {valor} -> {propuesta}")
+            else:
+                restantes.append((serial, campo, valor))
+
+        sin_verificar = []
+        for serial, campo, valor in restantes:
+            mismo_campo = [r for r in restantes if r[1] == campo]
+            del_tipo = [b for b in libres if len(b) == len(valor) and b[:6] == valor[:6]]
+            if len(mismo_campo) == 1 and len(del_tipo) == 1:
+                serial[campo] = del_tipo[0]
+                avisos.append(f"{campo} corregido por código de barras (por eliminación): "
+                              f"{valor} -> {del_tipo[0]}")
+            else:
+                sin_verificar.append(
+                    f"{campo} {valor} no se pudo verificar con código de barras (no se leyó su "
+                    "código o el valor está mal leído), revisarlo manualmente")
         return avisos, sin_verificar
+
+    @staticmethod
+    def _difiere_un_caracter(a: str, b: str) -> bool:
+        """True si a y b difieren en exactamente un carácter: uno cambiado,
+        uno de más o uno de menos."""
+        if len(a) == len(b):
+            return sum(x != y for x, y in zip(a, b)) == 1
+        if abs(len(a) - len(b)) != 1:
+            return False
+        corto, largo = sorted((a, b), key=len)
+        return any(largo[:i] + largo[i + 1:] == corto for i in range(len(largo)))
 
 
 if __name__ == "__main__":
