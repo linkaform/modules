@@ -145,6 +145,20 @@ class Accesos(Accesos):
         }
 
     @get_mongo_distinct_list
+    def get_cons_creado_por(self):
+        return {
+            "form_id": self.CONCESSIONED_ARTICULOS,
+            "field": "user_name"
+        }
+
+    @get_mongo_distinct_list
+    def get_notas_creado_por(self):
+        return {
+            "form_id": self.ACCESOS_NOTAS,
+            "field": "created_by_name"
+        }
+
+    @get_mongo_distinct_list
     def get_perdidos_estatus(self):
         return {
             "form_id": self.BITACORA_OBJETOS_PERDIDOS,
@@ -554,6 +568,7 @@ class Accesos(Accesos):
         reportado_por = self.get_employees_names()
         areas = self.get_areas()
         categoria = self.get_cons_categoria()
+        creado_por = self.get_cons_creado_por()
 
         return [
             {
@@ -575,7 +590,7 @@ class Accesos(Accesos):
                 "key": "created_by",
                 "label": "Creado por ",
                 "type": "multiselect",
-                "options": [{"label": i, "value": i} for i in reportado_por]
+                "options": [{"label": i, "value": i} for i in creado_por]
             },
             {
                 "defaultDisplayOpen": False,
@@ -647,7 +662,8 @@ class Accesos(Accesos):
         ]
         
     def get_filters_notas(self):
-        reportado_por = self.get_employees_names()
+        # "Creado por" compara contra quien creó la nota, no contra el catálogo de empleados.
+        reportado_por = self.get_notas_creado_por()
         estatus = self.get_notas_estatus()
         return [
             {
