@@ -636,6 +636,8 @@ class Accesos(Accesos):
                     continue
                 serial['imagen'] = [nombre_imagen]
                 serial['duplicado'] = False
+                serial.setdefault('warning', False)
+                serial.setdefault('message_warning', '')
                 if sn:
                     vistos[sn] = serial
                 serials.append(serial)
@@ -1177,6 +1179,10 @@ class Accesos(Accesos):
         """
         avisos, pendientes = [], []
         for serial in datos.get('serials') or []:
+            # Se recalcula en cada llamada: la lectura intensiva puede verificar
+            # un SN que la pasada normal había dejado sin verificar.
+            serial.pop('warning', None)
+            serial.pop('message_warning', None)
             for campo in ('sn', 'mac'):
                 valor = re.sub(r'[\s:\-]', '', serial.get(campo) or '').upper()
                 if not valor or valor in barcodes:
@@ -1224,9 +1230,13 @@ class Accesos(Accesos):
                 avisos.append(f"{campo} corregido por código de barras (por eliminación): "
                               f"{valor} -> {del_tipo[0]}")
             else:
-                sin_verificar.append(
-                    f"{campo} {valor} no se pudo verificar con código de barras (no se leyó su "
-                    "código o el valor está mal leído), revisarlo manualmente")
+                mensaje = (f"{campo} {valor} no se pudo verificar con código de barras (no se "
+                           "leyó su código o el valor está mal leído), revisarlo manualmente")
+                sin_verificar.append(mensaje)
+                # Solo el SN se marca en la unidad.
+                if campo == 'sn':
+                    serial['warning'] = True
+                    serial['message_warning'] = 'SN' + mensaje[len(campo):]
         return avisos, sin_verificar
 
     @staticmethod
