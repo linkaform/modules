@@ -49,6 +49,10 @@ if __name__ == "__main__":
     nombre_suplente=data.get("nombre_suplente","")
     guard_id=data.get("guard_id","")
     dynamic_filters=data.get("dynamic_filters",{})
+    # Buscador avanzado (ver Accesos.bitacora_search_fields).
+    facets = data.get("facets", [])
+    candidates = data.get("candidates", [])
+    roles=data.get("roles",[])
     #-FUNCTIONS
     print('option', option)
     if option == 'load_shift':
@@ -59,17 +63,24 @@ if __name__ == "__main__":
     elif option == 'assing_gafete':
         response = acceso_obj.assing_gafete(data_gafete, id_bitacora, tipo_movimiento)
     elif option == 'list_bitacora2':
-        response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, dynamic_filters=dynamic_filters, limit=limit, offset=offset)
+        response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, dynamic_filters=dynamic_filters, limit=limit, offset=offset, facets=facets)
+    elif option == 'get_search_fields':
+        response = acceso_obj.get_search_fields_bitacora()
+    elif option == 'get_search_counts':
+        locs = data.get("locations") or location
+        response = acceso_obj.get_search_counts_bitacora(locs, area, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, facets=facets, candidates=candidates)
     elif option == 'get_user_booths':
         response = acceso_obj.get_user_booths_availability(turn_areas=turn_areas)
     elif option == 'get_boot_guards' or option == 'guardias_de_apoyo':
         response = acceso_obj.get_booths_guards(location, area, solo_disponibles=True, **{'position':acceso_obj.support_guard})
+    elif option == 'catalogo_roles':
+        response = acceso_obj.catalogo_roles()
     elif option == 'catalog_estado':
         response = acceso_obj.catalogo_estados()
     elif option == 'catalog_location':
         response = acceso_obj.get_catalog_locations(location)
     elif option == 'checkin':
-        response = acceso_obj.do_checkin(location, area, employee_list, fotografia=fotografia ,nombre_suplente=nombre_suplente, checkin_id=checkin_id)
+        response = acceso_obj.do_checkin(location, area, employee_list, fotografia=fotografia ,nombre_suplente=nombre_suplente, checkin_id=checkin_id, roles=roles)
     elif option == 'checkout':
         # used
         response = acceso_obj.do_checkout(checkin_id=checkin_id, \
@@ -81,7 +92,7 @@ if __name__ == "__main__":
         response = acceso_obj.search_access_pass(qr_code=qr_code, location=location)
     elif option == 'lista_pases':
         # used
-        response = acceso_obj.get_lista_pase(location=location, inActive=inActive)
+        response = acceso_obj.get_lista_pase(location=location, inActive=inActive, area=area or data.get('caseta'))
     elif option == 'do_out':
         # used
         response = acceso_obj.do_out(qr_code, location, area, gafete_id, record_id)

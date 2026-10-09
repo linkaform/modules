@@ -19,15 +19,18 @@ class Employee(Employee):
     def in_catalog(self, data):
         # print(simplejson.dumps(data, indent=4))
         nombre_completo = data.get(self.EMPLOYEE_OBJ_ID, {}).get(self.f['nombre_empleado'])
+        user_id = data.get(self.EMPLOYEE_OBJ_ID, {}).get(self.f['new_user_id'])
         grupo_repetitivo = data.get(self.f['areas_grupo'], [])
-        
         if not nombre_completo:
             print("El nombre completo no se encontró en los datos.")
             return
         
         selector = {}
         
-        selector.update({f"answers.{self.f['nombre_empleado']}": nombre_completo})
+        if user_id:
+            selector.update({f"answers.{self.f['new_user_id']}": self.unlist(user_id)})
+        else:
+            selector.update({f"answers.{self.f['nombre_empleado']}": nombre_completo})
 
         if not selector:
             selector = {"_id": {"$gt": None}}
@@ -39,7 +42,6 @@ class Employee(Employee):
             "fields": fields,
             "limit": 100
         }
-
         try:
             row_catalog = self.lkf_api.search_catalog(self.CONF_AREA_EMPLEADOS_CAT_ID, mango_query)
             # print(f"Resultado de la búsqueda: {row_catalog}")
@@ -70,7 +72,7 @@ class Employee(Employee):
                     else:
                         item[self.Accesos.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID].update({'existente': False})
 
-                # print(grupo_repetitivo)
+                print(grupo_repetitivo)
                 self.format_group_to_catalog(data, grupo_repetitivo)
             else:
                 print('=====No hay ninguno de estos registros en el catalogo Conf Areas y Empleados======')

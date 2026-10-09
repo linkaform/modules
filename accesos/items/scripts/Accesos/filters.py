@@ -91,6 +91,13 @@ class Accesos(Accesos):
         }
 
     @get_mongo_distinct_list
+    def get_incidencias_prioridad(self):
+        return {
+            "form_id": self.BITACORA_INCIDENCIAS,
+            "field": f"answers.{self.incidence_fields['prioridad_incidencia']}"
+        }
+
+    @get_mongo_distinct_list
     def get_incidencias_tipo(self):
         return {
             "form_id": self.BITACORA_INCIDENCIAS,
@@ -138,6 +145,20 @@ class Accesos(Accesos):
         }
 
     @get_mongo_distinct_list
+    def get_cons_creado_por(self):
+        return {
+            "form_id": self.CONCESSIONED_ARTICULOS,
+            "field": "user_name"
+        }
+
+    @get_mongo_distinct_list
+    def get_notas_creado_por(self):
+        return {
+            "form_id": self.ACCESOS_NOTAS,
+            "field": "created_by_name"
+        }
+
+    @get_mongo_distinct_list
     def get_perdidos_estatus(self):
         return {
             "form_id": self.BITACORA_OBJETOS_PERDIDOS,
@@ -172,6 +193,30 @@ class Accesos(Accesos):
         return {
             "form_id": self.ACCESOS_NOTAS,
             "field": f"answers.{self.notes_fields['note_status']}"
+        }
+    @get_mongo_distinct_list
+    def get_transportistas_estatus(self):
+        return {
+            "form_id": self.BITACORA_TRANSPORTISTAS,
+            "field": f"answers.{self.bitacora_transportista_fields['estatus']}"
+        }
+    @get_mongo_distinct_list
+    def get_transportistas_tipo_vehiculo(self):
+        return {
+            "form_id": self.BITACORA_TRANSPORTISTAS,
+            "field": f"answers.{self.bitacora_transportista_fields['tipo_de_vehiculo']}"
+        }
+    @get_mongo_distinct_list
+    def get_transportistas_empresa(self):
+        return {
+            "form_id": self.BITACORA_TRANSPORTISTAS,
+            "field": f"answers.{self.bitacora_transportista_fields['proveedor_cliente']}"
+        }
+    @get_mongo_distinct_list
+    def get_transportistas_anden(self):
+        return {
+            "form_id": self.BITACORA_TRANSPORTISTAS,
+            "field": f"answers.{self.bitacora_transportista_fields['anden_asignado']}"
         }
     @get_mongo_distinct_list
     def get_proveedores(self):
@@ -369,7 +414,14 @@ class Accesos(Accesos):
         tipos     = self.get_incidencias_tipo()
         reportado_por = self.get_employees_names()
         areas = self.get_areas()
-        
+        # Orden de menor a mayor gravedad; valores fuera de la escala actual (registros viejos) van al final.
+        orden_gravedad = ['leve', 'moderada', 'critica']
+        gravedades = sorted(
+            {i.lower() for i in self.get_incidencias_prioridad() if i},
+            key=lambda g: (orden_gravedad.index(g) if g in orden_gravedad else len(orden_gravedad), g)
+        )
+        labels_gravedad = {'critica': 'Crítica'}
+
         return [
             {
                 "defaultDisplayOpen": True,
@@ -377,6 +429,13 @@ class Accesos(Accesos):
                 "label": "Estatus",
                 "type": "multiple",
                 "options": [{"label": i.capitalize(), "value": i} for i in estatuses]
+            },
+            {
+                "defaultDisplayOpen": True,
+                "key": "prioridad_incidencia",
+                "label": "Gravedad",
+                "type": "multiple",
+                "options": [{"label": labels_gravedad.get(i, i.capitalize()), "value": i} for i in gravedades]
             },
             {
                 "defaultDisplayOpen": False,
@@ -509,6 +568,7 @@ class Accesos(Accesos):
         reportado_por = self.get_employees_names()
         areas = self.get_areas()
         categoria = self.get_cons_categoria()
+        creado_por = self.get_cons_creado_por()
 
         return [
             {
@@ -524,6 +584,13 @@ class Accesos(Accesos):
                 "label": "Solicitante ",
                 "type": "multiselect",
                 "options": [{"label": i, "value": i} for i in reportado_por]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "created_by",
+                "label": "Creado por ",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in creado_por]
             },
             {
                 "defaultDisplayOpen": False,
@@ -595,7 +662,8 @@ class Accesos(Accesos):
         ]
         
     def get_filters_notas(self):
-        reportado_por = self.get_employees_names()
+        # "Creado por" compara contra quien creó la nota, no contra el catálogo de empleados.
+        reportado_por = self.get_notas_creado_por()
         estatus = self.get_notas_estatus()
         return [
             {
@@ -615,6 +683,41 @@ class Accesos(Accesos):
    
         ]
 
+    def get_filters_transportistas(self):
+        estatus = self.get_transportistas_estatus()
+        tipo_vehiculo = self.get_transportistas_tipo_vehiculo()
+        empresa = self.get_transportistas_empresa()
+        anden = self.get_transportistas_anden()
+        return [
+            {
+                "defaultDisplayOpen": True,
+                "key": "estatus",
+                "label": "Estatus",
+                "type": "multiple",
+                "options": [{"label": i.capitalize().replace('_', ' '), "value": i} for i in estatus]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "tipo_de_vehiculo",
+                "label": "Tipo de vehículo",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in tipo_vehiculo]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "proveedor_cliente",
+                "label": "Empresa / Transportista",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in empresa]
+            },
+            {
+                "defaultDisplayOpen": False,
+                "key": "anden_asignado",
+                "label": "Andén asignado",
+                "type": "multiselect",
+                "options": [{"label": i, "value": i} for i in anden]
+            },
+        ]
 
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
@@ -630,6 +733,7 @@ if __name__ == "__main__":
         "incidencias": lambda: script_obj.get_filters_incidencias(),
         "fallas":      lambda: script_obj.get_filters_fallas(),
         "in_and_out":  lambda: script_obj.get_filters_in_and_out(),
+        "transportistas": lambda: script_obj.get_filters_transportistas(),
         "pases":       lambda: script_obj.get_filters_pases(),
         "paqueteria": lambda:script_obj.get_filters_paqueteria(),
         "concesionados": lambda:script_obj.get_filters_concesionados(),
