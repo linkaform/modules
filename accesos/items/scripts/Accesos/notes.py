@@ -28,7 +28,11 @@ if __name__ == "__main__":
     if option == 'new_notes':
         response = acceso_obj.create_note(location, area, data_notes)
     elif option == 'get_notes':
-        response = acceso_obj.get_list_notes(location, area, status=status, limit=limit, offset=offset, dateFrom=dateFrom, dateTo=dateTo)
+        response = acceso_obj.get_list_notes(location, area, status=status, limit=limit, offset=offset, dateFrom=dateFrom, dateTo=dateTo, filterDate=data.get("filterDate", ""), locations=data.get("locations", []), facets=data.get("facets", []))
+    elif option == 'get_search_fields':
+        response = acceso_obj.get_search_fields_notas()
+    elif option == 'get_search_counts':
+        response = acceso_obj.get_search_counts_notas(location, area, status=data.get("status", ""), dateFrom=dateFrom, dateTo=dateTo, filterDate=data.get("filterDate", ""), locations=data.get("locations", []), facets=data.get("facets", []), candidates=data.get("candidates", []))
     elif option == 'update_note':
         response = acceso_obj.update_notes(data_update, folio)
     elif option == 'delete_note':
