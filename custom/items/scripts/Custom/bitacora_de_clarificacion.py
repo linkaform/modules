@@ -286,7 +286,7 @@ class Custom(Custom):
         """
         Consulta el catalogo Configuracion de variables de produccion
         """
-        record_config = self.lkf_api.search_catalog(self.CATALOG_CONFIGS)
+        record_config = self.lkf_api.search_catalog(self.CATALOG_CONFIGS, jwt_settings_key='APIKEY_JWT_KEY')
         if not record_config:
             return {}
 
@@ -297,7 +297,7 @@ class Custom(Custom):
         Se consulta la estructura de la forma y se obtienen los campos que seran necesarios para 
         el grupo de variables
         """
-        form_fields = lkf_obj.lkf_api.get_form_id_fields(lkf_obj.form_id)
+        form_fields = lkf_obj.lkf_api.get_form_id_fields(lkf_obj.form_id, jwt_settings_key='APIKEY_JWT_KEY')
         fields = form_fields[0]['fields']
 
         # Se procesan los campos y se obtienen los que empiecen por aaaaa
