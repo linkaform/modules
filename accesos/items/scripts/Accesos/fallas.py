@@ -42,12 +42,22 @@ if __name__ == "__main__":
     dateFrom = data.get("dateFrom", "")
     dateTo = data.get("dateTo", "")
     filterDate = data.get("filterDate", "")
+    # Buscador avanzado: con limit el listado viene paginado.
+    limit = data.get("limit")
+    skip = data.get("skip", 0)
+    facets = data.get("facets", [])
+    candidates = data.get("candidates", [])
+    locs = data.get("locations") or location
     if option == 'new_failure':
         response = acceso_obj.create_failure(data_failure)
     elif option == 'get_failure_by_folio':
         response = acceso_obj.get_list_fallas(location, area, folio=folio)
     elif option == 'get_failures':
-        response = acceso_obj.get_list_fallas(location, area, status=status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate)
+        response = acceso_obj.get_list_fallas(locs, area, status=status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, limit=limit, skip=skip, facets=facets)
+    elif option == 'get_search_fields':
+        response = acceso_obj.get_search_fields_fallas()
+    elif option == 'get_search_counts':
+        response = acceso_obj.get_search_counts_fallas(locs, area, status=status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, facets=facets, candidates=candidates)
     elif option == 'get_fallas':
         response = acceso_obj.get_list_fallas(location, area, status=status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate)
     elif option == 'update_failure':

@@ -49,6 +49,9 @@ if __name__ == "__main__":
     nombre_suplente=data.get("nombre_suplente","")
     guard_id=data.get("guard_id","")
     dynamic_filters=data.get("dynamic_filters",{})
+    # Buscador avanzado (ver Accesos.bitacora_search_fields).
+    facets = data.get("facets", [])
+    candidates = data.get("candidates", [])
     roles=data.get("roles",[])
     #-FUNCTIONS
     print('option', option)
@@ -60,7 +63,12 @@ if __name__ == "__main__":
     elif option == 'assing_gafete':
         response = acceso_obj.assing_gafete(data_gafete, id_bitacora, tipo_movimiento)
     elif option == 'list_bitacora2':
-        response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, dynamic_filters=dynamic_filters, limit=limit, offset=offset)
+        response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, dynamic_filters=dynamic_filters, limit=limit, offset=offset, facets=facets)
+    elif option == 'get_search_fields':
+        response = acceso_obj.get_search_fields_bitacora()
+    elif option == 'get_search_counts':
+        locs = data.get("locations") or location
+        response = acceso_obj.get_search_counts_bitacora(locs, area, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, facets=facets, candidates=candidates)
     elif option == 'get_user_booths':
         response = acceso_obj.get_user_booths_availability(turn_areas=turn_areas)
     elif option == 'get_boot_guards' or option == 'guardias_de_apoyo':
