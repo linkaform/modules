@@ -77,12 +77,22 @@ if __name__ == "__main__":
     template_id = data.get('template_id')
     name_pdf = data.get('name_pdf')
     estatus = data.get('estatus')
+    # Buscador avanzado: con limit el listado viene paginado.
+    limit = data.get("limit")
+    skip = data.get("skip", 0)
+    facets = data.get("facets", [])
+    candidates = data.get("candidates", [])
+    locs = data.get("locations") or location
 
     print('option', option)
     if option == 'nueva_incidencia':
         response = acceso_obj.create_incidence(data_incidence)
     elif option == 'get_incidences':
-        response = acceso_obj.get_list_incidences(location, area, prioridades= prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, status=estatus)
+        response = acceso_obj.get_list_incidences(locs, area, prioridades= prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, status=estatus, limit=limit, skip=skip, facets=facets)
+    elif option == 'get_search_fields':
+        response = acceso_obj.get_search_fields_incidencias()
+    elif option == 'get_search_counts':
+        response = acceso_obj.get_search_counts_incidencias(locs, area, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, status=estatus or data.get("status"), facets=facets, candidates=candidates)
     elif option == 'update_incidence':
         response = acceso_obj.update_incidence(data_incidence_update, folio)
     elif option == 'update_incidence_seguimiento':
