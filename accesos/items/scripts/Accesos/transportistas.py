@@ -142,10 +142,27 @@ class Accesos(Accesos):
         ]
         return self.format_cr(self.cr.aggregate(query), get_one=True)
     
-    def get_bitac_transportista_records(self, date_from=None, date_to=None,
-                                         tipo_de_vehiculo=None, proveedor_cliente=None, anden_asignado=None,
-                                         estatus=None, tipo_de_operacion=None, conductor=None, material=None,
-                                         search=None, skip=0, limit=None):
+    def transportistas_search_fields(self):
+        f = self.bitacora_transportista_fields
+        estatus = f'answers.{f["estatus"]}'
+        # Llaves = las del panel de filtros (filters.py, option transportistas).
+        return {
+            'folio': {'label': 'Folio', 'paths': ['folio']},
+            'placas': {'label': 'Placas', 'paths': [f'answers.{f["placas_de_vehiculo"]}']},
+            'conductor': {'label': 'Conductor', 'paths': [f'answers.{f["conductor"]}']},
+            'proveedor_cliente': {'label': 'Proveedor / cliente', 'paths': [f'answers.{f["proveedor_cliente"]}']},
+            'estatus': {
+                'label': 'Estatus',
+                'paths': [estatus],
+                'options': lambda: self.facet_distinct_options(self.BITACORA_TRANSPORTISTAS, estatus),
+            },
+            'tipo_de_operacion': {'label': 'Operación', 'paths': [f'answers.{f["tipo_de_operacion"]}']},
+            'tipo_de_vehiculo': {'label': 'Tipo de vehículo', 'paths': [f'answers.{f["tipo_de_vehiculo"]}']},
+            'anden_asignado': {'label': 'Andén', 'paths': [f'answers.{f["anden_asignado"]}']},
+            'material': {'label': 'Material', 'paths': [f'answers.{f["grupo_materiales"]}.{f["producto_material"]}']},
+        }
+
+    def transportistas_base_match(self, date_from=None, date_to=None):
         f = self.bitacora_transportista_fields
         match_filters = {
             'form_id': self.BITACORA_TRANSPORTISTAS,
@@ -214,10 +231,6 @@ class Accesos(Accesos):
                 {f'answers.{f["proveedor_cliente"]}': search_regex},
             ]
 
-        count_query = [{'$match': match_filters}, {'$count': 'total'}]
-        count_result = self.format_cr(self.cr.aggregate(count_query))
-        total_count = count_result[0]['total'] if count_result else 0
-
         query = [
             {'$match': match_filters},
             {'$project': {
@@ -271,6 +284,17 @@ class Accesos(Accesos):
             }},
             {'$sort': {'_id': -1}},
         ]
+
+        # Gate temporal: la app móvil aún no entiende el shape paginado
+        # ({records, total_records, ...}) y espera la lista plana de siempre.
+        # Solo se activa el nuevo comportamiento si el caller manda pagination=True.
+        if not pagination:
+            return self.format_cr(self.cr.aggregate(query))
+
+        count_query = [{'$match': match_filters}, {'$count': 'total'}]
+        count_result = self.format_cr(self.cr.aggregate(count_query))
+        total_count = count_result[0]['total'] if count_result else 0
+
         if limit:
             query.append({'$skip': skip or 0})
             query.append({'$limit': limit})
@@ -1678,6 +1702,7 @@ if __name__ == "__main__":
     search = data.get("search", None)
     skip = data.get("skip", 0)
     limit = data.get("limit", None)
+    pagination = data.get("pagination", False)
     form_ids = data.get("form_ids", [])
     email_to = data.get("email_to")
     ubicacion = data.get("ubicacion")
@@ -1692,7 +1717,11 @@ if __name__ == "__main__":
             date_from=date_from, date_to=date_to,
             tipo_de_vehiculo=tipo_de_vehiculo, proveedor_cliente=proveedor_cliente, anden_asignado=anden_asignado,
             estatus=estatus, tipo_de_operacion=tipo_de_operacion, conductor=conductor, material=material,
-            search=search, skip=skip, limit=limit,
+            search=search, skip=skip, limit=limit, pagination=pagination, facets=data.get("facets", []),
+        ),
+        "get_search_fields": lambda: script_obj.get_search_fields_transportistas(),
+        "get_search_counts": lambda: script_obj.get_search_counts_transportistas(
+            date_from=date_from, date_to=date_to, facets=data.get("facets", []), candidates=data.get("candidates", []),
         ),
         "get_horarios_data": lambda: script_obj.get_horarios_data(dia=data.get('dia')),
         "get_pass_transportista": lambda: script_obj.get_pass_transportista(record_id, token, folio),
