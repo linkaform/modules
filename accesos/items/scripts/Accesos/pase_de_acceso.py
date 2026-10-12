@@ -68,7 +68,12 @@ if __name__ == "__main__":
     elif option == 'get_pass':
         response = acceso_obj.get_pass_custom(qr_code)
     elif option == 'get_my_pases':
-        response = acceso_obj.get_my_pases(tab_status=tab_status, limit=limit, skip=skip, search_name=search_name, location=location, dynamic_filters=dynamic_filters, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, locations=locations)
+        response = acceso_obj.get_my_pases(tab_status=tab_status, limit=limit, skip=skip, search_name=search_name, location=location, dynamic_filters=dynamic_filters, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, locations=locations, facets=facets)
+    elif option == 'get_search_fields':
+        response = acceso_obj.get_search_fields_pases()
+    elif option == 'get_search_counts':
+        # En Pases el "status" base es la pestaña (tab_status).
+        response = acceso_obj.get_search_counts_pases(tab_status=data.get("status") or tab_status, location=location, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, locations=locations, facets=facets, candidates=candidates)
     elif option == 'get_pdf':
         response = acceso_obj.get_pdf(qr_code)
     elif option == 'get_pdf_multi':
