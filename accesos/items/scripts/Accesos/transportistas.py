@@ -71,6 +71,7 @@ class Accesos(Accesos):
                 'year_vehiculo':         f'$answers.{f["year_vehiculo"]}',
                 'color_vehiculo':        f'$answers.{f["color_vehiculo"]}',
                 'conductor':             f'$answers.{f["conductor"]}',
+                'telefono_conductor':    f'$answers.{f["telefono_conductor"]}',
                 'ayudante':              f'$answers.{f["ayudante"]}',
                 'num_licencia':          f'$answers.{f["num_licencia"]}',
                 'firma_conductor':       f'$answers.{f["firma_conductor"]}',
