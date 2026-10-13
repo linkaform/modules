@@ -1,8 +1,8 @@
 # coding: utf-8
+from math import ceil
 from datetime import date
 import re
 import sys, simplejson, pytz
-from tkinter import N
 from bson import ObjectId
 from linkaform_api import settings
 from account_settings import *
@@ -568,6 +568,110 @@ class Accesos(Accesos):
         })
         return data
 
+    def incidencias_rondines_search_fields(self):
+        inc = 'inc'
+        cat = f"{inc}.{self.LISTA_INCIDENCIAS_CAT_OBJ_ID}"
+        # Rutas sobre cada incidencia ya separada ($unwind) como "inc".
+        # Llaves = las del panel de filtros (filters.py, option incidencias_rondines).
+        return {
+            'folio': {'label': 'Folio', 'paths': ['folio']},
+            'tipo_incidencia': {'label': 'Incidente', 'paths': [
+                f"{cat}.{self.f['incidencia']}", f"{inc}.{self.f['incidente_open']}"]},
+            'categoria': {'label': 'Categoría', 'paths': [f"{cat}.{self.f['categoria']}"]},
+            'area': {'label': 'Área', 'paths': [
+                f"{inc}.{self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.f['nombre_area_salida']}"]},
+            'nombre_del_recorrido': {'label': 'Recorrido', 'paths': ['nombre_recorrido']},
+            'comentarios': {'label': 'Comentarios', 'paths': [f"{inc}.{self.f['comentario_incidente_bitacora']}"]},
+        }
+
+    def incidencias_rondines_pipeline(self, locations=[], date_from=None, date_to=None):
+        """Bitácoras con incidencias → una fila por incidencia ("inc"), para
+        contar y paginar incidencias (no bitácoras)."""
+        k = self.f['bitacora_rondin_incidencias']
+        match = {
+            "form_id": self.BITACORA_RONDINES,
+            "deleted_at": {"$exists": False},
+            f"answers.{k}.0": {"$exists": True},
+        }
+        if locations:
+            match[f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}"] = {"$in": locations}
+        if date_from:
+            match.setdefault("created_at", {})["$gte"] = date_from
+        if date_to:
+            match.setdefault("created_at", {})["$lte"] = date_to
+        return [
+            {"$match": match},
+            {"$unwind": {"path": f"$answers.{k}", "includeArrayIndex": "ref_number"}},
+            {"$project": {
+                "_id": 1,
+                "folio": 1,
+                "created_at": 1,
+                "ref_number": 1,
+                "ubicacion": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}",
+                "nombre_recorrido": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}",
+                "inc": f"$answers.{k}",
+            }},
+        ]
+
+    def get_search_fields_incidencias_rondines(self):
+        return self.search_fields_config(self.incidencias_rondines_search_fields())
+
+    def get_search_counts_incidencias_rondines(self, locations=[], date_from=None, date_to=None, facets=[], candidates=[]):
+        if not candidates:
+            return []
+        fields = self.incidencias_rondines_search_fields()
+        branches = {}
+        for i, cand in enumerate(candidates):
+            extra = {'key': cand.get('key'), 'values': [cand.get('value')], 'exact': cand.get('exact')}
+            conditions = self.build_facets_match(fields, list(facets or []) + [extra])
+            branches[f"c{i}"] = [{'$match': {'$and': conditions} if conditions else {}}, {'$count': 'n'}]
+        result = list(self.cr.aggregate(self.incidencias_rondines_pipeline(locations, date_from, date_to) + [{'$facet': branches}]))
+        row = result[0] if result else {}
+        return [(row.get(f"c{i}") or [{}])[0].get('n', 0) for i in range(len(candidates))]
+
+    def get_incidencias_rondines_page(self, locations=[], date_from=None, date_to=None, facets=[], limit=25, skip=0):
+        """Incidencias de rondín paginadas por incidencia, con filtros del buscador."""
+        query = self.incidencias_rondines_pipeline(locations, date_from, date_to)
+        conditions = self.build_facets_match(self.incidencias_rondines_search_fields(), facets)
+        if conditions:
+            query.append({"$match": {"$and": conditions}})
+        count = list(self.cr.aggregate(query + [{"$count": "total"}]))
+        total = count[0]["total"] if count else 0
+        limit = int(limit or 25)
+        rows = self.format_cr(self.cr.aggregate(query + [
+            {"$sort": {"created_at": -1, "ref_number": 1}},
+            {"$skip": int(skip or 0)},
+            {"$limit": limit},
+        ]))
+        records = []
+        for row in rows:
+            # format_cr ya aplana los campos de la incidencia en la misma fila.
+            inc = row
+            records.append({
+                "id": row.get('_id', ''),
+                "folio": row.get('folio', ''),
+                "ref_number": row.get('ref_number', 0),
+                "ubicacion_incidente": row.get('ubicacion', ''),
+                "area_incidente": inc.get('nombre_area_salida', ''),
+                "nombre_del_recorrido": row.get('nombre_recorrido', ''),
+                "fecha_hora_incidente": inc.get('fecha_hora_incidente_bitacora', ''),
+                "categoria": inc.get('categoria', 'General'),
+                "subcategoria": inc.get('sub_categoria', 'General'),
+                "incidente": inc.get('incidencia', inc.get('incidente_open', '')),
+                "accion_tomada": inc.get('incidente_accion', ''),
+                "comentarios": inc.get('comentario_incidente_bitacora', ''),
+                "evidencias": inc.get('incidente_evidencia', []),
+                "documentos": inc.get('incidente_documento', []),
+                "link": inc.get('link', ""),
+            })
+        return {
+            'records': records,
+            'total_records': total,
+            'total_pages': ceil(total / limit) if limit else 1,
+            'actual_page': (int(skip or 0) // limit) + 1,
+            'records_on_page': len(records),
+        }
+
     def format_incidencias_rondines(self, data, area):
         format_data = []
         for item in data:
@@ -1125,7 +1229,38 @@ class Accesos(Accesos):
                 "checks_data": format_checks_data
             }
 
-    def get_bitacora(self, date_from=None, date_to=None, area_details=False, limit: int = 15, offset: int = 0, ubicacion: str = "", nombre_rondin: str = "",locations=[]):
+    def rondines_bitacora_search_fields(self):
+        rec = f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}"
+        estatus = f"answers.{self.f['estatus_recorrido']}"
+        incidencias = f"answers.{self.f['bitacora_rondin_incidencias']}"
+        nice = lambda v: v.replace('_', ' ').title()
+        # Llaves = las del panel de filtros (filters.py, option rondines).
+        return {
+            'folio': {'label': 'Folio', 'paths': ['folio']},
+            'nombre_recorrido': {'label': 'Recorrido', 'paths': [f"{rec}.{self.mf['nombre_del_recorrido']}"]},
+            'ubicacion': {'label': 'Ubicación', 'paths': [f"{rec}.{self.Location.f['location']}"]},
+            'estatus_rondin': {
+                'label': 'Estatus',
+                'paths': [estatus],
+                'options': lambda: [
+                    {**o, 'label': nice(o['value'])}
+                    for o in self.facet_distinct_options(self.BITACORA_RONDINES, estatus)
+                ],
+            },
+            'incidencias': {
+                'label': 'Con incidencias',
+                'paths': [incidencias],
+                'options': [{'value': 'Si', 'label': 'Sí'}, {'value': 'No', 'label': 'No'}],
+                'value_match': {
+                    'si': {f"{incidencias}.0": {'$exists': True}},
+                    'no': {f"{incidencias}.0": {'$exists': False}},
+                },
+            },
+            'asignado_a': {'label': 'Asignado a', 'paths': [f"answers.{self.USUARIOS_OBJ_ID}.{self.mf['nombre_usuario']}"]},
+            'area': {'label': 'Área', 'paths': [f"answers.{self.f['areas']}.{self.cons_f['area_concesion']}"]},
+        }
+
+    def rondines_bitacora_base_match(self, date_from=None, date_to=None, ubicacion="", nombre_rondin="", locations=[]):
         from datetime import datetime
         año = datetime.now().year
 
@@ -1155,8 +1290,27 @@ class Accesos(Accesos):
         if locations:
             match_filters[f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}"] = {"$in": locations}
 
+        return match_filters
+
+    def get_search_fields_rondines(self):
+        return self.search_fields_config(self.rondines_bitacora_search_fields())
+
+    def get_search_counts_rondines(self, date_from=None, date_to=None, locations=[], facets=[], candidates=[]):
+        base_match = self.rondines_bitacora_base_match(date_from, date_to, locations=locations)
+        return self.count_facet_candidates(base_match, self.rondines_bitacora_search_fields(), facets, candidates)
+
+    def get_bitacora(self, date_from=None, date_to=None, area_details=False, limit: int = 15, offset: int = 0, ubicacion: str = "", nombre_rondin: str = "",locations=[], facets=[], paginated=False):
+        match_filters = self.rondines_bitacora_base_match(date_from, date_to, ubicacion, nombre_rondin, locations)
+        facet_conditions = self.build_facets_match(self.rondines_bitacora_search_fields(), facets)
+        if facet_conditions:
+            match_filters["$and"] = facet_conditions
+
         query = [
             {"$match": match_filters},
+            # Se pagina antes de las uniones ($lookup): solo se hacen para la página.
+            {"$sort": {"created_at": -1}},
+            {"$skip": offset},
+            {"$limit": limit},
             {"$project": {
                 "_id": 1,
                 "folio": 1,
@@ -1250,24 +1404,50 @@ class Accesos(Accesos):
             }},
             {"$unset": "area_record_ids"},
             {"$sort": {"created_at": -1}},
-            {"$skip": offset},
-            {"$limit": limit}
         ]
         response = self.format_cr(self.cr.aggregate(query))
         result = [self.format_bitacora_record(record, area_details) for record in response]
         # print("RESPUESTA DEL SERVICIO", simplejson.dumps(result, indent=4))
-        return {"data": result, "total": len(result)}
+        res = {"data": result, "total": len(result)}
+        if paginated:
+            # Total real de la consulta (buscador avanzado); "total" sigue siendo el de la página.
+            count = list(self.cr.aggregate([{"$match": match_filters}, {"$count": "total"}]))
+            res["total_records"] = count[0]["total"] if count else 0
+        return res
 
-    def get_recorridos(self, date_from=None, date_to=None, area_details=False, limit=20, offset=0):
-        """Lista los rondines según los filtros proporcionados.
-        Params:
-            date_from (str): Fecha de inicio del filtro.
-            date_to (str): Fecha de fin del filtro.
-            limit (int): Número máximo de rondines a devolver.
-            offset (int): Número de rondines a omitir desde el inicio.
-        Returns:
-            list: Lista de rondines con sus detalles.
-        """
+    def recorridos_search_fields(self):
+        rk = self.rondin_keys
+        estatus = f"answers.{self.f['status_cron']}"
+        recurrencia = f"answers.{rk['sucede_recurrencia']}"
+        nice = lambda v: v.replace('_', ' ').title()
+        # Llaves = las del panel de filtros (filters.py, option recorridos).
+        return {
+            'folio': {'label': 'Folio', 'paths': ['folio']},
+            'nombre_del_rondin': {'label': 'Recorrido', 'paths': [f"answers.{rk['nombre_rondin']}"]},
+            'ubicacion': {'label': 'Ubicación', 'paths': [f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}"]},
+            'estatus_recorrido': {
+                'label': 'Estatus',
+                'paths': [estatus],
+                'options': lambda: self.facet_distinct_options(self.CONFIGURACION_DE_RECORRIDOS_FORM, estatus),
+            },
+            'tipo_rondin': {
+                'label': 'Tipo',
+                'paths': [f"answers.{rk['tipo_rondin']}"],
+                'missing': 'qr',
+                'options': [{'value': 'qr', 'label': 'QR'}, {'value': 'nfc', 'label': 'NFC'}],
+            },
+            'recurrencia': {
+                'label': 'Recurrencia',
+                'paths': [recurrencia],
+                'options': lambda: [
+                    {**o, 'label': nice(o['value'])}
+                    for o in self.facet_distinct_options(self.CONFIGURACION_DE_RECORRIDOS_FORM, recurrencia)
+                ],
+            },
+            'area': {'label': 'Área', 'paths': [f"answers.{rk['areas']}.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area']}"]},
+        }
+
+    def recorridos_base_match(self, date_from=None, date_to=None):
         match = {
             "form_id": self.CONFIGURACION_DE_RECORRIDOS_FORM,
             "deleted_at": {"$exists": False},
@@ -1283,6 +1463,29 @@ class Accesos(Accesos):
                 "created_at": {"$lte": date_to}
             })
        
+        return match
+
+    def get_search_fields_recorridos(self):
+        return self.search_fields_config(self.recorridos_search_fields())
+
+    def get_search_counts_recorridos(self, date_from=None, date_to=None, facets=[], candidates=[]):
+        base_match = self.recorridos_base_match(date_from, date_to)
+        return self.count_facet_candidates(base_match, self.recorridos_search_fields(), facets, candidates)
+
+    def get_recorridos(self, date_from=None, date_to=None, area_details=False, limit=20, offset=0, facets=[], paginated=False):
+        """Lista los rondines según los filtros proporcionados.
+        Params:
+            date_from (str): Fecha de inicio del filtro.
+            date_to (str): Fecha de fin del filtro.
+            limit (int): Número máximo de rondines a devolver.
+            offset (int): Número de rondines a omitir desde el inicio.
+        Returns:
+            list: Lista de rondines con sus detalles.
+        """
+        match = self.recorridos_base_match(date_from, date_to)
+        facet_conditions = self.build_facets_match(self.recorridos_search_fields(), facets)
+        if facet_conditions:
+            match["$and"] = facet_conditions
         query = [
             {"$match": match},
             {"$project": {
@@ -1370,7 +1573,17 @@ class Accesos(Accesos):
         #         format_response.append(item)
         #         if area_details:
         #             item['areas']  = self.get_area_images(item['areas'], location=item['ubicacion'])
-        print(simplejson.dumps(format_response, indent=4))
+        if paginated:
+            # Con paginated: formato {records, total_records...} (buscador avanzado).
+            count = list(self.cr.aggregate([{"$match": match}, {"$count": "total"}]))
+            total = count[0]['total'] if count else 0
+            return {
+                'records': format_response,
+                'total_records': total,
+                'total_pages': ceil(total / limit) if limit else 1,
+                'actual_page': (offset // limit) + 1 if limit else 1,
+                'records_on_page': len(format_response),
+            }
         return format_response
 
     def get_rondin_by_id(self, record_id: str):
@@ -1478,23 +1691,60 @@ class Accesos(Accesos):
         response = self.unlist(response)
         return response
 
-    def get_areas_details(self, areas_list: list):
+    def get_areas_details(self, areas_list: list, search: str = "", search_fields: list = [], ubicaciones: list = [], dynamic_filters: list = []):
         """
         Obtiene los detalles necesarios de las áreas proporcionadas.
         Args:
             areas_list (list): Lista de áreas.
+            search (str): Texto a buscar (regex, insensible a mayúsculas).
+            search_fields (list): Subconjunto de searchable_fields sobre el
+                que buscar. Si viene vacío, busca en todos.
+            ubicaciones (list): Acota a estas ubicaciones. Necesario cuando
+                se juntan varias ubicaciones en una sola llamada (ver
+                get_catalog_areas_formatted), porque dos ubicaciones pueden
+                tener un área con el mismo nombre y areas_list por sí solo
+                no distingue de cuál ubicación es cada una.
+            dynamic_filters (list): Lista de {"key": ..., "value": [...]}.
+                Mismo formato que get_list_bitacora/get_my_pases. Soporta
+                key="estado" (activa/inactiva, campo area_state).
         Returns:
             list: Lista de áreas con su geolocalización y foto.
         """
+        match_query = {
+            "form_id": self.Location.AREAS_DE_LAS_UBICACIONES,
+            "deleted_at": {"$exists": False},
+            f"answers.{self.Location.f['area']}": {"$in": areas_list},
+        }
+        if ubicaciones:
+            match_query[f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}"] = {"$in": ubicaciones}
+
+        for item in dynamic_filters:
+            if item.get('key') == 'estado':
+                match_query[f"answers.{self.Location.f['area_state']}"] = {"$in": item.get('value')}
+            else:
+                continue
+
+        if search:
+            pattern = re.escape(search.strip())
+            searchable_fields = {
+                "folio": "folio",
+                "area": f"answers.{self.Location.f['area']}",
+                "tipo_de_area": f"answers.{self.Location.TIPO_AREA_OBJ_ID}.{self.f['tipo_de_area']}",
+                "area_state": f"answers.{self.Location.f['area_state']}",
+                "area_status": f"answers.{self.Location.f['area_status']}",
+            }
+            if search_fields:
+                fields_to_search = [searchable_fields[f] for f in search_fields if f in searchable_fields]
+            else:
+                fields_to_search = list(searchable_fields.values())
+            match_query["$or"] = [{field: {"$regex": pattern, "$options": "i"}} for field in fields_to_search]
+
         query = [
-            {"$match": {
-                "form_id": self.Location.AREAS_DE_LAS_UBICACIONES,
-                "deleted_at": {"$exists": False},
-                f"answers.{self.Location.f['area']}": {"$in": areas_list},
-            }},
+            {"$match": match_query},
             {"$project": {
                 "folio": 1,
                 "area": f"$answers.{self.Location.f['area']}",
+                "ubicacion": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}",
                 "geolocation": f"$answers.{self.f['geolocalizacion_area_ubicacion']}",
                 "image": f"$answers.{self.f['foto_area']}",
                 "tag_id": f"$answers.{self.f['area_tag_id']}",
@@ -1559,6 +1809,73 @@ class Accesos(Accesos):
             "area_state": response.get("area_state", ""),
             "area_status": response.get("area_status", ""),
             "ubicacion": response.get("ubicacion", ""),
+        }
+
+    def get_rondines_by_area(self, area_id="", limit=25, skip=0):
+        """Dado el record_id de un área (el mismo que regresa
+        get_catalog_areas_formatted/get_area_by_id), regresa los rondines
+        (configuracion_de_recorridos) que la incluyen.
+
+        El campo "areas" de un rondín es una copia desnormalizada (nombre,
+        tag, foto, geo) del área al momento de armar el rondín, no guarda el
+        record_id del área — por eso se resuelve primero el nombre real y la
+        ubicación del área vía get_area_by_id, y se busca por esos datos.
+        """
+        if not area_id:
+            raise Exception("area_id is required.")
+
+        area = self.get_area_by_id(area_id)
+        nombre_area = area.get('rondin_area', '')
+        ubicacion = area.get('ubicacion', '')
+
+        match_query = {
+            "form_id": self.CONFIGURACION_DE_RECORRIDOS_FORM,
+            "deleted_at": {"$exists": False},
+            f"answers.{self.rondin_keys['areas']}.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['nombre_area']}": nombre_area,
+        }
+        if ubicacion:
+            match_query[f"answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}"] = ubicacion
+
+        count_result = self.format_cr(self.cr.aggregate([
+            {"$match": match_query},
+            {"$count": "total"},
+        ]))
+        total_records = count_result[0]['total'] if count_result else 0
+
+        query = [
+            {"$match": match_query},
+            {"$project": {
+                "_id": 1,
+                "folio": 1,
+                "nombre_recorrido": f"$answers.{self.rondin_keys['nombre_rondin']}",
+                "ubicacion": f"$answers.{self.Location.UBICACIONES_CAT_OBJ_ID}.{self.Location.f['location']}",
+                "estatus_rondin": f"$answers.{self.f['status_cron']}",
+            }},
+            {"$sort": {"_id": -1}},
+            {"$skip": skip},
+            {"$limit": limit},
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
+
+        records = []
+        for r in response:
+            records.append({
+                "record_id": str(r.get("_id", "")),
+                "folio": r.get("folio", ""),
+                "nombre_recorrido": r.get("nombre_recorrido", ""),
+                "ubicacion": r.get("ubicacion", ""),
+                "estatus_rondin": r.get("estatus_rondin", ""),
+            })
+
+        total_pages = (total_records + limit - 1) // limit if limit else 1
+        current_page = (skip // limit) + 1 if limit else 1
+
+        return {
+            'records': records,
+            'total_records': total_records,
+            'total_pages': total_pages,
+            'actual_page': current_page,
+            'records_on_page': len(records),
         }
 
     def _detectar_tipo_tag(self, tag_value) -> str:
@@ -1631,46 +1948,72 @@ class Accesos(Accesos):
         form_id = self.CONFIGURACION_RECORRIDOS_FORM
         return self.catalogo_view(catalog_id, form_id)
 
-    def get_catalog_areas_formatted(self, ubicacion=""):
-        #Obtener areas disponibles para rondin
-        if ubicacion:
+    def get_catalog_areas_formatted(self, locations=[], limit=25, skip=0, search="", search_fields=[], dynamic_filters=[]):
+        #Obtener areas disponibles para rondin. `locations` es una lista de
+        # ubicaciones (una o varias).
+        ubicaciones = [u for u in locations if u]
+        if not ubicaciones:
+            raise Exception("Ubicacion is required.")
+
+        catalog_id = self.AREAS_DE_LAS_UBICACIONES_CAT_ID
+        form_id = self.CONFIGURACION_RECORRIDOS_FORM
+        areas = []
+        for u in ubicaciones:
             options = {
-                'startkey': [ubicacion],
-                'endkey': [f"{ubicacion}\n",{}],
+                'startkey': [u],
+                'endkey': [f"{u}\n",{}],
                 'group_level':2
             }
+            areas += self.catalogo_view(catalog_id, form_id, options)
+        # Varias ubicaciones pueden compartir el mismo nombre de área; se
+        # deduplica para no pedirle dos veces el detalle a get_areas_details.
+        areas = list(dict.fromkeys(areas))
+        response = self.get_areas_details(areas, search=search, search_fields=search_fields, ubicaciones=ubicaciones, dynamic_filters=dynamic_filters)
+        # Marca "Utilizar Area en: Rondines", aplicada por ubicacion: si
+        # ninguna area de esa ubicacion esta marcada, se regresan todas las
+        # de esa ubicacion (sin que lo marcado en una ubicacion afecte a otra).
+        por_ubicacion = {}
+        for r in response:
+            por_ubicacion.setdefault(r.get('ubicacion', ''), []).append(r)
 
-            catalog_id = self.AREAS_DE_LAS_UBICACIONES_CAT_ID
-            form_id = self.CONFIGURACION_RECORRIDOS_FORM
-            areas = self.catalogo_view(catalog_id, form_id, options)
-            response = self.get_areas_details(areas)
-            # Marca "Utilizar Area en: Rondines". Si ninguna area de la
-            # ubicacion esta marcada, se regresan todas.
-            marcadas = [r for r in response if 'rondines' in (r.get('usos') or [])]
-            if marcadas:
-                response = marcadas
-            areas_formateadas = []
-            for r in response:
-                areas_formateadas.append({
-                    "folio": r.get("folio", ""),
-                    "record_id": r.get("_id", ""),
-                    "rondin_area": r.get("area", ""),
-                    "geolocalizacion_area_ubicacion": [
-                        {
-                            "latitude": r.get("latitude", 0.0),
-                            "longitude": r.get("longitude", 0.0)
-                        }
-                    ],
-                    "area_tag_id": [r.get("tag_id", "")],
-                    "foto_area": r.get("image", []),
-                    "tipo_de_area": r.get("tipo_de_area", ""),
-                    "area_state": r.get("area_state", ""),
-                    "area_status": r.get("area_status", ""),
-                })
-            print("RESPONSE",simplejson.dumps(areas_formateadas, indent=3))
-            return areas_formateadas
-        else:
-            raise Exception("Ubicacion is required.")
+        response = []
+        for areas_de_ubicacion in por_ubicacion.values():
+            marcadas = [r for r in areas_de_ubicacion if 'rondines' in (r.get('usos') or [])]
+            response.extend(marcadas if marcadas else areas_de_ubicacion)
+
+        response = sorted(response, key=lambda r: r.get('area', ''))
+        total_records = len(response)
+        total_pages = (total_records + limit - 1) // limit if limit else 1
+        current_page = (skip // limit) + 1 if limit else 1
+        page_items = response[skip:skip + limit] if limit else response[skip:]
+
+        areas_formateadas = []
+        for r in page_items:
+            areas_formateadas.append({
+                "folio": r.get("folio", ""),
+                "record_id": r.get("_id", ""),
+                "rondin_area": r.get("area", ""),
+                "ubicacion": r.get("ubicacion", ""),
+                "geolocalizacion_area_ubicacion": [
+                    {
+                        "latitude": r.get("latitude", 0.0),
+                        "longitude": r.get("longitude", 0.0)
+                    }
+                ],
+                "area_tag_id": [r.get("tag_id", "")],
+                "foto_area": r.get("image", []),
+                "tipo_de_area": r.get("tipo_de_area", ""),
+                "area_state": r.get("area_state", ""),
+                "area_status": r.get("area_status", ""),
+            })
+
+        return {
+            'records': areas_formateadas,
+            'total_records': total_records,
+            'total_pages': total_pages,
+            'actual_page': current_page,
+            'records_on_page': len(areas_formateadas),
+        }
 
     def get_incidencias_rondines(self, location=None, area=None, date_from=None, date_to=None, limit=20, offset=0):
         """Lista las incidencias de los rondines según los filtros proporcionados.
@@ -1723,6 +2066,59 @@ class Accesos(Accesos):
         if response:
             format_response = self.format_incidencias_rondines(response, area)
         return format_response
+
+    def get_incidencias_by_area(self, area_id="", limit=25, skip=0):
+        """Dado el record_id de un área (mismo id que get_rondines_by_area),
+        regresa las incidencias reportadas durante el check de esa área
+        específica dentro de rondines ejecutados (bitacora_rondin_incidencias
+        en BITACORA_RONDINES; ver format_incidencias_rondines).
+
+        No incluye incidencias creadas vía create_incidencia_by_rondin, que
+        se guardan como registros independientes en BITACORA_INCIDENCIAS sin
+        referencia de vuelta al rondín que las originó.
+        """
+        if not area_id:
+            raise Exception("area_id is required.")
+
+        area = self.get_area_by_id(area_id)
+        nombre_area = area.get('rondin_area', '')
+        ubicacion = area.get('ubicacion', '')
+
+        match = {
+            "form_id": self.BITACORA_RONDINES,
+            "deleted_at": {"$exists": False},
+            f"answers.{self.f['bitacora_rondin_incidencias']}.{self.AREAS_DE_LAS_UBICACIONES_SALIDA_OBJ_ID}.{self.mf['nombre_area_salida']}": nombre_area,
+        }
+        if ubicacion:
+            match[f"answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}"] = ubicacion
+
+        query = [
+            {"$match": match},
+            {"$sort": {"created_at": -1}},
+            {"$project": {
+                "_id": 1,
+                "folio": 1,
+                "ubicacion": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}",
+                "nombre_recorrido": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}",
+                "incidencias_rondin": f"$answers.{self.f['bitacora_rondin_incidencias']}",
+                "link": f"$answers.{self.rondin_keys['link']}",
+            }},
+        ]
+        response = self.format_cr(self.cr.aggregate(query))
+        incidencias = self.format_incidencias_rondines(response, nombre_area) if response else []
+
+        total_records = len(incidencias)
+        total_pages = (total_records + limit - 1) // limit if limit else 1
+        current_page = (skip // limit) + 1 if limit else 1
+        page_items = incidencias[skip:skip + limit] if limit else incidencias[skip:]
+
+        return {
+            'records': page_items,
+            'total_records': total_records,
+            'total_pages': total_pages,
+            'actual_page': current_page,
+            'records_on_page': len(page_items),
+        }
 
     def get_rondines_images(self, location=None, areas=None, date_from=None, date_to=None, limit=20, offset=0):
         """Lista las imágenes de los rondines según los filtros proporcionados.
@@ -1946,18 +2342,67 @@ class Accesos(Accesos):
             format_response = self.format_check_by_id(response, record_id)
         return format_response
 
-    def get_all_checks(self, ubicacion: str = "", nombre_rondin: str = ""):
-        from datetime import datetime
-        año = datetime.now().year
+    def check_areas_search_fields(self):
+        cat = f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}"
+        incid = f"answers.{self.f['grupo_incidencias_check']}"
+        # Llaves = las del panel de filtros (filters.py, option check_areas).
+        return {
+            'folio': {'label': 'Folio', 'paths': ['folio']},
+            'area': {'label': 'Área', 'paths': [f"{cat}.{self.f['rondin_area']}"]},
+            'ubicacion': {'label': 'Ubicación', 'paths': [f"{cat}.{self.f['location']}"]},
+            'comentario_check_area': {'label': 'Comentario', 'paths': [f"answers.{self.f['comentario_check_area']}"]},
+            'incidencias': {
+                'label': 'Con incidencias',
+                'paths': [incid],
+                'options': [{'value': 'Si', 'label': 'Sí'}, {'value': 'No', 'label': 'No'}],
+                'value_match': {
+                    'si': {f"{incid}.0": {'$exists': True}},
+                    'no': {f"{incid}.0": {'$exists': False}},
+                },
+            },
+            # Sale del rondín ligado ($lookup), por eso se filtra después de la unión.
+            'asignado_a': {'label': 'Asignado a', 'paths': ['rondin.nombre_emp'], 'post_lookup': True},
+        }
+
+    def check_areas_base_match(self, ubicacion="", locations=[], dateFrom="", dateTo="", filterDate=""):
         match_filters = {
             "deleted_at": {"$exists": False},
             "form_id": self.CHECK_UBICACIONES,
-            "$expr": {
-                "$eq": [{"$year": "$created_at"}, año]
-            }
         }
+        if filterDate:
+            self.facet_date_match(match_filters, f"answers.{self.f['fecha_inspeccion_area']}", dateFrom, dateTo, filterDate)
+        else:
+            # Sin fecha: el año en curso, como siempre.
+            match_filters["$expr"] = {"$eq": [{"$year": "$created_at"}, datetime.now().year]}
+        ubic = f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['location']}"
         if ubicacion:
-            match_filters[f"answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.f['location']}"] = ubicacion
+            match_filters[ubic] = ubicacion
+        if locations:
+            match_filters[ubic] = {"$in": locations}
+        return match_filters
+
+    def get_search_fields_check_areas(self):
+        return self.search_fields_config(self.check_areas_search_fields())
+
+    def get_search_counts_check_areas(self, locations=[], dateFrom="", dateTo="", filterDate="", facets=[], candidates=[]):
+        # Conteo por candidato; "Asignado a" necesita la unión, así que se cuenta aparte.
+        counts = []
+        for cand in candidates:
+            extra = [{'key': cand.get('key'), 'values': [cand.get('value')], 'exact': cand.get('exact')}]
+            res = self.get_all_checks(locations=locations, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate,
+                                      facets=list(facets or []) + extra, limit=1, skip=0)
+            counts.append(res.get('total_records', 0))
+        return counts
+
+    def get_all_checks(self, ubicacion: str = "", nombre_rondin: str = "", locations=[], facets=[], limit=None, skip=0, dateFrom="", dateTo="", filterDate=""):
+        match_filters = self.check_areas_base_match(ubicacion, locations, dateFrom, dateTo, filterDate)
+        fields = self.check_areas_search_fields()
+        pre = {k: v for k, v in fields.items() if not v.get('post_lookup')}
+        post = {k: v for k, v in fields.items() if v.get('post_lookup')}
+        pre_conditions = self.build_facets_match(pre, facets)
+        if pre_conditions:
+            match_filters["$and"] = pre_conditions
+        post_conditions = self.build_facets_match(post, facets)
 
         query = [
             {"$match": match_filters},
@@ -2031,6 +2476,7 @@ class Accesos(Accesos):
                         "ubicacion": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.Location.f['location']}",
                         "nombre_recorrido": f"$answers.{self.CONFIGURACION_RECORRIDOS_OBJ_ID}.{self.mf['nombre_del_recorrido']}",
                         "asignado_a": f"$answers.{self.f['asignado_a']}",
+                        "nombre_emp": f"$answers.{self.f['asignado_a']}.{self.mf['nombre_usuario']}",
                         "tipo_rondin": f"$answers.{self.f['tipo_rondin']}",
                         "fecha_hora_programada_inicio": f"$answers.{self.f['fecha_hora_programada_inicio']}",
                         "fecha_hora_inicio": f"$answers.{self.f['fecha_hora_inicio']}",
@@ -2046,9 +2492,19 @@ class Accesos(Accesos):
             {"$addFields": {
                 "rondin": {"$arrayElemAt": ["$rondin_info", 0]}
             }},
-            {"$sort": {"created_at": -1}},
-            {"$limit": 100}
         ]
+        # "Asignado a" vive en el rondín ligado: se filtra después de la unión.
+        if post_conditions:
+            query.append({"$match": {"$and": post_conditions}})
+        total_records = None
+        if limit is not None:
+            count = list(self.cr.aggregate(query + [{"$count": "total"}])) if post_conditions \
+                else list(self.cr.aggregate([{"$match": match_filters}, {"$count": "total"}]))
+            total_records = count[0]["total"] if count else 0
+            query += [{"$sort": {"created_at": -1}}, {"$skip": int(skip or 0)}, {"$limit": int(limit) or 25}]
+        else:
+            # Formato anterior: los últimos 100 del año.
+            query += [{"$sort": {"created_at": -1}}, {"$limit": 100}]
 
         response = self.format_cr(self.cr.aggregate(query))
         result = []
@@ -2092,8 +2548,10 @@ class Accesos(Accesos):
                 } if rondin else {}
             })
 
-        print(simplejson.dumps(result, indent=4, default=str))
-        return {"data": result, "total": len(result)}
+        res = {"data": result, "total": len(result)}
+        if total_records is not None:
+            res["total_records"] = total_records
+        return res
 
     def get_bitacora_by_id(self, record_id):
         query = [
@@ -2429,6 +2887,7 @@ class Accesos(Accesos):
     
     def update_inspeccion(self, folio, rondin_data: dict = {}):
         answers = {}
+        print('solfio', folio)
         existing_record = self.get_rondin_by_id(folio)
         folio = existing_record.get("folio", "")
         existing_areas = existing_record.get("areas", [])
@@ -2442,6 +2901,10 @@ class Accesos(Accesos):
         updated_areas = []
         for i, area_item in enumerate(existing_areas):
             area_nombre = area_item.get('rondin_area', '')
+            # get_rondin_by_id devuelve las areas aplanadas: la forma actual viene en
+            # form_name/form_id, no dentro del catalogo. Se conserva en las no editadas.
+            forma_actual = area_item.get('form_name', '')
+            form_id_actual = area_item.get('form_id') or ['129870']
             should_update = (
                 not areas_targets or
                 areas_targets == ["todas"] or
@@ -2455,8 +2918,8 @@ class Accesos(Accesos):
                     self.f['geolocalizacion_area_ubicacion']: area_item.get('geolocalizacion_area_ubicacion', []),
                 },
                 self.CATALOGO_FORMAS_OBJ_ID: {
-                    self.mf['nombre_forma']: inspeccion if should_update else area_item.get(self.CATALOGO_FORMAS_OBJ_ID, {}).get(self.mf['nombre_forma'], ''),
-                    self.rondin_keys['grupo_id']: area_item.get(self.CATALOGO_FORMAS_OBJ_ID, {}).get(self.rondin_keys['grupo_id'], ['129870'])
+                    self.mf['nombre_forma']: inspeccion if should_update else forma_actual,
+                    self.rondin_keys['grupo_id']: form_id_actual
                 },
                 self.rondin_keys['prompt_inspeccion']: prompt_inspeccion if should_update else area_item.get(self.rondin_keys['prompt_inspeccion'], '')
             }
@@ -2648,8 +3111,12 @@ if __name__ == "__main__":
     date_to = data.get("date_to", None)
     limit = data.get("limit", 20)
     offset = data.get("offset", 0)
+    search = data.get("search", "")
+    search_fields = data.get("search_fields", [])
+    dynamic_filters = data.get("dynamic_filters", [])
     folio = data.get("folio", '')
     record_id = data.get("record_id", '')
+    area_id = data.get("area_id", '')
     ubicacion = data.get("ubicacion", None)
     nombre_rondin = data.get("nombre_rondin", None)
     area = data.get("area", None)
@@ -2665,7 +3132,8 @@ if __name__ == "__main__":
     tipo=data.get("tipo", "")
     data_script = class_obj.current_record
     locations=data.get("locations", [])
-    class_obj.timezone = data_script.get('timezone', 'America/Mexico_City')
+    # timezone es propiedad de solo lectura (lee self.user['timezone'])
+    class_obj.user['timezone'] = data_script.get('timezone', 'America/Mexico_City')
 
     tz = pytz.timezone(class_obj.timezone)
     if option == 'create_rondin':
@@ -2679,17 +3147,37 @@ if __name__ == "__main__":
     elif option == 'edit_areas_rondin':
         response = class_obj.edit_areas_rondin(areas=areas, folio=folio, record_id=record_id)
     elif option == 'get_recorridos':
-        response = class_obj.get_recorridos(date_from=date_from, date_to=date_to, area_details=area_details, limit=limit, offset=offset)
+        response = class_obj.get_recorridos(date_from=date_from, date_to=date_to, area_details=area_details, limit=limit, offset=offset, facets=data.get("facets", []), paginated=data.get("paginated", False))
+    elif option == 'get_search_fields_recorridos':
+        response = class_obj.get_search_fields_recorridos()
+    elif option == 'get_search_counts_recorridos':
+        response = class_obj.get_search_counts_recorridos(date_from=date_from, date_to=date_to, facets=data.get("facets", []), candidates=data.get("candidates", []))
     elif option == 'get_bitacora':
-        response = class_obj.get_bitacora(date_from=date_from, date_to=date_to, area_details=area_details, limit=limit, offset=offset, locations=locations)
+        response = class_obj.get_bitacora(date_from=date_from, date_to=date_to, area_details=area_details, limit=limit, offset=offset, locations=locations, facets=data.get("facets", []), paginated=data.get("paginated", False))
+    elif option == 'get_search_fields_rondines':
+        response = class_obj.get_search_fields_rondines()
+    elif option == 'get_search_counts_rondines':
+        response = class_obj.get_search_counts_rondines(date_from=date_from, date_to=date_to, locations=locations, facets=data.get("facets", []), candidates=data.get("candidates", []))
     elif option == 'get_catalog_areas':
         response = class_obj.get_catalog_areas(ubicacion=ubicacion, tipo=tipo)
     elif option == 'get_all_checks':
-        response = class_obj.get_all_checks(ubicacion=ubicacion, nombre_rondin=nombre_rondin)
+        response = class_obj.get_all_checks(ubicacion=ubicacion, nombre_rondin=nombre_rondin, locations=locations, facets=data.get("facets", []), limit=data.get("limit_checks"), skip=data.get("skip", 0), dateFrom=data.get("dateFrom", ""), dateTo=data.get("dateTo", ""), filterDate=data.get("filterDate", ""))
+    elif option == 'get_search_fields_check_areas':
+        response = class_obj.get_search_fields_check_areas()
+    elif option == 'get_search_counts_check_areas':
+        response = class_obj.get_search_counts_check_areas(locations=locations, dateFrom=data.get("dateFrom", ""), dateTo=data.get("dateTo", ""), filterDate=data.get("filterDate", ""), facets=data.get("facets", []), candidates=data.get("candidates", []))
     elif option == 'get_rondin_by_id':
         response = class_obj.get_rondin_by_id(record_id=record_id)
     elif option == 'get_incidencias_rondines':
-        response = class_obj.get_incidencias_rondines(location=ubicacion, area=area, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
+        if data.get("paginated"):
+            # Buscador avanzado: paginado por incidencia, con filtros.
+            response = class_obj.get_incidencias_rondines_page(locations=locations, date_from=date_from, date_to=date_to, facets=data.get("facets", []), limit=limit, skip=offset)
+        else:
+            response = class_obj.get_incidencias_rondines(location=ubicacion, area=area, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
+    elif option == 'get_search_fields_incidencias_rondines':
+        response = class_obj.get_search_fields_incidencias_rondines()
+    elif option == 'get_search_counts_incidencias_rondines':
+        response = class_obj.get_search_counts_incidencias_rondines(locations=locations, date_from=date_from, date_to=date_to, facets=data.get("facets", []), candidates=data.get("candidates", []))
     elif option == 'get_rondines_images':
         response = class_obj.get_rondines_images(location=ubicacion, areas=areas, date_from=date_from, date_to=date_to, limit=limit, offset=offset)
     elif option == 'get_bitacora_rondines':
@@ -2699,7 +3187,11 @@ if __name__ == "__main__":
     elif option == 'get_bitacora_by_id':
         response = class_obj.get_bitacora_by_id(record_id=record_id)
     elif option == 'get_catalog_areas_formatted':
-        response = class_obj.get_catalog_areas_formatted(ubicacion=ubicacion)
+        response = class_obj.get_catalog_areas_formatted(locations=locations, limit=limit, skip=offset, search=search, search_fields=search_fields, dynamic_filters=dynamic_filters)
+    elif option == 'get_rondines_by_area':
+        response = class_obj.get_rondines_by_area(area_id=area_id, limit=limit, skip=offset)
+    elif option == 'get_incidencias_by_area':
+        response = class_obj.get_incidencias_by_area(area_id=area_id, limit=limit, skip=offset)
     elif option == 'catalago_grupos_recorridos':
         response = class_obj.catalago_grupos_recorridos()
     elif option == 'catalogo_inspecciones':

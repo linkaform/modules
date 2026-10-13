@@ -165,7 +165,23 @@ class Accesos(Accesos):
             'tag_id': '68487646684fe30a8f9f3ef3',
             'ubicacion': '663e5c57f5b8a7ce8211ed0b',
         }
-        
+
+        self.area_update = {
+            'foto_area': '6763096aa99cee046ba766ad',
+            'tag_id_area': '6762f7b0922cc2a2f57d4044',
+            'tipo_area': '663e5e68f5b8a7ce8211ed18',
+            'nombre_direccion': '663a7e0fe48382c5b1230901',
+            'estatus_area': '663e5e4bf5b8a7ce8211ed15',
+            'estatus': '663e5e4bf5b8a7ce8211ed14',
+            'qr_area': '663e5e4bf5b8a7ce8211ed13',
+            'pais_area': '663a7ca6e48382c5b12308fa',
+            'ciudad_area': '6654187fc85ce22aaf8bb070',
+            'colonia_area': '663a7f79e48382c5b123090a',
+            'direccion_area': '663a7e0fe48382c5b1230902',
+            'geolocalizacion_area': '663e5c8cf5b8a7ce8211ed0c',
+            'geolocalizacion_area_ubicacion': '688bac1ecfdcf8b16eb209b5',
+        }
+
         self.incidence_filter = {
             'reporta_incidencia': "",
             'fecha_hora_incidencia':"",
@@ -232,40 +248,6 @@ class Accesos(Accesos):
         })
         
         self.IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.heic'}
-
-        self.menu_form_fields = {
-            "username": "6759e4a7a9a6e13c7b26da33",
-            "usuario_id": "638a9a99616398d2e392a9f5",
-            "grupo_asignado": "638a9ab3616398d2e392a9fa",
-            "grupo_id": "639b65dfaf316bacfc551ba2",
-            "elementos": "69efaf4c4a59aa2591074f45",
-            "menu": "69efaf883bcb25ed1458465d",
-            "seccion": "69efaf883bcb25ed1458465e",
-            "elemento": "69efaf883bcb25ed1458465f",
-            "key": "69efb57c4a59aa2591074f4e",
-            "plataforms": "69f27e8cdf4d7acc80f2e9b0"
-        }
-
-        self.menu_catalog_fields = {
-            "catalog_menu_key": "69f28216c76fd3bed14949a2",
-            "catalog_menu": "69efaf883bcb25ed1458465d",
-            "catalog_menu_order": "69f27e8cdf4d7acc80f2e9a8",
-            "catalog_menu_icon": "69f27e8cdf4d7acc80f2e9a9",
-            "catalog_menu_columns": "69f27e8cdf4d7acc80f2e9aa",
-            "catalog_seccion_key": "69f28216c76fd3bed14949a3",
-            "catalog_seccion": "69efaf883bcb25ed1458465e",
-            "catalog_seccion_order": "69f27e8cdf4d7acc80f2e9ab",
-            "catalog_seccion_column": "69f27e8cdf4d7acc80f2e9ac",
-            "catalog_seccion_icon": "69f27e8cdf4d7acc80f2e9ad",
-            "catalog_seccion_icon_color": "69f27e8cdf4d7acc80f2e9ae",
-            "catalog_elemento": "69efaf883bcb25ed1458465f",
-            "catalog_key": "69efb57c4a59aa2591074f4e",
-            "catalog_type": "69efb3dcfc8545da78179bf9",
-            "catalog_item_order": "69efb3dcfc8545da78179bfa",
-            "catalog_href_web": "69efb3dcfc8545da78179bf8",
-            "catalog_route_mobile": "69f27e8cdf4d7acc80f2e9af",
-            "catalog_plataforms": "69f27e8cdf4d7acc80f2e9b0"
-        }
 
         self.pass_fields_transportista = {
             "tipo_de_operacion": "6a1ddb53f5a36ba1c7dd029c",
@@ -370,6 +352,9 @@ class Accesos(Accesos):
             'color_vehiculo': '6a4415c7b7ce8af39efb3aaa',
             'num_eco_num_rotulo': '6a3193dccf1326ad4b7a9a56',
             'conductor': '6a3193dccf1326ad4b7a9a57',
+            # Celular del chofer para avisarle el andén (2610-1323). No es
+            # requerido en la forma: el obligatorio vive en el front web.
+            'telefono_conductor': '6acd5b62a7d563ebafeb8762',
             'ayudante': '6a42cd6385b4d5aa41c2a922',
             'num_licencia': '6a3193dccf1326ad4b7a9a58',
             'vigencia_licencia': '6a42e2eab55463ad9f31abf3',
@@ -392,6 +377,8 @@ class Accesos(Accesos):
             'cantidad_faltante_material': '6a7a4ee0e6092a8d37f6d448',
             'peso_material': '6a42c7a7a1555d53d6b91951',
             'volumen_material': '6a42c7a7a1555d53d6b91952',
+            'evidencia_material': '6a9f34d31c217e8c3f8c1702',
+            'comentario_material': '6a9f34d31c217e8c3f8c1703',
 
             'grupo_remolques': '6a31959ed11ece87f2b0052d',
             'tipo_remolque': '6a319693884bec802c94fa44',
@@ -418,6 +405,7 @@ class Accesos(Accesos):
 
         self.conf_flujo_transportistas_fields = {
             'etapas_activas': '6a75056924f23eef843cd01b',
+            'kanban_view': '6aa8333f6cbc9b9bbd08fa2d',
             'configuracion_de_inspecciones': '6a7509cd6e87e5935b853b7b',
             'tipo_de_inspeccion': '6a750a1afd4ed68d7c57c24d',
             'norma': '6a7e2c5c23fb366f1918dea8',
@@ -798,6 +786,7 @@ class Accesos(Accesos):
             f['year_vehiculo']:         vehiculo.get('modelo', ''),
             f['color_vehiculo']:        vehiculo.get('color', ''),
             f['conductor']:             conductor.get('nombre', ''),
+            f['telefono_conductor']:    conductor.get('celular') or '',
             f['ayudante']:              conductor.get('acompanante', ''),
             f['num_licencia']:          conductor.get('no_licencia', ''),
             f['vigencia_licencia']:     conductor.get('vigencia_licencia', ''),
@@ -843,7 +832,7 @@ class Accesos(Accesos):
         if docs:
             answers[f['grupo_fotos_y_documentos']] = [
                 {
-                    f['tipo_de_documento']: doc.get('tipo', ''),
+                    f['tipo_de_documento']: doc.get('tipo', '').lower().replace(' ', '_'),
                     f['documento']:         [{'file_name': doc.get('file_name', ''), 'file_url': doc['file_url']}] if doc.get('file_url') else [],
                 }
                 for doc in docs
@@ -914,7 +903,7 @@ class Accesos(Accesos):
 
     def ocr_acceso_transportista(self, image_source,
                                   extra_instructions: str = None,
-                                  model: str = 'google/gemini-2.5-flash-lite') -> dict:
+                                  model: str = 'google/gemini-2.5-flash') -> dict:
         """
         Analiza uno o varios archivos de un acceso de transportista.
         Acepta mezcla de imágenes y documentos (PDFs, JPGs, PNGs).
@@ -932,6 +921,12 @@ class Accesos(Accesos):
 
         Args:
             image_source: URL, ruta local, o lista. Acepta imágenes y PDFs remotos.
+                          Cada elemento puede ser un string (URL) o un dict
+                          {'file_url': ..., 'file_name': ..., 'tipo_hint': ...} —
+                          `tipo_hint` es opcional: una etiqueta legible (en español)
+                          que el usuario ya asignó a ese archivo antes de analizar,
+                          usada como prior de alta confianza (no reemplaza la
+                          verificación contra el contenido real de la imagen).
             model:        Modelo OpenRouter ('google/gemini-2.5-flash' recomendado para docs).
 
         Returns:
@@ -1002,6 +997,46 @@ class Accesos(Accesos):
             "specific contenedor or remolque (e.g. loose cargo directly on a rigid vehicle with no container/trailer "
             "breakdown, or a generic document that does not specify per-unit contents). Never duplicate the same "
             "cargo line in both a specific unit's materiales and the top-level materiales. "
+            "\n\n"
+            "IMPORTANT ON REPEATING ITEM#/PART-NUMBER SHIPMENT MANIFESTS (e.g. OEM/EDI-style forms with a "
+            "'Details' section listing multiple ITEM#, SERIAL#, SHIPPED QTY, PO# blocks — common in automotive/"
+            "GM-style shipment paperwork such as ASN or MGO shipment forms): each such block is ONE DISTINCT "
+            "cargo line — extract it as its own entry in `materiales`, never merge multiple blocks into one "
+            "entry or drop all but one. Map `producto` to that block's ITEM#/part number (or its description if "
+            "one is printed), `cant_esperada` to that block's SHIPPED QTY with its unit, and `no_orden_compra` to "
+            "that block's own PO# — when the PO# differs between blocks, record each on its own material rather "
+            "than collapsing them into a single shipment-level PO. Do NOT invent a new contenedor or remolque "
+            "entry per ITEM# block — these forms usually describe cargo riding on a SINGLE trailer/container "
+            "already identified elsewhere in the same event (e.g. by a CARRIER REF NO, CONVEYANCE IDENTIF., or a "
+            "remolque number matching another document). Attach all these materiales entries to that one unit's "
+            "`materiales` array (or to the top-level `materiales` fallback if no unit is otherwise identified) — "
+            "never one manufactured contenedor/remolque per row. "
+            "A field like 'PACKAGE TYPE' or 'CONTAINER QTY' on this kind of form describes HOW the cargo is "
+            "packaged (a packaging code, or a count of packages) — it is NEVER a unique container/box "
+            "identifier, even if the exact same value repeats identically across every row. Never copy it into "
+            "`no_caja` or `no_contenedor` just because it sits in a container-labeled column; only put a value "
+            "there when it is a genuinely distinct identifier per unit (an ISO container number, an internal "
+            "asset/box number, etc.) — otherwise leave it null. "
+            "`producto` must always be an actual description of the cargo/goods (an item or part description, a "
+            "part number, or a commodity name) — never a company name (carrier, shipper/remitente, consignee/"
+            "destinatario, customer, or any party name) copied over from a different field or a different "
+            "document in the same batch. If the manifest itself provides no product description, use its ITEM#/"
+            "part number as `producto` instead of leaving it null, and only use null if that cargo line has "
+            "truly no identifying text at all. This rule OVERRIDES any company/party name that also appears "
+            "elsewhere in the same batch of documents — a shipper/remitente name belongs ONLY in "
+            "`embarque.proveedor_cliente`, and must never be substituted as `producto` for a cargo line just "
+            "because no better description was found; using the ITEM#/part number is always preferable to using "
+            "a party name. WORKED EXAMPLE: a 'Details' table with 3 blocks — ITEM# 85750949 / RECORD YEAR 6 / "
+            "SHIPPED QTY 98 Each / PO# 3NF801G0, ITEM# 85750950 / RECORD YEAR 6 / SHIPPED QTY 49 Each / PO# "
+            "3NF801G0, ITEM# 85757065 / RECORD YEAR 6 / SHIPPED QTY 49 Each / PO# 3NF801GV — must produce THREE "
+            "materiales: {producto: \"85750949\", cant_esperada: \"98 Each\", no_orden_compra: \"3NF801G0\"}, "
+            "{producto: \"85750950\", cant_esperada: \"49 Each\", no_orden_compra: \"3NF801G0\"}, {producto: "
+            "\"85757065\", cant_esperada: \"49 Each\", no_orden_compra: \"3NF801GV\"} — never the shipper's "
+            "company name as producto, and never RECORD YEAR (a record-keeping/catalog year, unrelated to "
+            "quantity) as cant_esperada. `cant_esperada` must come EXCLUSIVELY from a field explicitly labeled as "
+            "a quantity/qty/amount shipped (SHIPPED QTY, CYTD QTY, cantidad, etc.) — never from RECORD YEAR, "
+            "ITEM#, PO#, or any other unrelated numeric field on the same row, even if it is the closest number "
+            "to the quantity column. "
             "\n\n"
             "IMPORTANT ON CLOSED-LIST FIELDS (tipo_vehiculo, remolques[].tipo, contenedores[].tipo): these values "
             "feed a form with FIXED dropdown options — there is NO 'otro' catch-all option available downstream. "
@@ -1183,7 +1218,7 @@ class Accesos(Accesos):
             '    {\n'
             '      "fuente": "string — imagen_1 / imagen_2 / imagen_3 ... — the position of the FILE in the input list (never a running page count across files — see numbering rule at the top of this prompt)",\n'
             '      "pagina": "integer — page/photo number WITHIN that file (1 for the first page/photo of that file, 2 for the second, etc.), so distinct pages of the same multi-page file can be told apart even though they share the same fuente",\n'
-            '      "tipo": "string — one of: identificacion_chofer, foto_conductor, tarjeta_circulacion_vehiculo, tarjeta_circulacion_remolque, carta_porte, carta_de_ruta, factura_orden_compra, foto_placa_vehiculo, evidencia_carga, conocimiento_embarque_bl. IMPORTANT: identificacion_chofer is an official ID document (INE, passport, license) showing the driver\'s personal data. foto_conductor is a photo of the driver\'s face. tarjeta_circulacion_vehiculo belongs to the tractor/cab; tarjeta_circulacion_remolque belongs to a trailer (this also covers a pedimento de importación temporal de remolques, which functions like a trailer registration document) — never confuse the two, and never confuse either with identificacion_chofer / foto_conductor. carta_de_ruta is a Dominican Ministerio de Hacienda / Dirección General de Aduanas internal-transit authorization (fields typically include propietario, sello control, número de contenedor, chofer, compañía transportista, sindicato de camioneros) — this is DIFFERENT from carta_porte (a waybill/manifest), do not conflate the two. THIS FIELD HAS NO otro CATCH-ALL: this value is shown directly to the end user as a label under the uploaded file in the access form, so it must always be informative. If a file does not clearly match any of the listed types, do NOT return \'otro\' — instead return a short, specific description in Spanish of what the document/photo actually is (e.g. \'foto general del contenedor\', \'manifiesto de carga\', \'foto de sello de seguridad\', \'documento no identificado — ilegible\'), written the way a person reviewing the access would want to see it as a label, so it is never a dead-end value like \'otro\'."\n'
+            '      "tipo": "string — one of: identificacion_chofer, licencia, foto_conductor, tarjeta_circulacion_vehiculo, tarjeta_circulacion_remolque, carta_porte, carta_de_ruta, factura_orden_compra, foto_placa_vehiculo, evidencia_carga, conocimiento_embarque_bl. IMPORTANT: identificacion_chofer is an official ID document (INE, passport, company badge) showing the driver\'s personal data; a driver\'s license is licencia, not identificacion_chofer. foto_conductor is a photo of the driver\'s face. tarjeta_circulacion_vehiculo belongs to the tractor/cab; tarjeta_circulacion_remolque belongs to a trailer (this also covers a pedimento de importación temporal de remolques, which functions like a trailer registration document) — never confuse the two, and never confuse either with identificacion_chofer / foto_conductor. carta_de_ruta is a Dominican Ministerio de Hacienda / Dirección General de Aduanas internal-transit authorization (fields typically include propietario, sello control, número de contenedor, chofer, compañía transportista, sindicato de camioneros) — this is DIFFERENT from carta_porte (a waybill/manifest), do not conflate the two. THIS FIELD HAS NO otro CATCH-ALL: this value is shown directly to the end user as a label under the uploaded file in the access form, so it must always be informative. If a file does not clearly match any of the listed types, do NOT return \'otro\' — instead return a short, specific description in Spanish of what the document/photo actually is (e.g. \'foto general del contenedor\', \'manifiesto de carga\', \'foto de sello de seguridad\', \'documento no identificado — ilegible\'), written the way a person reviewing the access would want to see it as a label, so it is never a dead-end value like \'otro\'."\n'
             '    }\n'
             '  ],\n'
             '  "observaciones": "string — CTPAT flags, anomalies, damage, incomplete docs, ambiguous plate/document matches, tipos that did not match a closed list, cargo that could not be attributed to a specific unit, or anything security-relevant, or null",\n'
@@ -1194,13 +1229,28 @@ class Accesos(Accesos):
         if extra_instructions:
             prompt += f"\n\nAdditional instructions: {extra_instructions}"
 
+        hints = {}
         if isinstance(image_source, str):
             image_source = [image_source]
         elif isinstance(image_source, list):
+            hints = {
+                f'imagen_{i+1}': img['tipo_hint']
+                for i, img in enumerate(image_source)
+                if isinstance(img, dict) and img.get('tipo_hint')
+            }
             image_source = [
                 img['file_url'] if isinstance(img, dict) else img
                 for img in image_source
             ]
+
+        if hints:
+            hint_lines = "\n".join(f"- {k}: {v}" for k, v in hints.items())
+            prompt += (
+                "\n\nUser-provided type hints per file (high-confidence priors from the "
+                "person uploading, but still verify against the actual visual content — "
+                "if an image clearly does not match its hint, trust the image and note the "
+                f"discrepancy in `observaciones`):\n{hint_lines}"
+            )
 
         sources = []
         for src in image_source:

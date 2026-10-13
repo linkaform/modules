@@ -76,9 +76,12 @@ class Accesos(Accesos):
         rondines_expirados = []
         rondines_en_proceso_vencidos = []
         rondines_por_ubicacion_nombre = {}
+        users_cache = {}
         for rondin in list_of_rondines:
             user_id = self.unlist(rondin.get('rondinero_id', 0))
-            user_data = self.lkf_api.get_user_by_id(user_id)
+            if user_id not in users_cache:
+                users_cache[user_id] = self.lkf_api.get_user_by_id(user_id)
+            user_data = users_cache[user_id]
             user_timezone = user_data.get('timezone', 'America/Mexico_City')
             tz = pytz.timezone(user_timezone)
             ahora = datetime.now(tz)
@@ -86,7 +89,6 @@ class Accesos(Accesos):
             fecha_programacion_str = rondin.get('fecha_programacion')
             ubicacion = rondin.get('incidente_location')
             nombre = rondin.get('nombre_del_recorrido')
-
             rondines_por_ubicacion_nombre[ubicacion] = rondines_por_ubicacion_nombre.get(ubicacion, [])
             if estatus == 'programado' and fecha_programacion_str:
                 fecha_programacion = tz.localize(datetime.strptime(fecha_programacion_str, '%Y-%m-%d %H:%M:%S'))
@@ -108,13 +110,15 @@ class Accesos(Accesos):
                         fecha = tz.localize(datetime.strptime(fecha_str, '%Y-%m-%d %H:%M:%S'))
                         if not ultima_fecha or fecha > ultima_fecha:
                             ultima_fecha = fecha
+                if not ultima_fecha:
+                    fecha_inicio_str = rondin.get('fecha_inicio_rondin')
+                    if fecha_inicio_str:
+                        ultima_fecha = tz.localize(datetime.strptime(fecha_inicio_str, '%Y-%m-%d %H:%M:%S'))
                 if ultima_fecha and ahora > ultima_fecha + timedelta(minutes=15):
                     rondines_en_proceso_vencidos.append(rondin)
-
         rondines_expirados = rondines_expirados + rondines_en_proceso_vencidos
         rondines_ids = [i.get('_id') for i in rondines_expirados]
         rondines_ids = list(set(rondines_ids))
-        print("======log: ", rondines_ids)
 
         db_name = f'clave_{self.user.get("user_id")}'
         self.cr_db = self.get_couch_user_db(db_name)
@@ -123,31 +127,27 @@ class Accesos(Accesos):
             "selector": {"_id": {"$in": rondines_ids}}
         }))
 
-        for record in records:
-            record['inbox'] = False
-            record['status_user'] = 'closed'
-        self.cr_db.update(records)
+        to_delete = [{"_id": r["_id"], "_rev": r["_rev"], "_deleted": True} for r in records]
+        batch_size = 300
+
+        for i in range(0, len(to_delete), batch_size):
+            self.cr_db.update(to_delete[i:i + batch_size])
 
         answers[self.f['estatus_del_recorrido']] = 'cerrado'
         answers[self.f['fecha_fin_rondin']] = ahora.strftime('%Y-%m-%d %H:%M:%S')
 
         # print(stop)
         if answers:
-            res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=rondines_ids)
-            if res.get('status_code') == 201 or res.get('status_code') == 202:
-                return res
-            else: 
-                return res
-
+            res = self.lkf_api.patch_multi_record(answers=answers, form_id=self.BITACORA_RONDINES, record_id=rondines_ids,threading=True)
+            return res
 
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
     acceso_obj.console_run()
-    
+
 
 
     rondines = acceso_obj.get_rondines_by_status()
-
     if rondines:
         response = acceso_obj.close_rondines(rondines)
         print("response", response)

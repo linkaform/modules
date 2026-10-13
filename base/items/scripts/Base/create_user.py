@@ -22,5 +22,9 @@ if __name__ == "__main__":
     response = base_obj.create_user_account(user_data=user_data)
 
     sys.stdout.write(simplejson.dumps({
-        'response': response
+        'status': 101,
+        'replace_ans': base_obj.answers,
+        'metadata': {
+            'id': base_obj.record_id
+        }
     }))

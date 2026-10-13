@@ -35,6 +35,8 @@ if __name__ == "__main__":
     nombre = data.get('nombre', data.get('name'))
     form_id   = acceso_obj.data.get('form_id')
     is_employee = data.get('is_employee', data.get('is_employee'))
+    uso = data.get("uso", None)
+    record_ids = data.get("record_ids", [])
 
     if option == 'assets_access_pass':
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
@@ -48,7 +50,7 @@ if __name__ == "__main__":
     elif option == 'update_active_pass':
         response = acceso_obj.update_active_pass(folio, qr_code, update_obj)
     elif option == 'catalogos_pase_area':
-        response = acceso_obj.catalogos_pase_area(location)
+        response = acceso_obj.catalogos_pase_area(location, uso=uso)
     elif option == 'catalogos_pase_location':
         response = acceso_obj.catalogos_pase_location()
     elif option == 'catalogos_pase_no_jwt':
@@ -72,6 +74,8 @@ if __name__ == "__main__":
             response = acceso_obj.get_pdf(qr_code, template_id=553)
         else:
             response = acceso_obj.get_pdf(qr_code)
+    elif option == 'get_pdf_multi':
+        response = acceso_obj.get_pdf_multi(record_ids)
     elif option == 'get_pdf_incidencias':
             response = acceso_obj.get_pdf(qr_code, template_id=template_id)
     elif option == 'get_user_contacts':

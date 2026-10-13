@@ -1,5 +1,6 @@
 # coding: utf-8
 import sys, simplejson, json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from linkaform_api import settings
 from account_settings import *
 
@@ -71,6 +72,15 @@ class Base(Base):
         return None
 
     def _save_one_item(self, payload):
+        metadata = self._build_item_metadata(payload)
+        record_id = payload.get('_id')
+        if record_id:
+            res = self.lkf_api.update_catalog_answers(metadata, record_id=record_id)
+        else:
+            res = self.lkf_api.post_catalog_answers(metadata)
+        return res
+
+    def _build_item_metadata(self, payload):
         f = self.menu_catalog_fields
         platform_value = (payload.get('platforms') or 'web').lower()
         answers = {
@@ -99,12 +109,7 @@ class Base(Base):
         }
         metadata = self.lkf_api.get_catalog_metadata(catalog_id=self.MENUS_CATALOG_ID)
         metadata['answers'] = answers
-        record_id = payload.get('_id')
-        if record_id:
-            res = self.lkf_api.update_catalog_answers(metadata, record_id=record_id)
-        else:
-            res = self.lkf_api.post_catalog_answers(metadata)
-        return res
+        return metadata
 
     def save_menu_item(self, payload):
         """
@@ -215,15 +220,42 @@ class Base(Base):
         new_keys = {i.get('key') for i in (items or [])}
         removed_keys = [k for k in existing_keys if k and k not in new_keys]
 
-        for row in existing:
-            self.lkf_api.delete_catalog_record(self.MENUS_CATALOG_ID, row.get('_id'), row.get('_rev'))
+        # En paralelo: en serie son ~2 llamadas por item y el import completo
+        # pasaba el timeout del runner; el reintento duplicaba filas.
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            list(executor.map(
+                lambda row: self.lkf_api.delete_catalog_record(self.MENUS_CATALOG_ID, row.get('_id'), row.get('_rev')),
+                existing,
+            ))
 
-        created = 0
-        for payload in items or []:
+        # post_catalog_answers no es seguro entre hilos (comparte thread_result)
+        # y post_catalog_answers_list usa 128 hilos que saturan el API:
+        # se llama al mismo dispatch con 10 workers.
+        set_answer_url = self.lkf_api.api_url.catalog['set_catalog_answer']
+
+        def _create(payload):
             create_payload = dict(payload)
             create_payload.pop('_id', None)
-            self._save_one_item(create_payload)
-            created += 1
+            return self.lkf_api.network.dispatch(set_answer_url, data=self._build_item_metadata(create_payload))
+
+        created = 0
+        errors = []
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {executor.submit(_create, p): p for p in items or []}
+            for future in as_completed(futures):
+                try:
+                    res = future.result()
+                    status_code = res.get('status_code') if isinstance(res, dict) else None
+                except Exception as e:
+                    status_code, res = None, str(e)
+                if status_code in (200, 201, 202):
+                    created += 1
+                else:
+                    errors.append({"key": futures[future].get('key'), "error": str(res)[:200]})
+
+        # Si otra ejecucion corrio al mismo tiempo (reintento tras timeout),
+        # quedan filas repetidas: se conserva la mas vieja de cada una.
+        duplicates_removed = self._remove_duplicate_catalog_rows()
 
         if removed_keys:
             self._cleanup_deleted_item_keys(removed_keys)
@@ -231,8 +263,30 @@ class Base(Base):
         return {
             "deleted": len(existing),
             "created": created,
+            "errors": errors,
+            "duplicates_removed": duplicates_removed,
             "cleaned_keys": len(removed_keys),
         }
+
+    def _remove_duplicate_catalog_rows(self):
+        f = self.menu_catalog_fields
+        rows = self.lkf_api.search_catalog(self.MENUS_CATALOG_ID, {"selector": {}, "limit": 10000})
+        seen = set()
+        duplicates = []
+        # _id de CouchDB inicia con el timestamp: ordenar por _id deja primero la fila mas vieja
+        for row in sorted(rows, key=lambda r: r.get('_id') or ''):
+            ident = (
+                row.get(f['catalog_key']),
+                str(row.get(f['catalog_plataforms']) or '').lower(),
+                row.get(f['catalog_seccion_key']),
+            )
+            if ident in seen:
+                duplicates.append(row)
+            else:
+                seen.add(ident)
+        for row in duplicates:
+            self.lkf_api.delete_catalog_record(self.MENUS_CATALOG_ID, row.get('_id'), row.get('_rev'))
+        return len(duplicates)
 
     def delete_menu_item(self, record_id):
         """
@@ -324,21 +378,6 @@ class Base(Base):
         users.sort(key=lambda u: (u.get('nombre') or u.get('username') or '').lower())
         return users
 
-    def _get_user_menu_record(self, user_id):
-        query = [
-            {"$match": {
-                "form_id": self.MENUS_FORM,
-                "deleted_at": {"$exists": False},
-                f"answers.{self.USUARIOS_OBJ_ID}.{self.menu_form_fields['usuario_id']}": user_id
-            }},
-            {"$project": {
-                "_id": 1,
-                "elementos": f"$answers.{self.menu_form_fields['elementos']}"
-            }}
-        ]
-        data = self.format_cr(self.cr.aggregate(query), get_one=True, labels_off=True)
-        return data
-
     def get_user_menu_items(self, user_id):
         """
         Regresa las keys de items de menú actualmente asignadas a un usuario.
@@ -355,6 +394,152 @@ class Base(Base):
             if key:
                 item_keys.append(key)
         return {"item_keys": item_keys}
+
+    def _configured_menu_user_ids(self):
+        """
+        Set de user_id con al menos un registro en CONFIGURACION_MENUS
+        (la forma actual de permisos, ver [[clave10_menus_admin_board]]).
+        """
+        query = [
+            {"$match": {"form_id": self.MENUS_FORM, "deleted_at": {"$exists": False}}},
+            {"$project": {
+                "usuario_id": f"$answers.{self.USUARIOS_OBJ_ID}.{self.menu_form_fields['usuario_id']}",
+            }}
+        ]
+        records = self.format_cr(self.cr.aggregate(query), labels_off=True)
+        configured_ids = set()
+        for record in records:
+            raw_user_id = record.get('usuario_id')
+            user_id = self.unlist(raw_user_id) if raw_user_id else None
+            if user_id:
+                configured_ids.add(user_id)
+        return configured_ids
+
+    def list_users_missing_menu_config(self):
+        """
+        Regresa los usuarios del catalogo USUARIOS que NO tienen ningun
+        registro en CONFIGURACION_MENUS -- altas nuevas que nunca llegaron a
+        configurarse. Excluye la cuenta padre (nunca necesita configurarse).
+        """
+        configured_ids = self._configured_menu_user_ids()
+        return [
+            user for user in self.list_users()
+            if user['user_id'] not in configured_ids
+            and str(user['user_id']) != str(self.account_id)
+        ]
+
+    def list_users_only_in_legacy_accesos(self):
+        """
+        Regresa los usuarios que tienen registro en CONFIGURACION_ACCESOS
+        (forma legacy de permisos, previa a CONFIGURACION_MENUS -- ver
+        get_config_accesos en accesos/app.py) pero NO tienen registro en
+        CONFIGURACION_MENUS -- señal de que nunca se migraron al mecanismo
+        nuevo y pueden estar operando con permisos desactualizados.
+        """
+        acc = self.Accesos
+        user_id_field = acc.employee_fields['user_id_id']
+
+        legacy_query = [
+            {"$match": {"form_id": acc.CONF_ACCESOS, "deleted_at": {"$exists": False}}},
+            {"$project": {
+                "usuario_id": f"$answers.{acc.EMPLOYEE_OBJ_ID}.{user_id_field}",
+            }}
+        ]
+        legacy_records = self.format_cr(self.cr.aggregate(legacy_query), labels_off=True)
+        legacy_ids = set()
+        for record in legacy_records:
+            raw_user_id = record.get('usuario_id')
+            user_id = self.unlist(raw_user_id) if raw_user_id else None
+            if user_id:
+                legacy_ids.add(user_id)
+
+        only_legacy_ids = legacy_ids - self._configured_menu_user_ids()
+        if not only_legacy_ids:
+            return []
+
+        users_by_id = {user['user_id']: user for user in self.list_users()}
+        return [users_by_id[uid] for uid in only_legacy_ids if uid in users_by_id]
+
+    def resync_all_permissions(self):
+        """
+        Dispara el workflow nativo de CONFIGURACION_MENUS (option=set_permissions,
+        ver menus.py -> set_user_permissions en app.py) para todos los
+        registros, reescribiendo el mismo elementos/usuario_obj que ya
+        tenian. LinkaForm corre ese workflow en cada update de un registro
+        del formulario -- igual que si cada usuario hubiera reguardado su
+        asignacion a mano. No se llama la logica de compartir directo
+        (set_item_permits/apply_user_menu_permissions) para no duplicarla:
+        el workflow, que ya es la fuente de verdad de que se comparte, la
+        corre el solo.
+
+        Un registro a la vez implicaria cientos de llamadas HTTP
+        secuenciales a LinkaForm en cuentas con muchos usuarios, arriesgando
+        timeouts de gateway sin avisar al front. Se paraleliza por registro
+        (I/O-bound) igual que accesos/app.py (ver do_multi_access,
+        process_single_check_for_rondin).
+        """
+        query = [
+            {"$match": {"form_id": self.MENUS_FORM, "deleted_at": {"$exists": False}}},
+            {"$project": {
+                "_id": 1,
+                "elementos": f"$answers.{self.menu_form_fields['elementos']}",
+                "usuario_obj": f"$answers.{self.USUARIOS_OBJ_ID}",
+            }}
+        ]
+        records = self.format_cr(self.cr.aggregate(query), labels_off=True)
+
+        def _record_user_id(record):
+            usuario_obj = record.get('usuario_obj') or {}
+            raw_user_id = usuario_obj.get(self.menu_form_fields['usuario_id'])
+            return self.unlist(raw_user_id) if raw_user_id else None
+
+        # La cuenta padre ya tiene acceso a todo por ser la duena de la cuenta
+        # -- nunca necesita que se le actualice su registro, asi que ni
+        # siquiera se considera parte del universo a resincronizar (no
+        # cuenta en total ni aparece en skipped).
+        records = [r for r in records if str(_record_user_id(r)) != str(self.account_id)]
+
+        pending = []
+        skipped = []
+        for record in records:
+            if not _record_user_id(record):
+                skipped.append({"record_id": record.get('_id'), "reason": "sin usuario_id"})
+                continue
+            pending.append(record)
+
+        def _touch_record(record):
+            metadata = self.lkf_api.get_metadata(form_id=self.MENUS_FORM)
+            metadata['_id'] = record['_id']
+            metadata['answers'] = {
+                self.USUARIOS_OBJ_ID: record.get('usuario_obj') or {},
+                self.menu_form_fields['elementos']: record.get('elementos') or [],
+            }
+            return self.net.patch_forms_answers(metadata)
+
+        updated = 0
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {executor.submit(_touch_record, record): record for record in pending}
+            for future in as_completed(futures):
+                record = futures[future]
+                try:
+                    res = future.result()
+                    status_code = res.get('status_code') if isinstance(res, dict) else None
+                    if status_code in (200, 201, 202):
+                        updated += 1
+                    else:
+                        skipped.append({
+                            "record_id": record.get('_id'),
+                            "user_id": _record_user_id(record),
+                            "reason": f"status_code {status_code}",
+                        })
+                except Exception as e:
+                    skipped.append({
+                        "record_id": record.get('_id'),
+                        "user_id": _record_user_id(record),
+                        "reason": str(e),
+                    })
+
+        return {"updated": updated, "skipped": skipped, "total": len(records)}
 
     def save_user_menu_items(self, user_id, item_keys):
         """
@@ -419,6 +604,11 @@ if __name__ == "__main__":
         "list_users": lambda: script_obj.list_users(),
         "get_user_menu_items": lambda: script_obj.get_user_menu_items(user_id),
         "save_user_menu_items": lambda: script_obj.save_user_menu_items(user_id, item_keys),
+        "resync_all_permissions": lambda: script_obj.resync_all_permissions(),
+        "list_users_missing_menu_config": lambda: script_obj.list_users_missing_menu_config(),
+        "list_users_only_in_legacy_accesos": lambda: script_obj.list_users_only_in_legacy_accesos(),
+        "get_menu_permission_gaps": lambda: script_obj.get_menu_permission_gaps(),
+        "reapply_menu_permissions": lambda: script_obj.reapply_menu_permissions(data.get("user_ids") or []),
     }
 
     action = dispatcher.get(option)

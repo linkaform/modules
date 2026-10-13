@@ -1,6 +1,7 @@
 # coding: utf-8
 import dis
 import sys, simplejson, pytz
+from math import ceil
 from datetime import datetime
 from bson import ObjectId
 from linkaform_api import settings
@@ -70,6 +71,7 @@ class Accesos(Accesos):
                 'year_vehiculo':         f'$answers.{f["year_vehiculo"]}',
                 'color_vehiculo':        f'$answers.{f["color_vehiculo"]}',
                 'conductor':             f'$answers.{f["conductor"]}',
+                'telefono_conductor':    f'$answers.{f["telefono_conductor"]}',
                 'ayudante':              f'$answers.{f["ayudante"]}',
                 'num_licencia':          f'$answers.{f["num_licencia"]}',
                 'firma_conductor':       f'$answers.{f["firma_conductor"]}',
@@ -101,6 +103,8 @@ class Accesos(Accesos):
                         'cantidad_faltante': f'$$m.{f["cantidad_faltante_material"]}',
                         'peso':              f'$$m.{f["peso_material"]}',
                         'volumen':           f'$$m.{f["volumen_material"]}',
+                        'evidencia':         {'$ifNull': [f'$$m.{f["evidencia_material"]}', []]},
+                        'comentario':        f'$$m.{f["comentario_material"]}',
                     },
                 }},
                 'desglose_empaque': {'$map': {
@@ -139,20 +143,62 @@ class Accesos(Accesos):
         ]
         return self.format_cr(self.cr.aggregate(query), get_one=True)
     
-    def get_bitac_transportista_records(self, date_from=None, date_to=None,
-                                         tipo_de_vehiculo=None, proveedor_cliente=None, anden_asignado=None):
+    def transportistas_search_fields(self):
+        f = self.bitacora_transportista_fields
+        estatus = f'answers.{f["estatus"]}'
+        # Llaves = las del panel de filtros (filters.py, option transportistas).
+        return {
+            'folio': {'label': 'Folio', 'paths': ['folio']},
+            'placas': {'label': 'Placas', 'paths': [f'answers.{f["placas_de_vehiculo"]}']},
+            'conductor': {'label': 'Conductor', 'paths': [f'answers.{f["conductor"]}']},
+            'proveedor_cliente': {'label': 'Proveedor / cliente', 'paths': [f'answers.{f["proveedor_cliente"]}']},
+            'estatus': {
+                'label': 'Estatus',
+                'paths': [estatus],
+                'options': lambda: self.facet_distinct_options(self.BITACORA_TRANSPORTISTAS, estatus),
+            },
+            'tipo_de_operacion': {'label': 'Operación', 'paths': [f'answers.{f["tipo_de_operacion"]}']},
+            'tipo_de_vehiculo': {'label': 'Tipo de vehículo', 'paths': [f'answers.{f["tipo_de_vehiculo"]}']},
+            'anden_asignado': {'label': 'Andén', 'paths': [f'answers.{f["anden_asignado"]}']},
+            'material': {'label': 'Material', 'paths': [f'answers.{f["grupo_materiales"]}.{f["producto_material"]}']},
+        }
+
+    def transportistas_base_match(self, date_from=None, date_to=None):
         f = self.bitacora_transportista_fields
         match_filters = {
             'form_id': self.BITACORA_TRANSPORTISTAS,
             'deleted_at': {'$exists': False},
         }
         fecha_field = f'answers.{f["fecha_hora_ingreso"]}'
+        # El front manda el rango ya resuelto; un date_to de solo día ("AAAA-MM-DD")
+        # se extiende al final del día porque las fechas se comparan como texto.
+        if date_to and len(date_to) == 10:
+            date_to = f"{date_to} 23:59:59"
         if date_from and date_to:
             match_filters[fecha_field] = {'$gte': date_from, '$lte': date_to}
         elif date_from:
             match_filters[fecha_field] = {'$gte': date_from}
         elif date_to:
             match_filters[fecha_field] = {'$lte': date_to}
+        return match_filters
+
+    def get_search_fields_transportistas(self):
+        return self.search_fields_config(self.transportistas_search_fields())
+
+    def get_search_counts_transportistas(self, date_from=None, date_to=None, facets=[], candidates=[]):
+        base_match = self.transportistas_base_match(date_from, date_to)
+        return self.count_facet_candidates(base_match, self.transportistas_search_fields(), facets, candidates)
+
+    def get_bitac_transportista_records(self, date_from=None, date_to=None,
+                                         tipo_de_vehiculo=None, proveedor_cliente=None, anden_asignado=None,
+                                         estatus=None, tipo_de_operacion=None, conductor=None, material=None,
+                                         search=None, skip=0, limit=None, pagination=False, facets=[]):
+        f = self.bitacora_transportista_fields
+        match_filters = self.transportistas_base_match(date_from, date_to)
+        # Buscador avanzado: los filtros del panel y las búsquedas llegan como facets.
+        facet_conditions = self.build_facets_match(self.transportistas_search_fields(), facets)
+        if facet_conditions:
+            match_filters['$and'] = facet_conditions
 
         if tipo_de_vehiculo:
             values = tipo_de_vehiculo if isinstance(tipo_de_vehiculo, list) else [tipo_de_vehiculo]
@@ -163,6 +209,28 @@ class Accesos(Accesos):
         if anden_asignado:
             values = anden_asignado if isinstance(anden_asignado, list) else [anden_asignado]
             match_filters[f'answers.{f["anden_asignado"]}'] = {'$in': values}
+        if estatus:
+            values = estatus if isinstance(estatus, list) else [estatus]
+            match_filters[f'answers.{f["estatus"]}'] = {'$in': values}
+        if tipo_de_operacion:
+            values = tipo_de_operacion if isinstance(tipo_de_operacion, list) else [tipo_de_operacion]
+            match_filters[f'answers.{f["tipo_de_operacion"]}'] = {'$in': values}
+        if conductor:
+            values = conductor if isinstance(conductor, list) else [conductor]
+            match_filters[f'answers.{f["conductor"]}'] = {'$in': values}
+        if material:
+            values = material if isinstance(material, list) else [material]
+            match_filters[f'answers.{f["grupo_materiales"]}'] = {
+                '$elemMatch': {f['producto_material']: {'$in': values}}
+            }
+        if search:
+            search_regex = {'$regex': search, '$options': 'i'}
+            match_filters['$or'] = [
+                {'folio': search_regex},
+                {f'answers.{f["placas_de_vehiculo"]}': search_regex},
+                {f'answers.{f["conductor"]}': search_regex},
+                {f'answers.{f["proveedor_cliente"]}': search_regex},
+            ]
 
         query = [
             {'$match': match_filters},
@@ -217,7 +285,32 @@ class Accesos(Accesos):
             }},
             {'$sort': {'_id': -1}},
         ]
-        return self.format_cr(self.cr.aggregate(query))
+
+        # Gate temporal: la app móvil aún no entiende el shape paginado
+        # ({records, total_records, ...}) y espera la lista plana de siempre.
+        # Solo se activa el nuevo comportamiento si el caller manda pagination=True.
+        if not pagination:
+            return self.format_cr(self.cr.aggregate(query))
+
+        count_query = [{'$match': match_filters}, {'$count': 'total'}]
+        count_result = self.format_cr(self.cr.aggregate(count_query))
+        total_count = count_result[0]['total'] if count_result else 0
+
+        if limit:
+            query.append({'$skip': skip or 0})
+            query.append({'$limit': limit})
+        records = self.format_cr(self.cr.aggregate(query))
+
+        current_page = ((skip or 0) // limit) + 1 if limit else 1
+        total_pages = ceil(total_count / limit) if limit else 1
+
+        return {
+            'records': records,
+            'total_records': total_count,
+            'total_pages': total_pages,
+            'actual_page': current_page,
+            'records_on_page': len(records),
+        }
 
     def get_horarios_data(self, dia=None):
         """
@@ -466,6 +559,21 @@ class Accesos(Accesos):
             pase_record_id = bitac and bitac.get('answers', {}).get(bf['num_de_pase'])
             if pase_record_id:
                 return self.get_pass_transportista(record_id=pase_record_id)
+        if result and result.get('_id'):
+            # Bitácora ligada a este pase (stub "programado" creado desde que
+            # se generó el pase, ver create_pass_transportista) — permite que
+            # el frontend redirija a la pantalla de detalle de acceso real en
+            # vez de quedarse en la vista pública del pase.
+            bf = self.bitacora_transportista_fields
+            bitac = self.cr.find_one(
+                {
+                    'form_id': self.BITACORA_TRANSPORTISTAS,
+                    'deleted_at': {'$exists': False},
+                    f'answers.{bf["num_de_pase"]}': result['_id'],
+                },
+                {'_id': 1},
+            )
+            result['bitacora_id'] = str(bitac['_id']) if bitac else None
         return result
 
     def generate_submit_token_transportista(self, record_id):
@@ -732,6 +840,8 @@ class Accesos(Accesos):
                     f['volumen_material']:         m.get('volumen', ''),
                     f['no_referencia_material']:   m.get('ref', ''),
                     f['lugar_material']:           'contenedor' if str(m.get('ref', '')).startswith('contenedor') else 'remolque' if str(m.get('ref', '')).startswith('remolque') else 'vehiculo',
+                    f['evidencia_material']:       m.get('evidencia', []),
+                    f['comentario_material']:      m.get('comentario', ''),
                 }
                 for i, m in enumerate(materiales)
             }
@@ -1247,6 +1357,7 @@ class Accesos(Accesos):
                 'label':      field.get('label'),
                 'field_type': field.get('field_type'),
                 'options':    field.get('options', []),
+                'required':   field.get('required', False),
             }
 
         resultado = []
@@ -1276,10 +1387,11 @@ class Accesos(Accesos):
         return resultado
 
     def get_config_flujo_transportistas(self):
-        """Etapas activas del flujo de transportistas para esta cuenta.
-        Registro singleton (un solo record) en la forma "Configuración de Flujo de
-        Transportistas". Si no existe el registro todavía, regresa las 3 etapas
-        opcionales activas (fail-open, mismo comportamiento que antes de este toggle)."""
+        """Etapas activas y columnas visibles del kanban del flujo de transportistas
+        para esta cuenta. Registro singleton (un solo record) en la forma
+        "Configuración de Flujo de Transportistas". Si no existe el registro
+        todavía, regresa los defaults fail-open (mismo comportamiento que antes
+        de estos toggles)."""
         f = self.conf_flujo_transportistas_fields
         query = [
             {'$match': {
@@ -1291,6 +1403,7 @@ class Accesos(Accesos):
             {'$project': {
                 '_id': 0,
                 'etapas_activas': f'$answers.{f["etapas_activas"]}',
+                'kanban_view': f'$answers.{f["kanban_view"]}',
             }},
         ]
         data = self.format_cr(self.cr.aggregate(query), get_one=True)
@@ -1301,7 +1414,15 @@ class Accesos(Accesos):
         etapas_activas = (data or {}).get('etapas_activas') or [
             'inspeccion_de_entrada', 'carga_/_descarga', 'inspeccion_salida', 'inspeccion_materiales',
         ]
-        return {'etapas_activas': etapas_activas}
+        # Kanban View: qué columnas del kanban se muestran para esta cuenta — es
+        # puramente visual, no afecta el flujo/estatus real de la bitácora (a
+        # diferencia de `etapas_activas`). Valores tal cual las opciones del
+        # checkbox `kanban_view` en Linkaform. Fail-open: todas visibles si la
+        # cuenta todavía no configuró este campo.
+        kanban_view = (data or {}).get('kanban_view') or [
+            'programados', 'arribo', 'inspeccion_de_entrada', 'carga_/_descarga', 'inspeccion_salida', 'terminados',
+        ]
+        return {'etapas_activas': etapas_activas, 'kanban_view': kanban_view}
 
     def _resolver_estatus_tras_inspeccion(self, es_salida):
         """A qué estatus debe pasar la bitácora tras guardar una inspección de
@@ -1523,8 +1644,20 @@ class Accesos(Accesos):
                 labeled = self._labels(reg_db, ids_label_dct=fields)
                 fotos = []
                 for key in FOTO_KEYS[tipo]:
-                    if labeled.get(key):
-                        fotos.extend(labeled[key])
+                    imgs = labeled.get(key)
+                    if not imgs:
+                        continue
+                    if key.endswith('_evidencia'):
+                        comentario = labeled.get(key[:-len('_evidencia')] + '_comentarios')
+                    elif tipo == 'sello':
+                        comentario = labeled.get('comentarios')
+                    else:
+                        comentario = None
+                    for img in imgs:
+                        foto = dict(img)
+                        if comentario:
+                            foto['comentario'] = comentario
+                        fotos.append(foto)
                 grupo_key = GRUPO_FOTOS_KEY[tipo]
                 if grupo_key:
                     grupo = labeled.get(grupo_key) or []
@@ -1563,6 +1696,14 @@ if __name__ == "__main__":
     tipo_de_vehiculo = data.get("tipo_de_vehiculo", None)
     proveedor_cliente = data.get("proveedor_cliente", None)
     anden_asignado = data.get("anden_asignado", None)
+    estatus = data.get("estatus", None)
+    tipo_de_operacion = data.get("tipo_de_operacion", None)
+    conductor = data.get("conductor", None)
+    material = data.get("material", None)
+    search = data.get("search", None)
+    skip = data.get("skip", 0)
+    limit = data.get("limit", None)
+    pagination = data.get("pagination", False)
     form_ids = data.get("form_ids", [])
     email_to = data.get("email_to")
     ubicacion = data.get("ubicacion")
@@ -1576,6 +1717,12 @@ if __name__ == "__main__":
         "get_bitac_transportista_records": lambda: script_obj.get_bitac_transportista_records(
             date_from=date_from, date_to=date_to,
             tipo_de_vehiculo=tipo_de_vehiculo, proveedor_cliente=proveedor_cliente, anden_asignado=anden_asignado,
+            estatus=estatus, tipo_de_operacion=tipo_de_operacion, conductor=conductor, material=material,
+            search=search, skip=skip, limit=limit, pagination=pagination, facets=data.get("facets", []),
+        ),
+        "get_search_fields": lambda: script_obj.get_search_fields_transportistas(),
+        "get_search_counts": lambda: script_obj.get_search_counts_transportistas(
+            date_from=date_from, date_to=date_to, facets=data.get("facets", []), candidates=data.get("candidates", []),
         ),
         "get_horarios_data": lambda: script_obj.get_horarios_data(dia=data.get('dia')),
         "get_pass_transportista": lambda: script_obj.get_pass_transportista(record_id, token, folio),
