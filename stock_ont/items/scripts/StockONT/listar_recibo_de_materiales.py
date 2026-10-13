@@ -92,6 +92,7 @@ class Stock(Stock):
 
             resultado.append({
                 'folio': registro.get('folio'),
+                'createdAt': self.format_created_at(registro.get('created_at')),
                 'stage': self.unlist(answers.get(self.f['field_status_transferencia'])),
                 'deliveryDate': self._get_delivery_date(answers),
                 'providerName': self._get_provider_name(answers),

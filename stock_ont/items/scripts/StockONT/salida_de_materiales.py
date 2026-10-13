@@ -288,6 +288,7 @@ class Stock(Stock):
 
             resultados_individual.append({
                 'folio': folio,
+                'createdAt': registro.get('createdAt'),
                 'originWarehouse': origin_warehouse,
                 'recipient': {
                     'recipientType': recipient_type,

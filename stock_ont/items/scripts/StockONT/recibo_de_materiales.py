@@ -124,7 +124,8 @@ class Stock(Stock):
     def build_grp_inspecciones(self, documents_data):
         """
         Arma el grupo de fotos/documentos de inspeccion (carta porte,
-        factura, pedimento, orden de compra y documentos del transportista).
+        factura, pedimento, orden de compra, packing list y documentos del
+        transportista).
 
         Args:
             documents_data (dict): seccion `materialDocuments` del payload.
@@ -139,6 +140,7 @@ class Stock(Stock):
             self.f['field_fotos_factura'] : (documents_data.get('factura') or {}).get('evidence', []),
             self.f['field_fotos_pedimento'] : (documents_data.get('pedimento') or {}).get('evidence', []),
             self.f['field_fotos_orden_compra'] : (documents_data.get('ordenCompra') or {}).get('evidence', []),
+            self.f['field_fotos_packing_list'] : (documents_data.get('packingList') or {}).get('evidence', []),
             self.f['field_fotos_docs_transportista'] : (self.data.get('carrierDocuments') or {}).get('evidence', []),
         }]
 
@@ -499,6 +501,10 @@ class Stock(Stock):
             answers[self.f['obj_wh_locations']] = info_catalog_almacen_origen
         if info_catalog_transportista:
             answers[self.f['obj_ubi_transportista']] = info_catalog_transportista
+
+        material_origin = delivery_data.get('materialOrigin')
+        if material_origin:
+            answers[self.f['field_origen_material']] = material_origin
 
         signature_data_url = self.data.get('signature', {}).get('signatureDataUrl')
         if signature_data_url:

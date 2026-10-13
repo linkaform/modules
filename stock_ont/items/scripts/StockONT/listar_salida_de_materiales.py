@@ -43,6 +43,7 @@ class Stock(Stock):
 
             registros.append({
                 'folio': registro_db.get('folio'),
+                'createdAt': self.format_created_at(registro_db.get('created_at')),
                 'originWarehouse': self._get_origin_warehouse(answers),
                 'recipient': self._unbuild_recipient(answers),
                 'items': self._unbuild_items(answers),

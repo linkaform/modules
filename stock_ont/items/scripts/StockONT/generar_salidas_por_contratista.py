@@ -88,8 +88,13 @@ class Stock(Stock):
             # if metadata_firma:
             #     firmas_externas.append(metadata_firma)
 
+            # created_at viene como epoch (segundos); si no viene, se usa la hora actual
+            created_at_ts = resp_salida.get('json', {}).get('created_at')
+            created_at = datetime.fromtimestamp(created_at_ts).astimezone() if created_at_ts else datetime.now().astimezone()
+
             registros_creados.append({
                 'folio': resp_salida.get('json', {}).get('folio'),
+                'createdAt': self.format_created_at(created_at),
                 'originWarehouse': vale.get('originWarehouse'),
                 'recipient': vale.get('recipient') or {},
                 'items': vale.get('items', []),

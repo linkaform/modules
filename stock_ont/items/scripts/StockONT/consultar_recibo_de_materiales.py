@@ -32,11 +32,10 @@ class Stock(Stock):
             folio (int|str): folio del registro a consultar.
 
         Returns:
-            dict | None: respuestas (answers) del registro encontrado, o None si no existe.
+            dict | None: registro encontrado (folio, created_at, answers, ...), o None si no existe.
         """
         folio_query = int(folio) if str(folio).isdigit() else folio
-        record = self.get_record_by_folio(folio_query, self.FORM_BITACORA_TRANSPORTISTA_ID)
-        return record.get('answers') if record else None
+        return self.get_record_by_folio(folio_query, self.FORM_BITACORA_TRANSPORTISTA_ID) or None
 
     def unformat_fecha_evento(self, val):
         """Inversa de format_fecha_evento(): "YYYY-MM-DD HH:MM:SS" -> "YYYY-MM-DDTHH:MM:SS" """
@@ -225,6 +224,7 @@ class Stock(Stock):
             'factura': {'evidence': inspecciones.get(self.f['field_fotos_factura'], [])},
             'pedimento': {'evidence': inspecciones.get(self.f['field_fotos_pedimento'], [])},
             'ordenCompra': {'evidence': inspecciones.get(self.f['field_fotos_orden_compra'], [])},
+            'packingList': {'evidence': inspecciones.get(self.f['field_fotos_packing_list'], [])},
         }, {'evidence': inspecciones.get(self.f['field_fotos_docs_transportista'], [])}
 
     def _unbuild_shared_evidence(self, rows):
@@ -256,6 +256,7 @@ class Stock(Stock):
             'providerName': self.unlist(origen.get(self.f['field_location_transportista'])),
             'carrierName': self.unlist(transportista.get(self.f['field_nombre_transportista'])),
             'deliveryDate': delivery_date,
+            'materialOrigin': self.unlist(row.get(self.f['field_origen_material'])),
         }
 
     def consultar_recibo_materiales(self):
@@ -268,14 +269,16 @@ class Stock(Stock):
         if not folio:
             self.LKFException("No se recibio el folio del Recibo de Materiales a consultar")
 
-        row = self.get_recibo_by_folio(folio)
-        if not row:
+        record = self.get_recibo_by_folio(folio)
+        if not record:
             self.LKFException(f"No se encontro ningun Recibo de Materiales con folio '{folio}'")
+        row = record.get('answers') or {}
 
         material_documents, carrier_documents = self._unbuild_material_documents(row)
 
         return {
             'folio': folio,
+            'createdAt': self.format_created_at(record.get('created_at')),
             'stage': self.unlist(row.get(self.f['field_status_transferencia'])),
             'delivery': self._unbuild_delivery(row),
             'materialDocuments': material_documents,

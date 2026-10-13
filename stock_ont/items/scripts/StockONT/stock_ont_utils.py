@@ -40,6 +40,7 @@ class Stock(Stock):
             "obj_wh_locations": "6824e62e7c8af42c04a73d28",
             "field_wh_name_transportista": "6442e4831198daf81456f274",
             "field_location_transportista": "65ac6fbc070b93e656bd7fbe",
+            "field_origen_material": "6acd6a2cf09a02cd11643ddb",
 
             # Campos para catalogo del transportista
             "obj_ubi_transportista": "6a83326c1aad519fd56c1ca8",
@@ -62,6 +63,7 @@ class Stock(Stock):
             "field_fotos_factura": "6a4589aea6675c48f34bb271",
             "field_fotos_pedimento": "6a4589aea6675c48f34bb272",
             "field_fotos_orden_compra": "6a8f113d9aaa4417a1e93a96",
+            "field_fotos_packing_list": "6acd28f95650733502b797fe",
             "field_fotos_docs_transportista": "6a8f113d9aaa4417a1e93a97",
 
             # campos del producto
