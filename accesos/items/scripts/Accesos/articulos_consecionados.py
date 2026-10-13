@@ -33,6 +33,8 @@ if __name__ == "__main__":
     skip = data.get("skip", 0)
     search = data.get("search", "")
     search_fields = data.get("search_fields", [])
+    facets = data.get("facets", [])
+    candidates = data.get("candidates", [])
 
     dateFrom = data.get("dateFrom", "")
     dateTo = data.get("dateTo", "")
@@ -41,7 +43,11 @@ if __name__ == "__main__":
     if option == 'new_article':
         response = acceso_obj.create_article_concessioned(data_article)
     elif option == 'get_articles':
-        response = acceso_obj.get_list_articulos_concesionados(location, area, status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, limit=limit, skip=skip, locations=locations, search=search, search_fields=search_fields)
+        response = acceso_obj.get_list_articulos_concesionados(location, area, status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, limit=limit, skip=skip, locations=locations, search=search, search_fields=search_fields, facets=facets)
+    elif option == 'get_search_fields':
+        response = acceso_obj.get_search_fields_concesionados()
+    elif option == 'get_search_counts':
+        response = acceso_obj.get_search_counts_concesionados(location=location, area=area, status=status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, locations=locations, facets=facets, candidates=candidates)
     elif option == 'update_article':
         if data.get('data'):
             data = data['data']
