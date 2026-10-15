@@ -27,7 +27,7 @@ class Stock(Stock):
 
         self.FORM_ID_SALIDAS = 179244
         self.FORM_ID_VALES_MATERIALES = 130402
-
+        
         self.f.update({
             # campos para el Almacen Destino
             "obj_almacen_destino": "6a8e2d1ee08b6d156660ea46",
@@ -303,6 +303,112 @@ class Stock(Stock):
         )
         self.settings.config.update(self.config)
 
+        self.current_user = self.get_data_current_user()
+        print('--- current_user =',self.current_user)
+        self.current_user_id = self.current_user.get('user_id')
+
+        # --- IDs de grupos para administracion de SIGA
+        # TODO : cambiar los IDs por los de producción
+        self.id_group_super_admin = 458 # prod 460
+        self.id_group_national_admin = 461 # prod 461
+        self.id_group_wh_coordinator = 464 # prod 462
+        self.id_group_wh_manager_puebla = 466 # prod 464
+        self.id_group_wh_manager_camarones = 465 # prod 468
+        self.id_group_wh_operator_puebla = 460 # prod 471
+        self.id_group_wh_operator_camarones = 459 # prod 470
+
+        # El orden define la prioridad del rol que regresa is_user_admin()
+        self.siga_admin_groups = [
+            ('super_admin', self.id_group_super_admin),
+            ('national_admin', self.id_group_national_admin),
+            ('warehouse_coordinator', self.id_group_wh_coordinator),
+        ]
+
+        self.siga_wh_manager_groups = [
+            ('wh_manager_puebla', self.id_group_wh_manager_puebla),
+            ('wh_manager_camarones', self.id_group_wh_manager_camarones),
+        ]
+
+        self.siga_wh_operator_groups = [
+            ('wh_operator_puebla', self.id_group_wh_operator_puebla),
+            ('wh_operator_camarones', self.id_group_wh_operator_camarones),
+        ]
+
+        # Se consultan bajo demanda en is_user_admin(), para que los scripts
+        # que no validan permisos no paguen las consultas de grupos.
+        self._users_by_group = {}
+
+    def get_data_current_user(self):
+        """
+        Decodifica el jwt que viene en el payload. Si no viene, esta expirado
+        o es invalido, regresa {} para que is_user_admin() lo trate como
+        'no_user_found' en lugar de tronar el script.
+        """
+        from linkaform_api import jwt_utils
+        token = self.data.get("Bearer", self.data.get("jwt", ''))
+        try:
+            return jwt_utils.decode_jwt_token(token) or {}
+        except Exception as e:
+            print(f"ADVERTENCIA: no se pudo decodificar el jwt del usuario: {e}")
+            return {}
+
+    def get_data_group(self, id_group):
+        """
+        Regresa {id_usuario: username} de los usuarios del grupo `id_group`.
+        Si la consulta falla (status distinto de 200), imprime una advertencia
+        y regresa un dict vacio.
+        """
+        url_data_group = f"{self.net.api_url.dest_url}/api/infosync/group/{id_group}/"
+        response = self.net.dispatch(url=url_data_group, method='GET')
+
+        if response.get('status_code') != 200:
+            print(f"ADVERTENCIA: no se pudo consultar el grupo {id_group}: "
+                  f"status={response.get('status_code')} data={response.get('data')}")
+            return {}
+
+        return {
+            u.get('id'): u.get('username')
+            for u in response.get('data', {}).get('users', [])
+            if u.get('id')
+        }
+
+    def _get_users_group(self, id_group):
+        if id_group not in self._users_by_group:
+            self._users_by_group[id_group] = self.get_data_group(id_group)
+        return self._users_by_group[id_group]
+
+    def is_user_admin(self):
+        if not self.current_user_id:
+            return False, 'no_user_found'
+
+        for role, id_group in self.siga_admin_groups:
+            if self.current_user_id in self._get_users_group(id_group):
+                return True, role
+
+        return False, ''
+
+    def assign_record_to_group(self, record_id, id_group):
+        """
+        Asigna el registro `record_id` al grupo `id_group` (para que solo los
+        usuarios de ese grupo puedan verlo).
+
+        Args:
+            record_id (str): id del registro a asignar.
+            id_group (int|list): id(s) del grupo de usuarios.
+
+        Returns:
+            bool: True si se asigno correctamente, False si hubo error.
+        """
+        if not isinstance(id_group, list):
+            id_group = [id_group]
+
+        record_id_to_assign = f"/api/infosync/form_answer/{record_id}/"
+        for group_id in id_group:
+            resp_assign = self.lkf_api.assigne_group_records(group_id, [record_id_to_assign])
+            print(f"--- asignando registro {record_id} al grupo {group_id}: {resp_assign}")
+
+        return True
+    
     def testing_stock_ont(self):
         print('+++ Importado desde Accesos = ',self.accs.support_guard)
         print('+++ Importado desde Accesos Utils = ',self.accs.BITACORA_TRANSPORTISTAS)

@@ -10,6 +10,23 @@ class Stock(Stock):
 
         self.inv_map_recibo_stages = {v: k for k, v in self.map_recibo_stages.items()}
 
+        self.user_authorized, self.user_in_group = self.authorized_update_reception()
+        print(f'--- authorized = {self.user_authorized} in_group = {self.user_in_group}')
+
+    def authorized_update_reception(self):
+        is_admin, type_admin = self.is_user_admin()
+
+        if is_admin or type_admin == 'no_user_found':
+            return is_admin, type_admin
+
+        # validaciones especiales para editar la Recepcion
+        # Solo pueden editar recepciones los Administradores y WH Operator
+        for role, id_group in self.siga_wh_operator_groups:
+            if self.current_user_id in self._get_users_group(id_group):
+                return True, role
+        # print('--- _users_by_group =', self._users_by_group)
+        return False, ''
+
     def build_grp_stages_merge(self, existing_rows):
         """
         A diferencia de build_grp_stages() (que reconstruye las 5 fases desde
@@ -85,6 +102,13 @@ class Stock(Stock):
         ['confirmedAt']`), ademas se genera la Recepcion de Materiales de
         Proveedor (ver `should_generate_recepcion_materiales`).
         """
+
+        if not self.user_authorized:
+            return {
+                'status_code': 400,
+                'msg': 'Usuario no autorizado para editar Recepciones'
+            }
+
         folio = self.data.get('folio')
         if not folio:
             self.LKFException("No se recibio el folio del Recibo de Materiales a actualizar")
@@ -94,12 +118,20 @@ class Stock(Stock):
         if not record:
             self.LKFException(f"No se encontro ningun Recibo de Materiales con folio '{folio}'")
 
-        existing_stage_rows = record.get('answers', {}).get(self.f['field_grp_stages']) or []
+        answers_record = record.get('answers', {})
+        
+        existing_stage_rows = answers_record.get(self.f['field_grp_stages']) or []
 
-        answers_bitacora = self.build_answers_bitacora_transportista()
+        can_update_delivery = self.user_in_group not in ('wh_operator_puebla', 'wh_operator_camarones')
+        answers_bitacora = self.build_answers_bitacora_transportista(can_update_delivery)
         answers_bitacora[ self.f['field_grp_stages'] ] = self.build_grp_stages_merge(existing_stage_rows)
+        
+        answers_record.update(answers_bitacora)
 
-        resp_actualizar = self.patch_bitacora_transportista(record['_id'], answers_bitacora)
+        # print(f'--- answers_record = {answers_record}')
+        # stop
+
+        resp_actualizar = self.patch_bitacora_transportista(record['_id'], answers_record)
 
         if resp_actualizar.get('status_code') == 202 and self.should_generate_recepcion_materiales():
             resp_actualizar['recepcion_materiales'] = self.create_record_recepcion_materiales_proveedor()

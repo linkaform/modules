@@ -23,6 +23,24 @@ class Stock(Stock):
             'cancellation': 'cancelación',
         }
 
+        self.user_authorized, self.user_in_group = self.authorized_reception()
+        print(f'--- authorized = {self.user_authorized} in_group = {self.user_in_group}')
+
+    def authorized_reception(self):
+        is_admin, type_admin = self.is_user_admin()
+
+        if is_admin or type_admin == 'no_user_found':
+            return is_admin, type_admin
+
+        # for role, id_group in self.siga_wh_manager_groups:
+        #     if self.current_user_id in self._get_users_group(id_group):
+        #         return True, role
+        # # print('--- _users_by_group =', self._users_by_group)
+
+        # validaciones especiales para Recepcion
+        # Solo puede crear recepciones los Administradores y WH Coordinador
+        return False, ''
+    
     def find_warehouse_catalog_users(self, nombre_usuario):
         """
         Busca en CATALOG_ID_USUARIOS_ALMACEN al usuario de almacen destino
@@ -456,9 +474,18 @@ class Stock(Stock):
         resp_bitacora = self.lkf_api.post_forms_answers(metadata)
         if resp_bitacora.get('status_code') not in (200, 201):
             self.LKFException(f"Error al crear la Bitacora de Transportista con folio '{folio_bitacora}': {resp_bitacora}")
+        
+        # Se asigna el registro creado a los grupos de Administracion de SIGA, para que los usuarios de esos grupos puedan verlo y editarlo.
+        # TODO : falta integrar el grupo de WH Operator ya que éstos no crean pero sí pueden editar el registro. Por lo que se debe asignar.
+        # OJO : con los grupos de WH Operator porque hay para Puebla y Camarones por tanto hay que ver cual se asigna a quien
+        self.assign_record_to_group(
+            resp_bitacora.get('json', {}).get('id'), 
+            [self.id_group_super_admin, self.id_group_national_admin, self.id_group_wh_coordinator]
+        )
+        
         return resp_bitacora
 
-    def build_answers_bitacora_transportista(self):
+    def build_answers_bitacora_transportista(self, can_update_delivery=True):
         """
         Arma las respuestas de la Bitacora de Transportistas a partir de
         `self.data` (almacenes, transportista, inspecciones, evidencias,
@@ -472,18 +499,10 @@ class Stock(Stock):
         evidence_data = self.data.get('sharedEvidence', {})
         materiales_data = self.data.get('items', [])
 
-        info_catalog_almacen_destino, info_catalog_almacen_origen, info_catalog_transportista = \
-            self.find_catalogs_bitacora_transportista(delivery_data)
-        delivery_date = self.validate_delivery_date(delivery_data)
-
         grp_materiales, grp_boxes, grp_pallets, grp_series, _grp_missing = \
             self.build_grp_materiales(materiales_data, is_transfer=True)
 
         answers = {
-            # self.f['obj_almacen_destino'] : info_catalog_almacen_destino,
-            # self.f['obj_wh_locations'] : info_catalog_almacen_origen,
-            # self.f['obj_ubi_transportista'] : info_catalog_transportista,
-            self.f_bitacora['fecha_hora_ingreso'] : f"{delivery_date} 00:00:00",
             self.f['field_grp_inspecciones']: self.build_grp_inspecciones(documents_data),
             self.f_bitacora['grupo_fotos_y_documentos']: self.build_grp_evidencias(evidence_data),
             self.f_bitacora['grupo_desglose_empaque']: grp_materiales,
@@ -495,17 +514,27 @@ class Stock(Stock):
             self.f['field_grp_stages']: self.build_grp_stages(),
         }
 
-        if info_catalog_almacen_destino:
-            answers[self.f['obj_almacen_destino']] = info_catalog_almacen_destino
-        if info_catalog_almacen_origen:
-            answers[self.f['obj_wh_locations']] = info_catalog_almacen_origen
-        if info_catalog_transportista:
-            answers[self.f['obj_ubi_transportista']] = info_catalog_transportista
+        if can_update_delivery:
+            delivery_date = self.validate_delivery_date(delivery_data)
+            answers[ self.f_bitacora['fecha_hora_ingreso'] ] = f"{delivery_date} 00:00:00"
+            
+            info_catalog_almacen_destino, info_catalog_almacen_origen, info_catalog_transportista = \
+                        self.find_catalogs_bitacora_transportista(delivery_data)
 
-        material_origin = delivery_data.get('materialOrigin')
-        if material_origin:
-            answers[self.f['field_origen_material']] = material_origin
+            if info_catalog_almacen_destino:
+                answers[self.f['obj_almacen_destino']] = info_catalog_almacen_destino
+            if info_catalog_almacen_origen:
+                answers[self.f['obj_wh_locations']] = info_catalog_almacen_origen
+            if info_catalog_transportista:
+                answers[self.f['obj_ubi_transportista']] = info_catalog_transportista
+            
+            material_origin = delivery_data.get('materialOrigin')
+            if material_origin:
+                answers[self.f['field_origen_material']] = material_origin
 
+        
+        
+        
         signature_data_url = self.data.get('signature', {}).get('signatureDataUrl')
         if signature_data_url:
             answers[self.f_bitacora['firma_conductor']] = signature_data_url
@@ -530,6 +559,12 @@ class Stock(Stock):
         confirmada (`self.data['finalReview']['confirmedAt']`), tambien se
         realizará la recepción en la forma Recepcion de Materiales de Proveedor.
         """
+        if not self.user_authorized:
+            return {
+                'status_code': 400,
+                'msg': 'Usuario no autorizado para crear Recepciones'
+            }
+        
         resp_bitacora_transportista = self.create_record_bitacora_transportista()
         print("+++ +++ +++ resp_bitacora_transportista =",resp_bitacora_transportista)
 
