@@ -28,6 +28,44 @@ class Stock(Stock):
             'cancelled': 'cancelado',
         }
 
+        # Cada WH Operator solo puede crear Transferencias desde su almacen origen
+        self.map_wh_role_location = {
+            'wh_operator_puebla': 'PCI Puebla',
+            'wh_operator_camarones': 'Camarones',
+        }
+
+        self.user_authorized, self.user_in_group = self.authorized_transfer()
+        print(f'--- authorized = {self.user_authorized} in_group = {self.user_in_group}')
+
+    def authorized_transfer(self):
+        is_admin, type_admin = self.is_user_admin()
+
+        if is_admin or type_admin == 'no_user_found':
+            return is_admin, type_admin
+
+        for role, id_group in self.siga_wh_operator_groups:
+            if self.current_user_id in self._get_users_group(id_group):
+                return True, role
+        
+        return False, ''
+
+    def operator_can_edit_location(self, location_origen):
+        """
+        Valida que un WH Operator solo opere Transferencias cuyo almacen origen
+        sea el de su grupo. Los administradores pasan sin restriccion.
+
+        Args:
+            location_origen (str): location del almacen origen a validar.
+
+        Returns:
+            tuple: (bool autorizado, str location origen validada).
+        """
+        location_operator = self.map_wh_role_location.get(self.user_in_group)
+        if not location_operator:
+            return True, location_origen
+
+        return location_origen == location_operator, location_origen
+
     def post_transferencia_materiales(self, answers):
         """
         Crea el registro en la forma de Transferencia de Materiales
@@ -135,6 +173,19 @@ class Stock(Stock):
         return answers_transferencia
 
     def tranferencia_de_materiales(self):
+        if not self.user_authorized:
+            return {
+                'status_code': 403,
+                'msg': 'Usuario no autorizado para crear Transferencias de Materiales'
+            }
+
+        can_edit_location, location_origen = self.operator_can_edit_location(self.data.get('originWarehouse'))
+        if not can_edit_location:
+            return {
+                'status_code': 403,
+                'msg': f"Usuario no autorizado para crear Transferencias desde el almacen '{location_origen}'"
+            }
+
         answers_transferencia = self.build_answers_transferencia()
         resp_transferencia = self.post_transferencia_materiales(answers_transferencia)
         # La firma externa ahora se crea en actualizar_transferencia_de_materiales.py con la bandera requestExternalSignature

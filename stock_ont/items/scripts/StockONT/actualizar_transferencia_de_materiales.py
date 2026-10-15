@@ -11,6 +11,29 @@ class Stock(Stock):
 
         self.inv_map_stages = {v: k for k, v in self.map_stages.items()}
 
+        # Los WH Manager tambien editan, restringidos a su almacen origen
+        self.map_wh_role_location.update({
+            'wh_manager_puebla': 'PCI Puebla',
+            'wh_manager_camarones': 'Camarones',
+        })
+
+    def authorized_transfer(self):
+        """
+        Extiende authorized_transfer() de transferencia_de_materiales.py
+        (admins y WH Operator) para autorizar tambien a los WH Manager.
+        Se sobreescribe el metodo, no la llamada, porque el __init__ del padre
+        ya lo invoca para llenar user_authorized / user_in_group.
+        """
+        is_authorized, role = super().authorized_transfer()
+        if is_authorized or role == 'no_user_found':
+            return is_authorized, role
+
+        for role, id_group in self.siga_wh_manager_groups:
+            if self.current_user_id in self._get_users_group(id_group):
+                return True, role
+
+        return False, ''
+
     def patch_transferencia_materiales(self, record_id, answers):
         """
         Actualiza el registro existente en la forma de Transferencia de
@@ -107,6 +130,12 @@ class Stock(Stock):
         reception/cancellation) se conservan y solo se agrega/actualiza la(s)
         que vengan en este payload (ver build_grp_stages_merge).
         """
+        if not self.user_authorized:
+            return {
+                'status_code': 403,
+                'msg': 'Usuario no autorizado para editar Transferencias de Materiales'
+            }
+
         folio = self.data.get('folio')
         if not folio:
             self.LKFException("No se recibio el folio de la Transferencia de Materiales a actualizar")
@@ -118,6 +147,21 @@ class Stock(Stock):
 
         # Copia de los answers antes del patch, para restaurarlos si falla el traspaso.
         original_answers = deepcopy(record.get('answers', {}))
+
+        # Se valida el origen guardado (que la Transferencia sea de su almacen) y el
+        # del payload, porque build_answers_transferencia() reemplaza el almacen origen.
+        origen_guardado = original_answers.get(self.stk.WH.WAREHOUSE_LOCATION_OBJ_ID) or {}
+        locations_origen = [
+            self.unlist(origen_guardado.get(self.stk.WH.f['warehouse_location'])),
+            self.data.get('originWarehouse'),
+        ]
+        for location_origen in locations_origen:
+            can_edit_location, location_origen = self.operator_can_edit_location(location_origen)
+            if not can_edit_location:
+                return {
+                    'status_code': 403,
+                    'msg': f"Usuario no autorizado para editar Transferencias del almacen '{location_origen}'"
+                }
         existing_stage_rows = original_answers.get(self.f['field_grp_stages']) or []
         existing_status = self.unlist(original_answers.get(self.f['field_status_transferencia']))
 
