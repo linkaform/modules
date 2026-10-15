@@ -10,6 +10,12 @@ class Stock(Stock):
 
         self.inv_map_recibo_stages = {v: k for k, v in self.map_recibo_stages.items()}
 
+        # Cada WH Operator solo puede editar Recepciones de su almacen destino
+        self.map_wh_operator_location = {
+            'wh_operator_puebla': 'PCI Puebla',
+            'wh_operator_camarones': 'Camarones',
+        }
+
         self.user_authorized, self.user_in_group = self.authorized_update_reception()
         print(f'--- authorized = {self.user_authorized} in_group = {self.user_in_group}')
 
@@ -26,6 +32,28 @@ class Stock(Stock):
                 return True, role
         # print('--- _users_by_group =', self._users_by_group)
         return False, ''
+
+    def operator_can_edit_location(self, answers_record):
+        """
+        Valida que un WH Operator solo edite Recepciones cuyo almacen destino
+        (field_location_almacen_destino) sea el de su grupo. Se compara contra
+        lo guardado en el registro, no contra el payload, porque el operador no
+        puede modificar `delivery`. Los administradores pasan sin restriccion.
+
+        Args:
+            answers_record (dict): answers del registro guardado en la BD.
+
+        Returns:
+            tuple: (bool autorizado, str location destino del registro).
+        """
+        almacen_destino = answers_record.get(self.f['obj_almacen_destino']) or {}
+        location_destino = self.unlist(almacen_destino.get(self.f['field_location_almacen_destino']))
+
+        location_operator = self.map_wh_operator_location.get(self.user_in_group)
+        if not location_operator:
+            return True, location_destino
+
+        return location_destino == location_operator, location_destino
 
     def build_grp_stages_merge(self, existing_rows):
         """
@@ -100,12 +128,14 @@ class Stock(Stock):
 
         Si la revision final ya fue confirmada (`self.data['finalReview']
         ['confirmedAt']`), ademas se genera la Recepcion de Materiales de
-        Proveedor (ver `should_generate_recepcion_materiales`).
+        Proveedor (ver `should_generate_recepcion_materiales`), salvo que la
+        fase 'revisión_final' ya estuviera guardada en el registro: en ese
+        caso la Recepcion ya se genero antes y no se duplica.
         """
 
         if not self.user_authorized:
             return {
-                'status_code': 400,
+                'status_code': 403,
                 'msg': 'Usuario no autorizado para editar Recepciones'
             }
 
@@ -119,10 +149,23 @@ class Stock(Stock):
             self.LKFException(f"No se encontro ningun Recibo de Materiales con folio '{folio}'")
 
         answers_record = record.get('answers', {})
-        
+
+        can_edit_location, location_destino = self.operator_can_edit_location(answers_record)
+        if not can_edit_location:
+            return {
+                'status_code': 403,
+                'msg': f"Usuario no autorizado para editar Recepciones del almacen '{location_destino}'"
+            }
+
         existing_stage_rows = answers_record.get(self.f['field_grp_stages']) or []
 
-        can_update_delivery = self.user_in_group not in ('wh_operator_puebla', 'wh_operator_camarones')
+        # Si la revision final ya estaba guardada, la Recepcion ya se genero antes
+        final_review_ya_guardada = any(
+            self.unlist(row_stage.get(self.f['field_stage_name'])) == self.map_recibo_stages['finalReview']
+            for row_stage in existing_stage_rows
+        )
+
+        can_update_delivery = self.user_in_group not in self.map_wh_operator_location
         answers_bitacora = self.build_answers_bitacora_transportista(can_update_delivery)
         answers_bitacora[ self.f['field_grp_stages'] ] = self.build_grp_stages_merge(existing_stage_rows)
         
@@ -134,7 +177,10 @@ class Stock(Stock):
         resp_actualizar = self.patch_bitacora_transportista(record['_id'], answers_record)
 
         if resp_actualizar.get('status_code') == 202 and self.should_generate_recepcion_materiales():
-            resp_actualizar['recepcion_materiales'] = self.create_record_recepcion_materiales_proveedor()
+            if final_review_ya_guardada:
+                print('ADVERTENCIA: la revision final ya estaba confirmada, no se genera otra Recepcion')
+            else:
+                resp_actualizar['recepcion_materiales'] = self.create_record_recepcion_materiales_proveedor()
 
         return resp_actualizar
 

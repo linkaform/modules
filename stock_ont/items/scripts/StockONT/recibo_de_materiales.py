@@ -561,7 +561,7 @@ class Stock(Stock):
         """
         if not self.user_authorized:
             return {
-                'status_code': 400,
+                'status_code': 403,
                 'msg': 'Usuario no autorizado para crear Recepciones'
             }
         
