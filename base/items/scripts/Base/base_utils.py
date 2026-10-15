@@ -62,7 +62,7 @@ class Base(Base):
             'accesos':{
                 'forms':[self.Accesos.CHECKIN_CASETAS, self.Accesos.REGISTRO_ASISTENCIA, self.Accesos.BITACORA_GAFETES_LOCKERS, self.Accesos.CHECK_UBICACIONES, self.Accesos.BITACORA_ACCESOS],
                 'catalogs':[],
-                'scripts':[]
+                'scripts':[self.OCR_DOCS]
             },
             'seguridad':{
                 'forms':[self.Accesos.CONFIGURACION_RECORRIDOS_FORM, self.Accesos.BITACORA_RONDINES, self.Accesos.BITACORA_FALLAS, self.Accesos.BITACORA_INCIDENCIAS],
