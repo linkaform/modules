@@ -316,6 +316,8 @@ class Stock(Stock):
         self.id_group_wh_manager_camarones = 465 # prod 468
         self.id_group_wh_operator_puebla = 460 # prod 471
         self.id_group_wh_operator_camarones = 459 # prod 470
+        self.id_group_wh_admin_assistant_camarones = 462 # prod 465
+        self.id_group_wh_admin_assistant_puebla = 463 # prod 466
 
         # El orden define la prioridad del rol que regresa is_user_admin()
         self.siga_admin_groups = [
@@ -332,6 +334,11 @@ class Stock(Stock):
         self.siga_wh_operator_groups = [
             ('wh_operator_puebla', self.id_group_wh_operator_puebla),
             ('wh_operator_camarones', self.id_group_wh_operator_camarones),
+        ]
+
+        self.siga_wh_admin_assistant_groups = [
+            ('wh_admin_assistant_camarones', self.id_group_wh_admin_assistant_camarones),
+            ('wh_admin_assistant_puebla', self.id_group_wh_admin_assistant_puebla),
         ]
 
         # Se consultan bajo demanda en is_user_admin(), para que los scripts
@@ -723,7 +730,7 @@ class Stock(Stock):
             'answers': answers,
         })
         metadata['folio'] = f"TRASPASO-{str(int(random.random() * 1000))}"
-        return self.lkf_api.post_forms_answers(metadata)
+        return self.lkf_api.post_forms_answers(metadata, jwt_settings_key='JWT_ADMIN')
 
     def get_record_firma_externa(self, folio, tipo_operacion):
         """

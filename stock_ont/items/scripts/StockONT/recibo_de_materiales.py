@@ -295,7 +295,7 @@ class Stock(Stock):
             },
             'answers': answers,
         })
-        return self.lkf_api.post_forms_answers(metadata)
+        return self.lkf_api.post_forms_answers(metadata, jwt_settings_key='JWT_ADMIN')
 
     def _build_stage_row(self, stage, name_stage, data_stage):
         """
