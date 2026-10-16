@@ -163,7 +163,33 @@ class Stock(Stock):
             },
             'answers': answers,
         })
-        return self.lkf_api.post_forms_answers(metadata)
+        resp_transferencia = self.lkf_api.post_forms_answers(metadata)
+        if resp_transferencia.get('status_code') not in (200, 201):
+            return resp_transferencia
+
+        # Se asigna el registro creado a los grupos de Administracion de SIGA y a los
+        # grupos de WH de los almacenes involucrados, para que puedan verlo y editarlo.
+        self.assign_record_to_group(
+            resp_transferencia.get('json', {}).get('id'),
+            [self.id_group_super_admin, self.id_group_national_admin, self.id_group_wh_coordinator] + self.get_wh_groups_transfer()
+        )
+
+        return resp_transferencia
+
+    def get_wh_groups_transfer(self):
+        """
+        Obtiene los grupos de WH Operator y WH Manager cuyo almacen es el
+        origen o el destino de la Transferencia (segun map_wh_role_location).
+
+        Returns:
+            list[int]: ids de los grupos de WH a los que se asigna el registro.
+        """
+        locations = {self.data.get('originWarehouse'), self.data.get('destinationWarehouse')}
+        return [
+            id_group
+            for role, id_group in self.siga_wh_operator_groups + self.siga_wh_manager_groups
+            if self.map_wh_role_location.get(role) in locations
+        ]
 
     def _build_stage_row(self, stage, name_stage, data_stage):
         stage_at = data_stage.get('cancelledAt' if stage == 'cancellation' else 'confirmedAt')
