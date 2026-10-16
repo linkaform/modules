@@ -28,10 +28,35 @@ class Stock(Stock):
             'cancelled': 'cancelado',
         }
 
-        # Cada WH Operator solo puede crear Transferencias desde su almacen origen
+        # Almacen de cada rol de WH; los roles sin almacen no se restringen por almacen
         self.map_wh_role_location = {
             'wh_operator_puebla': 'PCI Puebla',
             'wh_operator_camarones': 'Camarones',
+            'wh_manager_puebla': 'PCI Puebla',
+            'wh_manager_camarones': 'Camarones',
+        }
+
+        # Fase de la tabla de permisos de SIGA a la que pertenece cada estatus
+        self.map_stage_action = {
+            'request_created': 'request',
+            'transfer_requested': 'request',
+            'transfer_authorized': 'approval',
+            'ready_for_delivery': 'preparation',
+            'in_transit': 'preparation',
+            'stock_available': 'reception',
+            'cancelled': 'cancellation',
+        }
+
+        # super_admin y national_admin pueden pasar a cualquier estatus
+        self.transfer_full_access_roles = ('super_admin', 'national_admin')
+        roles_wh = ('warehouse_coordinator', 'wh_operator_puebla', 'wh_operator_camarones')
+        roles_mg = ('wh_manager_puebla', 'wh_manager_camarones')
+        self.map_action_roles = {
+            'request': roles_wh,
+            'preparation': roles_wh,
+            'approval': roles_mg,
+            'reception': roles_mg,
+            'cancellation': (),
         }
 
         self.user_authorized, self.user_in_group = self.authorized_transfer()
@@ -43,28 +68,75 @@ class Stock(Stock):
         if is_admin or type_admin == 'no_user_found':
             return is_admin, type_admin
 
-        for role, id_group in self.siga_wh_operator_groups:
+        for role, id_group in self.siga_wh_operator_groups + self.siga_wh_manager_groups:
             if self.current_user_id in self._get_users_group(id_group):
                 return True, role
-        
+
         return False, ''
 
-    def operator_can_edit_location(self, location_origen):
+    def operator_can_edit_location(self, location):
         """
-        Valida que un WH Operator solo opere Transferencias cuyo almacen origen
-        sea el de su grupo. Los administradores pasan sin restriccion.
+        Valida que un rol de WH (operator/manager) solo opere Transferencias
+        del almacen de su grupo. Los roles sin almacen pasan sin restriccion.
 
         Args:
-            location_origen (str): location del almacen origen a validar.
+            location (str): location del almacen (origen o destino) a validar.
 
         Returns:
-            tuple: (bool autorizado, str location origen validada).
+            tuple: (bool autorizado, str location validada).
         """
-        location_operator = self.map_wh_role_location.get(self.user_in_group)
-        if not location_operator:
-            return True, location_origen
+        location_role = self.map_wh_role_location.get(self.user_in_group)
+        if not location_role:
+            return True, location
 
-        return location_origen == location_operator, location_origen
+        return location == location_role, location
+
+    def validate_transfer_permission(self, answers_record=None):
+        """
+        Valida que el rol del usuario pueda pasar la Transferencia al estatus
+        enviado (`self.data['stage']`) y que sea del almacen correspondiente:
+        destino para Recibir, origen para lo demas. Se valida el almacen del
+        payload y, si viene `answers_record`, tambien el guardado en la BD.
+
+        Args:
+            answers_record (dict): answers del registro guardado, al actualizar.
+
+        Returns:
+            dict | None: respuesta 403 si no tiene permiso, None si pasa.
+        """
+        if self.user_in_group in self.transfer_full_access_roles:
+            return None
+
+        stage = self.data.get('stage')
+        action = self.map_stage_action.get(stage)
+        if not action or self.user_in_group not in self.map_action_roles[action]:
+            return {
+                'status_code': 403,
+                'msg': f"El rol '{self.user_in_group}' no puede pasar Transferencias a '{stage}'"
+            }
+
+        if action == 'reception':
+            obj_almacen = self.stk.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID
+            field_location = self.stk.WH.f['warehouse_location_dest']
+            locations = [self.data.get('destinationWarehouse')]
+        else:
+            obj_almacen = self.stk.WH.WAREHOUSE_LOCATION_OBJ_ID
+            field_location = self.stk.WH.f['warehouse_location']
+            locations = [self.data.get('originWarehouse')]
+
+        if answers_record is not None:
+            almacen_guardado = answers_record.get(obj_almacen) or {}
+            locations.insert(0, self.unlist(almacen_guardado.get(field_location)))
+
+        for location in locations:
+            can_edit_location, location = self.operator_can_edit_location(location)
+            if not can_edit_location:
+                return {
+                    'status_code': 403,
+                    'msg': f"Usuario no autorizado para operar Transferencias del almacen '{location}'"
+                }
+
+        return None
 
     def post_transferencia_materiales(self, answers):
         """
@@ -179,12 +251,9 @@ class Stock(Stock):
                 'msg': 'Usuario no autorizado para crear Transferencias de Materiales'
             }
 
-        can_edit_location, location_origen = self.operator_can_edit_location(self.data.get('originWarehouse'))
-        if not can_edit_location:
-            return {
-                'status_code': 403,
-                'msg': f"Usuario no autorizado para crear Transferencias desde el almacen '{location_origen}'"
-            }
+        resp_permiso = self.validate_transfer_permission()
+        if resp_permiso:
+            return resp_permiso
 
         answers_transferencia = self.build_answers_transferencia()
         resp_transferencia = self.post_transferencia_materiales(answers_transferencia)
