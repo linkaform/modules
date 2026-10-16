@@ -249,7 +249,7 @@ class Accesos(Accesos):
                 self.LISTA_INCIDENCIAS_CAT_OBJ_ID: {
                     self.f['categoria']: item.get('categoria', ''),
                     self.f['sub_categoria']: item.get('sub_categoria', ''),
-                    self.f['incidente']: item.get('tipo_de_incidencia', ''),
+                    self.f['incidencia']: item.get('incidencia', ''),
                 },
                 self.f['incidente_open']: item.get('incidente_open', ''),
                 self.f['comentario_incidente_bitacora']: item.get('comentario_incidente_bitacora', ''),
@@ -689,137 +689,137 @@ class Accesos(Accesos):
 if __name__ == "__main__":
     script_obj = Accesos(settings, sys_argv=sys.argv)
     script_obj.console_run()
-    script_obj.cr_cache = script_obj.net.get_collections(collection='rondin_caches')
-    # print(simplejson.dumps(script_obj.answers, indent=3))
-    data_rondin = script_obj.current_record
-    script_obj.user_name = data_rondin.get('created_by_name', '')
-    script_obj.user_id = data_rondin.get('created_by_id', 0)
-    script_obj.user_email = data_rondin.get('created_by_email', '')
-    script_obj.timestamp = data_rondin.get('start_timestamp', '')
-    script_obj.timezone = data_rondin.get('timezone', 'America/Mexico_City')
-    tz = pytz.timezone(script_obj.timezone)
+    # script_obj.cr_cache = script_obj.net.get_collections(collection='rondin_caches')
+    # # print(simplejson.dumps(script_obj.answers, indent=3))
+    # data_rondin = script_obj.current_record
+    # script_obj.user_name = data_rondin.get('created_by_name', '')
+    # script_obj.user_id = data_rondin.get('created_by_id', 0)
+    # script_obj.user_email = data_rondin.get('created_by_email', '')
+    # script_obj.timestamp = data_rondin.get('start_timestamp', '')
+    # script_obj.timezone = data_rondin.get('timezone', 'America/Mexico_City')
+    # tz = pytz.timezone(script_obj.timezone)
+    # # cache = script_obj.search_cache()
+    # # print('cache', cache)
+    # # script_obj.clear_cache()
+    # # breakpoint()
+
+    # location = script_obj.answers.get(script_obj.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {})
+    # script_obj.location = script_obj.unlist(location.get(script_obj.Location.f['location'], ''))
+    # check_area = script_obj.answers.get(script_obj.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {})
+    # script_obj.check_area = script_obj.unlist(check_area.get(script_obj.Location.f['area'], ''))
+    
+    # #! 1. Obtener los recorridos existentes para el area ejecutada
+    # recorridos = script_obj.search_rondin_by_area()
+    # if not recorridos:
+    #     print('===== log: No se encontró un recorrido para esta ubicación y área.')
+    #     resp = script_obj.update_check_ubicacion()
+    #     text_no_conf = 'Esta area no pertenece a este rondin.'
+    #     script_obj.answers[script_obj.f['comentario_check_area']] = (
+    #         script_obj.answers.get(script_obj.f['comentario_check_area'], '') + '\n' + text_no_conf
+    #         if script_obj.answers.get(script_obj.f['comentario_check_area'], '') else text_no_conf
+    #     )
+
+    # #! 2. Se crea un cache con la informacion de el check
+    # script_obj.create_cache()
+    # time.sleep(5)
     # cache = script_obj.search_cache()
-    # print('cache', cache)
-    # script_obj.clear_cache()
-    # breakpoint()
 
-    location = script_obj.answers.get(script_obj.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {})
-    script_obj.location = script_obj.unlist(location.get(script_obj.Location.f['location'], ''))
-    check_area = script_obj.answers.get(script_obj.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID, {})
-    script_obj.check_area = script_obj.unlist(check_area.get(script_obj.Location.f['area'], ''))
+    # #! 3. Se obtienen las ubicaciones(sin repetir) del cache
+    # cache_locations = script_obj.get_locations_cache()
     
-    #! 1. Obtener los recorridos existentes para el area ejecutada
-    recorridos = script_obj.search_rondin_by_area()
-    if not recorridos:
-        print('===== log: No se encontró un recorrido para esta ubicación y área.')
-        resp = script_obj.update_check_ubicacion()
-        text_no_conf = 'Esta area no pertenece a este rondin.'
-        script_obj.answers[script_obj.f['comentario_check_area']] = (
-            script_obj.answers.get(script_obj.f['comentario_check_area'], '') + '\n' + text_no_conf
-            if script_obj.answers.get(script_obj.f['comentario_check_area'], '') else text_no_conf
-        )
+    # #! 4. Se verifica si ya hay ganadores y si no se buscan por ubicacion y si ya tiene tiempo el check
+    # winners = script_obj.select_winner(cache)
+    # winners_ids = [winner.get('winner_id') for winner in winners]
+    # script_obj.set_winners(winners_ids)
+    # cache = script_obj.search_cache()
 
-    #! 2. Se crea un cache con la informacion de el check
-    script_obj.create_cache()
-    time.sleep(5)
-    cache = script_obj.search_cache()
-
-    #! 3. Se obtienen las ubicaciones(sin repetir) del cache
-    cache_locations = script_obj.get_locations_cache()
-    
-    #! 4. Se verifica si ya hay ganadores y si no se buscan por ubicacion y si ya tiene tiempo el check
-    winners = script_obj.select_winner(cache)
-    winners_ids = [winner.get('winner_id') for winner in winners]
-    script_obj.set_winners(winners_ids)
-    cache = script_obj.search_cache()
-
-    #! 5. Verificar si eres un ganador
-    if script_obj.record_id in winners_ids:
-        selected_winner = [winner for winner in winners if winner.get('winner_id') == script_obj.record_id]
-        winner = selected_winner[0] if selected_winner else None
-        if winner:
-            winner_timestamp = winner.get('winner_record', {}).get('timestamp')
-            winner_date = winner_timestamp and datetime.fromtimestamp(winner_timestamp, tz).strftime('%Y-%m-%d %H:%M:%S')
-            now = datetime.now(tz)
-            if winner_date:
-                winner_dt = tz.localize(datetime.strptime(winner_date, '%Y-%m-%d %H:%M:%S'))
-                diff = now - winner_dt
-                winner_hour = winner_dt.strftime('%Y-%m-%d %H:%M:%S')
+    # #! 5. Verificar si eres un ganador
+    # if script_obj.record_id in winners_ids:
+    #     selected_winner = [winner for winner in winners if winner.get('winner_id') == script_obj.record_id]
+    #     winner = selected_winner[0] if selected_winner else None
+    #     if winner:
+    #         winner_timestamp = winner.get('winner_record', {}).get('timestamp')
+    #         winner_date = winner_timestamp and datetime.fromtimestamp(winner_timestamp, tz).strftime('%Y-%m-%d %H:%M:%S')
+    #         now = datetime.now(tz)
+    #         if winner_date:
+    #             winner_dt = tz.localize(datetime.strptime(winner_date, '%Y-%m-%d %H:%M:%S'))
+    #             diff = now - winner_dt
+    #             winner_hour = winner_dt.strftime('%Y-%m-%d %H:%M:%S')
                 
-                #! Verificar si hay rondines que cerrar
-                rondines = script_obj.get_rondines_by_status()
-                print('Timezone:', script_obj.timezone)
-                print('now:', now)
-                print('winner_dt:', winner_dt)
-                print('diff:', diff)
-                response = script_obj.close_rondines(rondines, timezone=script_obj.timezone)
-                if response:
-                    print("response closed_rondines", response)
-                else:
-                    print("No hay rondines que cerrar")
+    #             #! Verificar si hay rondines que cerrar
+    #             rondines = script_obj.get_rondines_by_status()
+    #             print('Timezone:', script_obj.timezone)
+    #             print('now:', now)
+    #             print('winner_dt:', winner_dt)
+    #             print('diff:', diff)
+    #             response = script_obj.close_rondines(rondines, timezone=script_obj.timezone)
+    #             if response:
+    #                 print("response closed_rondines", response)
+    #             else:
+    #                 print("No hay rondines que cerrar")
 
-                #! 7. Verificamos si ha pasado mas de 15 minutos de este check pasado
-                if diff.total_seconds() > 900 and winner.get('type') == 'closed_winner':
-                    print('Ha pasado más de 15 minutos desde el winner_date.')
-                    #! 7-1 Se busca una bitacora cerrada para la hora en que se hizo este check
-                    bitacora = script_obj.search_closed_bitacora_by_time(winner.get('location'), winner_hour)
-                    time.sleep(5)
-                    winner_checks = script_obj.search_cache(winner_id=winner.get('winner_id'), location=winner.get('location'), user_name=script_obj.user_name)
-                    print('winner_checks:============', len(winner_checks))
-                    #! 7-1-1 Se filtran los checks que pertenezcan a la hora del check ganador
-                    window_seconds = 30 * 60  # 30 minutos
-                    start_dt = winner_dt
-                    end_dt = winner_dt + timedelta(seconds=window_seconds)
-                    filter_winner_checks = []
-                    for check in winner_checks:
-                        check_timestamp = check.get('timestamp')
-                        if not check_timestamp:
-                            continue
-                        check_dt = datetime.fromtimestamp(check_timestamp, tz)
-                        if start_dt <= check_dt <= end_dt:
-                            filter_winner_checks.append(check)
-                    winner_checks = filter_winner_checks
-                    winner_checks.append(winner.get('winner_record', {}))
-                    if bitacora:
-                        #! 7-1-2. Actualizar una bitacora ya cerrada con los checks perdidos
-                        response = script_obj.update_bitacora(winner_checks, bitacora)
-                        print('response:', response)
-                    else:
-                        #! 7-1-3. Crea una bitacora ya cerrada con los checks perdidos
-                        winner_record = winner.get('winner_record', {})
-                        winner_record.update({
-                            'checks': winner_checks
-                        })
-                        response = script_obj.create_bitacora(winner=winner_record, recorridos=recorridos, closed=True)
-                        print('response:', response)
-                    clear_ids = [check.get('_id') for check in winner_checks]
-                    clear_res = script_obj.clear_cache(list_ids=clear_ids)
-                else:
-                    #! 7-2-1 Se busca una bitacora activa para la hora en que se hizo este check
-                    print('No ha pasado más de 1 hora desde el winner_date.')
-                    bitacora = script_obj.search_active_bitacora_by_rondin(recorridos=recorridos)
-                    print('bitacora activa encontrada:', bitacora)
-                    time.sleep(5)
-                    winner_checks = script_obj.search_cache(winner_id=winner.get('winner_id'), location=winner.get('location'), user_name=script_obj.user_name)
-                    winner_checks.append(winner.get('winner_record', {}))
-                    if bitacora:
-                        #! 7-2-2. Actualizar una bitacora con los checks realizados
-                        response = script_obj.update_bitacora(winner_checks, bitacora)
-                        print('response:', response)
-                    else:
-                        #! 7-2-3. Crea una bitacora con los checks realizados
-                        print('No se encontró una bitácora activa por rondín.')
-                        winner_record = winner.get('winner_record', {})
-                        winner_record.update({
-                            'checks': winner_checks
-                        })
-                        response = script_obj.create_bitacora(winner=winner_record, recorridos=recorridos)
-                        print('response:', response)
-                    clear_ids = [check.get('_id') for check in winner_checks]
-                    clear_res = script_obj.clear_cache(list_ids=clear_ids)
+    #             #! 7. Verificamos si ha pasado mas de 15 minutos de este check pasado
+    #             if diff.total_seconds() > 900 and winner.get('type') == 'closed_winner':
+    #                 print('Ha pasado más de 15 minutos desde el winner_date.')
+    #                 #! 7-1 Se busca una bitacora cerrada para la hora en que se hizo este check
+    #                 bitacora = script_obj.search_closed_bitacora_by_time(winner.get('location'), winner_hour)
+    #                 time.sleep(5)
+    #                 winner_checks = script_obj.search_cache(winner_id=winner.get('winner_id'), location=winner.get('location'), user_name=script_obj.user_name)
+    #                 print('winner_checks:============', len(winner_checks))
+    #                 #! 7-1-1 Se filtran los checks que pertenezcan a la hora del check ganador
+    #                 window_seconds = 30 * 60  # 30 minutos
+    #                 start_dt = winner_dt
+    #                 end_dt = winner_dt + timedelta(seconds=window_seconds)
+    #                 filter_winner_checks = []
+    #                 for check in winner_checks:
+    #                     check_timestamp = check.get('timestamp')
+    #                     if not check_timestamp:
+    #                         continue
+    #                     check_dt = datetime.fromtimestamp(check_timestamp, tz)
+    #                     if start_dt <= check_dt <= end_dt:
+    #                         filter_winner_checks.append(check)
+    #                 winner_checks = filter_winner_checks
+    #                 winner_checks.append(winner.get('winner_record', {}))
+    #                 if bitacora:
+    #                     #! 7-1-2. Actualizar una bitacora ya cerrada con los checks perdidos
+    #                     response = script_obj.update_bitacora(winner_checks, bitacora)
+    #                     print('response:', response)
+    #                 else:
+    #                     #! 7-1-3. Crea una bitacora ya cerrada con los checks perdidos
+    #                     winner_record = winner.get('winner_record', {})
+    #                     winner_record.update({
+    #                         'checks': winner_checks
+    #                     })
+    #                     response = script_obj.create_bitacora(winner=winner_record, recorridos=recorridos, closed=True)
+    #                     print('response:', response)
+    #                 clear_ids = [check.get('_id') for check in winner_checks]
+    #                 clear_res = script_obj.clear_cache(list_ids=clear_ids)
+    #             else:
+    #                 #! 7-2-1 Se busca una bitacora activa para la hora en que se hizo este check
+    #                 print('No ha pasado más de 1 hora desde el winner_date.')
+    #                 bitacora = script_obj.search_active_bitacora_by_rondin(recorridos=recorridos)
+    #                 print('bitacora activa encontrada:', bitacora)
+    #                 time.sleep(5)
+    #                 winner_checks = script_obj.search_cache(winner_id=winner.get('winner_id'), location=winner.get('location'), user_name=script_obj.user_name)
+    #                 winner_checks.append(winner.get('winner_record', {}))
+    #                 if bitacora:
+    #                     #! 7-2-2. Actualizar una bitacora con los checks realizados
+    #                     response = script_obj.update_bitacora(winner_checks, bitacora)
+    #                     print('response:', response)
+    #                 else:
+    #                     #! 7-2-3. Crea una bitacora con los checks realizados
+    #                     print('No se encontró una bitácora activa por rondín.')
+    #                     winner_record = winner.get('winner_record', {})
+    #                     winner_record.update({
+    #                         'checks': winner_checks
+    #                     })
+    #                     response = script_obj.create_bitacora(winner=winner_record, recorridos=recorridos)
+    #                     print('response:', response)
+    #                 clear_ids = [check.get('_id') for check in winner_checks]
+    #                 clear_res = script_obj.clear_cache(list_ids=clear_ids)
                         
-        #! Ver cache final
-        response = script_obj.search_cache()
-        print('cache_final:', response)
-    else:
-        print('No eres ganador.')
+    #     #! Ver cache final
+    #     response = script_obj.search_cache()
+    #     print('cache_final:', response)
+    # else:
+    #     print('No eres ganador.')

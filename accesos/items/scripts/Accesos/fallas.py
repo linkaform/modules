@@ -7,6 +7,7 @@ from accesos_utils import Accesos
 
 class Accesos(Accesos):
     pass
+
 if __name__ == "__main__":
     acceso_obj = Accesos(settings, sys_argv=sys.argv)
     acceso_obj.console_run()
@@ -41,14 +42,22 @@ if __name__ == "__main__":
     dateFrom = data.get("dateFrom", "")
     dateTo = data.get("dateTo", "")
     filterDate = data.get("filterDate", "")
-
-    print('option', option)
+    # Buscador avanzado: con limit el listado viene paginado.
+    limit = data.get("limit")
+    skip = data.get("skip", 0)
+    facets = data.get("facets", [])
+    candidates = data.get("candidates", [])
+    locs = data.get("locations") or location
     if option == 'new_failure':
         response = acceso_obj.create_failure(data_failure)
     elif option == 'get_failure_by_folio':
         response = acceso_obj.get_list_fallas(location, area, folio=folio)
     elif option == 'get_failures':
-        response = acceso_obj.get_list_fallas(location, area, status=status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate)
+        response = acceso_obj.get_list_fallas(locs, area, status=status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, limit=limit, skip=skip, facets=facets)
+    elif option == 'get_search_fields':
+        response = acceso_obj.get_search_fields_fallas()
+    elif option == 'get_search_counts':
+        response = acceso_obj.get_search_counts_fallas(locs, area, status=status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, facets=facets, candidates=candidates)
     elif option == 'get_fallas':
         response = acceso_obj.get_list_fallas(location, area, status=status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate)
     elif option == 'update_failure':
@@ -58,14 +67,14 @@ if __name__ == "__main__":
     elif option == 'delete_failure':
         response = acceso_obj.delete_failure(folio)
     elif option =='catalogo_area_empleado_apoyo':
-        response = acceso_obj.catalogo_config_area_empleado_apoyo()
+        employees = acceso_obj.Employee.get_employee_data()
+        response = [employee.get('worker_name') for employee in employees]
+        #response = acceso_obj.catalogo_config_area_empleado_apoyo()
     elif option == 'catalogo_fallas':
         if tipo:
             response = acceso_obj.catalogo_falla(tipo)
         else:
             response = acceso_obj.catalogo_falla()
-    elif option == 'catalogo_area_empleado_apoyo':
-            response = acceso_obj.catalogo_config_area_empleado_apoyo()
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})

@@ -19,10 +19,15 @@ if __name__ == "__main__":
     page = data.get('page','')
     month = data.get('month', 1)
     year = data.get('year', 2026)
+    dateFrom = data.get('dateFrom', '')
+    dateTo = data.get('dateTo', '')
+    filterDate = data.get('filterDate', '')
+    dynamic_filters = data.get('dynamic_filters', [])
     print("data//////////////////", data)
-    
+
     if option == 'get_stats':
-        response = acceso_obj.get_page_stats(booth_area=area, location=location, page=page, month=month, year=year)
+        response = acceso_obj.get_page_stats(booth_area=area, location=location, page=page, month=month, year=year,
+            dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, dynamic_filters=dynamic_filters)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})
