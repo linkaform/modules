@@ -346,6 +346,9 @@ class Accesos(Accesos):
             'color_vehiculo': '6a4415c7b7ce8af39efb3aaa',
             'num_eco_num_rotulo': '6a3193dccf1326ad4b7a9a56',
             'conductor': '6a3193dccf1326ad4b7a9a57',
+            # Celular del chofer para avisarle el andén (2610-1323). No es
+            # requerido en la forma: el obligatorio vive en el front web.
+            'telefono_conductor': '6acd5b62a7d563ebafeb8762',
             'ayudante': '6a42cd6385b4d5aa41c2a922',
             'num_licencia': '6a3193dccf1326ad4b7a9a58',
             'vigencia_licencia': '6a42e2eab55463ad9f31abf3',
@@ -718,6 +721,7 @@ class Accesos(Accesos):
             f['year_vehiculo']:         vehiculo.get('modelo', ''),
             f['color_vehiculo']:        vehiculo.get('color', ''),
             f['conductor']:             conductor.get('nombre', ''),
+            f['telefono_conductor']:    conductor.get('celular') or '',
             f['ayudante']:              conductor.get('acompanante', ''),
             f['num_licencia']:          conductor.get('no_licencia', ''),
             f['vigencia_licencia']:     conductor.get('vigencia_licencia', ''),
