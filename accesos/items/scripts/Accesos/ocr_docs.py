@@ -919,9 +919,14 @@ class Accesos(Accesos):
     def _formatear_sn_huawei(sn: str):
         """
         El SN de Huawei viene con el prefijo 'HWTC' en hexadecimal (48575443);
-        se reemplazan esos 8 caracteres por 'HWTC'.
+        se reemplazan esos 8 caracteres por 'HWTC'. Si ya empieza por 'HWTC'
+        se regresa tal cual.
         """
-        return f"HWTC{sn[8:]}" if sn else None
+        if not sn:
+            return None
+        if sn.upper().startswith('HWTC'):
+            return sn
+        return f"HWTC{sn[8:]}"
 
     # Encabezados (ya normalizados por read_file: minúsculas, espacios -> '_')
     # que se aceptan como columna de NS.
