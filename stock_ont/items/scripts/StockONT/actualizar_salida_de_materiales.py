@@ -340,7 +340,7 @@ class Stock(Stock):
         if not folio:
             self.LKFException("No se recibio el id/folio de la Salida de Material a actualizar")
 
-        folio_query = int(folio) if str(folio).isdigit() else folio
+        folio_query = str(folio) if isinstance(folio, (int, float)) else folio
         record = self.get_record_by_folio(folio_query, self.FORM_ID_SALIDAS)
         if not record:
             self.LKFException(f"No se encontro ninguna Salida de Material con folio '{folio}'")
