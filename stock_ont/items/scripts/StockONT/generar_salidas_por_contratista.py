@@ -18,6 +18,31 @@ class Stock(Stock):
         # sin depender de que el payload de entrada lo haya mandado.
         self.material_estimado.data['tipo_reporte'] = 'vale_por_contratista'
 
+        # Solo estos roles pueden generar las salidas por contratista
+        self.generar_salidas_roles = ('super_admin', 'national_admin')
+        # Los asistentes administrativos solo pueden generarlas desde su almacen
+        self.map_wh_admin_assistant_location = {
+            'wh_admin_assistant_puebla': 'PCI Puebla',
+            'wh_admin_assistant_camarones': 'Camarones',
+        }
+        self.user_authorized, self.user_in_group = self.authorized_generar_salidas()
+        print(f'--- authorized = {self.user_authorized} in_group = {self.user_in_group}')
+
+    def authorized_generar_salidas(self):
+        is_admin, type_admin = self.is_user_admin()
+        if is_admin and type_admin in self.generar_salidas_roles:
+            return True, type_admin
+        if type_admin == 'no_user_found':
+            return False, type_admin
+
+        # Mismo almacen origen que usara consultar_material_estimado() para calcular los vales
+        wh_origen = self.material_estimado.set_source_warehouse_name(self.material_estimado.data.get('almacen_origen'))
+        for role, id_group in self.siga_wh_admin_assistant_groups:
+            if self.current_user_id in self._get_users_group(id_group):
+                return wh_origen == self.map_wh_admin_assistant_location.get(role), role
+
+        return False, type_admin
+
     def generar_id_salida(self):
         """
         Folio unico para el vale creado (se usa despues para localizarlo via
@@ -64,7 +89,13 @@ class Stock(Stock):
             dict: {individual: [...], grouped_by_sku: [...]}, formato que
             espera el Front.
         """
-        vales = self.material_estimado.consultar_material_estimado()
+        if not self.user_authorized:
+            return {
+                'status_code': 403,
+                'msg': 'Usuario no autorizado para generar Salidas de Materiales por contratista'
+            }
+
+        vales =self.material_estimado.consultar_material_estimado()
         if not isinstance(vales, list):
             self.LKFException(f"No se pudo calcular el material estimado por contratista: {vales}")
 
