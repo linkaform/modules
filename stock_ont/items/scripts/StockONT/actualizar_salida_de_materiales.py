@@ -11,51 +11,28 @@ class Stock(Stock):
         self.inv_map_salida_phases = {v: k for k, v in self.map_salida_phases.items()}
 
         # Permiso de la tabla de SIGA (seccion Salidas) que se necesita para
-        # pasar la Salida a cada estatus. 'delivered' depende de si la entrega
-        # es local o foranea, ver get_salida_action().
-        # TODO: revisar con operaciones. 'pending_authorization' lo asigna
-        # generar_salidas_por_contratista.py al crear la Salida ("Generar
-        # calculo de reabastecimiento"); aqui solo aplica si se vuelve a
-        # editar antes de autorizarla.
+        # pasar la Salida a cada estatus, segun lo definido con operaciones.
         self.map_salida_stage_action = {
-            'pending_authorization': 'calculation',
+            'pending_authorization': 'authorize_voucher',
             'voucher_generated': 'authorize_voucher',
             'in_preparation': 'prepare_material',
             'ready_to_deliver': 'prepare_material',
-            # TODO: revisar con operaciones. La bifurcacion local/foranea al
-            # salir de Listo para Entrega no tiene permiso propio en la tabla;
-            # se asume que la hace quien prepara el material.
-            'awaiting_local_delivery': 'prepare_material',
+            'awaiting_local_delivery': 'confirm_local_delivery',
             'awaiting_transit': 'capture_dispatch',
             'awaiting_supervisor_review': 'confirm_transit',
-            # TODO: revisar con operaciones. No esta claro si la "Revision de
-            # supervisor" va aqui (valida la llegada, En transito -> Por
-            # entregar) o antes de despachar (Listo para Entrega -> Alistando
-            # despacho).
-            'awaiting_final_delivery': 'supervisor_review',
+            'awaiting_final_delivery': 'confirm_transit',
+            'delivered': 'confirm_final_delivery',
         }
 
         # super_admin y national_admin pueden pasar a cualquier estatus
         self.salida_full_access_roles = ('super_admin', 'national_admin')
         roles_op = ('wh_operator_puebla', 'wh_operator_camarones')
-        # TODO: revisar con operaciones. warehouse_manager no tiene ningun
-        # permiso operativo en Salidas; seria el candidato natural para
-        # 'supervisor_review' y quiza para 'authorize_voucher' junto con CO.
         self.map_salida_action_roles = {
-            'calculation': ('wh_admin_assistant_puebla', 'wh_admin_assistant_camarones'),
             'authorize_voucher': ('warehouse_coordinator',),
-            # TODO: revisar con operaciones. 'prepare_material' cubre dos
-            # transiciones (iniciar y terminar la preparacion); separarlo si
-            # se quiere distinguir quien empieza y quien termina.
             'prepare_material': roles_op,
+            'confirm_local_delivery': roles_op,
             'capture_dispatch': roles_op,
             'confirm_transit': roles_op,
-            'confirm_local_delivery': roles_op,
-            'supervisor_review': (),
-            # TODO: revisar con operaciones. La tabla lo marca como almacen
-            # Origen y solo para SA/NA, pero lo logico es que confirme quien
-            # recibe (almacen Destino); field_receiver no tiene ningun permiso
-            # en Salidas y parece ser quien deberia tenerlo.
             'confirm_final_delivery': (),
         }
 
@@ -63,8 +40,6 @@ class Stock(Stock):
         self.map_salida_role_location = {
             'wh_operator_puebla': 'PCI Puebla',
             'wh_operator_camarones': 'Camarones',
-            'wh_admin_assistant_puebla': 'PCI Puebla',
-            'wh_admin_assistant_camarones': 'Camarones',
         }
 
     def get_salida_role(self):
@@ -85,22 +60,6 @@ class Stock(Stock):
 
         return ''
 
-    def get_salida_action(self, stage, answers_record):
-        """
-        Permiso que se necesita para pasar la Salida a `stage`. Para
-        'delivered' se distingue la entrega local de la foranea con
-        `delivery.isForanea` del payload o, si no viene, con el
-        delivery_type guardado.
-        """
-        if stage != 'delivered':
-            return self.map_salida_stage_action.get(stage)
-
-        is_foranea = (self.data.get('delivery') or {}).get('isForanea')
-        if is_foranea is None:
-            is_foranea = self.unlist(answers_record.get(self.f['delivery_type'])) == self.format_delivery_type(True)
-
-        return 'confirm_final_delivery' if is_foranea else 'confirm_local_delivery'
-
     def validate_salida_permission(self, answers_record):
         """
         Valida que el rol del usuario pueda pasar la Salida al estatus enviado
@@ -119,15 +78,15 @@ class Stock(Stock):
             return None
 
         stage = self.data.get('stage')
-        action = self.get_salida_action(stage, answers_record)
+        action = self.map_salida_stage_action.get(stage)
         if not action or role not in self.map_salida_action_roles[action]:
             return {
                 'status_code': 403,
                 'msg': f"El rol '{role}' no puede pasar Salidas de Material a '{stage}'"
             }
 
-        # TODO: revisar con operaciones. Todos los permisos de Salidas se
-        # validan contra el almacen Origen (ver TODO de 'confirm_final_delivery').
+        # Todos los permisos de Salidas se validan contra el almacen origen:
+        # el destino es del contratista y no se controla una vez entregado.
         almacen_guardado = answers_record.get(self.stk.WH.WAREHOUSE_LOCATION_OBJ_ID) or {}
         locations = [
             self.unlist(almacen_guardado.get(self.stk.WH.f['warehouse_location'])),
