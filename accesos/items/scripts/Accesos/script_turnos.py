@@ -63,7 +63,7 @@ if __name__ == "__main__":
     elif option == 'assing_gafete':
         response = acceso_obj.assing_gafete(data_gafete, id_bitacora, tipo_movimiento)
     elif option == 'list_bitacora2':
-        response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, dynamic_filters=dynamic_filters, limit=limit, offset=offset, facets=facets)
+        response = acceso_obj.get_list_bitacora(location,  area, prioridades=prioridades, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, dynamic_filters=dynamic_filters, limit=limit, offset=offset, facets=facets, desglose=data.get('desglose', ''))
     elif option == 'get_search_fields':
         response = acceso_obj.get_search_fields_bitacora()
     elif option == 'get_search_counts':
