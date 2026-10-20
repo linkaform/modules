@@ -1,5 +1,5 @@
 # coding: utf-8
-import datetime, sys, simplejson
+import datetime, sys, simplejson, traceback
 from copy import deepcopy
 from bson import ObjectId
 
@@ -102,8 +102,9 @@ class Accesos(Accesos):
             if areas_recorrido.get('id_grupo'):
                 self.answers[self.GRUPOS_CAT_OBJ_ID] = {self.mf['id_grupo']:areas_recorrido['id_grupo']} 
             return True
+        print(f'Warning: no se encontro configuracion de recorrido form_id={self.CONFIGURACION_DE_RECORRIDOS_FORM} location={location!r} area={area!r} nombre={name_rondin!r}')
         return False
-    
+
     def get_active_guards_in_location(self, location, rol=None):
         match = {"$match": {
                 "deleted_at": {"$exists": False},
@@ -188,6 +189,7 @@ class Accesos(Accesos):
             location = self.answers.get(self.CONFIGURACION_RECORRIDOS_OBJ_ID, {}).get(self.Location.f['location'])
             user_info = self.get_active_guards_in_location(location)
             if not user_info:
+                print(f'Warning: no hay guardia activo en location={location!r} roles={rol!r}')
                 return False
             
             self.answers[self.USUARIOS_OBJ_ID] = {
@@ -222,9 +224,15 @@ if __name__ == "__main__":
         # Si no es un registro hijo, es un registro padre, lo que quiere decir que es el orginal
         if acceso_obj.answers.get(acceso_obj.mf['estatus_del_recorrido']) == 'programado':
             if not acceso_obj.answers.get(acceso_obj.f['areas_del_rondin']):
-                acceso_obj.get_and_set_areas_recorrido()
+                try:
+                    acceso_obj.get_and_set_areas_recorrido()
+                except Exception:
+                    print('ERROR get_and_set_areas_recorrido:', traceback.format_exc())
             if not acceso_obj.answers.get(acceso_obj.USUARIOS_OBJ_ID):
-                acceso_obj.get_and_set_user()
+                try:
+                    acceso_obj.get_and_set_user()
+                except Exception:
+                    print('ERROR get_and_set_user:', traceback.format_exc())
     print('answers=', simplejson.dumps(acceso_obj.answers, indent=3))
     sys.stdout.write(simplejson.dumps({
         'status': 101,
