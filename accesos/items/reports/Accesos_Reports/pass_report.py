@@ -13,39 +13,17 @@ sys.path.append('/srv/scripts/addons/modules/accesos/items/scripts/Accesos')
 from accesos_utils import Accesos
 
 if __name__ == "__main__":
-    script_obj = base.LKF_Base(settings, sys_argv=sys.argv, use_api=True)
     acc_obj = Accesos(settings, sys_argv=sys.argv, use_api=True)
     acc_obj.console_run()
 
     data = acc_obj.data
     data = data.get('data',[])
-    location = data.get('location', 'Planta Monterrey')
-    
-    option = data.get('option','get_report')
+    area = data.get('area','get_report')
+    location = data.get('location','Planta Monterrey')
+    page = data.get('page','Turnos')
+    print("data//////////////////", data)
 
-    if option == 'get_report':
-        records = acc_obj.get_cantidades_de_pases()
-        # records = acc_obj.get_cantidades_de_pases(x_empresa=True)
-        # records = acc_obj.get_cantidades_de_pases_x_persona(contratista='Empresa de Limpieza SA de CV')
-        # todos_los_pases = acc_obj.format_cantidades_de_pases(records)
-        # todos_los_pases_x_contratista = acc_obj.get_pases_x_contratista('Pelotas Dragón',records)
-        # todos_los_pases_x_perfil = acc_obj.get_pases_x_perfil(records)
-        # todos_los_pases_x_persona = acc_obj.get_pases_x_persona(records)
+    response = acc_obj.get_page_stats(booth_area=area, location=location, page=page)
+    print('response////////', response)
+    # acc_obj.HttpResponse({"data":response})
 
-        # print('records////////', records)
-        # print('lista de pases//////////', todos_los_pases)
-        # print('lista de pases x contratista/////////', todos_los_pases_x_contratista)
-        # print('lista de pases x perfil/////////', todos_los_pases_x_perfil)
-        # print('lista de pases x persona/////////', todos_los_pases_x_persona)
-        
-        print('recordssss devueltos/////////', records)
-        script_obj.HttpResponse({
-            "cantidad_de_pases": records,
-        })
-
-
-    elif option == 'get_catalog':
-        pass
-        # script_obj.HttpResponse({
-        #     "" : ""
-        # })

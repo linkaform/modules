@@ -9,23 +9,88 @@ class Accesos(Accesos):
     pass
     
 if __name__ == "__main__":
-    acceso_obj = Accesos(settings, sys_argv=sys.argv)
+    acceso_obj = Accesos(settings, sys_argv=sys.argv, use_api=False)
     acceso_obj.console_run()
-    #-FILTROS
     data = acceso_obj.data.get('data',{})
     option = data.get("option",'')
     location = data.get("location",'')
+    locations = data.get("locations", [])
     folio = data.get("folio",'')
     access_pass = data.get("access_pass",{})
+    data_msj=data.get("data_msj", {})
+    data_cel_msj=data.get("data_cel_msj", {})
+    user_id= data.get("user_id")
+    marca = data.get('marca',"")
+    tipo = data.get('tipo',"")
+    option = data.get("option","")
+    qr_code=data.get("qr_code")
+    tab_status=data.get("tab_status")
+    update_obj = data.get("update_obj",{})
+    envio = data.get("envio",[])
+    limit = data.get("limit", 25)
+    skip = data.get("skip", 0)
+    search_name = data.get("search_name", None)
+    dynamic_filters = data.get("dynamic_filters", {})
+    dateFrom = data.get("dateFrom", "")
+    dateTo = data.get("dateTo", "")
+    filterDate = data.get("filterDate", "")
+    record_ids = data.get("record_ids", [])
+    # Buscador avanzado (ver Accesos.pases_search_fields).
+    facets = data.get("facets", [])
+    candidates = data.get("candidates", [])
+    uso = data.get("uso", None)
+
     if option == 'assets_access_pass':
-        # used
         response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
     elif option == 'create_access_pass' or option == 'crear_pase':
-        response = acceso_obj.create_access_pass(location, access_pass) 
+        response = acceso_obj.create_access_pass(access_pass)
+        folio_msj = response.get('json', {}).get('id', '')
     elif option == 'update_pass':
         response = acceso_obj.update_pass(access_pass,folio)
-    elif option == 'area_by_location':
-        response = acceso_obj.catalago_area_location(location)
+    elif option == 'update_full_pass':
+        response = acceso_obj.update_full_pass(access_pass,folio, qr_code, location)
+    elif option == 'update_active_pass':
+        response = acceso_obj.update_active_pass(folio, qr_code, update_obj)
+    elif option == 'catalogos_pase_area':
+        response = acceso_obj.catalogos_pase_area(location, uso=uso)
+    elif option == 'catalogos_pase_location':
+        response = acceso_obj.catalogos_pase_location()
+    elif option == 'catalogos_pase_no_jwt':
+        response = acceso_obj.catalagos_pase_no_jwt(qr_code)
+    elif option == 'enviar_msj':
+        response = acceso_obj.create_enviar_msj_pase(folio=folio)
+    elif option == 'enviar_correo':
+        response = acceso_obj.create_enviar_correo(data_msj=data_msj, folio=folio, envio=envio)
+    elif option == 'catalago_vehiculo':
+        if tipo and marca:
+            response = acceso_obj.vehiculo_modelo(tipo, marca)
+        elif tipo:
+            response = acceso_obj.vehiculo_marca(tipo)
+        else:
+            response = acceso_obj.vehiculo_tipo()
+    elif option == 'catalago_estados':
+        response = acceso_obj.catalogo_estados()
+    elif option == 'get_pass':
+        response = acceso_obj.get_pass_custom(qr_code)
+    elif option == 'get_my_pases':
+        response = acceso_obj.get_my_pases(tab_status=tab_status, limit=limit, skip=skip, search_name=search_name, location=location, dynamic_filters=dynamic_filters, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, locations=locations, facets=facets)
+    elif option == 'get_search_fields':
+        response = acceso_obj.get_search_fields_pases()
+    elif option == 'get_search_counts':
+        # En Pases el "status" base es la pestaña (tab_status).
+        response = acceso_obj.get_search_counts_pases(tab_status=data.get("status") or tab_status, location=location, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, locations=locations, facets=facets, candidates=candidates)
+    elif option == 'get_pdf':
+        response = acceso_obj.get_pdf(qr_code)
+    elif option == 'get_pdf_multi':
+        response = acceso_obj.get_pdf_multi(record_ids)
+    elif option == 'get_user_contacts':
+        response = acceso_obj.get_user_contacts()
+    elif option == 'get_config_modulo_seguridad':
+        response = acceso_obj.get_config_modulo_seguridad(location)
+    elif option == 'get_areas_by_locations':
+        response = acceso_obj.get_areas_by_locations(locations)
+    elif option == 'extends_date_of_pass':
+        response = acceso_obj.extends_date_of_pass(qr_code, update_obj)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})

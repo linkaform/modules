@@ -44,15 +44,25 @@ if __name__ == "__main__":
     area = data.get("area")
     folio = data.get("folio")
     tipo = data.get("tipo","")
-    #-FUNCTIONS
-    #option = 'new_article';
-    #option = 'get_articles';
-    #option = 'update_article';
-    #option = 'delete_article';
+
+    dateFrom = data.get("dateFrom", "")
+    dateTo = data.get("dateTo", "")
+    filterDate = data.get("filterDate", "")
+    # Buscador avanzado: con limit el listado viene paginado (ver get_list_article_lost).
+    limit = data.get("limit")
+    skip = data.get("skip", 0)
+    locations = data.get("locations", [])
+    facets = data.get("facets", [])
+    candidates = data.get("candidates", [])
+
     if option == 'nuevo_articulo':
         response = acceso_obj.create_article_lost(data_article)
     elif option == 'get_articles':
-        response = acceso_obj.get_list_article_lost(location, area,status)
+        response = acceso_obj.get_list_article_lost(location, area,status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, limit=limit, skip=skip, locations=locations, facets=facets)
+    elif option == 'get_search_fields':
+        response = acceso_obj.get_search_fields_perdidos()
+    elif option == 'get_search_counts':
+        response = acceso_obj.get_search_counts_perdidos(location=location, area=area, status=status, dateFrom=dateFrom, dateTo=dateTo, filterDate=filterDate, locations=locations, facets=facets, candidates=candidates)
     elif option == 'update_article':
         response = acceso_obj.update_article_lost(data_article_update, folio)
     elif option == 'delete_article':
@@ -63,7 +73,7 @@ if __name__ == "__main__":
         else:
             response = acceso_obj.catalogo_tipo_articulo()
     elif option == 'catalogo_area_empleado':
-        response = acceso_obj.catalogo_config_area_empleado()
+        response = acceso_obj.catalogo_config_area_empleado(bitacora='Objetos Perdidos')
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})

@@ -480,6 +480,7 @@ if __name__ == "__main__":
                     last_update = last_update - 6*60*60
                     date_time = datetime.datetime.fromtimestamp(last_update)
                     last_update_date = date_time.strftime('%Y-%m-%d %H:%M:%S')
+                    print('last_update_date', last_update_date)
                     a = f"TO_TIMESTAMP('{last_update_date}', 'YYYY-MM-DD HH24:MI:SS.FF6')"
                     query = f'SELECT * FROM {v} WHERE FEC_MODIF  > {a}'
                 header, response = module_obj.sync_db_catalog(db_name=v, query=query)
