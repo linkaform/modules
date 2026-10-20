@@ -406,7 +406,7 @@ class Accesos(Accesos):
             image_source: URL remota o ruta local de la imagen.
             model:        Modelo OpenRouter a usar (opcional).
             MODEL = "anthropic/claude-haiku-4.5"  # excelente OCR, precio razonable
-            MODEL = "google/gemini-2.5-flash"  # un escalón arriba, más caro pero mejor
+            MODEL = "google/gemini-3.5-flash"  # un escalón arriba, más caro pero mejor
 
         Returns:
             dict con:
