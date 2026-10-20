@@ -9,8 +9,45 @@ class Custom(Custom):
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
 
+    def get_data_prev_version(self):
+        versions = lkf_obj.current_record.get('other_versions', [])
+        if not versions:
+            print('[VERSION PREV]: No hay versiones')
+            return {}
+
+        last_version = versions[-1]['uri']
+        id_last_version = last_version.split('/')[-2]
+        data_to_replace = ['updated_at', 'start_timestamp', 'end_timestamp', 'start_date', 'end_date', 'duration']
+
+        record_last_version = cr_version.find_one(
+            { '_id': ObjectId( id_last_version ) }, 
+            { i: 1 for i in data_to_replace }
+        )
+        
+        if not record_last_version:
+            print(f'[VERSION PREV]: No se encontro la version {id_last_version}')
+            return {}
+
+        return {
+            i: record_last_version.get(i) 
+            for i in data_to_replace 
+            if record_last_version.get(i)
+        }
+
+
+    def set_notificar_email_no(self):
+        answers_to_set = {'answers.68a8943e7589aafccbe966e5': 'no'}
+        answers_to_set.update( self.get_data_prev_version() )
+        lkf_obj.cr.update_one({
+            'form_id': lkf_obj.form_id,
+            'folio': lkf_obj.folio,
+            'deleted_at': {'$exists': False}
+        },{'$set': answers_to_set})
+        return
+
     def make_gradings_to_M2(self):
         print('... ... Calculando el grading para M2 ... ...')
+        self.set_notificar_email_no()
 
         valor_porcentual_base = self.get_valor_porcentual_base_form()
         if valor_porcentual_base is None:
@@ -77,8 +114,11 @@ class Custom(Custom):
         for pagina_ponderable, data_fields in ponderaciones_by_page.items():
             total_campos_considerados += len( data_fields.get('fields_considerados', []) )
 
-        valor_general_campo = round( valor_porcentual_base / total_campos_considerados, 2 )
-        valor_general_campo_2 = round( 100 / total_campos_considerados, 2 )
+        # valor_general_campo = round( valor_porcentual_base / total_campos_considerados, 2 )
+        # valor_general_campo_2 = round( 100 / total_campos_considerados, 2 )
+
+        valor_general_campo = valor_porcentual_base / total_campos_considerados
+        valor_general_campo_2 = 100 / total_campos_considerados
 
         total_points_available, total_points_obtained = 0, 0
         total_points_available_2, total_points_obtained_2 = 0, 0
@@ -146,7 +186,8 @@ class Custom(Custom):
 
 
         resp_update_record = lkf_obj.cr.update_one( {'_id': ObjectId( self.record_id )}, {'$set': {
-            'points': total_points_obtained
+            'points': round(total_points_obtained, 2),
+            'answers.68a8943e7589aafccbe966e5': 'no'
         }} )
         print(f"\nMatched count: {resp_update_record.matched_count} Modified count: {resp_update_record.matched_count}", )
 
@@ -155,5 +196,6 @@ if __name__ == '__main__':
     lkf_obj.console_run()
 
     answers = lkf_obj.answers
+    cr_version = lkf_obj.net.get_collections( collection='answer_version' )
 
     lkf_obj.make_gradings_to_M2()
