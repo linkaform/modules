@@ -248,6 +248,27 @@ class Oracle(Oracle):
             }
 
 
+    # Nombres con los que el cliente ha llamado a la columna de ultima modificacion
+    DATE_COL_CANDIDATES = (
+        'FEC_MODIF', 'FEC_MODIF_MODELO', 'FECHA_MODIF', 'FEC_MODIFICACION',
+        'FECHA_MODIFICACION', 'FEC_ACTUALIZACION', 'FECHA_ACTUALIZACION',
+    )
+
+    def get_modif_column(self, view_name):
+        """Lee las columnas reales de la vista y regresa la de fecha de
+        modificacion, o None si no hay. Evita ORA-00904 cuando el cliente
+        renombra columnas."""
+        columns, _ = self.query_view(view_name, query=f'SELECT * FROM {view_name} WHERE 1=0')
+        upper = {c.upper(): c for c in columns}
+        for cand in self.DATE_COL_CANDIDATES:
+            if cand in upper:
+                return upper[cand]
+        for c in columns:
+            if c.upper().startswith('FEC') and 'MODIF' in c.upper():
+                return c
+        print(f'WARNING: {view_name} no tiene columna de fecha de modificacion. Columnas: {columns}')
+        return None
+
     def find_db_id(self, data):
         res = {}
         common_key = set(data.keys()).intersection(self.db_id_fields.keys())
@@ -256,7 +277,7 @@ class Oracle(Oracle):
             common_key = ', '.join(map(str, common_key))
             res['sync_data']['db_id'] = data[common_key]
             res['sync_data']['updated_at'] = self.db_updated_at
-            res['sync_data']['db_updated_at'] = data[self.db_id_fields[common_key]]
+            res['sync_data']['db_updated_at'] = data.get(self.db_id_fields[common_key])
         return res
 
     def api_etl(self, data, schema, catalog_id):
@@ -482,7 +503,16 @@ if __name__ == "__main__":
                     last_update_date = date_time.strftime('%Y-%m-%d %H:%M:%S')
                     print('last_update_date', last_update_date)
                     a = f"TO_TIMESTAMP('{last_update_date}', 'YYYY-MM-DD HH24:MI:SS.FF6')"
-                    query = f'SELECT * FROM {v} WHERE FEC_MODIF  > {a}'
+                    date_col = module_obj.get_modif_column(v)
+                    print('date_col', date_col)
+                    if date_col:
+                        query = f'SELECT * FROM {v} WHERE {date_col}  > {a}'
+                    else:
+                        # sin columna de fecha: sync completo (es idempotente por db_id)
+                        print(f'Sync completo de {v}, sin columna de fecha de modificacion')
+                        update = False
+                print('dbname=', v)
+                print('query=', query)
                 header, response = module_obj.sync_db_catalog(db_name=v, query=query)
                 # schema = getattr(module_obj, v, "Attribute not found")
 
@@ -506,3 +536,10 @@ if __name__ == "__main__":
                 schema = view['schema']
                 catalog_id = view['catalog_id']
                 module_obj.load_data(v, view, response, schema, catalog_id)
+    elif option == 'peek':
+        # Solo lectura: imprime columnas y unas filas de la vista, no sincroniza nada
+        limit = int(data.get('limit', 5))
+        dbname = 'LINK_MODELO_EQUIPOS'
+        columns, rows = module_obj.query_view(db_name, query=f'SELECT * FROM {db_name} WHERE ROWNUM <= {limit}')
+        for r in rows:
+            print(r)
