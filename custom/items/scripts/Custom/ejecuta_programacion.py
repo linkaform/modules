@@ -231,6 +231,11 @@ class Custom(Custom):
         # data_fecha = self.semana_del_mes_lunes( datetime.strptime('2026-07-20', '%Y-%m-%d') ) # PARA MIS PRUEBAS
         data_fecha = self.semana_del_mes_lunes()
         print('++ data_fecha =', simplejson.dumps(data_fecha, indent=4))
+
+        # si el numero de semana es mayor a 4, se retorna sin hacer nada, ya que no se programan mas de 4 semanas
+        if data_fecha.get('semana') > 4:
+            print(f"++ La semana {data_fecha.get('semana')} es mayor a 4, no se programan mas de 4 semanas, se retorna sin hacer nada.")
+            return
         
         # forzando fechas nomas para mis pruebas
         # data_fecha['fecha_inicio'] = "2026-05-04 00:00:00"
