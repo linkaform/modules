@@ -508,9 +508,10 @@ if __name__ == "__main__":
                     if date_col:
                         query = f'SELECT * FROM {v} WHERE {date_col}  > {a}'
                     else:
-                        # sin columna de fecha: sync completo (es idempotente por db_id)
-                        print(f'Sync completo de {v}, sin columna de fecha de modificacion')
-                        update = False
+                        # sin columna de fecha no se puede hacer incremental; un sync completo
+                        # re-parchearia todo el catalogo y genera una revision nueva por doc en CouchDB
+                        print(f'SKIP {v}: sin columna de fecha de modificacion, agregarla a DATE_COL_CANDIDATES')
+                        continue
                 print('dbname=', v)
                 print('query=', query)
                 header, response = module_obj.sync_db_catalog(db_name=v, query=query)
