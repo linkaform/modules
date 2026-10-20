@@ -19,12 +19,21 @@ if __name__ == "__main__":
     base_obj.console_run()
     user_data = base_obj.answers
 
-    response = base_obj.create_user_account(user_data=user_data)
+    # Dos fases con el mismo script (workflows del form Usuarios):
+    #  - 'crear'  (runtime before): da de alta el usuario y deja el registro en 'creado'.
+    #  - 'activado' (runtime after, cuando el usuario fija su contraseña y
+    #    set_user_password en Sanic pasa el registro a 'activado'): crea/liga el
+    #    empleado y su Configuracion Accesos.
+    if user_data.get(base_obj.f['new_user_status']) == 'activado':
+        base_obj.setup_user_employee(user_data)
+        sys.stdout.write(simplejson.dumps({'status': 200}))
+    else:
+        response = base_obj.create_user_account(user_data=user_data)
 
-    sys.stdout.write(simplejson.dumps({
-        'status': 101,
-        'replace_ans': base_obj.answers,
-        'metadata': {
-            'id': base_obj.record_id
-        }
-    }))
+        sys.stdout.write(simplejson.dumps({
+            'status': 101,
+            'replace_ans': base_obj.answers,
+            'metadata': {
+                'id': base_obj.record_id
+            }
+        }))

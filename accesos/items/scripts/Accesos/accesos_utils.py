@@ -903,7 +903,7 @@ class Accesos(Accesos):
 
     def ocr_acceso_transportista(self, image_source,
                                   extra_instructions: str = None,
-                                  model: str = 'google/gemini-2.5-flash') -> dict:
+                                  model: str = 'google/gemini-3.5-flash') -> dict:
         """
         Analiza uno o varios archivos de un acceso de transportista.
         Acepta mezcla de imágenes y documentos (PDFs, JPGs, PNGs).
@@ -927,7 +927,7 @@ class Accesos(Accesos):
                           que el usuario ya asignó a ese archivo antes de analizar,
                           usada como prior de alta confianza (no reemplaza la
                           verificación contra el contenido real de la imagen).
-            model:        Modelo OpenRouter ('google/gemini-2.5-flash' recomendado para docs).
+            model:        Modelo OpenRouter ('google/gemini-3.5-flash' recomendado para docs).
 
         Returns:
             dict con status_code, data, msg.
@@ -1334,7 +1334,7 @@ class Accesos(Accesos):
 
     def ocr_persona(self, image_source,
                     extra_instructions: str = None,
-                    model: str = 'google/gemini-2.5-flash-lite') -> dict:
+                    model: str = 'google/gemini-3.5-flash-lite') -> dict:
         """
         Analiza una foto para detectar si hay una persona visible
         y extrae sus características físicas descriptivas.
@@ -1440,7 +1440,7 @@ class Accesos(Accesos):
         return {'status_code': datos.get('status_code', 200), 'msg': 'OK', 'data': datos}
 
     def ocr_identificacion(self, image_source: str, form_id: int = None,
-                           model: str = 'google/gemini-2.5-flash-lite', 
+                           model: str = 'google/gemini-3.5-flash-lite', 
                            name: str = None, is_employee: bool = False) -> dict:
         """
         Extrae los datos de una identificación (INE, pasaporte, licencia, etc.)
@@ -1451,7 +1451,7 @@ class Accesos(Accesos):
             form_id:      Si se proporciona, crea el registro en ese formulario.
             model:        Modelo OpenRouter a usar (opcional).
             MODEL = "anthropic/claude-haiku-4.5"  # excelente OCR, precio razonable
-            MODEL = "google/gemini-2.5-flash"  # un escalón arriba, más caro pero mejor
+            MODEL = "google/gemini-3.5-flash"  # un escalón arriba, más caro pero mejor
             name:         Si se indica, valida que la identificación pertenezca a esa persona.
             is_employee:  Si es True, busca a la persona de la identificación en el
                           catálogo de empleados (self.Employee.get_employee_data por
