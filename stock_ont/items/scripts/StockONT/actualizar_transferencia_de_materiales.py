@@ -6,6 +6,8 @@ from account_settings import *
 
 class Stock(Stock):
     """docstring for Stock"""
+    auth_wh_manager_groups = True
+
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
 

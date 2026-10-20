@@ -6,6 +6,10 @@ from account_settings import *
 
 class Stock(Stock):
     """docstring for Stock"""
+    # Crear una Transferencia solo lo autoriza a los WH Operator; al editarla
+    # (actualizar_transferencia_de_materiales.py) tambien a los WH Manager.
+    auth_wh_manager_groups = False
+
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
         self.data = self.data.get('data')
@@ -68,7 +72,11 @@ class Stock(Stock):
         if is_admin or type_admin == 'no_user_found':
             return is_admin, type_admin
 
-        for role, id_group in self.siga_wh_operator_groups + self.siga_wh_manager_groups:
+        groups = self.siga_wh_operator_groups
+        if self.auth_wh_manager_groups:
+            groups = groups + self.siga_wh_manager_groups
+
+        for role, id_group in groups:
             if self.current_user_id in self._get_users_group(id_group):
                 return True, role
 
@@ -108,7 +116,7 @@ class Stock(Stock):
             return None
 
         stage = self.data.get('stage')
-        action = self.map_stage_action.get(stage)
+        action = self.map_stage_action.get(stage) or 'request'
         if not action or self.user_in_group not in self.map_action_roles[action]:
             return {
                 'status_code': 403,
