@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<lkf>
+    <properties>
+        <container>linkaform/addons:latest</container>
+        <is_public>True</is_public>
+    </properties>
+</lkf>
