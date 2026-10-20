@@ -11,7 +11,7 @@ class Accesos(Accesos):
 
     def ocr_equipo(self, image_source,
                    extra_instructions: str = None,
-                   model: str = 'google/gemini-2.5-flash-lite') -> dict:
+                   model: str = 'google/gemini-3.5-flash-lite') -> dict:
         """
         Extrae los datos de una foto de un equipo/herramienta:
         tipo, marca, modelo, número de serie y color.
@@ -96,7 +96,7 @@ class Accesos(Accesos):
 
     def ocr_vehiculo(self, image_source, fields: dict = {},
                      extra_instructions: str = None,
-                     model: str = 'google/gemini-2.5-flash-lite') -> dict:
+                     model: str = 'google/gemini-3.5-flash-lite') -> dict:
         """
         Extrae los datos de una foto de un vehículo:
         tipo, marca, modelo, año estimado, color, placas,
@@ -108,8 +108,8 @@ class Accesos(Accesos):
             extra_instructions:  Instrucciones extra al modelo (opcional).
             model:               Modelo OpenRouter a usar.
                                  Opciones recomendadas:
-                                   'google/gemini-2.5-flash-lite'   ← default, rápido y barato
-                                   'google/gemini-2.5-flash'        ← mejor OCR, más caro
+                                   'google/gemini-3.5-flash-lite'   ← default, rápido y barato
+                                   'google/gemini-3.5-flash'        ← mejor OCR, más caro
                                    'anthropic/claude-haiku-4-5'     ← excelente para placas
 
         Returns:
@@ -207,7 +207,7 @@ class Accesos(Accesos):
 
     def ocr_articulo_concesionado(self, image_source,
                                    extra_instructions: str = None,
-                                   model: str = 'google/gemini-2.5-flash-lite') -> dict:
+                                   model: str = 'google/gemini-3.5-flash-lite') -> dict:
         """
         Identifica un artículo concesionado a partir de su foto. Puede tratarse de:
           - Un artículo genérico identificable a simple vista (guantes, casco, chaleco,
@@ -390,7 +390,7 @@ class Accesos(Accesos):
 
     def ocr_truck(self, image_source: list, fields: dict = {},
                            extra_instructions: str = None,
-                           model: str = 'google/gemini-2.5-flash-lite') -> dict:
+                           model: str = 'google/gemini-3.5-flash-lite') -> dict:
         """
         Extrae los datos de una foto de un paquete para identificar, 
         Proveedor (paqueteria), Remitente, Destinatario.
@@ -403,7 +403,7 @@ class Accesos(Accesos):
             image_source: URL remota o ruta local de la imagen.
             model:        Modelo OpenRouter a usar (opcional).
             MODEL = "anthropic/claude-haiku-4.5"  # excelente OCR, precio razonable
-            MODEL = "google/gemini-2.5-flash"  # un escalón arriba, más caro pero mejor
+            MODEL = "google/gemini-3.5-flash"  # un escalón arriba, más caro pero mejor
 
         Returns:
             dict con:
