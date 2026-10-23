@@ -140,7 +140,7 @@ class Stock(Stock):
 
         # Solo se genera el traspaso cuando la Transferencia pasa a autorizada,
         # para no duplicar el movimiento de stock si se vuelve a editar ya autorizada.
-        status_autorizado = self.map_transfer_stages['transfer_authorized']
+        status_autorizado = self.map_transfer_stages['stock_available']
         generar_traspaso = answers_transferencia[ self.f['field_status_transferencia'] ] == status_autorizado \
             and existing_status != status_autorizado
 

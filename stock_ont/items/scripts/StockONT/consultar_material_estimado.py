@@ -60,11 +60,7 @@ class Stock(Stock):
             147978: "Orden de servicio TELNOR - COBRE",
         }
 
-        self.config['JWT_ADMIN'] = self.lkf_api.get_jwt( 
-            api_key='398bd78880b1675a4a8d06d8a89e712ad9b499fb', 
-            user='adminpclink@operacionpci.com.mx' 
-        )
-        self.settings.config.update(self.config)
+        # JWT_ADMIN, ADMIN_USER y ADMIN_APIKEY vienen de stock_ont_utils.Stock
 
         self.cant_minima_folios_para_metraje = 5
 
@@ -171,8 +167,10 @@ class Stock(Stock):
         ]
 
         # Conexión a Mongo de Admin
-        from pci_get_connection_db import CollectionConnection
-        colection_connection = CollectionConnection(1259, self.settings)
+        from pci_get_connection_api import CollectionConnection
+        colection_connection = CollectionConnection(
+            1259, self.settings, username=self.ADMIN_USER, api_key=self.ADMIN_APIKEY
+        )
         self.cr_admin = colection_connection.get_collections_connection()
 
     def validar_periodo(self, inicio: str, fin: str, formato: str = "%Y-%m-%d"):

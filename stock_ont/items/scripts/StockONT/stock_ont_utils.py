@@ -296,10 +296,14 @@ class Stock(Stock):
         self.f.update( self.stk.f )
 
         # El catalogo de Contratistas (CATALOG_ID_CONTRATISTAS) exige la jwt
-        # admin, igual que en consultar_material_estimado.py.
+        # admin. Las credenciales de Admin quedan en atributos para que los scripts
+        # que heredan de aqui las reusen (p.ej. la conexion a Mongo de Admin).
+        self.ADMIN_USER = 'adminpclink@operacionpci.com.mx'
+        self.ADMIN_APIKEY = '398bd78880b1675a4a8d06d8a89e712ad9b499fb'
+
         self.config['JWT_ADMIN'] = self.lkf_api.get_jwt(
-            api_key='398bd78880b1675a4a8d06d8a89e712ad9b499fb',
-            user='adminpclink@operacionpci.com.mx'
+            api_key=self.ADMIN_APIKEY,
+            user=self.ADMIN_USER
         )
         self.settings.config.update(self.config)
 
