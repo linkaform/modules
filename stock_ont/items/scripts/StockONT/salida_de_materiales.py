@@ -245,38 +245,62 @@ class Stock(Stock):
         # self.create_record_firma_externa((resp_salida.get('json') or {}).get('folio'), 'salida', 'salida_de_materiales.py')
         return resp_salida
 
-    def _get_disponible_quantity(self, sku, warehouse, location, cache):
-        """
-        Existencia actual del sku en el almacen/ubicacion de origen (mismo
-        mecanismo que _get_actual_quantity en consultar_transferencia_de_
-        materiales.py), cacheada por (sku, warehouse, location) para no
-        repetir la consulta entre registros que comparten almacen de origen.
-        """
-        cache_key = (sku, warehouse, location)
-        if cache_key not in cache:
-            info_catalog_sku = self.find_material_catalog_sku(sku, field_as_select=[self.f['product_code']])
-            product_code = self.unlist(info_catalog_sku.get(self.f['product_code'])) if info_catalog_sku else None
-
-            stock_inventory = self.stk.get_product_stock(product_code, sku=sku, warehouse=warehouse, location=location)
-            cache[cache_key] = stock_inventory.get('actuals') or 0
-
-        return cache[cache_key]
-
-    def build_individual_and_grouped_response(self, registros):
+    def build_individual_and_grouped_response(self, registros, product_code_by_sku=None):
         """
         Arma el formato {individual, grouped_by_sku} que espera el Front, a
         partir de una lista de registros ya armados: {folio, originWarehouse,
         recipient: {type, name, finalContratista}, items: [{sku, name,
         suggestedQuantity}], stage}. Usado por generar_salidas_por_
         contratista.py (recien creados) y listar_salida_de_materiales.py (ya
-        existentes en la BD).
+        existentes en la BD). `product_code_by_sku` ({sku: product_code})
+        evita buscar el product_code en el catalogo; los que falten se
+        consultan en una sola peticion.
+
+        disponibleQuantity se calcula en lote por almacen de origen con
+        get_stock_by_skus() (stock_ont_utils.py).
 
         Returns:
             dict: {individual: [...], grouped_by_sku: [...]}.
         """
         resultados_individual = []
         grupos_by_sku = {}
-        disponible_cache = {}
+        wh_origen_cache = {}
+        product_code_by_sku = dict(product_code_by_sku or {})
+
+        # Primera pasada: resolver el almacen/ubicacion de origen de cada
+        # registro (una consulta al catalogo por originWarehouse distinto) y
+        # juntar los skus de cada uno. Como grouped_by_sku se agrupa solo por
+        # sku, cada sku toma el almacen del primer registro donde aparece.
+        wh_by_sku = {}
+        for registro in registros:
+            origin_warehouse = registro.get('originWarehouse')
+            if origin_warehouse not in wh_origen_cache:
+                info_wh_origen = self.find_warehouse_location_catalog(origin_warehouse) or {}
+                wh_origen_cache[origin_warehouse] = (
+                    self.unlist(info_wh_origen.get(self.stk.WH.f['warehouse'])),
+                    self.unlist(info_wh_origen.get(self.stk.WH.f['warehouse_location'])),
+                )
+            for item in registro.get('items', []):
+                wh_by_sku.setdefault(item.get('sku'), wh_origen_cache[origin_warehouse])
+
+        skus_sin_codigo = [sku for sku in wh_by_sku if sku and not product_code_by_sku.get(sku)]
+        if skus_sin_codigo:
+            product_code_by_sku.update(self.get_product_code_by_skus(skus_sin_codigo))
+
+        # Un calculo de stock por almacen/ubicacion. Sin almacen o ubicacion
+        # el sku queda en 0: sin esos filtros se sumaria la existencia de
+        # todos los almacenes.
+        skus_by_wh = {}
+        for sku, wh_loc in wh_by_sku.items():
+            skus_by_wh.setdefault(wh_loc, []).append(sku)
+
+        disponible_by_sku = {}
+        for (warehouse, location), skus_wh in skus_by_wh.items():
+            stock_wh = self.get_stock_by_skus(
+                {sku: product_code_by_sku.get(sku) for sku in skus_wh}, warehouse, location
+            )
+            for sku in skus_wh:
+                disponible_by_sku[sku] = stock_wh.get(sku, 0)
 
         for registro in registros:
             folio = registro.get('folio')
@@ -284,12 +308,11 @@ class Stock(Stock):
             recipient_type = recipient_data.get('type')
             recipient_name = recipient_data.get('name') or ''
             final_contratista = recipient_data.get('finalContratista')
-            origin_warehouse = registro.get('originWarehouse')
 
             resultados_individual.append({
                 'folio': folio,
                 'createdAt': registro.get('createdAt'),
-                'originWarehouse': origin_warehouse,
+                'originWarehouse': registro.get('originWarehouse'),
                 'recipient': {
                     'recipientType': recipient_type,
                     'name': recipient_name,
@@ -299,10 +322,6 @@ class Stock(Stock):
                 'stage': registro.get('stage'),
             })
 
-            info_wh_origen = self.find_warehouse_location_catalog(origin_warehouse) or {}
-            warehouse_origen = self.unlist(info_wh_origen.get(self.stk.WH.f['warehouse']))
-            location_origen = self.unlist(info_wh_origen.get(self.stk.WH.f['warehouse_location']))
-
             for item in registro.get('items', []):
                 sku = item.get('sku')
                 quantity = item.get('suggestedQuantity', 0)
@@ -311,7 +330,7 @@ class Stock(Stock):
                     'sku': sku,
                     'name': item.get('name'),
                     'totalQuantity': 0,
-                    'disponibleQuantity': self._get_disponible_quantity(sku, warehouse_origen, location_origen, disponible_cache),
+                    'disponibleQuantity': disponible_by_sku.get(sku, 0),
                     'recipients': [],
                 })
                 grupo_sku['totalQuantity'] += quantity

@@ -341,6 +341,7 @@ class Stock(Stock):
             'events': self._unbuild_bitacora(row.get(self.f['field_grp_bitacora']) or []),
             'delivery': self._unbuild_delivery(row),
         }
+        resultado['requestExternalSignature'] = bool(self.get_record_firma_externa(record.get('folio'), 'transferencia'))
         resultado.update(self._unbuild_stages(row.get(self.f['field_grp_stages']) or []))
 
         return resultado

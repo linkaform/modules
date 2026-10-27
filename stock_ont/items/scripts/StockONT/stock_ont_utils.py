@@ -23,7 +23,7 @@ class Stock(Stock):
 
         self.FORM_ID_TRANSFERENCIAS = 166688
         self.FORM_BITACORA_TRANSPORTISTA_ID = 165688
-        self.FORM_FIRMAS_EXTERNAS = 179777 # TODO : cambiar este id por el de produccion (180412)
+        self.FORM_FIRMAS_EXTERNAS = 180412
 
         self.FORM_ID_SALIDAS = 179244
         self.FORM_ID_VALES_MATERIALES = 130402
@@ -312,16 +312,15 @@ class Stock(Stock):
         self.current_user_id = self.current_user.get('user_id')
 
         # --- IDs de grupos para administracion de SIGA
-        # TODO : cambiar los IDs por los de producción
-        self.id_group_super_admin = 458 # prod 460
-        self.id_group_national_admin = 461 # prod 461
-        self.id_group_wh_coordinator = 464 # prod 462
-        self.id_group_wh_manager_puebla = 466 # prod 464
-        self.id_group_wh_manager_camarones = 465 # prod 468
-        self.id_group_wh_operator_puebla = 460 # prod 471
-        self.id_group_wh_operator_camarones = 459 # prod 470
-        self.id_group_wh_admin_assistant_camarones = 462 # prod 465
-        self.id_group_wh_admin_assistant_puebla = 463 # prod 466
+        self.id_group_super_admin = 460
+        self.id_group_national_admin = 461
+        self.id_group_wh_coordinator = 462
+        self.id_group_wh_manager_puebla = 464
+        self.id_group_wh_manager_camarones = 468
+        self.id_group_wh_operator_puebla = 471
+        self.id_group_wh_operator_camarones = 470
+        self.id_group_wh_admin_assistant_camarones = 465
+        self.id_group_wh_admin_assistant_puebla = 466
 
         # El orden define la prioridad del rol que regresa is_user_admin()
         self.siga_admin_groups = [
@@ -370,7 +369,7 @@ class Stock(Stock):
         y regresa un dict vacio.
         """
         url_data_group = f"{self.net.api_url.dest_url}/api/infosync/group/{id_group}/"
-        response = self.net.dispatch(url=url_data_group, method='GET')
+        response = self.net.dispatch(url=url_data_group, method='GET', jwt_settings_key='JWT_ADMIN')
 
         if response.get('status_code') != 200:
             print(f"ADVERTENCIA: no se pudo consultar el grupo {id_group}: "
@@ -632,6 +631,163 @@ class Stock(Stock):
             field_map,
             field_as_select=field_as_select
         )
+
+    def get_product_code_by_skus(self, skus):
+        """
+        Consulta de una sola vez el catalogo de productos (CATALOG_ID_SKU) y
+        regresa {sku: product_code} para los skus indicados.
+        """
+        skus = list({sku for sku in skus if sku})
+        if not skus:
+            return {}
+
+        mango_query = {
+            "selector": {"answers": {self.f['field_sku']: {"$in": skus}}},
+            "limit": len(skus),
+            "skip": 0,
+        }
+        records = self.lkf_api.search_catalog(self.CATALOG_ID_SKU, mango_query, jwt_settings_key='APIKEY_JWT_KEY') or []
+        return {
+            self.unlist(r.get(self.f['field_sku'])): self.unlist(r.get(self.f['field_product_code']))
+            for r in records
+        }
+
+    def get_stock_by_skus(self, product_code_by_sku, warehouse, location):
+        """
+        Existencia actual (`actuals`) de varios skus en un almacen/ubicacion
+        con 4 aggregates en total, en vez de llamar get_product_stock() del
+        modulo stock por cada sku (~6 operaciones en Mongo cada uno).
+
+        Replica la formula de get_product_stock() sin fechas ni lote:
+            actuals = move_in - move_out - scrap - cuarentin + adjustments
+        con los mismos filtros del core (stock_one_many_one,
+        stock_adjustments_moves y stock_scrap). Diferencias conocidas:
+        no lee el cache de stock (el core lo lee y lo borra), y la merma se
+        toma por product_code igual que en el core (no filtra por sku).
+
+        Args:
+            product_code_by_sku (dict): {sku: product_code}; product_code puede
+                ser None (entonces el sku no lleva merma, como en el core).
+            warehouse (str): warehouse de origen.
+            location (str): location de origen.
+
+        Returns:
+            dict: {sku: actuals}. Vacio si falta warehouse o location.
+        """
+        skus = [sku for sku in product_code_by_sku if sku]
+        if not skus or not warehouse or not location:
+            return {}
+
+        stk = self.stk
+        f = stk.f
+        sku_obj_id = stk.Product.SKU_OBJ_ID
+        inv_obj_id = stk.STOCK_INVENTORY_OBJ_ID
+        stock = {sku: 0 for sku in skus}
+
+        def sum_by_pair(rows, sign):
+            # Solo cuenta la pareja (product_code, sku) esperada, igual que el
+            # core que filtra por ambos; si no se conoce el product_code, solo por sku.
+            for r in rows:
+                sku = self.unlist(r['_id'].get('sku'))
+                if sku not in stock:
+                    continue
+                expected_code = product_code_by_sku.get(sku)
+                if expected_code and self.unlist(r['_id'].get('product_code')) != expected_code:
+                    continue
+                stock[sku] += sign * (r.get('total') or 0)
+
+        # move_in / move_out (stock_one_many_one)
+        move_group = f['move_group']
+        for move_type, sign in (('in', 1), ('out', -1)):
+            if move_type == 'in':
+                wh_obj, wh_field, loc_field = stk.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID, f['warehouse_dest'], f['warehouse_location_dest']
+            else:
+                wh_obj, wh_field, loc_field = stk.WH.WAREHOUSE_LOCATION_OBJ_ID, f['warehouse'], f['warehouse_location']
+
+            query = [
+                {'$match': {
+                    'deleted_at': {'$exists': False},
+                    'form_id': {'$in': stk.STOCK_ONE_MANY_ONE_FORMS},
+                    f"answers.{wh_obj}.{wh_field}": warehouse,
+                    f"answers.{wh_obj}.{loc_field}": location,
+                    f"answers.{f['stock_status']}": 'done',
+                }},
+                {'$unwind': f"$answers.{move_group}"},
+                {'$match': {
+                    f"answers.{move_group}.{f['inv_adjust_grp_status']}": 'done',
+                    '$or': [
+                        {f"answers.{move_group}.{inv_obj_id}.{f['sku']}": {'$in': skus}},
+                        {f"answers.{move_group}.{sku_obj_id}.{f['sku']}": {'$in': skus}},
+                    ],
+                }},
+                {'$group': {
+                    '_id': {
+                        'product_code': {'$ifNull': [
+                            f"$answers.{move_group}.{inv_obj_id}.{f['product_code']}",
+                            f"$answers.{move_group}.{sku_obj_id}.{f['product_code']}",
+                        ]},
+                        'sku': {'$ifNull': [
+                            f"$answers.{move_group}.{inv_obj_id}.{f['sku']}",
+                            f"$answers.{move_group}.{sku_obj_id}.{f['sku']}",
+                        ]},
+                    },
+                    'total': {'$sum': f"$answers.{move_group}.{f['move_group_qty']}"},
+                }},
+            ]
+            sum_by_pair(stk.cr.aggregate(query), sign)
+
+        # adjustments (stock_adjustments_moves)
+        grading_group = f['grading_group']
+        query = [
+            {'$match': {
+                'deleted_at': {'$exists': False},
+                'form_id': stk.ADJUIST_FORM_ID,
+                f"answers.{f['inv_adjust_status']}": {'$ne': 'cancel'},
+                f"answers.{stk.WH.WAREHOUSE_LOCATION_OBJ_ID}.{f['warehouse']}": warehouse,
+                f"answers.{stk.WH.WAREHOUSE_LOCATION_OBJ_ID}.{f['warehouse_location']}": location,
+            }},
+            {'$unwind': f"$answers.{grading_group}"},
+            {'$match': {f"answers.{grading_group}.{sku_obj_id}.{f['sku']}": {'$in': skus}}},
+            {'$group': {
+                '_id': {
+                    'product_code': f"$answers.{grading_group}.{sku_obj_id}.{f['product_code']}",
+                    'sku': f"$answers.{grading_group}.{sku_obj_id}.{f['sku']}",
+                },
+                'total': {'$sum': {'$subtract': [
+                    {'$ifNull': [f"$answers.{grading_group}.{f['inv_adjust_grp_in']}", 0]},
+                    {'$ifNull': [f"$answers.{grading_group}.{f['inv_adjust_grp_out']}", 0]},
+                ]}},
+            }},
+        ]
+        sum_by_pair(stk.cr.aggregate(query), 1)
+
+        # scrap + cuarentin (stock_scrap): por product_code, sin sku
+        product_codes = list({code for code in product_code_by_sku.values() if code})
+        if product_codes:
+            query = [
+                {'$match': {
+                    'deleted_at': {'$exists': False},
+                    'form_id': stk.SCRAP_FORM_ID,
+                    f"answers.{inv_obj_id}.{f['product_code']}": {'$in': product_codes},
+                    f"answers.{inv_obj_id}.{f['warehouse']}": warehouse,
+                    f"answers.{inv_obj_id}.{f['warehouse_location']}": location,
+                    f"answers.{f['inv_scrap_status']}": 'done',
+                }},
+                {'$group': {
+                    '_id': f"$answers.{inv_obj_id}.{f['product_code']}",
+                    'scrap': {'$sum': f"$answers.{f['inv_scrap_qty']}"},
+                    'cuarentin': {'$sum': f"$answers.{f['inv_cuarentin_qty']}"},
+                }},
+            ]
+            scrap_by_code = {}
+            for r in stk.cr.aggregate(query):
+                code = self.unlist(r['_id'])
+                scrap_by_code[code] = scrap_by_code.get(code, 0) + (r.get('scrap') or 0) + (r.get('cuarentin') or 0)
+
+            for sku in skus:
+                stock[sku] -= scrap_by_code.get(product_code_by_sku.get(sku), 0)
+
+        return stock
 
     def get_delivered_quantity(self, item):
         """

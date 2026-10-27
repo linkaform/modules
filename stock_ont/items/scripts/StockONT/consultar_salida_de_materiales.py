@@ -154,16 +154,22 @@ class Stock(Stock):
             for r in records
         }
 
-    def _unbuild_items(self, row):
-        """Inversa de build_grp_materiales_salida()."""
+    def _unbuild_items(self, row, ns_need_by_sku=None):
+        """
+        Inversa de build_grp_materiales_salida(). `ns_need_by_sku` permite
+        pasar ya consultado el {sku: nsNeed} (p.ej. listar_salida_de_materiales.py
+        lo consulta una sola vez para todos los registros); si no llega, se
+        consulta el catalogo para los skus de este registro.
+        """
         materiales_rows = row.get(self.bitacora_transportista_fields['grupo_desglose_empaque']) or []
         box_scans_by_sku, loose_unit_by_sku = self._unbuild_boxes_series(row)
         pallets_by_sku = self._unbuild_pallets(row)
 
-        ns_need_by_sku = self._get_ns_need_by_sku(
-            self.unlist((row_material.get(self.f['obj_products']) or {}).get(self.f['field_sku']))
-            for row_material in materiales_rows
-        )
+        if ns_need_by_sku is None:
+            ns_need_by_sku = self._get_ns_need_by_sku(
+                self.unlist((row_material.get(self.f['obj_products']) or {}).get(self.f['field_sku']))
+                for row_material in materiales_rows
+            )
 
         items = []
         for idx, row_material in enumerate(materiales_rows):
@@ -338,6 +344,7 @@ class Stock(Stock):
             'events': self._unbuild_bitacora(row.get(self.f['field_grp_bitacora']) or []),
             'delivery': self._unbuild_delivery(row),
         }
+        resultado['requestExternalSignature'] = bool(self.get_record_firma_externa(record.get('folio'), 'salida'))
         resultado.update(self._unbuild_stages(row.get(self.f['field_grp_stages']) or []))
 
         return resultado

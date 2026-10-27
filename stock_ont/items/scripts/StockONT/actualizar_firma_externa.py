@@ -37,13 +37,64 @@ class Stock(Stock):
         })
         return self.lkf_api.patch_record(metadata, record_id=record_id, jwt_settings_key='APIKEY_JWT_KEY')
 
+    def entregar_registro_padre(self, folio, tipo_operacion):
+        """
+        Pasa la Salida a 'delivered' o la Transferencia a 'stock_available'
+        reusando el mismo flujo que usa el front: la consulta arma el payload
+        y actualizar_*_materiales() lo guarda, generando el traspaso de stock
+        (y el Vale de Materiales en Salidas). La validacion de rol se omite
+        porque quien firma es un usuario externo.
+
+        Args:
+            folio (str): folio del registro padre.
+            tipo_operacion (str): 'transferencia' o 'salida'.
+
+        Returns:
+            dict | None: respuesta de actualizar_*_materiales(), o None si el
+            registro ya estaba en el estatus final.
+        """
+        if tipo_operacion == 'salida':
+            import consultar_salida_de_materiales as consulta_mod
+            import actualizar_salida_de_materiales as actualizar_mod
+            stage_final = 'delivered'
+        elif tipo_operacion == 'transferencia':
+            import consultar_transferencia_de_materiales as consulta_mod
+            import actualizar_transferencia_de_materiales as actualizar_mod
+            stage_final = 'stock_available'
+        else:
+            self.LKFException({'title': 'Tipo de operacion invalido', 'msg': f"Tipo de operacion '{tipo_operacion}' no soportado", 'status_code': 400})
+
+        consulta_obj = consulta_mod.Stock(self.settings, sys_argv=self.sys_argv, use_api=self.use_api)
+        consulta_obj.data = {'folio': folio}
+        payload = consulta_obj.consultar_salida_materiales() if tipo_operacion == 'salida' \
+            else consulta_obj.consultar_transferencia_materiales()
+
+        if payload.get('stage') == stage_final:
+            return None
+
+        payload['stage'] = stage_final
+        # La firma externa ya existe; no se vuelve a solicitar.
+        payload.pop('requestExternalSignature', None)
+
+        actualizar_obj = actualizar_mod.Stock(self.settings, sys_argv=self.sys_argv, use_api=self.use_api)
+        actualizar_obj.data = payload
+        if tipo_operacion == 'salida':
+            actualizar_obj.validate_salida_permission = lambda answers_record: None
+            return actualizar_obj.actualizar_salida_materiales()
+
+        actualizar_obj.user_authorized = True
+        actualizar_obj.validate_transfer_permission = lambda answers_record=None: None
+        return actualizar_obj.actualizar_transferencia_materiales()
+
     def actualizar_firma_externa(self):
         """
         Recibe en self.data el `folio` del registro padre, el `operationType`
         ('transferencia' o 'salida'), la `signature` ({file_name, file_url}),
         `capturedAt` (fecha de la firma) y `signedBy` (nombre de quien firma),
         y guarda la firma en el registro de Firmas de Usuarios Externos que
-        siga pendiente, marcandolo como firmado.
+        siga pendiente, marcandolo como firmado. Antes pasa el registro padre
+        a su estatus final (ver entregar_registro_padre); si eso falla, la
+        firma no se marca como firmada.
         """
         folio = self.data.get('folio')
         tipo_operacion = self.data.get('operationType')
@@ -60,6 +111,11 @@ class Stock(Stock):
         if self.unlist(record.get('answers', {}).get(self.f['field_public_estatus'])) == 'firmado':
             self.LKFException({'title': 'Firma registrada', 'msg': f"La firma externa de {tipo_operacion} con folio '{folio}' ya esta firmada", 'status_code': 400})
 
+        resp_entrega = self.entregar_registro_padre(folio, tipo_operacion)
+        if resp_entrega and (resp_entrega.get('status_code') or 0) >= 400:
+            resp_entrega.setdefault('error', f"No se pudo pasar la {tipo_operacion} con folio '{folio}' a su estatus final; la firma no se guardo")
+            return resp_entrega
+
         answers = record.get('answers', {})
         answers.update({
             self.f['field_public_firma']: {
@@ -70,7 +126,10 @@ class Stock(Stock):
             self.f['field_public_nombre_firma']: self.data.get('signedBy'),
             self.f['field_public_estatus']: 'firmado',
         })
-        return self.patch_firma_externa(record['_id'], answers)
+        resp_firma = self.patch_firma_externa(record['_id'], answers)
+        if resp_entrega:
+            resp_firma['entrega'] = resp_entrega
+        return resp_firma
 
 if __name__ == '__main__':
     stock_obj = Stock(settings, sys_argv=sys.argv, use_api=True)
