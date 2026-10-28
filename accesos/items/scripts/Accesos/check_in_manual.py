@@ -439,15 +439,6 @@ class Accesos(Accesos):
             tz = pytz.timezone(self.timezone)
             now = datetime.now(tz)
             fecha_actual = now.strftime('%Y-%m-%d %H:%M:%S')
-            #! Olvidó cerrar: lo cierra en un día posterior y ya pasaron más de 10 h desde la entrada
-            fecha_inicio = self.answers.get(self.f['start_shift'])
-            if fecha_inicio:
-                inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d %H:%M:%S')
-                ahora = now.replace(tzinfo=None)
-                if ahora.date() > inicio.date() and ahora - inicio > timedelta(hours=10):
-                    fecha_actual = (inicio + timedelta(hours=10)).strftime('%Y-%m-%d %H:%M:%S')
-                    self.answers[self.f['comment_checkout']] = \
-                        f"Cierre de turno automatico - olvidó cerrar (cerrado {now.strftime('%Y-%m-%d %H:%M:%S')})"
 
         self.answers.update({
             self.f['end_shift']: fecha_actual,
