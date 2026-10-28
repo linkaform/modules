@@ -99,6 +99,8 @@ if __name__ == "__main__":
         response = acceso_obj.update_incidence_seguimiento(folio=folio, incidencia_grupo_seguimiento=seguimientos, estatus=estatus)
     elif option == 'delete_incidence':
         response = acceso_obj.delete_incidence(folio)
+    elif option == 'get_incidence_permissions':
+        response = acceso_obj.get_incidence_permissions()
     elif option == 'catalogo_area_empleado':
         response = acceso_obj.catalogo_config_area_empleado(bitacora='Incidencias', location=location)
     elif option == 'catalogo_incidencias':
