@@ -10,3 +10,7 @@ class Location(Location):
         #use self.lkm.catalog_id() to get catalog id
         self.name =  __class__.__name__
         self.settings = settings
+        self.f.update( {
+            'location_id':'68101945f4996c72247baac4',
+            'url_configurable': '698a06c3e89827d2fee0f661'
+            })
