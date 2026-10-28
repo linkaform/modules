@@ -489,7 +489,7 @@ class Stock(Stock):
 
         return self.cr_admin.aggregate([
             {'$match': match_query},
-            {'$limit': 100}, # TODO : quitar este limit... lo puse para pruebas en preprod
+            # {'$limit': 100}, # TODO : quitar este limit... lo puse para pruebas en preprod
             {'$project': data_project},
             {'$group': {
                 '_id': {'connection_email': '$connection_email'},
@@ -587,6 +587,28 @@ class Stock(Stock):
                     .append(orden)
 
         return grupo_conexiones, email_id_expediente, folios_reclamados_y_expediente
+
+    def normalizar_area(self, area):
+        """
+        Regresa el area en el formato que se muestra (MAYUSCULAS, sin guiones bajos),
+        para que 'metro_norte' y 'METRO NORTE' caigan en la misma llave al agrupar.
+        """
+        return (area or '').upper().replace('_', ' ').strip()
+
+    def consolidar_by_area(self, rows_by_area):
+        """
+        Junta los rows por area de todos los batches (conexion/area/tecnologia/location)
+        en uno solo por area, sumando produccion y sugerido.
+        """
+        consolidado = {}
+        for row in rows_by_area:
+            data_area = consolidado.setdefault(row['area'], {'area': row['area'], 'produccion': 0, 'sugerido': 0})
+            data_area['produccion'] += row['produccion']
+            data_area['sugerido'] += row['sugerido']
+
+        for data_area in consolidado.values():
+            data_area['sugerido'] = round(data_area['sugerido'], 2)
+        return list(consolidado.values())
 
     def apply_sort_to_products(self, list_productos, productos):
         for data_product in list_productos:
@@ -738,12 +760,13 @@ class Stock(Stock):
                 folios_aplicados_fibra.append( self.get_row_for_xls(folio_os, orden_servicio, nombre_conexion, tipo_tarea) )
 
             if is_report_produccion_nacional:
-                group_by_area.setdefault(area_orden_servicio, {
-                    'produccion': 0, 
+                area_key = self.normalizar_area(area_orden_servicio)
+                group_by_area.setdefault(area_key, {
+                    'produccion': 0,
                     'sugerido': 0,
                     'count_productos': len(list_products_sorted),
                 })
-                group_by_area[area_orden_servicio]['produccion'] += 1
+                group_by_area[area_key]['produccion'] += 1
 
             for data_product in list_products_sorted:
                 product = data_product['clave_producto']
@@ -759,7 +782,7 @@ class Stock(Stock):
                         cantidad_producto = cantidad_producto * self.cant_minima_folios_para_metraje
 
                 if is_report_produccion_nacional:
-                    group_by_area[area_orden_servicio]['sugerido'] += cantidad_producto
+                    group_by_area[area_key]['sugerido'] += cantidad_producto
                     # El reporte completo ademas necesita el desglose normal por material
                     # (para el nodo `by_material`), asi que no se salta este material.
                     if not report_produccion_nacional_completo:
@@ -778,9 +801,9 @@ class Stock(Stock):
         if report_produccion_nacional:
             for area, data_area in group_by_area.items():
                 rows_materiales.append({
-                    "area": area.upper().replace('_', ' '),
+                    "area": area,
                     "produccion": data_area['produccion'],
-                    "sugerido": round(data_area['sugerido'], 2),
+                    "sugerido": data_area['sugerido'],
                 })
             return rows_materiales, folios_aplicados_fibra, folios_aplicados_cobre, folios_no_aplicados_fibra, folios_no_aplicados_cobre, msgs_no_aplica
 
@@ -808,9 +831,9 @@ class Stock(Stock):
             rows_by_area = []
             for area, data_area in group_by_area.items():
                 rows_by_area.append({
-                    "area": area.upper().replace('_', ' '),
+                    "area": area,
                     "produccion": data_area['produccion'],
-                    "sugerido": round(data_area['sugerido'], 2),
+                    "sugerido": data_area['sugerido'],
                 })
                 total_produccion += data_area['produccion']
                 total_sugerido += data_area['sugerido']
@@ -1148,7 +1171,7 @@ class Stock(Stock):
                 )
 
                 return {
-                    "by_area": rows_by_area,
+                    "by_area": self.consolidar_by_area(rows_by_area),
                     "by_material": self.add_actual_quantity(rows_by_material, wh_origen),
                     "global": totales,
                     "files": {
@@ -1158,7 +1181,7 @@ class Stock(Stock):
                     },
                 }
 
-            return total_rows_materiales
+            return self.consolidar_by_area(total_rows_materiales)
 
         if type_report == 'vale_por_contratista':
             return self.build_vale_por_contratista(total_rows_materiales, wh_origen, data_copes, f'{desde} - {hasta}')
