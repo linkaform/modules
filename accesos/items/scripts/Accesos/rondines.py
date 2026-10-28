@@ -6,7 +6,7 @@ import sys, simplejson, pytz
 from bson import ObjectId
 from linkaform_api import settings
 from account_settings import *
-from datetime import datetime
+from datetime import datetime, timezone
 import calendar
 import sys, os
 
@@ -2638,7 +2638,7 @@ class Accesos(Accesos):
 
     def _mes_actual_utc(self):
         """Inicio del mes actual y del siguiente (UTC), igual que $$NOW en el $expr anterior."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         inicio = datetime(now.year, now.month, 1)
         fin = datetime(now.year + 1, 1, 1) if now.month == 12 else datetime(now.year, now.month + 1, 1)
         return inicio, fin
