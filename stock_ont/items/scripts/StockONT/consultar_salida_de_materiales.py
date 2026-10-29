@@ -257,6 +257,55 @@ class Stock(Stock):
             'finalContratista': final_contratista,
         }
 
+    def _get_recipient_warehouse(self, row, final_contratista):
+        """
+        Regresa (warehouse, location) del almacen del contratista: el que se
+        guardo en el registro (WAREHOUSE_LOCATION_DEST_OBJ_ID) o, si no se
+        guardo, el que se encuentre en el catalogo de Warehouse Dest por su nombre.
+        """
+        contratista_wh_dest = row.get(self.stk.WH.WAREHOUSE_LOCATION_DEST_OBJ_ID) or {}
+        if not contratista_wh_dest and final_contratista:
+            contratista_wh_dest = self.find_warehouse_dest_catalog(final_contratista, find_by_wh=True) or {}
+
+        return (
+            self.unlist(contratista_wh_dest.get(self.stk.WH.f['warehouse_dest'])),
+            self.unlist(contratista_wh_dest.get(self.stk.WH.f['warehouse_location_dest'])),
+        )
+
+    def _fill_recipient_stock(self, row, items, final_contratista):
+        """
+        A los items cuyo recipientStock guardado sea 0 (o no exista) les
+        asigna la existencia actual del sku en el almacen del contratista.
+        Se calcula en lote con get_stock_by_skus() (stock_ont_utils.py).
+        """
+        skus_sin_stock = [item['sku'] for item in items if item.get('sku') and not item.get('recipientStock')]
+        if not skus_sin_stock:
+            return items
+
+        warehouse, location = self._get_recipient_warehouse(row, final_contratista)
+        if not warehouse or not location:
+            print(f"ADVERTENCIA: no se encontro el almacen del contratista '{final_contratista}' para consultar su stock")
+            return items
+
+        # Se toma el product_code guardado en el registro; los que falten se consultan al catalogo
+        product_code_by_sku = {}
+        for row_material in row.get(self.bitacora_transportista_fields['grupo_desglose_empaque']) or []:
+            producto = row_material.get(self.f['obj_products']) or {}
+            sku = self.unlist(producto.get(self.f['field_sku']))
+            if sku in skus_sin_stock and not product_code_by_sku.get(sku):
+                product_code_by_sku[sku] = self.unlist(producto.get(self.f['field_product_code']))
+
+        skus_sin_codigo = [sku for sku in skus_sin_stock if not product_code_by_sku.get(sku)]
+        if skus_sin_codigo:
+            product_code_by_sku.update(self.get_product_code_by_skus(skus_sin_codigo))
+
+        stock_contratista = self.get_stock_by_skus(product_code_by_sku, warehouse, location)
+        for item in items:
+            if item.get('sku') in stock_contratista and not item.get('recipientStock'):
+                item['recipientStock'] = stock_contratista[item['sku']]
+
+        return items
+
     def _unbuild_delivery(self, row):
         """Inversa de build_answers_delivery()."""
         is_foranea = self._unformat_delivery_type(row.get(self.f['delivery_type']))
@@ -332,6 +381,7 @@ class Stock(Stock):
         row = record.get('answers') or {}
 
         origen = row.get(self.stk.WH.WAREHOUSE_LOCATION_OBJ_ID) or {}
+        recipient = self._unbuild_recipient(row)
 
         resultado = {
             'folio': folio,
@@ -339,8 +389,8 @@ class Stock(Stock):
             'runId': '',
             'stage': self.inv_map_salida_stages.get(self.unlist(row.get(self.f['field_status_transferencia']))),
             'originWarehouse': self.unlist(origen.get(self.stk.WH.f['warehouse_location'])),
-            'recipient': self._unbuild_recipient(row),
-            'items': self._unbuild_items(row),
+            'recipient': recipient,
+            'items': self._fill_recipient_stock(row, self._unbuild_items(row), recipient.get('finalContratista')),
             'events': self._unbuild_bitacora(row.get(self.f['field_grp_bitacora']) or []),
             'delivery': self._unbuild_delivery(row),
         }
