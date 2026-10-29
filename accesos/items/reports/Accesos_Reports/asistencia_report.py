@@ -680,7 +680,7 @@ class Accesos(Accesos):
         format_row_catalog = [i.get(self.Location.f['location']) for i in row_catalog]
         return format_row_catalog
 
-    def get_attendance_data(self, locations=[], limit=100, offset=0):
+    def get_attendance_data(self, locations=[], limit=100, offset=0, date_from=None, date_to=None):
         """
         Se obtiene la informacion de la asistencia de los empleados en forma Registro de Asistencia
         """
@@ -688,7 +688,14 @@ class Accesos(Accesos):
             "deleted_at": {"$exists": False},
             "form_id": self.REGISTRO_ASISTENCIA,
         }
-        
+
+        # Rango YYYY-MM-DD por fecha de inicio de turno (mismo campo que get_report)
+        if date_from and date_to:
+            custom_match_query[f"answers.{self.f['start_shift']}"] = {
+                "$gte": date_from,
+                "$lte": f"{date_to} 23:59:59"
+            }
+
         if locations:
             custom_match_query.update({
                 f"answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.Location.f['location']}": {"$in": locations}
@@ -696,6 +703,7 @@ class Accesos(Accesos):
 
         query = [
             {"$match": custom_match_query},
+            {"$sort": {f"answers.{self.f['start_shift']}": -1}},
             {"$project": {
                 "_id": 1,
                 "folio": 1,
@@ -775,7 +783,7 @@ if __name__ == "__main__":
     if option == 'get_report':
         response = script_obj.get_employees_attendance(group_by=group_by, locations=locations, month=month, year=year, date_from=date_from, date_to=date_to)
     elif option == 'get_attendance_data':
-        response = script_obj.get_attendance_data(locations=locations, limit=limit, offset=offset)
+        response = script_obj.get_attendance_data(locations=locations, limit=limit, offset=offset, date_from=date_from, date_to=date_to)
     elif option == 'get_locations':
         response = script_obj.get_locations()
     elif option == 'get_attendance_day_detail':
