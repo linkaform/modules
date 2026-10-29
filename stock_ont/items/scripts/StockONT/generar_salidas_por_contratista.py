@@ -101,7 +101,7 @@ class Stock(Stock):
 
         # TODO: por ahora solo crea 10 vales de prueba, para no saturar la BD de Salidas de Materiales
         # quito el limite pero lo dejo comentado para pruebas locales, ya que el script puede ser llamado desde el Front y generar muchos vales de golpe.
-        vales = vales[:10]
+        # vales = vales[:10]
 
         registros_creados = []
         firmas_externas = []
