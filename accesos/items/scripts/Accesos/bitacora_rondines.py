@@ -89,6 +89,7 @@ class Accesos(Accesos):
                 "tipo_asignacion": f"$answers.{self.rondin_keys['tipo_asignacion']}",
                 "grupo_asignado_a": f"$answers.{self.rondin_keys['grupo_asignado_a']}",
                 "id_grupo": f"$answers.{self.GRUPOS_CAT_OBJ_ID}.{self.mf['id_grupo']}",
+                "nombre_grupo": f"$answers.{self.GRUPOS_CAT_OBJ_ID}.{self.mf.get('nombre_grupo', '638a9ab3616398d2e392a9fa')}",
                 "roles": f"$answers.{self.f['grupo_roles']}"
             }}
         ]
@@ -100,8 +101,14 @@ class Accesos(Accesos):
             self.answers[self.rondin_keys['tipo_asignacion']] = areas_recorrido.get('tipo_asignacion')
             self.answers[self.rondin_keys['grupo_asignado_a']] = areas_recorrido.get('grupo_asignado_a', [])
             self.answers[self.f['grupo_roles']] = areas_recorrido.get('roles', [])
+            grupo = {}
             if areas_recorrido.get('id_grupo'):
-                self.answers[self.GRUPOS_CAT_OBJ_ID] = {self.mf['id_grupo']:areas_recorrido['id_grupo']} 
+                id_cfg = areas_recorrido['id_grupo']
+                grupo[self.mf['id_grupo']] = id_cfg if isinstance(id_cfg, list) else [id_cfg]
+            if areas_recorrido.get('nombre_grupo'):
+                grupo[self.mf.get('nombre_grupo', '638a9ab3616398d2e392a9fa')] = areas_recorrido['nombre_grupo']
+            if grupo:
+                self.answers[self.GRUPOS_CAT_OBJ_ID] = grupo
             return True
         print(f'Warning: no se encontro configuracion de recorrido form_id={self.CONFIGURACION_DE_RECORRIDOS_FORM} location={location!r} area={area!r} nombre={name_rondin!r}')
         return False
@@ -164,17 +171,87 @@ class Accesos(Accesos):
 
         return {}
 
+    def resolve_group_id(self):
+        """
+        Id del grupo asignado. Si la configuracion solo guardo el nombre del grupo se busca por nombre;
+        los grupos de la cuenta llevan el id de la cuenta como sufijo (p.ej. 'Guardias' -> 'Guardias_10').
+        """
+        grupo = self.answers.get(self.GRUPOS_CAT_OBJ_ID, {}) or {}
+        id_grupo = self.unlist(grupo.get(self.mf['id_grupo'], ''))
+        if id_grupo:
+            return id_grupo
+        nombre = self.unlist(grupo.get(self.mf.get('nombre_grupo', '638a9ab3616398d2e392a9fa'), ''))
+        if not nombre:
+            return ''
+        sufijos = {str(self.user.get(k)) for k in ('parent_id', 'account_id') if self.user.get(k)}
+        candidatos = {str(nombre).lower()} | {f"{nombre}_{s}".lower() for s in sufijos}
+        for grupo_lkf in self.lkf_api.get_updated_groups(0) or []:
+            if str(grupo_lkf.get('name', '')).lower() in candidatos:
+                return grupo_lkf.get('id')
+        return ''
+
+    def get_group_name(self, id_grupo):
+        """Nombre del grupo como lo guarda el catalogo (sin el sufijo `_<cuenta>` del grupo de LinkForm)."""
+        for grupo_lkf in self.lkf_api.get_updated_groups(0) or []:
+            if str(grupo_lkf.get('id')) == str(id_grupo):
+                nombre = str(grupo_lkf.get('name', ''))
+                for s in {str(self.user.get(k)) for k in ('parent_id', 'account_id') if self.user.get(k)}:
+                    if nombre.endswith(f'_{s}'):
+                        return nombre[:-len(s) - 1]
+                return nombre
+        return ''
+
+    def set_group_inbox(self):
+        """
+        Rondin asignado a un grupo: el registro queda SIN usuario y se deja en el inbox (CouchDB) de cada
+        usuario del grupo. Al iniciarlo uno, claim_rondin (sanic) lo asigna y lo quita de los demas.
+        """
+        id_grupo = self.resolve_group_id()
+        if not id_grupo:
+            print('Warning: el recorrido esta asignado a un grupo pero no se encontro el grupo')
+            return False
+        grupo = dict(self.answers.get(self.GRUPOS_CAT_OBJ_ID, {}) or {})
+        grupo[self.mf['id_grupo']] = [id_grupo]  # catalog-detail va como lista, igual que id_usuario
+        nombre_key = self.mf.get('nombre_grupo', '638a9ab3616398d2e392a9fa')
+        if not grupo.get(nombre_key):
+            nombre = self.get_group_name(id_grupo)
+            if nombre:
+                grupo[nombre_key] = nombre
+        self.answers[self.GRUPOS_CAT_OBJ_ID] = grupo
+        users = [self.normalize_user(u) for u in (self.lkf_api.get_group_users(id_grupo) or [])]
+        users = [u for u in users if self.unlist(u.get(self.mf['id_usuario']))]
+        if not users:
+            print(f'Warning: el grupo {id_grupo} no tiene usuarios')
+            return False
+        ids = [self.unlist(u.get(self.mf['id_usuario'])) for u in users]
+        for user in users:
+            uid = self.unlist(user.get(self.mf['id_usuario']))
+            try:
+                #! El hook corre en cada guardado mientras siga programado: no se duplica el inbox.
+                if self.get_couch_user_db(f"clave_{uid}").get(str(self.record_id)):
+                    continue
+                data = deepcopy(self.answers)
+                data[self.USUARIOS_OBJ_ID] = user
+                res = self.assign_user_inbox(data)
+                if res.get('status_code') != 200:
+                    print(f'Warning: no se pudo enviar el rondin {self.record_id} al inbox de {uid}: {res}')
+                    continue
+                #! assign_user_inbox deja self.cr_db en la db de ese usuario: se marca el doc como de grupo para que la app lo reclame al iniciar.
+                doc = self.cr_db.get(str(self.record_id))
+                doc['record'].update({'tipo_asignacion': 'grupo', 'grupo_users': ids})
+                self.cr_db.save(doc)
+            except Exception:
+                print(f'Warning: error al enviar el rondin {self.record_id} al inbox de {uid}:', traceback.format_exc())
+        return True
+
     def get_and_set_user(self):
         tipo_asignacion = self.answers.get(self.rondin_keys['tipo_asignacion'])
         grupo_asignado_a = self.answers.get(self.rondin_keys['grupo_asignado_a']) or []
         print('tipo_asignacion = ', tipo_asignacion)
-        if tipo_asignacion and tipo_asignacion in ('persona_especifica', 'grupo'):
-            if tipo_asignacion == 'grupo':
-                id_grupo = self.unlist(self.answers.get(self.GRUPOS_CAT_OBJ_ID, {}).get(self.mf['id_grupo'], ''))
-                if id_grupo:
-                    grupo_asignado_a = self.lkf_api.get_group_users(id_grupo) or []
-                else:
-                    print('Warning: el recorrido esta asignado a un grupo pero no tiene id_grupo, se usa el grupo repetitivo asignado_a')
+        if tipo_asignacion == 'grupo':
+            #! Un solo registro: se entrega al inbox de cada usuario del grupo y se asigna a quien lo inicie (claim_rondin en sanic).
+            return self.set_group_inbox()
+        if tipo_asignacion and tipo_asignacion in ('persona_especifica',):
             if not grupo_asignado_a:
                 print('Warning: no se encontraron usuarios para asignar el recorrido')
                 return False
