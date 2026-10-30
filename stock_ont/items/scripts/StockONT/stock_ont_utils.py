@@ -664,6 +664,7 @@ class Stock(Stock):
         stock_adjustments_moves y stock_scrap). Diferencias conocidas:
         no lee el cache de stock (el core lo lee y lo borra), y la merma se
         toma por product_code igual que en el core (no filtra por sku).
+        Los movimientos (move_in/move_out) solo cuentan desde 2025-12-01.
 
         Args:
             product_code_by_sku (dict): {sku: product_code}; product_code puede
@@ -711,6 +712,7 @@ class Stock(Stock):
                     f"answers.{wh_obj}.{wh_field}": warehouse,
                     f"answers.{wh_obj}.{loc_field}": location,
                     f"answers.{f['stock_status']}": 'done',
+                    f"answers.{f['grading_date']}": {'$gte': '2025-12-01'},
                 }},
                 {'$unwind': f"$answers.{move_group}"},
                 {'$match': {
