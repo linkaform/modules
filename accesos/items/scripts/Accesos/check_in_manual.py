@@ -439,7 +439,7 @@ class Accesos(Accesos):
             tz = pytz.timezone(self.timezone)
             now = datetime.now(tz)
             fecha_actual = now.strftime('%Y-%m-%d %H:%M:%S')
-        
+
         self.answers.update({
             self.f['end_shift']: fecha_actual,
         })
