@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import sys
+import sys, simplejson
 from salida_de_materiales import Stock
 from account_settings import *
 
@@ -272,6 +272,96 @@ class Stock(Stock):
             self.unlist(contratista_wh_dest.get(self.stk.WH.f['warehouse_location_dest'])),
         )
 
+    def get_production_OS(self, final_contratista, wh_origen, date_from='2025-12-01'):
+        """
+        Consulta las Ordenes de Servicio (FTTH y COBRE, cuenta de Admin) del
+        contratista con fecha de liquidacion >= `date_from`, solo de los
+        COPES configurados para el almacen origen (get_copes_to_filter) y cuyo
+        Tipo de Tarea aplica material (get_tipos_tarea_aplica_material), igual
+        que consultar_material_estimado.py. El contratista se identifica por
+        el id_user de su conexion en el catalogo de Contratistas 1.0, que es
+        el connection_id de la OS; las OS sin conexion (las que
+        consultar_material_estimado.py asigna por expediente) no se cuentan.
+
+        Returns:
+            list | None: OS encontradas (solo los campos de `projection`), o None si el contratista no esta en el
+            catalogo o no hay COPES para el almacen origen.
+        """
+        if not final_contratista:
+            return None
+
+        copes = list(self.get_copes_to_filter(wh_origen).keys())
+        if not copes:
+            print(f"ADVERTENCIA: no hay COPES configurados para el almacen origen '{wh_origen}'")
+            return None
+
+        field_id_user = '5f344a0476c82e1bebc991d6'
+        info_contratista = self._find_catalog_record(
+            self.CATALOG_ID_CONTRATISTAS, self.f['field_nombre_contratista'], final_contratista,
+            {'id_user': field_id_user}, rdOnly_fields=False, jwt_settings_key='JWT_ADMIN'
+        ) or {}
+        id_user = str(info_contratista.get(field_id_user) or '').strip()
+        if not id_user.isdigit():
+            print(f"ADVERTENCIA: no se encontro el id de conexion del contratista '{final_contratista}'")
+            return None
+
+        from pci_get_connection_api import CollectionConnection
+        cr_admin = CollectionConnection(
+            1259, self.settings, username=self.ADMIN_USER, api_key=self.ADMIN_APIKEY
+        ).get_collections_connection()
+
+        # Solo los Tipos de Tarea que aplican material, igual que
+        # calcular_material_estimado(): bajante de su tecnologia u ONT (fibra) / modem (cobre)
+        tipos_tarea = self.get_tipos_tarea_aplica_material()
+        tipos_tarea_ftth = [
+            tipo for tipo, aplica in tipos_tarea.items()
+            if 'Sí' in (aplica['aplica_bajante_fibra'], aplica['aplica_ont'])
+        ]
+        tipos_tarea_cobre = [
+            tipo for tipo, aplica in tipos_tarea.items()
+            if 'Sí' in (aplica['aplica_bajante_cobre'], aplica['aplica_modem'])
+        ]
+
+        query_production = {
+            # Redundante con el $or por tecnologia, pero en el primer nivel permite usar el indice de form_id
+            'form_id': {'$in': self.FORMS_ID_FTTH + self.FORMS_ID_COBRE},
+            'deleted_at': {'$exists': False},
+            'connection_id': int(id_user),
+            'answers.f1054000a010000000000002': {'$in': copes},
+            '$and': [
+                {'$or': [
+                    {'answers.f1054000a02000000000fa02': {'$gte': date_from}},
+                    {'answers.5a1eecfbb43fdd65914505a1': {'$gte': date_from}},
+                ]},
+                {'$or': [
+                    {
+                        'form_id': {'$in': self.FORMS_ID_FTTH},
+                        'answers.f1054000a010000000000021': {'$in': tipos_tarea_ftth},
+                    },
+                    {
+                        'form_id': {'$in': self.FORMS_ID_COBRE},
+                        'answers.f1054000a0100000000000a4': {'$in': tipos_tarea_cobre},
+                    },
+                ]},
+            ],
+        }
+        # TODO: temporal, para probar el filtro directo en Mongo (cuenta 1259, form_answer)
+        # print('+++ query_production =', simplejson.dumps(query_production))
+
+        projection = {
+            '_id': 1,
+            'folio': 1,
+            'form_id': 1,
+            'connection_id': 1,
+            'answers.f1054000a0100000000000a2': 1, # area
+            'answers.f1054000a010000000000002': 1, # cope
+            'answers.f1054000a010000000000021': 1, # tipo de tarea FTTH
+            'answers.f1054000a0100000000000a4': 1, # tipo de tarea COBRE
+            'answers.f1054000a02000000000fa02': 1, # fecha de liquidacion
+            'answers.5a1eecfbb43fdd65914505a1': 1, # fecha de liquidacion
+        }
+        return list(cr_admin.find(query_production, projection))
+
     def _fill_recipient_stock(self, row, items, final_contratista):
         """
         A los items cuyo recipientStock guardado sea 0 (o no exista) les
@@ -300,6 +390,14 @@ class Stock(Stock):
             product_code_by_sku.update(self.get_product_code_by_skus(skus_sin_codigo))
 
         stock_contratista = self.get_stock_by_skus(product_code_by_sku, warehouse, location)
+
+        # Se consultan las OS del contratista con fecha de liquidacion >= 2025-12-01
+        origen = row.get(self.stk.WH.WAREHOUSE_LOCATION_OBJ_ID) or {}
+        wh_origen = self.unlist(origen.get(self.stk.WH.f['warehouse_location']))
+        production_OS = self.get_production_OS(final_contratista, wh_origen, '2025-12-01')
+        # TODO: temporal, para revisar las OS encontradas
+        print(f"+++ production_OS: {len(production_OS) if production_OS is not None else None} OS; primeras 3 =", (production_OS or [])[:3])
+
         for item in items:
             if item.get('sku') in stock_contratista and not item.get('recipientStock'):
                 item['recipientStock'] = stock_contratista[item['sku']]

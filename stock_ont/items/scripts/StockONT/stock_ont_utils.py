@@ -27,7 +27,34 @@ class Stock(Stock):
 
         self.FORM_ID_SALIDAS = 179244
         self.FORM_ID_VALES_MATERIALES = 130402
-        
+
+        self.FORMS_ID_FTTH = [11044, 16343, 21954, 21953, 147977]
+        self.FORMS_ID_COBRE = [10540, 25927, 25928, 25929, 147978]
+
+        self.FORM_ID_KITS = 164757 # 164626 # PREPROD
+        self.CATALOG_ID_TIPOS_TAREA = 56269 # Este se va a consultar la info que está en Admin.
+
+        # field_id del catalogo de Tipos de Tarea (aplica material / ONT / modem)
+        self.catalogo_tipos_tarea_fields = {
+            'tipo_de_tarea': '5ec44fd1ac6a37c45828230a',
+            'aplica_bajante_cobre': '686815963859301cd95a58a7',
+            'aplica_bajante_fibra': '687e7edea637578f0fda2216',
+            'aplica_ont': '687e7edea637578f0fda2217',
+            'aplica_modem': '687e7edea637578f0fda2218',
+        }
+
+        # field_id de la forma de Kits (FORM_ID_KITS)
+        self.sku_catalog_obj_id = '6824e631aa87c4ed5f18bcaa'
+        self.kits_fields = {
+            'tecnologia': '68819db58b1b1ab2e1d5ef2b',
+            'tipo': '68819e548b1b1ab2e1d5ef31',
+            'tipo_material': '68819e1b9e38c6f0be9066c3',
+            'grupo_productos': '68819f06fd736f4a03d5eece',
+            'cantidad': '68819f7b5bf2a425981fef5b',
+            'unidad_medida_obj': '6824e60fb2d7f2425a31357a',
+            'unidad_medida': '669efc6f47920d1b51663d29',
+        }
+
         self.f.update({
             # campos para el Almacen Destino
             "obj_almacen_destino": "6a8e2d1ee08b6d156660ea46",
@@ -790,6 +817,121 @@ class Stock(Stock):
                 stock[sku] -= scrap_by_code.get(product_code_by_sku.get(sku), 0)
 
         return stock
+
+    def get_tipos_tarea_aplica_material(self):
+        """
+        Consulta el catalogo de Tipos de Tarea y regresa solo los que aplican material/ONT/modem
+        """
+        f = self.catalogo_tipos_tarea_fields
+        records_tipos_tarea = self.lkf_api.search_catalog(self.CATALOG_ID_TIPOS_TAREA, jwt_settings_key='JWT_ADMIN')
+
+        dict_tipos_tarea_material = {}
+        for r in records_tipos_tarea:
+            aplica_bajante_cobre = r.get(f['aplica_bajante_cobre'])
+            aplica_bajante_fibra = r.get(f['aplica_bajante_fibra'])
+            aplica_ont = r.get(f['aplica_ont'])
+            aplica_modem = r.get(f['aplica_modem'])
+
+            if not any([aplica_bajante_cobre, aplica_bajante_fibra, aplica_ont, aplica_modem]):
+                continue
+
+            dict_tipos_tarea_material[r.get(f['tipo_de_tarea'])] = {
+                'aplica_bajante_cobre': aplica_bajante_cobre or 'No',
+                'aplica_bajante_fibra': aplica_bajante_fibra or 'No',
+                'aplica_ont': aplica_ont or 'No',
+                'aplica_modem': aplica_modem or 'No',
+            }
+        return dict_tipos_tarea_material
+
+    def get_kits(self):
+        """
+        Consulta la forma de Kits y arma un diccionario:
+        { tecnologia: { tipo: { tipo_material: [productos...] } } }
+        """
+        f = self.kits_fields
+        query = [
+            {'$match': {
+                'form_id': self.FORM_ID_KITS,
+                'deleted_at': {'$exists': False},
+            }},
+            {'$project': {
+                'tecnologia': f'$answers.{f["tecnologia"]}',
+                'tipo': f'$answers.{f["tipo"]}',
+                'tipo_material': {'$ifNull': [f'$answers.{f["tipo_material"]}', 'telmex/condumex']},
+                'productos': {
+                    '$map': {
+                        'input': f'$answers.{f["grupo_productos"]}',
+                        'as': 'producto',
+                        'in': {
+                            'clave_producto': f'$$producto.{self.sku_catalog_obj_id}.{self.f["field_product_code"]}',
+                            'cantidad': f'$$producto.{f["cantidad"]}',
+                            'unidad_medida': f'$$producto.{f["unidad_medida_obj"]}.{f["unidad_medida"]}',
+                        },
+                    },
+                },
+            }},
+            {'$group': {
+                '_id': {
+                    'tecnologia': '$tecnologia',
+                    'tipo': '$tipo',
+                    'tipo_material': '$tipo_material',
+                },
+                'productos': {'$push': '$productos'},
+            }},
+            {'$project': {
+                'tecnologia': '$_id.tecnologia',
+                'tipo': '$_id.tipo',
+                'productos': {'$reduce': {
+                    'input': '$productos',
+                    'initialValue': [],
+                    'in': {'$concatArrays': ['$$value', '$$this']},
+                }},
+            }},
+            {'$unwind': '$_id.tipo_material'},
+        ]
+
+        kits = {}
+        for kit in self.cr.aggregate(query):
+            kits.setdefault(kit['tecnologia'], {}) \
+                .setdefault(kit['tipo'], {}) \
+                .setdefault(kit['_id']['tipo_material'], []) \
+                .extend(kit.get('productos', []))
+        return kits
+
+    def get_source_and_destination_warehouse_names(self, wh_origen):
+        """
+        Determina el nombre del almacén origen y destino según el valor recibido en el formulario.
+        """
+        if not wh_origen or wh_origen == 'PCI Puebla':
+            return "Puebla", "Camarones"
+        if wh_origen == "Camarones":
+            return "Camarones", "Puebla"
+        return wh_origen, "Camarones"
+    
+    def get_copes_to_filter(self, wh_origen=None):
+        """
+        Consulta el catálogo de COPES segun el Tipo de Corte (Semanal, Mensual o Todo)
+        """
+        FIELD_WH_ORIGEN = "6aa8238ae98ccc0950307a03"
+        FIELD_WH_DESTINO = "6aa8238ae98ccc0950307a04"
+
+        val_wh_origen, val_wh_destino = self.get_source_and_destination_warehouse_names(wh_origen)
+        
+        answers_filter = {"$and":[
+            {FIELD_WH_ORIGEN: val_wh_origen},
+            {FIELD_WH_DESTINO: val_wh_destino},
+        ]}
+
+        records_catalog = self.lkf_api.search_catalog_answers(46944, answers_filter, jwt_settings_key='JWT_ADMIN')
+        
+        return { 
+            rec_cat['5d641731ddd3adcc24778a9d'].lower().replace(' ', '_'): {
+                'area_almacen': rec_cat.get('6923bec17d1ad7bfa869dc59'),
+                'supervisor_responsable': rec_cat.get(self.f['field_supervisor']),
+            } 
+            for rec_cat in records_catalog 
+            if rec_cat.get('5d641731ddd3adcc24778a9d') 
+        }
 
     def get_delivered_quantity(self, item):
         """
