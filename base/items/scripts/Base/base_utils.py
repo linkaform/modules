@@ -91,6 +91,12 @@ class Base(Base):
             },
         }
 
+        # Cada script se comparte junto con su gemelo *_sdk (Sanic). getattr: la imagen
+        # de prod puede traer un lkf_addons anterior sin SCRIPTS_SDK.
+        scripts_sdk = getattr(self, 'SCRIPTS_SDK', {})
+        for config in self.module_permits.values():
+            config['scripts'] += [scripts_sdk.get(s) for s in config['scripts']]
+
         # En mobile los mismos módulos de permisos viven bajo otros labels
         # (Turnos, Bitácoras, Artículos, Rondines) — alias al mismo config de Web.
         self.module_permits['turnos'] = self.module_permits['caseta']
