@@ -604,11 +604,13 @@ if __name__ == "__main__":
         "list_users": lambda: script_obj.list_users(),
         "get_user_menu_items": lambda: script_obj.get_user_menu_items(user_id),
         "save_user_menu_items": lambda: script_obj.save_user_menu_items(user_id, item_keys),
-        "resync_all_permissions": lambda: script_obj.resync_all_permissions(),
+        # Deshabilitado (1509): comparte/descomparte permisos; se reactiva junto con set_permissions.
+        # "resync_all_permissions": lambda: script_obj.resync_all_permissions(),
         "list_users_missing_menu_config": lambda: script_obj.list_users_missing_menu_config(),
         "list_users_only_in_legacy_accesos": lambda: script_obj.list_users_only_in_legacy_accesos(),
         "get_menu_permission_gaps": lambda: script_obj.get_menu_permission_gaps(),
-        "reapply_menu_permissions": lambda: script_obj.reapply_menu_permissions(data.get("user_ids") or []),
+        # Deshabilitado (1509): comparte/descomparte permisos; se reactiva junto con set_permissions.
+        # "reapply_menu_permissions": lambda: script_obj.reapply_menu_permissions(data.get("user_ids") or []),
     }
 
     action = dispatcher.get(option)
