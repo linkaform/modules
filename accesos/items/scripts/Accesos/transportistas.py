@@ -793,13 +793,13 @@ class Accesos(Accesos):
                 f['color_vehiculo']:     vehiculo.get('color', ''),
             })
 
-        if data.get('anden'):
-            answers[f['anden_asignado']] = data['anden']
+        if 'anden' in data:
+            answers[f['anden_asignado']] = data['anden'] or ''
 
         embarque = data.get('embarque') or {}
         if embarque:
             answers.update({
-                f['empresa_transportista']: embarque.get('procedencia', ''),
+                f['procedencia']:           embarque.get('procedencia', ''),
                 f['proveedor_cliente']:     embarque.get('proveedor_cliente', ''),
                 f['orden_de_compra']:       embarque.get('no_orden_compra', ''),
             })
