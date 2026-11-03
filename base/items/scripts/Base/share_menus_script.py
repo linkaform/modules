@@ -18,9 +18,12 @@ if __name__ == "__main__":
     base_obj.console_run()
     userId = base_obj.answers.get(base_obj.menu_form_fields.get('usuario_id'))
 
-    response = base_obj.share_menus_script(user_id=userId)
-    status_code = 201 if response.get('ok') else 400
+    # Deshabilitado (1509): no se comparte nada de Clave10 hasta reactivar set_permissions.
+    # response = base_obj.share_menus_script(user_id=userId)
+    # status_code = 201 if response.get('ok') else 400
+    status_code = 503
 
     sys.stdout.write(simplejson.dumps({
         'status': status_code,
+        'error': 'share_menus_script deshabilitado (1509)',
     }))
