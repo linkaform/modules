@@ -32,8 +32,9 @@ class Accesos(Accesos):
         menus = data.get('menus', [])
 
         # Script + catalogo de menus directo, sin esperar al workflow de CONFIGURACION_MENUS.
-        if user_id:
-            self.share_menus_script(user_id)
+        # Deshabilitado (1509): no se comparte nada de Clave10 hasta reactivar set_permissions.
+        # if user_id:
+        #     self.share_menus_script(user_id)
 
         new_menus = []
         for menu in menus:
