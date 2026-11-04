@@ -31,6 +31,9 @@ class Stock(Stock):
         self.FORMS_ID_FTTH = [11044, 16343, 21954, 21953, 147977]
         self.FORMS_ID_COBRE = [10540, 25927, 25928, 25929, 147978]
 
+        # Folios con material en metros (mts) que se acumulan antes de surtirlo, ver apply_regla_metraje()
+        self.cant_minima_folios_para_metraje = 5
+
         self.FORM_ID_KITS = 164757 # 164626 # PREPROD
         self.CATALOG_ID_TIPOS_TAREA = 56269 # Este se va a consultar la info que está en Admin.
 
@@ -897,6 +900,61 @@ class Stock(Stock):
                 .setdefault(kit['_id']['tipo_material'], []) \
                 .extend(kit.get('productos', []))
         return kits
+
+    def get_kit_products_os(self, form_id, tipo_tarea, tipos_tarea_para_material, kits_products, tipo_material='telmex/condumex'):
+        """
+        Productos que le corresponden a una Orden de Servicio segun su Tipo de
+        Tarea y los Kits: el kit de su tecnologia si aplica bajante, mas el de
+        ONT (fibra) / modem (cobre) si aplica.
+
+        Args:
+            form_id (int): forma de la OS (FORMS_ID_FTTH o FORMS_ID_COBRE).
+            tipo_tarea (str): Tipo de Tarea de la OS.
+            tipos_tarea_para_material (dict): get_tipos_tarea_aplica_material().
+            kits_products (dict): get_kits().
+            tipo_material (str): llave del kit por tipo de material.
+
+        Returns:
+            tuple: (list_productos, None) si aplica, o (None, motivo) si no aplica.
+        """
+        os_cobre = form_id in self.FORMS_ID_COBRE
+        tipo_os = 'cobre' if os_cobre else 'fibra'
+
+        info_tipo_tarea_aplica = tipos_tarea_para_material.get(tipo_tarea)
+        if not info_tipo_tarea_aplica:
+            return None, f"no aplica por Tipo de Tarea {tipo_tarea}"
+
+        aplica_material = info_tipo_tarea_aplica.get(f"aplica_bajante_{tipo_os}") == 'Sí'
+        aplica_ont_modem = info_tipo_tarea_aplica.get('aplica_modem' if os_cobre else 'aplica_ont') == 'Sí'
+        if not (aplica_material or aplica_ont_modem):
+            return None, "no aplica material"
+
+        list_productos = []
+        if aplica_material:
+            list_productos = deepcopy(kits_products.get(tipo_os, {}).get('kit', {}).get(tipo_material, []))
+        if aplica_ont_modem:
+            product_ont_modem = deepcopy(kits_products.get(tipo_os, {}).get('ont_/_modem', {}).get(tipo_material, []))
+            if product_ont_modem:
+                list_productos.extend(product_ont_modem)
+
+        return list_productos, None
+
+    def apply_regla_metraje(self, cantidad_producto, unidad_medida, tipo_os, count_folios_metraje):
+        """
+        Regla de metraje: el material en metros (mts) no se surte en cada
+        folio sino al juntar cant_minima_folios_para_metraje; los primeros
+        valen 0 y al llegar al minimo se surten todos juntos. Despues cada
+        folio vale su cantidad. Modifica count_folios_metraje ({tipo_os: int}).
+        """
+        if unidad_medida != "mts":
+            return cantidad_producto
+
+        count_folios_metraje[tipo_os] += 1
+        if count_folios_metraje[tipo_os] < self.cant_minima_folios_para_metraje:
+            return 0
+        if count_folios_metraje[tipo_os] == self.cant_minima_folios_para_metraje:
+            return cantidad_producto * self.cant_minima_folios_para_metraje
+        return cantidad_producto
 
     def get_source_and_destination_warehouse_names(self, wh_origen):
         """

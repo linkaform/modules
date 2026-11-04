@@ -58,8 +58,6 @@ class Stock(Stock):
 
         # JWT_ADMIN, ADMIN_USER y ADMIN_APIKEY vienen de stock_ont_utils.Stock
 
-        self.cant_minima_folios_para_metraje = 5
-
         # field_id del catalogo de Contratistas/Conexiones
         self.catalogo_contratistas_fields = {
             'email': '5f344a0476c82e1bebc991d8',
@@ -607,38 +605,22 @@ class Stock(Stock):
             folio_os = orden_servicio['folio']
             tipo_tarea = orden_servicio.get('tipo_de_tarea')
             tipo_os = 'cobre' if os_cobre else 'fibra'
-            info_tipo_tarea_aplica = tipos_tarea_para_material.get(tipo_tarea)
+            # Tipo de Material para fibra siempre será telmex/condumex
+            tipo_material = orden_servicio.get('tipo_de_material') if os_cobre else 'telmex/condumex'
 
+            list_productos, no_aplica_por = self.get_kit_products_os(
+                orden_servicio['form_id'], tipo_tarea, tipos_tarea_para_material, kits_products, tipo_material
+            )
 
-            if info_tipo_tarea_aplica:
-                aplica_material = info_tipo_tarea_aplica.get(f"aplica_bajante_{tipo_os}") == 'Sí'
-                aplica_ont_modem = info_tipo_tarea_aplica.get('aplica_modem' if os_cobre else 'aplica_ont') == 'Sí'
-                aplica = aplica_material or aplica_ont_modem
-                no_aplica_por = f"Folio {folio_os} no aplica material"
-            else:
-                aplica = False
-                no_aplica_por = f"Folio {folio_os} no aplica por Tipo de Tarea {tipo_tarea}"
-
-            if not aplica:
+            if list_productos is None:
                 if os_cobre:
                     folios_no_aplicados_cobre.append( self.get_row_for_xls( folio_os, orden_servicio, nombre_conexion, tipo_tarea, version=2 ) )
                 else:
                     folios_no_aplicados_fibra.append( self.get_row_for_xls(folio_os, orden_servicio, nombre_conexion, tipo_tarea) )
-                msgs_no_aplica.append( no_aplica_por )
+                msgs_no_aplica.append( f"Folio {folio_os} {no_aplica_por}" )
                 continue
-            
+
             tecnologias.add(tipo_os.upper())
-            # Tipo de Material para fibra siempre será telmex/condumex
-            tipo_material = orden_servicio.get('tipo_de_material') if os_cobre else 'telmex/condumex'
-
-
-            list_productos = []
-            if aplica_material:
-                list_productos = deepcopy(kits_products.get(tipo_os, {}).get('kit', {}).get(tipo_material, []))
-            if aplica_ont_modem:
-                product_ont_modem = deepcopy(kits_products.get(tipo_os, {}).get('ont_/_modem', {}).get(tipo_material, []))
-                if product_ont_modem:
-                    list_productos.extend(product_ont_modem)
 
             list_products_sorted = self.apply_sort_to_products(list_productos, productos)
             area_orden_servicio = orden_servicio.get('area', '')
@@ -666,15 +648,9 @@ class Stock(Stock):
             for data_product in list_products_sorted:
                 product = data_product['clave_producto']
                 info_product = productos.get(product)
-                cantidad_producto = data_product.get('cantidad') or 0
-
-                unidad_medida = data_product.get('unidad_medida')
-                if unidad_medida == "mts":
-                    count_folios_metraje[tipo_os] += 1
-                    if count_folios_metraje[tipo_os] < self.cant_minima_folios_para_metraje:
-                        cantidad_producto = 0
-                    elif count_folios_metraje[tipo_os] == self.cant_minima_folios_para_metraje:
-                        cantidad_producto = cantidad_producto * self.cant_minima_folios_para_metraje
+                cantidad_producto = self.apply_regla_metraje(
+                    data_product.get('cantidad') or 0, data_product.get('unidad_medida'), tipo_os, count_folios_metraje
+                )
 
                 if is_report_produccion_nacional:
                     group_by_area[area_key]['sugerido'] += cantidad_producto

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import sys, simplejson
+import sys
 from salida_de_materiales import Stock
 from account_settings import *
 
@@ -272,7 +272,7 @@ class Stock(Stock):
             self.unlist(contratista_wh_dest.get(self.stk.WH.f['warehouse_location_dest'])),
         )
 
-    def get_production_OS(self, final_contratista, wh_origen, date_from='2025-12-01'):
+    def get_production_OS(self, final_contratista, wh_origen, tipos_tarea=None, date_from='2025-12-01'):
         """
         Consulta las Ordenes de Servicio (FTTH y COBRE, cuenta de Admin) del
         contratista con fecha de liquidacion >= `date_from`, solo de los
@@ -282,6 +282,7 @@ class Stock(Stock):
         el id_user de su conexion en el catalogo de Contratistas 1.0, que es
         el connection_id de la OS; las OS sin conexion (las que
         consultar_material_estimado.py asigna por expediente) no se cuentan.
+        `tipos_tarea` permite pasar ya consultado get_tipos_tarea_aplica_material().
 
         Returns:
             list | None: OS encontradas (solo los campos de `projection`), o None si el contratista no esta en el
@@ -312,7 +313,8 @@ class Stock(Stock):
 
         # Solo los Tipos de Tarea que aplican material, igual que
         # calcular_material_estimado(): bajante de su tecnologia u ONT (fibra) / modem (cobre)
-        tipos_tarea = self.get_tipos_tarea_aplica_material()
+        if tipos_tarea is None:
+            tipos_tarea = self.get_tipos_tarea_aplica_material()
         tipos_tarea_ftth = [
             tipo for tipo, aplica in tipos_tarea.items()
             if 'Sí' in (aplica['aplica_bajante_fibra'], aplica['aplica_ont'])
@@ -345,8 +347,6 @@ class Stock(Stock):
                 ]},
             ],
         }
-        # TODO: temporal, para probar el filtro directo en Mongo (cuenta 1259, form_answer)
-        # print('+++ query_production =', simplejson.dumps(query_production))
 
         projection = {
             '_id': 1,
@@ -362,11 +362,53 @@ class Stock(Stock):
         }
         return list(cr_admin.find(query_production, projection))
 
+    def get_consumo_os_by_code(self, ordenes_servicio, tipos_tarea, kits_products):
+        """
+        Material consumido en las Ordenes de Servicio segun los Kits, con la
+        misma logica que calcular_material_estimado() (get_kit_products_os y
+        apply_regla_metraje de stock_ont_utils.py). La regla de metraje corre
+        con un solo contador para todas las OS, mientras que material estimado
+        la corre por lote de conexion/area/tecnologia; por eso el consumo en
+        metros puede diferir un poco de la suma de los vales.
+
+        Args:
+            ordenes_servicio (list): resultado de get_production_OS().
+            tipos_tarea (dict): get_tipos_tarea_aplica_material().
+            kits_products (dict): get_kits().
+
+        Returns:
+            dict: {product_code: cantidad consumida}.
+        """
+        consumo_by_code = {}
+        count_folios_metraje = {'fibra': 0, 'cobre': 0}
+        for orden_servicio in ordenes_servicio:
+            answers_os = orden_servicio.get('answers', {})
+            tipo_os = 'cobre' if orden_servicio['form_id'] in self.FORMS_ID_COBRE else 'fibra'
+            # Igual que el $ifNull de get_records_orden_de_servicio()
+            tipo_tarea = answers_os.get('f1054000a010000000000021')
+            if tipo_tarea is None:
+                tipo_tarea = answers_os.get('f1054000a0100000000000a4')
+
+            list_productos, _ = self.get_kit_products_os(orden_servicio['form_id'], tipo_tarea, tipos_tarea, kits_products)
+            for data_product in list_productos or []:
+                cantidad_producto = self.apply_regla_metraje(
+                    data_product.get('cantidad') or 0, data_product.get('unidad_medida'), tipo_os, count_folios_metraje
+                )
+                product_code = str(data_product['clave_producto'])
+                consumo_by_code[product_code] = consumo_by_code.get(product_code, 0) + cantidad_producto
+
+        return {code: round(cantidad, 2) for code, cantidad in consumo_by_code.items()}
+
     def _fill_recipient_stock(self, row, items, final_contratista):
         """
         A los items cuyo recipientStock guardado sea 0 (o no exista) les
-        asigna la existencia actual del sku en el almacen del contratista.
-        Se calcula en lote con get_stock_by_skus() (stock_ont_utils.py).
+        asigna la existencia actual del sku en el almacen del contratista
+        (get_stock_by_skus) menos el material que ya consumio en sus Ordenes de
+        Servicio desde 2025-12-01 (get_production_OS + get_consumo_os_by_code).
+        No se recorta a 0: un resultado negativo indica un descuadre entre lo
+        surtido y lo instalado. El consumo es por product_code, asi que si dos
+        skus comparten codigo a cada uno se le resta completo (igual que la
+        merma en get_stock_by_skus).
         """
         skus_sin_stock = [item['sku'] for item in items if item.get('sku') and not item.get('recipientStock')]
         if not skus_sin_stock:
@@ -394,13 +436,14 @@ class Stock(Stock):
         # Se consultan las OS del contratista con fecha de liquidacion >= 2025-12-01
         origen = row.get(self.stk.WH.WAREHOUSE_LOCATION_OBJ_ID) or {}
         wh_origen = self.unlist(origen.get(self.stk.WH.f['warehouse_location']))
-        production_OS = self.get_production_OS(final_contratista, wh_origen, '2025-12-01')
-        # TODO: temporal, para revisar las OS encontradas
-        print(f"+++ production_OS: {len(production_OS) if production_OS is not None else None} OS; primeras 3 =", (production_OS or [])[:3])
+        tipos_tarea = self.get_tipos_tarea_aplica_material()
+        production_OS = self.get_production_OS(final_contratista, wh_origen, tipos_tarea, '2025-12-01')
+        consumo_by_code = self.get_consumo_os_by_code(production_OS, tipos_tarea, self.get_kits()) if production_OS else {}
 
         for item in items:
-            if item.get('sku') in stock_contratista and not item.get('recipientStock'):
-                item['recipientStock'] = stock_contratista[item['sku']]
+            sku = item.get('sku')
+            if sku in stock_contratista and not item.get('recipientStock'):
+                item['recipientStock'] = stock_contratista[sku] - consumo_by_code.get(str(product_code_by_sku.get(sku)), 0)
 
         return items
 
