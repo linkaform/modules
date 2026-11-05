@@ -899,8 +899,11 @@ class Stock(Stock):
         # print('+++ +++ kits_products =',kits_products)
         # stop
 
+        is_report_produccion_nacional = type_report in ('produccion_nacional_by_area', 'produccion_nacional_global', 'produccion_nacional')
+
         copes, data_copes = None, {}
-        if self.front_request:
+        # Los reportes de produccion nacional incluyen todos los COPES (Puebla y Camarones)
+        if self.front_request and not is_report_produccion_nacional:
             data_copes = self.get_copes_to_filter(wh_origen)
             copes = list( data_copes.keys() )
             if not copes:
@@ -959,7 +962,7 @@ class Stock(Stock):
 
             return self.set_status('terminado', self.list_to_str(total_no_aplican, separator='\n'))
 
-        if type_report in ('produccion_nacional_by_area', 'produccion_nacional_global', 'produccion_nacional'):
+        if is_report_produccion_nacional:
 
             if type_report == 'produccion_nacional_global':
                 totales = {
