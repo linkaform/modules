@@ -52,15 +52,20 @@ if __name__ == "__main__":
     user_to_assign = data.get("user_to_assign", {})
     response = {}
 
-    config_accesos = acceso_obj.get_config_accesos()
-    if 'rondines' not in config_accesos.get('menus', []):
+    # Manda CONFIGURACION_MENUS (menus moviles), no la forma vieja de Configuracion Accesos.
+    menus_app = acceso_obj.get_app_menus(acceso_obj.user_id)
+    catalog_ids = acceso_obj.offline_catalog_ids(menus_app)
+    if option == 'get_user_catalogs' and not catalog_ids:
+        sys.stdout.write(simplejson.dumps({'status_code': 200, 'msg': 'El usuario no tiene menús de la app que usen catálogos offline', 'data': {}}))
+        sys.exit()
+    if option != 'get_user_catalogs' and 'rondines' not in menus_app:
         sys.stdout.write(simplejson.dumps({'status_code': 200, 'msg': 'El usuario no tiene configurado el menú de Rondines para utilizar couch services', 'data': {}}))
         sys.exit()
 
     db_name = f'clave_{acceso_obj.user_id}'
     acceso_obj.cr_db = acceso_obj.get_couch_user_db(db_name)
     if option == 'get_user_catalogs':
-        response = acceso_obj.get_user_catalogs()
+        response = acceso_obj.get_user_catalogs(catalog_ids=catalog_ids)
     # elif option == 'sync_to_lkf':
     #     db_name = f'clave_{acceso_obj.user_id}'
     #     acceso_obj.cr_db = acceso_obj.get_couch_user_db(db_name)
