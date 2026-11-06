@@ -611,6 +611,14 @@ if __name__ == "__main__":
         "get_menu_permission_gaps": lambda: script_obj.get_menu_permission_gaps(),
         # Deshabilitado (1509): comparte/descomparte permisos; se reactiva junto con set_permissions.
         # "reapply_menu_permissions": lambda: script_obj.reapply_menu_permissions(data.get("user_ids") or []),
+        # Compartir masivo (1509): solo por llamada directa. Se habilita sin commitear en la
+        # cuenta donde se use, igual que set_permissions.
+        # "plan_mass_share": lambda: script_obj.plan_mass_share(job_id=data.get("job_id"), user_ids=data.get("user_ids")),
+        # "run_mass_share": lambda: script_obj.run_mass_share(data.get("job_id"), intervalo=data.get("intervalo"), confirmar=bool(data.get("confirmar"))),
+        # "verify_mass_share": lambda: script_obj.verify_mass_share(data.get("job_id")),
+        # "resend_mass_share": lambda: script_obj.resend_mass_share(data.get("job_id")),
+        # "pause_mass_share": lambda: script_obj.pause_mass_share(data.get("job_id")),
+        # "get_mass_share": lambda: script_obj.get_mass_share(data.get("job_id")),
     }
 
     action = dispatcher.get(option)
