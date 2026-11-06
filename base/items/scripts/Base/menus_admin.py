@@ -614,7 +614,7 @@ if __name__ == "__main__":
         # Compartir masivo (1509): solo por llamada directa. Se habilita sin commitear en la
         # cuenta donde se use, igual que set_permissions.
         # "plan_mass_share": lambda: script_obj.plan_mass_share(job_id=data.get("job_id"), user_ids=data.get("user_ids")),
-        # "run_mass_share": lambda: script_obj.run_mass_share(data.get("job_id"), paralelo=data.get("paralelo") or 1),
+        # "run_mass_share": lambda: script_obj.run_mass_share(data.get("job_id"), intervalo=data.get("intervalo"), confirmar=bool(data.get("confirmar"))),
         # "verify_mass_share": lambda: script_obj.verify_mass_share(data.get("job_id")),
         # "resend_mass_share": lambda: script_obj.resend_mass_share(data.get("job_id")),
         # "pause_mass_share": lambda: script_obj.pause_mass_share(data.get("job_id")),
