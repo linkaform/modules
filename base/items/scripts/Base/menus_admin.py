@@ -619,6 +619,7 @@ if __name__ == "__main__":
         # "resend_mass_share": lambda: script_obj.resend_mass_share(data.get("job_id")),
         # "pause_mass_share": lambda: script_obj.pause_mass_share(data.get("job_id")),
         # "get_mass_share": lambda: script_obj.get_mass_share(data.get("job_id")),
+        # "list_mass_share": lambda: script_obj.list_mass_share(),
     }
 
     action = dispatcher.get(option)
