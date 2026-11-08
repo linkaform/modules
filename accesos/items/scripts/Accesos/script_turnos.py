@@ -57,7 +57,7 @@ if __name__ == "__main__":
     print('option', option)
     if option == 'load_shift':
         # used
-        response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)
+        response = acceso_obj.get_shift_data(booth_location=location, booth_area=area)  # prueba CI, no mergear
     elif option == 'assets_access_pass':
         response = acceso_obj.assets_access_pass(location)
     elif option == 'assing_gafete':
