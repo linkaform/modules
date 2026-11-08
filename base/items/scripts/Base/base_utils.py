@@ -24,6 +24,7 @@ class Base(Base):
             'quien_recibe_otro': '69c47a1ce96590f9dbf494b0',
         })
 
+        sdk = lambda name: self.lkm.script_id(name, 'id')
         self.module_permits = {
             'always':{
                 'forms':[],
@@ -69,6 +70,22 @@ class Base(Base):
                 'catalogs':[],
                 'scripts':[self.SCRIPT_TURNOS, self.SCRIPT_NOTAS]
             },
+            # Menus web que solo llaman scripts _sdk (Sanic), sin gemelo en addons.
+            'ubicaciones':{
+                'forms':[],
+                'catalogs':[],
+                'scripts':[sdk('location_sdk'), sdk('update_area_sdk'), sdk('rondines_sdk'), sdk('fallas_sdk')]
+            },
+            'empleados':{
+                'forms':[],
+                'catalogs':[],
+                'scripts':[sdk('users_sdk')]
+            },
+            'administración':{
+                'forms':[],
+                'catalogs':[],
+                'scripts':[sdk('menus_admin'), sdk('migrate_legacy_menus'), sdk('script_logs_sdk'), sdk('workflow_logs_sdk')]
+            },
         }
 
         # Cada script se comparte junto con su gemelo *_sdk (Sanic). getattr: la imagen
@@ -96,7 +113,15 @@ class Base(Base):
         mp['rondines'] = movil(mp['seguridad'], menu='rondines')
         mp['artículos'] = movil(mp['activos'], menu='artículos')
         mp['bitácoras'] = movil(mp['accesos'], mp['seguridad'], menu='bitácoras')
-        mp['incidencias_/_fallas'] = movil(menu='incidencias_/_fallas')
+        # La app no tiene menu web equivalente: lo que usa de Incidencias y Fallas de
+        # 'seguridad', sin rondines.
+        incidencias_fallas = {
+            'forms': [self.Accesos.BITACORA_INCIDENCIAS, self.Accesos.BITACORA_FALLAS],
+            'catalogs': [],
+            'scripts': [self.SCRIPT_INCIDENCIAS, self.FALLAS],
+        }
+        incidencias_fallas['scripts'] += [scripts_sdk[s] for s in incidencias_fallas['scripts'] if isinstance(s, int) and s in scripts_sdk]
+        mp['incidencias_/_fallas'] = movil(incidencias_fallas, menu='incidencias_/_fallas')
 
         # Catálogos que antes iban en 'always': a los usuarios que ya los tienen no se
         # les quitan en esta fase (set_item_permits los protege), solo ya no se dan.
