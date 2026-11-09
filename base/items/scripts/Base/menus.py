@@ -23,7 +23,7 @@ if __name__ == "__main__":
     platform = data.get("platform", '')
     dispatcher = {
         "get_menus": lambda: script_obj.get_user_menus(platform=platform),
-        # "set_permissions": lambda: script_obj.set_user_permissions(),
+        "set_permissions": lambda: script_obj.set_user_permissions(),
     }
 
     action = dispatcher.get(option) or dispatcher.get(workflow_option)
