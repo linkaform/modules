@@ -946,6 +946,11 @@ class Stock(Stock):
         valen 0 y al llegar al minimo se surten todos juntos. Despues cada
         folio vale su cantidad. Modifica count_folios_metraje ({tipo_os: int}).
         """
+
+        # TODO : 20261109 solicitan que de momento no se considere la regla de metraje, sino que se surta cada folio aunque sea mts.
+        # quitar la siguiente linea cuando se reanude la regla de metraje
+        return cantidad_producto
+
         if unidad_medida != "mts":
             return cantidad_producto
 
