@@ -395,6 +395,41 @@ class Base(Base):
                 item_keys.append(key)
         return {"item_keys": item_keys}
 
+    def list_users_menu_items(self):
+        """
+        Keys de menú asignadas a TODOS los usuarios de la cuenta, en una sola
+        consulta a CONFIGURACION_MENUS (para la tabla de Asignación del editor,
+        que si no tendría que llamar get_user_menu_items usuario por usuario).
+        Si un usuario tiene registros duplicados gana el más reciente, igual
+        que en _get_user_menu_record.
+        """
+        query = [
+            {"$match": {"form_id": self.MENUS_FORM, "deleted_at": {"$exists": False}}},
+            {"$sort": {"_id": -1}},
+            {"$project": {
+                "usuario_id": f"$answers.{self.USUARIOS_OBJ_ID}.{self.menu_form_fields['usuario_id']}",
+                "elementos": f"$answers.{self.menu_form_fields['elementos']}",
+            }}
+        ]
+        records = self.format_cr(self.cr.aggregate(query), labels_off=True)
+        key_field = self.menu_form_fields['key']
+        result = []
+        seen = set()
+        for record in records:
+            raw_user_id = record.get('usuario_id')
+            user_id = self.unlist(raw_user_id) if raw_user_id else None
+            if not user_id or user_id in seen:
+                continue
+            seen.add(user_id)
+            item_keys = []
+            for elemento in record.get('elementos') or []:
+                key = elemento.get(self.MENUS_CATALOG_OBJ_ID, {}).get(key_field)
+                key = self.unlist(key) if key else None
+                if key:
+                    item_keys.append(key)
+            result.append({"user_id": user_id, "item_keys": item_keys})
+        return result
+
     def _configured_menu_user_ids(self):
         """
         Set de user_id con al menos un registro en CONFIGURACION_MENUS
@@ -603,6 +638,7 @@ if __name__ == "__main__":
         "delete_menu_item": lambda: script_obj.delete_menu_item(record_id),
         "list_users": lambda: script_obj.list_users(),
         "get_user_menu_items": lambda: script_obj.get_user_menu_items(user_id),
+        "list_users_menu_items": lambda: script_obj.list_users_menu_items(),
         "save_user_menu_items": lambda: script_obj.save_user_menu_items(user_id, item_keys),
         # Deshabilitado (1509): comparte/descomparte permisos; se reactiva junto con set_permissions.
         # "resync_all_permissions": lambda: script_obj.resync_all_permissions(),
