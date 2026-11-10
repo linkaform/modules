@@ -81,11 +81,21 @@ class Base(Base):
                 'catalogs':[],
                 'scripts':[sdk('users_sdk')]
             },
+            # Sus scripts van por key en key_permits: tener un menú de Administración
+            # no debe dar el editor de menús.
             'administración':{
                 'forms':[],
                 'catalogs':[],
-                'scripts':[sdk('menus_admin'), sdk('migrate_legacy_menus'), sdk('script_logs_sdk'), sdk('workflow_logs_sdk')]
+                'scripts':[]
             },
+        }
+
+        # Permisos por key de menú (no por módulo): solo quien tiene esa key recibe
+        # estos items. Se suman a los del módulo en _menu_permits_needed.
+        self.key_permits = {
+            'admin_menus': {'forms': [], 'catalogs': [], 'scripts': [sdk('menus_admin'), sdk('migrate_legacy_menus')]},
+            'script_logs': {'forms': [], 'catalogs': [], 'scripts': [sdk('script_logs_sdk')]},
+            'workflow_log': {'forms': [], 'catalogs': [], 'scripts': [sdk('workflow_logs_sdk')]},
         }
 
         # Cada script se comparte junto con su gemelo *_sdk (Sanic). getattr: la imagen
@@ -93,7 +103,7 @@ class Base(Base):
         # Solo entran los ids validos que si tienen gemelo: {} (script que la cuenta no
         # tiene) no sirve de llave y .get() metia None.
         scripts_sdk = getattr(self, 'SCRIPTS_SDK', {})
-        for config in self.module_permits.values():
+        for config in list(self.module_permits.values()) + list(self.key_permits.values()):
             config['scripts'] += [scripts_sdk[s] for s in config['scripts'] if isinstance(s, int) and s in scripts_sdk]
 
         # En mobile los mismos módulos viven bajo otros labels (Turnos, Bitácoras,
