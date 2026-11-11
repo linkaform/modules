@@ -107,6 +107,8 @@ if __name__ == "__main__":
         response = acceso_obj.catalogo_incidencias(cat=cat,sub_cat=sub_cat)
     elif option == 'get_pdf':
         response = acceso_obj.get_pdf(qr_code=qr_code, template_id=template_id)
+    elif option == 'get_pdf_incidencia':
+        response = acceso_obj.get_pdf_incidencia(qr_code=qr_code, name_pdf=name_pdf)
     else :
         response = {"msg": "Empty"}
     acceso_obj.HttpResponse({"data":response})

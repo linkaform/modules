@@ -332,6 +332,9 @@ class Accesos(Accesos):
             return "presente"
 
     def check_in_manual(self):
+        #! Solo un empleado activo puede marcar asistencia.
+        self.require_active_employee(self.user.get('user_id'))
+
         #! Se cierra cualquier turno anterior que este abierto
         self.verify_guard_status()
         
@@ -439,7 +442,7 @@ class Accesos(Accesos):
             tz = pytz.timezone(self.timezone)
             now = datetime.now(tz)
             fecha_actual = now.strftime('%Y-%m-%d %H:%M:%S')
-        
+
         self.answers.update({
             self.f['end_shift']: fecha_actual,
         })

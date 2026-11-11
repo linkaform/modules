@@ -54,7 +54,7 @@ if __name__ == "__main__":
     db_name = f'clave_{acceso_obj.user_id}'
     acceso_obj.cr_db = acceso_obj.get_couch_user_db(db_name)
     if option == 'get_user_catalogs':
-        response = acceso_obj.get_user_catalogs()
+        response = acceso_obj.get_user_catalogs(catalog_ids=catalog_ids)
     # elif option == 'sync_to_lkf':
     #     db_name = f'clave_{acceso_obj.user_id}'
     #     acceso_obj.cr_db = acceso_obj.get_couch_user_db(db_name)
