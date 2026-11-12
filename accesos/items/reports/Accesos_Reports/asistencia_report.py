@@ -26,7 +26,10 @@ class Accesos(Accesos):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api, **kwargs)
         self.load(module='Location', **self.kwargs)
         self.HORARIOS = self.lkm.form_id('horarios', 'id')
-        
+        # Plantilla por caseta: una forma por caseta × turno; el turno sale del catálogo Horarios
+        self.PLANTILLA_CASETA = self.lkm.form_id('plantilla_por_caseta', 'id')
+        self.HORARIOS_CAT_OBJ_ID = (self.lkm.catalog_id('horarios') or {}).get('obj_id')
+
         self.f.update({
             'tipo_guardia': '68acee270f2af5e173b7f92e',
             'nombre_guardia_suplente': '68acb67685a044b5fdd869b2',
@@ -52,6 +55,12 @@ class Accesos(Accesos):
             'free_day_comentario': '59513ddbf851c214cf24430c',
             'usuario_email': '638a9a7767c332f5d459fc82',
             'usuario_nombre': '638a9a7767c332f5d459fc81',
+            # Plantilla por Caseta
+            'plantilla_plazas': '6af6386e868111d3bcd52b03',
+            'plaza_cantidad': '6af6386e9a6c14da05657e74',
+            'plaza_guardia_nombre': '62c5ff407febce07043024dd',
+            'plaza_guardia_id': '638a9a99616398d2e392a9f5',
+            'plaza_rol': '6a46f2730fc4d03a90da2209',
         })
         
         self.shifts = {}
@@ -345,6 +354,187 @@ class Accesos(Accesos):
             })
 
         result.sort(key=lambda t: (t["ubicacion"], t["caseta"], t["hora_entrada"], t["horario"]))
+        return result
+
+    def get_plantilla_config(self, locations=[]):
+        """Plazas desde la forma Plantilla por Caseta (un registro por caseta × turno).
+        Cada fila del grupo Plazas (rol, cantidad, guardia opcional) se vuelve `cantidad` plazas:
+        la primera con el guardia programado, si lo hay, y las demás por cubrir.
+        {(ubicacion, caseta, horario): {datos del turno, "plazas": [...]}}"""
+        areas_cat = self.Location.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID
+        # Horas y tolerancia salen de la forma Horarios: el registro de plantilla a veces solo guarda
+        # el nombre del turno (los catalog-detail de hora no siempre se guardan)
+        horarios = self.get_schedules()
+        def horario_de(nombre, entrada, ubicacion):
+            candidatos = [h for h in horarios if h['nombre'] == nombre and (not entrada or h['hora_entrada'] == entrada)]
+            return next((h for h in candidatos if ubicacion in h['ubicaciones']), candidatos[0] if candidatos else {})
+        query = {"deleted_at": {"$exists": False}, "form_id": self.PLANTILLA_CASETA}
+        turnos = {}
+        for doc in self.cr.find(query, {"answers": 1}):
+            answers = doc.get('answers', {})
+            area = answers.get(areas_cat) or {}
+            ubicacion = self.unlist(area.get(self.Location.f['location']))
+            caseta = self.unlist(area.get(self.Location.f['area']))
+            turno_cat = answers.get(self.HORARIOS_CAT_OBJ_ID) or {}
+            horario = self.unlist(turno_cat.get(self.f['nombre_horario'])) or ''
+            entrada = self.unlist(turno_cat.get(self.f['hora_entrada'])) or ''
+            if not caseta or not horario or (locations and ubicacion not in locations):
+                continue
+            h = horario_de(horario, entrada, ubicacion)
+            turno = turnos.setdefault((ubicacion, caseta, horario), {
+                "ubicacion": ubicacion,
+                "caseta": caseta,
+                "horario": horario,
+                "hora_entrada": entrada or h.get('hora_entrada') or '',
+                "hora_salida": self.unlist(turno_cat.get(self.f['hora_salida'])) or h.get('hora_salida') or '',
+                "tolerancia_retardo": h.get('tolerancia_retardo') or 0,
+                "plazas": [],
+            })
+            for row in answers.get(self.f['plantilla_plazas'], []) or []:
+                rol = self.unlist((row.get(self.ROL_CATALOG_OBJ_ID) or {}).get(self.f['plaza_rol'])) or ''
+                guardia = row.get(self.EMPLOYEE_OBJ_ID) or {}
+                nombre = self.unlist(guardia.get(self.f['plaza_guardia_nombre'])) or ''
+                user_id = self.unlist(guardia.get(self.f['plaza_guardia_id']))
+                try:
+                    cantidad = max(int(row.get(self.f['plaza_cantidad']) or 1), 1)
+                except (TypeError, ValueError):
+                    cantidad = 1
+                for i in range(cantidad):
+                    turno["plazas"].append({
+                        "rol": rol,
+                        "guardia_programado": nombre if i == 0 else '',
+                        "guardia_programado_id": user_id if i == 0 else None,
+                    })
+        return turnos
+
+    def get_plantilla_checkins(self, date_from, date_to, locations=[]):
+        """Todos los check-ins del periodo (sin quedarse con uno por día), por (ubicacion, caseta, fecha)."""
+        conf = self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID
+        match = {
+            "deleted_at": {"$exists": False},
+            "form_id": self.REGISTRO_ASISTENCIA,
+            f"answers.{self.f['start_shift']}": {"$gte": date_from, "$lte": f"{date_to} 23:59:59"},
+        }
+        if locations:
+            match[f"answers.{conf}.{self.Location.f['location']}"] = {"$in": locations}
+        query = [
+            {"$match": match},
+            {"$sort": {f"answers.{self.f['start_shift']}": 1}},
+            {"$project": {
+                "_id": 0,
+                "folio": 1,
+                "employee_id": "$created_by_id",
+                "nombre": "$created_by_name",
+                "ubicacion": f"$answers.{conf}.{self.Location.f['location']}",
+                "caseta": f"$answers.{conf}.{self.Location.f['area']}",
+                "inicio": f"$answers.{self.f['start_shift']}",
+                "status": f"$answers.{self.f['status_turn']}",
+                "horario": f"$answers.{self.f['nombre_horario']}",
+                "hora_entrada": f"$answers.{self.f['hora_entrada']}",
+                "tipo_guardia": f"$answers.{self.f['tipo_guardia']}",
+                "suplente": f"$answers.{self.f['nombre_guardia_suplente']}",
+                "roles": f"$answers.{self.f['grupo_roles']}",
+            }},
+        ]
+        result = {}
+        for item in self.cr.aggregate(query):
+            if not item.get('inicio'):
+                continue
+            roles = [
+                self.unlist((r.get(self.ROL_CATALOG_OBJ_ID) or {}).get(self.f['rol']))
+                for r in (item.get('roles') or []) if isinstance(r, dict)
+            ]
+            es_suplente = item.get('tipo_guardia') == 'guardia_suplente'
+            key = (self.unlist(item.get('ubicacion')), self.unlist(item.get('caseta')), item['inicio'][:10])
+            result.setdefault(key, []).append({
+                "folio": item.get('folio'),
+                "employee_id": item.get('employee_id'),
+                "guardia": (item.get('suplente') if es_suplente else None) or item.get('nombre') or '',
+                "suplente": es_suplente,
+                "hora": item['inicio'][11:16],
+                "status": item.get('status') or '',
+                "horario": item.get('horario') or '',
+                "hora_entrada": item.get('hora_entrada') or '',
+                "roles": [r for r in roles if r],
+            })
+        return result
+
+    def get_plantilla(self, date_from, date_to, locations=[]):
+        """Plantilla por caseta: cada plaza (caseta × horario × rol) por día con su estado.
+        A = con entrada, R = entrada con retardo, F = sin entrada, PL = por llegar (hoy), PE = programado (futuro).
+        Asignación: primero el guardia programado, luego quien entró con el mismo rol y al final cualquiera
+        (suplentes). Los check-ins que sobran salen en "extras"."""
+        ahora = datetime.now(timezone('America/Mexico_City'))
+        hoy = ahora.date()
+        inicio = datetime.strptime(date_from, '%Y-%m-%d').date()
+        fin = datetime.strptime(date_to, '%Y-%m-%d').date()
+        fechas = [inicio + timedelta(days=i) for i in range((fin - inicio).days + 1)]
+        turnos = self.get_plantilla_config(locations)
+        checkins = self.get_plantilla_checkins(date_from, date_to, locations)
+
+        result = []
+        for (ubicacion, caseta, horario), turno in turnos.items():
+            limite = None
+            if turno["hora_entrada"]:
+                h, m = [int(x) for x in str(turno["hora_entrada"])[:5].split(':')]
+                limite = ahora.replace(hour=h, minute=m, second=0, microsecond=0) + timedelta(minutes=int(turno["tolerancia_retardo"] or 0))
+            dias = []
+            for fecha_dia in fechas:
+                fecha = fecha_dia.strftime('%Y-%m-%d')
+                # Check-ins de esta caseta y día que son de este horario (sin nombre: por hora de entrada)
+                libres = [
+                    c for c in checkins.get((ubicacion, caseta, fecha), [])
+                    if c["horario"] == horario or (not c["horario"] and c["hora_entrada"] and c["hora_entrada"] == turno["hora_entrada"])
+                ]
+                asignados = [None] * len(turno["plazas"])
+                # Rol: un check-in con otro rol no cubre la plaza; uno sin rol sí, pero queda marcado.
+                # Plazas sin guardia asignado se llenan antes que las de un programado ausente.
+                rol_ok = lambda p, c: not p["rol"] or not c["roles"] or p["rol"] in c["roles"]
+                rol_igual = lambda p, c: p["rol"] and p["rol"] in c["roles"]
+                rondas = (
+                    lambda p, c: p["guardia_programado_id"] and c["employee_id"] == p["guardia_programado_id"] and not c["suplente"],
+                    lambda p, c: not p["guardia_programado_id"] and rol_igual(p, c),
+                    lambda p, c: rol_igual(p, c),
+                    lambda p, c: not p["guardia_programado_id"] and rol_ok(p, c),
+                    lambda p, c: rol_ok(p, c),
+                )
+                for coincide in rondas:
+                    for i, plaza in enumerate(turno["plazas"]):
+                        if asignados[i]:
+                            continue
+                        c = next((c for c in libres if coincide(plaza, c)), None)
+                        if c:
+                            asignados[i] = c
+                            libres.remove(c)
+
+                plazas = []
+                for plaza, c in zip(turno["plazas"], asignados):
+                    if c:
+                        status = "R" if c["status"] in ("retardo", "falta_por_retardo") else "A"
+                    elif fecha_dia > hoy:
+                        status = "PE"
+                    elif fecha_dia == hoy and (limite is None or ahora < limite):
+                        status = "PL"
+                    else:
+                        status = "F"
+                    plazas.append({
+                        **plaza,
+                        "status": status,
+                        "guardia": c["guardia"] if c else plaza["guardia_programado"],
+                        "employee_id": c["employee_id"] if c else plaza["guardia_programado_id"],
+                        # Cubrió la plaza pero su check-in no trae rol
+                        "sin_rol": bool(c and plaza["rol"] and not c["roles"]),
+                        "suplente": bool(c and (c["suplente"] or (plaza["guardia_programado_id"] and c["employee_id"] != plaza["guardia_programado_id"]))),
+                        "hora": c["hora"] if c else None,
+                        "folio": c["folio"] if c else None,
+                    })
+                resumen = {k: sum(1 for p in plazas if p["status"] == k) for k in ("A", "R", "F", "PL", "PE")}
+                resumen["total"] = len(plazas)
+                dias.append({"fecha": fecha, "plazas": plazas, "extras": libres, "resumen": resumen})
+
+            result.append({**turno, "dias": dias})
+
+        result.sort(key=lambda t: (t["ubicacion"] or '', t["caseta"] or '', str(t["hora_entrada"]), t["horario"]))
         return result
 
     def new_resumen(self):
@@ -784,6 +974,8 @@ if __name__ == "__main__":
         response = script_obj.get_employees_attendance(group_by=group_by, locations=locations, month=month, year=year, date_from=date_from, date_to=date_to)
     elif option == 'get_attendance_data':
         response = script_obj.get_attendance_data(locations=locations, limit=limit, offset=offset, date_from=date_from, date_to=date_to)
+    elif option == 'get_plantilla':
+        response = script_obj.get_plantilla(date_from=date_from, date_to=date_to, locations=locations)
     elif option == 'get_locations':
         response = script_obj.get_locations()
     elif option == 'get_attendance_day_detail':
