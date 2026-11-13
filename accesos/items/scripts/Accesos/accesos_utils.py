@@ -896,6 +896,738 @@ class Accesos(Accesos):
 
         return res
 
+    # ---- Transportistas / Control de patio (movidos desde transportistas.py) ----
+
+    def get_andenes(self):
+        query = [
+            {'$match': {
+                'form_id': self.AREAS_DE_LAS_UBICACIONES,
+                'deleted_at': {'$exists': False},
+                f'answers.{self.Location.TIPO_AREA_OBJ_ID}.{self.f["tipo_de_area"]}': 'Andén',
+            }},
+            {'$project': {
+                '_id': 0,
+                'area': f'$answers.{self.f["area"]}',
+            }},
+            {'$sort': {'area': 1}},
+        ]
+        resultado = self.format_cr(self.cr.aggregate(query))
+        return [r['area'] for r in resultado if r.get('area')]
+
+    def get_bitac_transportista_record(self, record_id):
+        f = self.bitacora_transportista_fields
+        query = [
+            {'$match': {
+                'form_id': self.BITACORA_TRANSPORTISTAS,
+                'deleted_at': {'$exists': False},
+                '_id': ObjectId(record_id),
+            }},
+            {'$project': {
+                '_id': 1,
+                'folio': 1,
+                'created_at': 1,
+                'estatus':               f'$answers.{f["estatus"]}',
+                'fecha_hora_ingreso':    f'$answers.{f["fecha_hora_ingreso"]}',
+                'fecha_hora_descarga':   f'$answers.{f["fecha_hora_descarga"]}',
+                'fecha_hora_terminado':  f'$answers.{f["fecha_hora_terminado"]}',
+                'num_de_pase':           f'$answers.{f["num_de_pase"]}',
+                'empresa_transportista': f'$answers.{f["empresa_transportista"]}',
+                'tipo_de_operacion':     f'$answers.{f["tipo_de_operacion"]}',
+                'procedencia':           f'$answers.{f["procedencia"]}',
+                'tipo_de_vehiculo':      f'$answers.{f["tipo_de_vehiculo"]}',
+                'placas_de_vehiculo':                    f'$answers.{f["placas_de_vehiculo"]}',
+                'placas_de_vehiculo_tarjeta_circulacion': f'$answers.{f["placas_de_vehiculo_tarjeta_circulacion"]}',
+                'num_eco_num_rotulo':    f'$answers.{f["num_eco_num_rotulo"]}',
+                'marca_vehiculo':        f'$answers.{f["marca_vehiculo"]}',
+                'year_vehiculo':         f'$answers.{f["year_vehiculo"]}',
+                'color_vehiculo':        f'$answers.{f["color_vehiculo"]}',
+                'conductor':             f'$answers.{f["conductor"]}',
+                'telefono_conductor':    f'$answers.{f["telefono_conductor"]}',
+                'ayudante':              f'$answers.{f["ayudante"]}',
+                'num_licencia':          f'$answers.{f["num_licencia"]}',
+                'firma_conductor':       f'$answers.{f["firma_conductor"]}',
+                'anden_asignado':        f'$answers.{f["anden_asignado"]}',
+                'proveedor_cliente':     f'$answers.{f["proveedor_cliente"]}',
+                'orden_de_compra':       f'$answers.{f["orden_de_compra"]}',
+                'ubicacion':             f'$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf["ubicacion"]}',
+                'area':                  f'$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf["nombre_area"]}',
+                'documentos': {'$map': {
+                    'input': {'$ifNull': [f'$answers.{f["grupo_fotos_y_documentos"]}', []]},
+                    'as': 'doc',
+                    'in': {
+                        'tipo':      f'$$doc.{f["tipo_de_documento"]}',
+                        'documento': f'$$doc.{f["documento"]}',
+                    },
+                }},
+                'materiales': {'$map': {
+                    'input': {'$ifNull': [f'$answers.{f["grupo_materiales"]}', []]},
+                    'as': 'm',
+                    'in': {
+                        'lugar':             f'$$m.{f["lugar_material"]}',
+                        'no_referencia':     f'$$m.{f["no_referencia_material"]}',
+                        'producto':          f'$$m.{f["producto_material"]}',
+                        'lote':              f'$$m.{f["lote_material"]}',
+                        'cantidad':          f'$$m.{f["cantidad_material"]}',
+                        'cantidad_fisica':   f'$$m.{f["cantidad_fisica_material"]}',
+                        'cantidad_buena':    f'$$m.{f["cantidad_buena_material"]}',
+                        'cantidad_danada':   f'$$m.{f["cantidad_danada_material"]}',
+                        'cantidad_faltante': f'$$m.{f["cantidad_faltante_material"]}',
+                        'peso':              f'$$m.{f["peso_material"]}',
+                        'volumen':           f'$$m.{f["volumen_material"]}',
+                        'evidencia':         {'$ifNull': [f'$$m.{f["evidencia_material"]}', []]},
+                        'comentario':        f'$$m.{f["comentario_material"]}',
+                    },
+                }},
+                'desglose_empaque': {'$map': {
+                    'input': {'$ifNull': [f'$answers.{f["grupo_desglose_empaque"]}', []]},
+                    'as': 'd',
+                    'in': {
+                        'no_referencia_material': f'$$d.{f["no_referencia_material_desglose"]}',
+                        'nivel':                  f'$$d.{f["nivel_desglose"]}',
+                        'tipo_unidad_empaque':    f'$$d.{f["tipo_unidad_empaque_desglose"]}',
+                        'cantidad':               f'$$d.{f["cantidad_desglose"]}',
+                        'cantidad_acumulada':     f'$$d.{f["cantidad_acumulada_desglose"]}',
+                    },
+                }},
+                'remolques': {'$map': {
+                    'input': {'$ifNull': [f'$answers.{f["grupo_remolques"]}', []]},
+                    'as': 'r',
+                    'in': {
+                        'tipo_remolque': f'$$r.{f["tipo_remolque"]}',
+                        'no_referencia_remolque': f'$$r.{f["no_referencia_remolque"]}',
+                        'no_sello':      f'$$r.{f["num_sello"]}',
+                        'no_caja':       f'$$r.{f["num_caja_contenedor"]}',
+                        'placas_caja':   f'$$r.{f["placas_de_caja"]}',
+                        'color':         f'$$r.{f["color_remolque_contenedor"]}',
+                        'comentarios':   f'$$r.{f["comentarios"]}',
+                    },
+                }},
+                'inspecciones': {'$map': {
+                    'input': {'$ifNull': [f'$answers.{f["grupo_inspecciones"]}', []]},
+                    'as': 'i',
+                    'in': {
+                        'tipo': f'$$i.{f["tipo_inspeccion"]}',
+                        'url':  f'$$i.{f["url_inspeccion"]}',
+                    },
+                }},
+            }},
+        ]
+        return self.format_cr(self.cr.aggregate(query), get_one=True)
+
+    def transportistas_search_fields(self):
+        f = self.bitacora_transportista_fields
+        estatus = f'answers.{f["estatus"]}'
+        # Llaves = las del panel de filtros (filters.py, option transportistas).
+        return {
+            'folio': {'label': 'Folio', 'paths': ['folio']},
+            'placas': {'label': 'Placas', 'paths': [f'answers.{f["placas_de_vehiculo"]}']},
+            'conductor': {'label': 'Conductor', 'paths': [f'answers.{f["conductor"]}']},
+            'proveedor_cliente': {'label': 'Proveedor / cliente', 'paths': [f'answers.{f["proveedor_cliente"]}']},
+            'estatus': {
+                'label': 'Estatus',
+                'paths': [estatus],
+                'options': lambda: self.facet_distinct_options(self.BITACORA_TRANSPORTISTAS, estatus),
+            },
+            'tipo_de_operacion': {'label': 'Operación', 'paths': [f'answers.{f["tipo_de_operacion"]}']},
+            'tipo_de_vehiculo': {'label': 'Tipo de vehículo', 'paths': [f'answers.{f["tipo_de_vehiculo"]}']},
+            'anden_asignado': {'label': 'Andén', 'paths': [f'answers.{f["anden_asignado"]}']},
+            'material': {'label': 'Material', 'paths': [f'answers.{f["grupo_materiales"]}.{f["producto_material"]}']},
+        }
+
+    def transportistas_base_match(self, date_from=None, date_to=None):
+        f = self.bitacora_transportista_fields
+        match_filters = {
+            'form_id': self.BITACORA_TRANSPORTISTAS,
+            'deleted_at': {'$exists': False},
+        }
+        fecha_field = f'answers.{f["fecha_hora_ingreso"]}'
+        # El front manda el rango ya resuelto; un date_to de solo día ("AAAA-MM-DD")
+        # se extiende al final del día porque las fechas se comparan como texto.
+        if date_to and len(date_to) == 10:
+            date_to = f"{date_to} 23:59:59"
+        if date_from and date_to:
+            match_filters[fecha_field] = {'$gte': date_from, '$lte': date_to}
+        elif date_from:
+            match_filters[fecha_field] = {'$gte': date_from}
+        elif date_to:
+            match_filters[fecha_field] = {'$lte': date_to}
+        return match_filters
+
+    def get_bitac_transportista_records(self, date_from=None, date_to=None,
+                                         tipo_de_vehiculo=None, proveedor_cliente=None, anden_asignado=None,
+                                         estatus=None, tipo_de_operacion=None, conductor=None, material=None,
+                                         search=None, skip=0, limit=None, pagination=False, facets=[]):
+        f = self.bitacora_transportista_fields
+        match_filters = self.transportistas_base_match(date_from, date_to)
+        # Buscador avanzado: los filtros del panel y las búsquedas llegan como facets.
+        facet_conditions = self.build_facets_match(self.transportistas_search_fields(), facets)
+        if facet_conditions:
+            match_filters['$and'] = facet_conditions
+
+        if tipo_de_vehiculo:
+            values = tipo_de_vehiculo if isinstance(tipo_de_vehiculo, list) else [tipo_de_vehiculo]
+            match_filters[f'answers.{f["tipo_de_vehiculo"]}'] = {'$in': values}
+        if proveedor_cliente:
+            values = proveedor_cliente if isinstance(proveedor_cliente, list) else [proveedor_cliente]
+            match_filters[f'answers.{f["proveedor_cliente"]}'] = {'$in': values}
+        if anden_asignado:
+            values = anden_asignado if isinstance(anden_asignado, list) else [anden_asignado]
+            match_filters[f'answers.{f["anden_asignado"]}'] = {'$in': values}
+        if estatus:
+            values = estatus if isinstance(estatus, list) else [estatus]
+            match_filters[f'answers.{f["estatus"]}'] = {'$in': values}
+        if tipo_de_operacion:
+            values = tipo_de_operacion if isinstance(tipo_de_operacion, list) else [tipo_de_operacion]
+            match_filters[f'answers.{f["tipo_de_operacion"]}'] = {'$in': values}
+        if conductor:
+            values = conductor if isinstance(conductor, list) else [conductor]
+            match_filters[f'answers.{f["conductor"]}'] = {'$in': values}
+        if material:
+            values = material if isinstance(material, list) else [material]
+            match_filters[f'answers.{f["grupo_materiales"]}'] = {
+                '$elemMatch': {f['producto_material']: {'$in': values}}
+            }
+        if search:
+            search_regex = {'$regex': search, '$options': 'i'}
+            match_filters['$or'] = [
+                {'folio': search_regex},
+                {f'answers.{f["placas_de_vehiculo"]}': search_regex},
+                {f'answers.{f["conductor"]}': search_regex},
+                {f'answers.{f["proveedor_cliente"]}': search_regex},
+            ]
+
+        query = [
+            {'$match': match_filters},
+            {'$project': {
+                '_id': 1,
+                'folio':              1,
+                'anden_asignado':     f'$answers.{f["anden_asignado"]}',
+                'placas':             f'$answers.{f["placas_de_vehiculo"]}',
+                'proveedor_cliente':  f'$answers.{f["proveedor_cliente"]}',
+                'conductor':          f'$answers.{f["conductor"]}',
+                'tipo_de_operacion':  f'$answers.{f["tipo_de_operacion"]}',
+                'tipo_de_vehiculo':   f'$answers.{f["tipo_de_vehiculo"]}',
+                'estatus':            f'$answers.{f["estatus"]}',
+                'num_de_pase':        f'$answers.{f["num_de_pase"]}',
+                'fecha_hora_ingreso': f'$answers.{f["fecha_hora_ingreso"]}',
+                'material': {
+                    '$let': {
+                        'vars': {'primer': {'$arrayElemAt': [f'$answers.{f["grupo_materiales"]}', 0]}},
+                        'in': f'$$primer.{f["producto_material"]}',
+                    }
+                },
+                'documentos': {
+                    '$let': {
+                        'vars': {
+                            'grupo': {'$ifNull': [f'$answers.{f["grupo_fotos_y_documentos"]}', []]},
+                        },
+                        'in': {
+                            '$map': {
+                                'input': {
+                                    '$cond': {
+                                        'if': {'$isArray': '$$grupo'},
+                                        'then': '$$grupo',
+                                        'else': {
+                                            '$map': {
+                                                'input': {'$objectToArray': '$$grupo'},
+                                                'as': 'kv',
+                                                'in': '$$kv.v',
+                                            }
+                                        },
+                                    }
+                                },
+                                'as': 'row',
+                                'in': {
+                                    'tipo':      f'$$row.{f["tipo_de_documento"]}',
+                                    'file_url':  {'$arrayElemAt': [f'$$row.{f["documento"]}.file_url', 0]},
+                                    'file_name': {'$arrayElemAt': [f'$$row.{f["documento"]}.file_name', 0]},
+                                },
+                            }
+                        },
+                    }
+                },
+            }},
+            {'$sort': {'_id': -1}},
+        ]
+
+        # Gate temporal: la app móvil aún no entiende el shape paginado
+        # ({records, total_records, ...}) y espera la lista plana de siempre.
+        # Solo se activa el nuevo comportamiento si el caller manda pagination=True.
+        if not pagination:
+            return self.format_cr(self.cr.aggregate(query))
+
+        count_query = [{'$match': match_filters}, {'$count': 'total'}]
+        count_result = self.format_cr(self.cr.aggregate(count_query))
+        total_count = count_result[0]['total'] if count_result else 0
+
+        if limit:
+            query.append({'$skip': skip or 0})
+            query.append({'$limit': limit})
+        records = self.format_cr(self.cr.aggregate(query))
+
+        current_page = ((skip or 0) // limit) + 1 if limit else 1
+        total_pages = ceil(total_count / limit) if limit else 1
+
+        return {
+            'records': records,
+            'total_records': total_count,
+            'total_pages': total_pages,
+            'actual_page': current_page,
+            'records_on_page': len(records),
+        }
+
+    def get_pass_transportista(self, record_id=None, token=None, folio=None):
+        f = self.pass_fields_transportista
+        match = {
+            'form_id': self.PASE_ENTRADA_TRANSPORTISTA,
+            'deleted_at': {'$exists': False},
+        }
+        if record_id and not ObjectId.is_valid(record_id):
+            folio = folio or record_id
+            record_id = None
+        if record_id:
+            match['_id'] = ObjectId(record_id)
+        elif token:
+            match[f'answers.{f["token_transportista"]}'] = token
+        elif folio:
+            match['folio'] = folio
+        else:
+            self.LKFException({'title': 'Se requiere record_id, token o folio', 'status_code': 400})
+        query = [
+            {'$match': match},
+            {'$project': {
+                '_id': 1,
+                'created_at': 1,
+                'folio':          '$folio',
+                'creado_desde':   f'$answers.{self.pase_entrada_fields["creado_desde"]}',
+                'tipo_de_operacion': f'$answers.{f["tipo_de_operacion"]}',
+
+                # quien crea el pase
+                'nombre_crea_el_pase':   f'$answers.{f["nombre_crea_el_pase"]}',
+                'email_crea_el_pase':    f'$answers.{f["email_crea_el_pase"]}',
+                'telefono_crea_el_pase': f'$answers.{f["telefono_crea_el_pase"]}',
+
+                # transportista que recibe
+                'proveedor':          f'$answers.{f["proveedor"]}',
+                'proveedor_email':    f'$answers.{f["proveedor_email"]}',
+                'proveedor_telefono': f'$answers.{f["proveedor_telefono"]}',
+                'empresa_transportista': f'$answers.{f["empresa_transportista"]}',
+
+                # material
+                'proveedor_cliente_material': f'$answers.{f["proveedor_cliente_material"]}',
+                'orden_de_compra':            f'$answers.{f["orden_de_compra"]}',
+                'documentos': {'$map': {
+                    'input': f'$answers.{f["grupo_documentos_para_ocr"]}',
+                    'as':    'doc',
+                    'in': {
+                        'tipo':      f'$$doc.{f["tipo_de_documento"]}',
+                        'no_doc':    f'$$doc.{f["no_de_documento"]}',
+                        'archivo':   f'$$doc.{f["documento_para_ocr"]}',
+                    },
+                }},
+                'materiales': {'$map': {
+                    'input': f'$answers.{f["grupo_materiales"]}',
+                    'as':    'item',
+                    'in': {
+                        'tipo':       f'$$item.{f["tipo"]}',
+                        'cantidad':   f'$$item.{f["cantidad"]}',
+                        'volumen':    f'$$item.{f["volumen"]}',
+                        'peso':       f'$$item.{f["peso"]}',
+                        'sello':      f'$$item.{f["sello"]}',
+                        'contenedor': f'$$item.{f["contenedor"]}',
+                        'producto':      f'$$item.{f["producto"]}',
+                        'lote':          f'$$item.{f["lote"]}',
+                        'no_referencia': f'$$item.{f["no_referencia"]}',
+                    },
+                }},
+
+                # lugar entrega / recepción
+                'ubicacion':    f'$answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.mf["ubicacion"]}',
+                'direccion':    {'$first': f'$answers.{self.UBICACIONES_CAT_OBJ_ID}.{self.f["address_name"]}'},
+                'anden':        f'$answers.{self.AREAS_DE_LAS_UBICACIONES_CAT_OBJ_ID}.{self.mf["nombre_area"]}',
+                'fecha_desde':  f'$answers.{f["fecha_pase_transportista_desde"]}',
+                'fecha_hasta':  f'$answers.{f["fecha_pase_transportista_hasta"]}',
+                'hora_inicial': f'$answers.{f["hora_inicial"]}',
+                'hora_final':   f'$answers.{f["hora_final"]}',
+
+                # lugar recolección (tipos 2 y 3)
+                'lugar_recoleccion':         f'$answers.{f["lugar_de_recoleccion"]}',
+                'direccion_recoleccion':     f'$answers.{f["direccion_lugar_de_recoleccion"]}',
+                'fecha_recoleccion':         f'$answers.{f["fecha_de_recoleccion"]}',
+                'hora_inicial_recoleccion':  f'$answers.{f["hora_inicial_recoleccion"]}',
+                'hora_final_recoleccion':    f'$answers.{f["hora_final_recoleccion"]}',
+                'anden_recoleccion':         f'$answers.{f["anden_recoleccion"]}',
+                'responsable':               f'$answers.{f["responsable"]}',
+                'responsable_email':         f'$answers.{f["responsable_email"]}',
+                'responsable_telefono':      f'$answers.{f["responsable_telefono"]}',
+                'metodo_de_embarque':        f'$answers.{f["metodo_de_embarque"]}',
+                'incoterm':                  f'$answers.{f["incoterm"]}',
+
+                # conductor
+                'conductor_nombre':           f'$answers.{f["conductor_nombre"]}',
+                'conductor_no_licencia':      f'$answers.{f["conductor_no_licencia"]}',
+                'conductor_lugar_expedicion': f'$answers.{f["conductor_lugar_expedicion"]}',
+                'conductor_vigencia':         f'$answers.{f["conductor_vigencia"]}',
+                'conductor_rfc':              f'$answers.{f["conductor_rfc"]}',
+                'conductor_foto_licencia':    f'$answers.{f["conductor_foto_licencia"]}',
+
+                # ayudante
+                'ayudante_nombre':            f'$answers.{f["ayudante_nombre"]}',
+                'ayudante_no_licencia':       f'$answers.{f["ayudante_no_licencia"]}',
+                'ayudante_lugar_expedicion':  f'$answers.{f["ayudante_lugar_expedicion"]}',
+                'ayudante_vigencia':          f'$answers.{f["ayudante_vigencia"]}',
+                'ayudante_foto_licencia':     f'$answers.{f["ayudante_foto_licencia"]}',
+
+                # vehículo
+                'vehiculo_linea':               f'$answers.{f["vehiculo_linea"]}',
+                'vehiculo_tipo_unidad':         f'$answers.{f["vehiculo_tipo_unidad"]}',
+                'vehiculo_marca':               f'$answers.{f["vehiculo_marca"]}',
+                'vehiculo_modelo':              f'$answers.{f["vehiculo_modelo"]}',
+                'vehiculo_year':                f'$answers.{f["vehiculo_year"]}',
+                'vehiculo_placas':              f'$answers.{f["vehiculo_placas"]}',
+                'vehiculo_no_economico':        f'$answers.{f["vehiculo_no_economico"]}',
+                'vehiculo_niv':                 f'$answers.{f["vehiculo_niv"]}',
+                'vehiculo_color':               f'$answers.{f["vehiculo_color"]}',
+                'vehiculo_tarjeta_circulacion': f'$answers.{f["vehiculo_tarjeta_circulacion"]}',
+
+                # contenedores
+                'foto_contenedores': f'$answers.{f["foto_contenedores"]}',
+                'contenedores': {'$map': {
+                    'input': {'$ifNull': [f'$answers.{f["grupo_contenedores"]}', []]},
+                    'as':    'row',
+                    'in': {
+                        'numero': f'$$row.{f["contenedor_numero"]}',
+                        'sello':  f'$$row.{f["contenedor_sello"]}',
+                        'tipo':   f'$$row.{f["contenedor_tipo"]}',
+                    },
+                }},
+
+                # control
+                'estado_transportista': f'$answers.{f["estado_transportista"]}',
+                'url_del_pase':         f'$answers.{f["url_del_pase_transportista"]}',
+                'qr':                   f'$answers.{f["qr_del_pase_transportista"]}',
+                'token':                f'$answers.{f["token_transportista"]}',
+            }},
+        ]
+        result = self.format_cr(self.cr.aggregate(query), get_one=True)
+        if not result and (record_id or folio):
+            # El folio/_id buscado puede ser el de la bitácora (visible en el
+            # kanban) y no el del pase — se liga por num_de_pase al _id del pase.
+            bf = self.bitacora_transportista_fields
+            bitac_match = {
+                'form_id': self.BITACORA_TRANSPORTISTAS,
+                'deleted_at': {'$exists': False},
+            }
+            if record_id:
+                bitac_match['_id'] = ObjectId(record_id)
+            else:
+                bitac_match['folio'] = folio
+            bitac = self.cr.find_one(bitac_match, {f'answers.{bf["num_de_pase"]}': 1})
+            pase_record_id = bitac and bitac.get('answers', {}).get(bf['num_de_pase'])
+            if pase_record_id:
+                return self.get_pass_transportista(record_id=pase_record_id)
+        if result and result.get('_id'):
+            # Bitácora ligada a este pase (stub "programado" creado desde que
+            # se generó el pase, ver create_pass_transportista) — permite que
+            # el frontend redirija a la pantalla de detalle de acceso real en
+            # vez de quedarse en la vista pública del pase.
+            bf = self.bitacora_transportista_fields
+            bitac = self.cr.find_one(
+                {
+                    'form_id': self.BITACORA_TRANSPORTISTAS,
+                    'deleted_at': {'$exists': False},
+                    f'answers.{bf["num_de_pase"]}': result['_id'],
+                },
+                {'_id': 1},
+            )
+            result['bitacora_id'] = str(bitac['_id']) if bitac else None
+        return result
+
+    def update_information_transportista(self, data):
+        f = self.pass_fields_transportista
+        record_id  = data.get('record_id')
+        conductor  = data.get('conductor')
+        ayudante   = data.get('ayudante')
+        vehiculo   = data.get('vehiculo')
+        foto_cont  = data.get('foto_contenedores')
+        contenedores = data.get('contenedores')
+
+        answers = {}
+
+        if conductor:
+            foto = conductor.get('foto') or {}
+            answers.update({
+                f['conductor_nombre']:           conductor.get('nombre', ''),
+                f['conductor_no_licencia']:      conductor.get('licencia', ''),
+                f['conductor_lugar_expedicion']: conductor.get('lugar_expedicion', ''),
+                f['conductor_vigencia']:         conductor.get('vigencia', ''),
+                f['conductor_rfc']:              conductor.get('rfc', ''),
+                f['conductor_foto_licencia']:    [{'file_name': foto.get('file_name', ''), 'file_url': foto['file_url']}] if foto.get('file_url') else [],
+            })
+
+        if ayudante:
+            foto = ayudante.get('foto') or {}
+            answers.update({
+                f['ayudante_nombre']:            ayudante.get('nombre', ''),
+                f['ayudante_no_licencia']:       ayudante.get('licencia', ''),
+                f['ayudante_lugar_expedicion']:  ayudante.get('lugar_expedicion', ''),
+                f['ayudante_vigencia']:          ayudante.get('vigencia', ''),
+                f['ayudante_foto_licencia']:     [{'file_name': foto.get('file_name', ''), 'file_url': foto['file_url']}] if foto.get('file_url') else [],
+            })
+
+        if vehiculo:
+            foto = vehiculo.get('foto') or {}
+            answers.update({
+                f['vehiculo_linea']:               vehiculo.get('linea', ''),
+                f['vehiculo_tipo_unidad']:         vehiculo.get('tipo', ''),
+                f['vehiculo_marca']:               vehiculo.get('marca', ''),
+                f['vehiculo_modelo']:              vehiculo.get('modelo', ''),
+                f['vehiculo_year']:                vehiculo.get('año', ''),
+                f['vehiculo_placas']:              vehiculo.get('placas', ''),
+                f['vehiculo_no_economico']:        vehiculo.get('economico', ''),
+                f['vehiculo_niv']:                 vehiculo.get('niv', ''),
+                f['vehiculo_color']:               vehiculo.get('color', ''),
+                f['vehiculo_tarjeta_circulacion']: [{'file_name': foto.get('file_name', ''), 'file_url': foto['file_url']}] if foto.get('file_url') else [],
+            })
+
+        if foto_cont:
+            answers[f['foto_contenedores']] = [{'file_name': foto_cont.get('file_name', ''), 'file_url': foto_cont['file_url']}] if foto_cont.get('file_url') else []
+
+        if contenedores:
+            answers[f['grupo_contenedores']] = {
+                -(i + 1): {
+                    f['contenedor_numero']: c.get('numero', ''),
+                    f['contenedor_sello']:  c.get('sello', ''),
+                    f['contenedor_tipo']:   c.get('tipo', ''),
+                }
+                for i, c in enumerate(contenedores)
+            }
+
+        print(simplejson.dumps(answers, indent=3))
+        res = self.lkf_api.patch_multi_record(
+            answers=answers,
+            form_id=self.PASE_ENTRADA_TRANSPORTISTA,
+            record_id=[record_id],
+        )
+        if res.get('status_code') not in [201, 202]:
+            self.LKFException({'title': 'Error al actualizar información del transportista', 'msg': res})
+        return res
+
+    def save_bitac_transportista_record(self, record_id, data):
+        print(simplejson.dumps(data, indent=3))
+        # breakpoint()
+        f = self.bitacora_transportista_fields
+        answers = {}
+
+        if data.get('estatus'):
+            answers[f['estatus']] = data['estatus']
+            tz_name = self.user.get('timezone', 'America/Mexico_City')
+            fecha_hora_actual = datetime.now(pytz.timezone(tz_name)).strftime('%Y-%m-%d %H:%M:%S')
+            if data['estatus'] == 'carga_/_descarga':
+                answers[f['fecha_hora_descarga']] = fecha_hora_actual
+            elif data['estatus'] == 'terminado':
+                answers[f['fecha_hora_terminado']] = fecha_hora_actual
+
+        vehiculo = data.get('vehiculo') or {}
+        if vehiculo:
+            answers.update({
+                f['placas_de_vehiculo']: vehiculo.get('placas_de_vehiculo', ''),
+                f['num_eco_num_rotulo']: vehiculo.get('num_eco_num_rotulo', ''),
+                f['tipo_de_vehiculo']:   vehiculo.get('tipo_de_vehiculo', ''),
+                f['marca_vehiculo']:     vehiculo.get('marca', ''),
+                f['year_vehiculo']:      vehiculo.get('modelo', ''),
+                f['color_vehiculo']:     vehiculo.get('color', ''),
+            })
+
+        if 'anden' in data:
+            answers[f['anden_asignado']] = data['anden'] or ''
+
+        embarque = data.get('embarque') or {}
+        if embarque:
+            answers.update({
+                f['procedencia']:           embarque.get('procedencia', ''),
+                f['proveedor_cliente']:     embarque.get('proveedor_cliente', ''),
+                f['orden_de_compra']:       embarque.get('no_orden_compra', ''),
+            })
+
+        # contenedores y remolques van al mismo grupo
+        remolques    = data.get('remolques', []) or []
+        contenedores = data.get('contenedores', []) or []
+        grupo = remolques + contenedores
+        if grupo:
+            answers[f['grupo_remolques']] = {
+                (item['index'] if item.get('index') is not None else -(i + 1)): {
+                    f['tipo_remolque']:            item.get('tipo', ''),
+                    # Los remolques solo traen no_caja; los contenedores traen
+                    # además no_contenedor (su propio ID/ISO), que se prefiere
+                    # cuando está presente — si no, ambos comparten esta columna.
+                    f['num_caja_contenedor']:      item.get('no_contenedor') or item.get('no_caja', ''),
+                    f['num_sello']:                item.get('no_sello', ''),
+                    f['placas_de_caja']:           item.get('placas', ''),
+                    f['color_remolque_contenedor']: item.get('color', ''),
+                    f['no_referencia_remolque']:   item.get('ref_remolque', ''),
+                    f['comentarios']:              item.get('comentarios', ''),
+                }
+                for i, item in enumerate(grupo)
+            }
+
+        materiales = data.get('materiales', []) or []
+        if materiales:
+            answers[f['grupo_materiales']] = {
+                (m['index'] if m.get('index') is not None else -(i + 1)): {
+                    f['producto_material']:        m.get('producto', ''),
+                    f['lote_material']:            m.get('lote', ''),
+                    f['cantidad_material']:        m.get('cant_esperada', ''),
+                    f['cantidad_fisica_material']: m.get('cant_fisica', ''),
+                    f['cantidad_buena_material']:   m.get('cant_buena', ''),
+                    f['cantidad_danada_material']:  m.get('cant_danada', ''),
+                    f['cantidad_faltante_material']: m.get('cant_faltante', ''),
+                    f['peso_material']:            m.get('peso', ''),
+                    f['volumen_material']:         m.get('volumen', ''),
+                    f['no_referencia_material']:   m.get('ref', ''),
+                    f['lugar_material']:           'contenedor' if str(m.get('ref', '')).startswith('contenedor') else 'remolque' if str(m.get('ref', '')).startswith('remolque') else 'vehiculo',
+                    f['evidencia_material']:       m.get('evidencia', []),
+                    f['comentario_material']:      m.get('comentario', ''),
+                }
+                for i, m in enumerate(materiales)
+            }
+
+        # El front siempre reenvía el set completo del desglose (no ediciones
+        # incrementales a filas existentes), así que se reemplaza el grupo
+        # entero en vez de usar patch_multi_record con índices negativos
+        # (eso solo inserta filas nuevas y duplicaría el desglose en cada guardado).
+        if 'desglose_empaque' in data:
+            nuevo_grupo_desglose = [
+                {
+                    f['no_referencia_material_desglose']: d.get('no_referencia_material', ''),
+                    f['nivel_desglose']:                  d.get('nivel', ''),
+                    f['tipo_unidad_empaque_desglose']:    d.get('tipo_unidad_empaque', ''),
+                    f['cantidad_desglose']:               d.get('cantidad', ''),
+                    f['cantidad_acumulada_desglose']:     d.get('cantidad_acumulada', ''),
+                }
+                for d in (data.get('desglose_empaque') or [])
+            ]
+            self.cr.update_one(
+                {'_id': ObjectId(record_id), 'form_id': self.BITACORA_TRANSPORTISTAS, 'deleted_at': {'$exists': False}},
+                {'$set': {f'answers.{f["grupo_desglose_empaque"]}': nuevo_grupo_desglose}}
+            )
+
+        documentos_raw = data.get('documentos_adicionales') or []
+        if isinstance(documentos_raw, dict):
+            documentos_raw = [documentos_raw]
+        if documentos_raw:
+            new_counter = -1
+            docs_patch = {}
+            for doc in documentos_raw:
+                idx = doc.get('index')
+                if idx is not None:
+                    key = idx
+                else:
+                    key = new_counter
+                    new_counter -= 1
+                docs_patch[key] = {
+                    f['tipo_de_documento']: doc.get('tipo', '').lower().replace(' ', '_'),
+                    f['documento']: [{'file_name': doc['file_name'], 'file_url': doc['file_url']}],
+                }
+            answers[f['grupo_fotos_y_documentos']] = docs_patch
+
+        if data.get('delete_remolques') or data.get('delete_contenedores') or data.get('delete_materiales') or data.get('delete_documentos'):
+            self.delete_bitac_transportista_items(record_id, data)
+
+        if answers:
+            print(simplejson.dumps(answers, indent=3))
+            res = self.lkf_api.patch_multi_record(
+                answers=answers,
+                form_id=self.BITACORA_TRANSPORTISTAS,
+                record_id=[record_id],
+            )
+            print('ressssssssssss', res)
+            if res.get('status_code') not in [201, 202, 203]:
+                self.LKFException({'title': 'Error al guardar registro de bitácora', 'msg': res})
+            return res
+
+        return {'status_code': 200, 'msg': 'OK'}
+
+    def delete_bitac_transportista_items(self, record_id, data):
+        print(simplejson.dumps(data, indent=3))
+        f = self.bitacora_transportista_fields
+        current = None
+
+        delete_remolques    = data.get('delete_remolques', []) or []
+        delete_contenedores = data.get('delete_contenedores', []) or []
+        delete_materiales   = data.get('delete_materiales', []) or []
+        delete_documentos   = data.get('delete_documentos', []) or []
+
+        if delete_remolques or delete_contenedores:
+            current = self.get_bitac_transportista_record(record_id)
+            indexes_borrar = set(delete_remolques + delete_contenedores)
+            nuevo_grupo = [
+                {
+                    f['tipo_remolque']:             r.get('tipo_remolque', ''),
+                    f['num_caja_contenedor']:       r.get('no_caja', ''),
+                    f['num_sello']:                 r.get('no_sello', ''),
+                    f['placas_de_caja']:            r.get('placas_caja', ''),
+                    f['color_remolque_contenedor']: r.get('color', ''),
+                    f['no_referencia_remolque']:    r.get('no_referencia_remolque', ''),
+                    f['comentarios']:               r.get('comentarios', ''),
+                }
+                for i, r in enumerate(current.get('remolques', []))
+                if i not in indexes_borrar
+            ]
+            print('nuevo grupo_remolques=', simplejson.dumps(nuevo_grupo, indent=3))
+            self.cr.update_one(
+                {'_id': ObjectId(record_id), 'form_id': self.BITACORA_TRANSPORTISTAS, 'deleted_at': {'$exists': False}},
+                {'$set': {f'answers.{f["grupo_remolques"]}': nuevo_grupo}}
+            )
+
+        if delete_materiales:
+            if current is None:
+                current = self.get_bitac_transportista_record(record_id)
+            indexes_borrar = set(delete_materiales)
+            nuevo_grupo = [
+                {
+                    f['lugar_material']:           m.get('lugar', ''),
+                    f['no_referencia_material']:   m.get('no_referencia', ''),
+                    f['producto_material']:        m.get('producto', ''),
+                    f['lote_material']:            m.get('lote', ''),
+                    f['cantidad_material']:        m.get('cantidad', ''),
+                    f['cantidad_fisica_material']: m.get('cantidad_fisica', ''),
+                    f['cantidad_buena_material']:   m.get('cantidad_buena', ''),
+                    f['cantidad_danada_material']:  m.get('cantidad_danada', ''),
+                    f['cantidad_faltante_material']: m.get('cantidad_faltante', ''),
+                    f['peso_material']:            m.get('peso', ''),
+                    f['volumen_material']:         m.get('volumen', ''),
+                }
+                for i, m in enumerate(current.get('materiales', []))
+                if i not in indexes_borrar
+            ]
+            print('nuevo grupo_materiales=', simplejson.dumps(nuevo_grupo, indent=3))
+            self.cr.update_one(
+                {'_id': ObjectId(record_id), 'form_id': self.BITACORA_TRANSPORTISTAS, 'deleted_at': {'$exists': False}},
+                {'$set': {f'answers.{f["grupo_materiales"]}': nuevo_grupo}}
+            )
+
+        if delete_documentos:
+            if current is None:
+                current = self.get_bitac_transportista_record(record_id)
+            indexes_borrar = set(delete_documentos)
+            nuevo_grupo = [
+                {
+                    f['tipo_de_documento']: d.get('tipo', ''),
+                    f['documento']:         d.get('documento', []),
+                }
+                for i, d in enumerate(current.get('documentos', []))
+                if i not in indexes_borrar
+            ]
+            print('nuevo grupo_fotos_y_documentos=', simplejson.dumps(nuevo_grupo, indent=3))
+            self.cr.update_one(
+                {'_id': ObjectId(record_id), 'form_id': self.BITACORA_TRANSPORTISTAS, 'deleted_at': {'$exists': False}},
+                {'$set': {f'answers.{f["grupo_fotos_y_documentos"]}': nuevo_grupo}}
+            )
+
+        return {'status_code': 200, 'msg': 'OK'}
+
+
     def create_custom_qr(self, url_for_qr, name_qr, form_id, img_field_id):
         lkf_qr = generar_qr.LKF_QR(self.settings)
         qr_generado = lkf_qr.procesa_qr(url_for_qr, name_qr, form_id, img_field_id)
