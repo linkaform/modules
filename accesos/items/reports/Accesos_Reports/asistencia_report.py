@@ -29,6 +29,11 @@ class Accesos(Accesos):
         # Plantilla por caseta: una forma por caseta × turno; el turno sale del catálogo Horarios
         self.PLANTILLA_CASETA = self.lkm.form_id('plantilla_por_caseta', 'id')
         self.HORARIOS_CAT_OBJ_ID = (self.lkm.catalog_id('horarios') or {}).get('obj_id')
+        # Días de asueto de la empresa (módulo employee); hay cuentas que no la tienen instalada
+        try:
+            self.CONFIG_ASUETOS = self.lkm.form_id('configuracion_de_asuetos', 'id')
+        except Exception:
+            self.CONFIG_ASUETOS = None
 
         self.f.update({
             'tipo_guardia': '68acee270f2af5e173b7f92e',
@@ -61,6 +66,9 @@ class Accesos(Accesos):
             'plaza_guardia_nombre': '62c5ff407febce07043024dd',
             'plaza_guardia_id': '638a9a99616398d2e392a9f5',
             'plaza_rol': '6a46f2730fc4d03a90da2209',
+            # Configuración de Asuetos
+            'asueto_nombre': '698295349e2aa48ef60f2aa6',
+            'asueto_fecha': '698295349e2aa48ef60f2aa7',
         })
         
         self.shifts = {}
@@ -210,6 +218,24 @@ class Accesos(Accesos):
             })
         return dias_por_usuario
 
+    def get_asuetos(self, date_from, date_to):
+        """Días de asueto del periodo: {"YYYY-MM-DD": nombre}."""
+        if not self.CONFIG_ASUETOS:
+            return {}
+        fecha = f"answers.{self.f['asueto_fecha']}"
+        query = {
+            "deleted_at": {"$exists": False},
+            "form_id": self.CONFIG_ASUETOS,
+            fecha: {"$gte": date_from, "$lte": f"{date_to} 23:59:59"},
+        }
+        asuetos = {}
+        for item in self.cr.find(query, {fecha: 1, f"answers.{self.f['asueto_nombre']}": 1}):
+            answers = item.get('answers') or {}
+            dia = str(answers.get(self.f['asueto_fecha']) or '')[:10]
+            if dia:
+                asuetos[dia] = answers.get(self.f['asueto_nombre']) or 'Asueto'
+        return asuetos
+
     def get_employees_attendance(self, group_by="locations", locations=[], month=1, year=2026, date_from=None, date_to=None):
         employees_list = self.get_employees_list()
         employees_ids = list(i.get('employee_id', '') for i in employees_list)
@@ -252,6 +278,7 @@ class Accesos(Accesos):
                     "answers": "$doc.answers",
                     "caseta": f"$doc.answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.Location.f['area']}",
                     "comentario_cierre": f"$doc.answers.{self.f['comentario_cierre_turno']}",
+                    "roles_checkin": f"$doc.answers.{self.f['grupo_roles']}",
                 }}
             }},
             {"$project": {
@@ -265,7 +292,8 @@ class Accesos(Accesos):
         format_response = {}
         free_days = self.get_free_days(date_from, date_to, employees_list)
         if group_by == "employees":
-            format_response = self.format_employees_attendance(response, employees_list, locations, date_from, date_to, free_days)
+            asuetos = self.get_asuetos(date_from, date_to)
+            format_response = self.format_employees_attendance(response, employees_list, locations, date_from, date_to, free_days, asuetos)
         elif group_by == "locations":
             format_response = self.format_locations_attendance(response, employees_list, date_from, date_to)
         return format_response
@@ -462,8 +490,8 @@ class Accesos(Accesos):
     def get_plantilla(self, date_from, date_to, locations=[]):
         """Plantilla por caseta: cada plaza (caseta × horario × rol) por día con su estado.
         A = con entrada, R = entrada con retardo, F = sin entrada, PL = por llegar (hoy), PE = programado (futuro).
-        Asignación: primero el guardia programado, luego quien entró con el mismo rol y al final cualquiera
-        (suplentes). Los check-ins que sobran salen en "extras"."""
+        Asignación: primero el guardia programado, luego quien entró con el mismo rol y al final, en plazas
+        sin rol, cualquiera (suplentes). Los check-ins que sobran (otro rol o sin rol) salen en "extras"."""
         ahora = datetime.now(timezone('America/Mexico_City'))
         hoy = ahora.date()
         inicio = datetime.strptime(date_from, '%Y-%m-%d').date()
@@ -487,9 +515,11 @@ class Accesos(Accesos):
                     if c["horario"] == horario or (not c["horario"] and c["hora_entrada"] and c["hora_entrada"] == turno["hora_entrada"])
                 ]
                 asignados = [None] * len(turno["plazas"])
-                # Rol: un check-in con otro rol no cubre la plaza; uno sin rol sí, pero queda marcado.
+                # Rol: si la plaza pide rol, solo la cubre quien entró con ese rol (otro rol o sin rol
+                # quedan como extras; p. ej. un supervisor no cubre la plaza de un guardia). El guardia
+                # programado sí cubre la suya aunque su check-in no traiga rol (queda marcado).
                 # Plazas sin guardia asignado se llenan antes que las de un programado ausente.
-                rol_ok = lambda p, c: not p["rol"] or not c["roles"] or p["rol"] in c["roles"]
+                rol_ok = lambda p, c: not p["rol"] or p["rol"] in c["roles"]
                 rol_igual = lambda p, c: p["rol"] and p["rol"] in c["roles"]
                 rondas = (
                     lambda p, c: p["guardia_programado_id"] and c["employee_id"] == p["guardia_programado_id"] and not c["suplente"],
@@ -537,6 +567,19 @@ class Accesos(Accesos):
         result.sort(key=lambda t: (t["ubicacion"] or '', t["caseta"] or '', str(t["hora_entrada"]), t["horario"]))
         return result
 
+    def url_foto(self, fotos):
+        """URL de la primera foto de un campo de imágenes (lista o dict)."""
+        foto = fotos[0] if isinstance(fotos, list) and fotos else fotos
+        return (foto or {}).get('file_url', '') if isinstance(foto, dict) else ''
+
+    def roles_de_checkin(self, grupo_roles):
+        """Nombres de rol del grupo de roles de un check-in."""
+        roles = [
+            self.unlist((r.get(self.ROL_CATALOG_OBJ_ID) or {}).get(self.f['rol']))
+            for r in (grupo_roles or []) if isinstance(r, dict)
+        ]
+        return [r for r in roles if r]
+
     def new_resumen(self):
         return {"asistencias": 0, "retardos": 0, "faltas": 0, "sin_salida": 0, "vacaciones": 0, "incapacidades": 0, "permisos": 0, "fuera_oficina": 0}
 
@@ -555,7 +598,7 @@ class Accesos(Accesos):
         if conteo:
             resumen[conteo] += 1
 
-    def format_employees_attendance(self, data, employees_list, locations=[], date_from=None, date_to=None, free_days={}):
+    def format_employees_attendance(self, data, employees_list, locations=[], date_from=None, date_to=None, free_days={}, asuetos={}):
         ahora = datetime.now(timezone('America/Mexico_City'))
         hoy = ahora.date()
         hora_actual = ahora.strftime('%H:%M:%S')
@@ -620,6 +663,20 @@ class Accesos(Accesos):
                             "fecha_cierre": fecha_cierre,
                             "closed": bool(fecha_cierre),
                             "comentario_cierre": reg.get('comentario_cierre') or '',
+                            "roles": self.roles_de_checkin(reg.get('roles_checkin')),
+                            # Lo que muestra el panel del día, para no volver a consultarlo al dar clic
+                            "detalle": {
+                                "foto_inicio": self.url_foto(reg.get('foto_inicio_turno')),
+                                "foto_cierre": self.url_foto(reg.get('foto_cierre_turno')),
+                                "comentario_inicio": reg.get('comentario_inicio_turno') or '',
+                                "comentario_cierre": reg.get('comentario_cierre') or '',
+                                "ubicacion": location if location != 'Sin ubicación' else '',
+                                "area": reg.get('caseta') or '',
+                                "nombre_horario": reg.get('nombre_horario') or '',
+                                "hora_entrada": reg.get('hora_entrada') or '',
+                                "hora_salida": reg.get('hora_salida') or '',
+                                "tolerancia_retardo": reg.get('tolerancia_retardo'),
+                            },
                         }
                     if reg.get('dias_libres_empleado'):
                         #! POSIBLE CAMBIO: Como considerariamos un cambio en los dias libres a mitad de mes?
@@ -652,8 +709,18 @@ class Accesos(Accesos):
                     closed = False
                     comentario_cierre = ""
                     tipo_dia_libre = None
+                    roles = []
+                    detalle = None
 
                     solicitud = dias_solicitados_info.get(fecha)
+                    asueto = asuetos.get(fecha)
+                    # Permiso por horas que cubre la hora de entrada: puede llegar hasta que termine el permiso
+                    llegada_permitida = None
+                    if solicitud and solicitud.get('parcial') and jornada and jornada.get('hora_entrada'):
+                        p_ini = (solicitud.get('hora_inicio') or '')[:5]
+                        p_fin = (solicitud.get('hora_fin') or '')[:5]
+                        if p_ini and p_fin and p_ini <= jornada['hora_entrada'][:5] < p_fin:
+                            llegada_permitida = p_fin
                     # Permisos por horas y home office no tapan un check-in de ese día
                     manda_checkin = solicitud and fecha in dias_info and (
                         solicitud.get('parcial') or solicitud.get('tipo') in tipos_con_checkin
@@ -672,18 +739,26 @@ class Accesos(Accesos):
                         fecha_cierre = info.get("fecha_cierre")
                         closed = info.get("closed", False)
                         comentario_cierre = info.get("comentario_cierre", "")
+                        roles = info.get("roles") or []
+                        detalle = info.get("detalle")
                         if status == "falta_por_retardo":
                             status = "falta"
+                        # Llegó dentro de su permiso de llegar tarde: no es retardo ni falta
+                        if llegada_permitida and status in ("retardo", "falta") and fecha_inicio and fecha_inicio[11:16] <= llegada_permitida:
+                            status = "presente"
                         if not closed:
                             if not es_hoy:
                                 status = "sin_salida"
                             elif status == "presente":
                                 status = "en_turno"
+                    elif asueto:
+                        status = "asueto"
                     elif fecha_dia < hoy:
                         status = "falta"
                     elif es_hoy:
-                        # Pasada la hora de entrada más la tolerancia de su jornada ya es falta
-                        status = "falta" if limite_llegada and hora_actual > limite_llegada else "por_llegar"
+                        # Pasada la hora de entrada más la tolerancia (o el fin de su permiso) ya es falta
+                        limite = max(limite_llegada or '', f"{llegada_permitida}:59" if llegada_permitida else '')
+                        status = "falta" if limite and hora_actual > limite else "por_llegar"
                     else:
                         status = "sin_registro"
 
@@ -706,6 +781,12 @@ class Accesos(Accesos):
                         asistencia_data["closed"] = True
                     if comentario_cierre.startswith("Cierre de turno automatico"):
                         asistencia_data["cierre_automatico"] = comentario_cierre
+                    if roles:
+                        asistencia_data["roles"] = roles
+                    if asueto:
+                        asistencia_data["asueto"] = asueto
+                    if detalle:
+                        asistencia_data["detalle"] = detalle
 
                     asistencia_mes.append(asistencia_data)
 
@@ -901,8 +982,12 @@ class Accesos(Accesos):
                 "attendance_start_pic": f"$answers.{self.f['foto_inicio_turno']}",
                 "attendance_end_pic": f"$answers.{self.f['foto_cierre_turno']}",
                 "attendance_name": "$created_by_name",
+                "attendance_user_id": "$created_by_id",
                 "attendance_sup_name": f"$answers.{self.f['nombre_guardia_suplente']}",
                 "attendance_horario": f"$answers.{self.f['nombre_horario']}",
+                "attendance_hora_entrada": f"$answers.{self.f['hora_entrada']}",
+                "attendance_hora_salida": f"$answers.{self.f['hora_salida']}",
+                "attendance_tolerancia": f"$answers.{self.f['tolerancia_retardo']}",
                 "attendance_position": f"$answers.{self.f['tipo_guardia']}",
                 "attendance_location": f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.Location.f['location']}",
                 "attendance_area": f"$answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.Location.f['area']}",
