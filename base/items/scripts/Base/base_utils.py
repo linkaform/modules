@@ -25,6 +25,7 @@ class Base(Base):
         })
 
         sdk = lambda name: self.lkm.script_id(name, 'id')
+        form = lambda name: self.lkm.form_id(name, 'id')
         self.module_permits = {
             'always':{
                 'forms':[],
@@ -71,9 +72,13 @@ class Base(Base):
                 'scripts':[self.SCRIPT_TURNOS, self.SCRIPT_NOTAS]
             },
             # Menus web que solo llaman scripts _sdk (Sanic), sin gemelo en addons.
+            # En ubicaciones, las formas/catálogo son los que el front escribe con el JWT
+            # del usuario: áreas, ubicaciones, config de seguridad, impresión de QR y
+            # alta de dirección (catálogo Contacto).
             'ubicaciones':{
-                'forms':[],
-                'catalogs':[],
+                'forms':[form('areas_de_las_ubicaciones'), form('ubicaciones'),
+                         form('configuracion_modulo_seguridad'), form('impresion_de_qr')],
+                'catalogs':[getattr(self, 'CONTACTO_CAT_ID', None)],
                 'scripts':[sdk('location_sdk'), sdk('update_area_sdk'), sdk('rondines_sdk'), sdk('fallas_sdk')]
             },
             'empleados':{
