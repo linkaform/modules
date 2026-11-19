@@ -951,7 +951,7 @@ class Accesos(Accesos):
         format_row_catalog = [i.get(self.Location.f['location']) for i in row_catalog]
         return format_row_catalog
 
-    def get_attendance_data(self, locations=[], limit=100, offset=0, date_from=None, date_to=None):
+    def get_attendance_data(self, locations=[], limit=100, offset=0, date_from=None, date_to=None, user_ids=None):
         """
         Se obtiene la informacion de la asistencia de los empleados en forma Registro de Asistencia
         """
@@ -971,6 +971,10 @@ class Accesos(Accesos):
             custom_match_query.update({
                 f"answers.{self.CONF_AREA_EMPLEADOS_CAT_OBJ_ID}.{self.Location.f['location']}": {"$in": locations}
             })
+
+        # Filtros de empleado del front: None = sin filtro, [] = ningún empleado coincide
+        if user_ids is not None:
+            custom_match_query["created_by_id"] = {"$in": [int(i) for i in user_ids if str(i).isdigit()]}
 
         query = [
             {"$match": custom_match_query},
@@ -1058,7 +1062,7 @@ if __name__ == "__main__":
     if option == 'get_report':
         response = script_obj.get_employees_attendance(group_by=group_by, locations=locations, month=month, year=year, date_from=date_from, date_to=date_to)
     elif option == 'get_attendance_data':
-        response = script_obj.get_attendance_data(locations=locations, limit=limit, offset=offset, date_from=date_from, date_to=date_to)
+        response = script_obj.get_attendance_data(locations=locations, limit=limit, offset=offset, date_from=date_from, date_to=date_to, user_ids=data.get('user_ids'))
     elif option == 'get_plantilla':
         response = script_obj.get_plantilla(date_from=date_from, date_to=date_to, locations=locations)
     elif option == 'get_locations':
