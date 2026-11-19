@@ -501,6 +501,8 @@ class Accesos(Accesos):
         checkins = self.get_plantilla_checkins(date_from, date_to, locations)
 
         result = []
+        # Check-ins que ya salen en un turno de la plantilla (en una plaza o como extra)
+        usados = set()
         for (ubicacion, caseta, horario), turno in turnos.items():
             limite = None
             if turno["hora_entrada"]:
@@ -536,6 +538,7 @@ class Accesos(Accesos):
                         if c:
                             asignados[i] = c
                             libres.remove(c)
+                usados.update(id(c) for c in asignados + libres if c)
 
                 plazas = []
                 for plaza, c in zip(turno["plazas"], asignados):
@@ -563,6 +566,38 @@ class Accesos(Accesos):
                 dias.append({"fecha": fecha, "plazas": plazas, "extras": libres, "resumen": resumen})
 
             result.append({**turno, "dias": dias})
+
+        # Sin plantilla: casetas sin plantilla, o check-ins de un horario que no está en ella. No hay plazas,
+        # solo quién entró (en "extras"), para ver quién está aunque no haya plantilla configurada.
+        sin_plantilla = {}
+        for (ubicacion, caseta, fecha), lista in checkins.items():
+            resto = [c for c in lista if id(c) not in usados]
+            if resto:
+                sin_plantilla.setdefault((ubicacion or '', caseta or ''), {})[fecha] = resto
+        # Y las ubicaciones del catálogo que no tienen plantilla ni check-ins, para listarlas todas
+        con_filas = {t["ubicacion"] for t in result} | {u for u, _ in sin_plantilla}
+        try:
+            ubicaciones = self.get_locations()
+        except Exception:
+            ubicaciones = []
+        for ubicacion in ubicaciones:
+            if ubicacion and ubicacion not in con_filas and (not locations or ubicacion in locations):
+                sin_plantilla.setdefault((ubicacion, ''), {})
+        vacio = {"A": 0, "R": 0, "F": 0, "PL": 0, "PE": 0, "total": 0}
+        for (ubicacion, caseta), por_fecha in sin_plantilla.items():
+            result.append({
+                "ubicacion": ubicacion,
+                "caseta": caseta,
+                "horario": '',
+                "hora_entrada": '',
+                "hora_salida": '',
+                "tolerancia_retardo": 0,
+                "sin_plantilla": True,
+                "dias": [
+                    {"fecha": f.strftime('%Y-%m-%d'), "plazas": [], "extras": por_fecha.get(f.strftime('%Y-%m-%d'), []), "resumen": dict(vacio)}
+                    for f in fechas
+                ],
+            })
 
         result.sort(key=lambda t: (t["ubicacion"] or '', t["caseta"] or '', str(t["hora_entrada"]), t["horario"]))
         return result
