@@ -991,7 +991,7 @@ class Accesos(Accesos):
         format_row_catalog = [i.get(self.Location.f['location']) for i in row_catalog]
         return format_row_catalog
 
-    def get_attendance_data(self, locations=[], limit=100, offset=0, date_from=None, date_to=None, user_ids=None):
+    def get_attendance_data(self, locations=[], limit=100, offset=0, date_from=None, date_to=None, user_ids=None, statuses=None, today=None):
         """
         Se obtiene la informacion de la asistencia de los empleados en forma Registro de Asistencia
         """
@@ -1016,12 +1016,33 @@ class Accesos(Accesos):
         if user_ids is not None:
             custom_match_query["created_by_id"] = {"$in": [int(i) for i in user_ids if str(i).isdigit()]}
 
-        query = [
-            {"$match": custom_match_query},
+        # Estatus de cada registro, misma regla que la galería del front:
+        # sin salida → en_turno (inicio hoy) o sin_salida; con salida → retardo, falta o presente
+        today = today or datetime.now(timezone('America/Mexico_City')).strftime('%Y-%m-%d')
+        inicio = f"$answers.{self.f['fecha_inicio_turno']}"
+        cierre = f"$answers.{self.f['fecha_cierre_turno']}"
+        status = {"$toLower": {"$ifNull": [f"$answers.{self.f['status_turn']}", ""]}}
+        estatus_expr = {"$switch": {
+            "branches": [
+                {"case": {"$in": [{"$ifNull": [cierre, ""]}, ["", None]]},
+                 "then": {"$cond": [{"$eq": [{"$substrBytes": [{"$ifNull": [inicio, ""]}, 0, 10]}, today]}, "en_turno", "sin_salida"]}},
+                {"case": {"$eq": [status, "retardo"]}, "then": "retardo"},
+                {"case": {"$eq": [{"$substrBytes": [status, 0, 5]}, "falta"]}, "then": "falta"},
+            ],
+            "default": "presente",
+        }}
+        # Filtro de estatus del front: None o [] = todos
+        status_match = {"_estatus": {"$in": statuses}} if statuses else {}
+
+        records_query = [
+            {"$match": status_match},
             {"$sort": {f"answers.{self.f['start_shift']}": -1}},
+            {"$skip": offset},
+            {"$limit": limit},
             {"$project": {
                 "_id": 1,
                 "folio": 1,
+                "attendance_estatus": "$_estatus",
                 "attendance_status": f"$answers.{self.f['status_turn']}",
                 "attendance_start_pic": f"$answers.{self.f['foto_inicio_turno']}",
                 "attendance_end_pic": f"$answers.{self.f['foto_cierre_turno']}",
@@ -1043,20 +1064,25 @@ class Accesos(Accesos):
             }}
         ]
 
-        count_query = [
+        query = [
             {"$match": custom_match_query},
-            {"$count": "total"}
+            {"$addFields": {"_estatus": estatus_expr}},
+            {"$facet": {
+                # Conteo por estatus de todo el periodo (sin el filtro de estatus) para las píldoras
+                "counts": [{"$group": {"_id": "$_estatus", "n": {"$sum": 1}}}],
+                "total": [{"$match": status_match}, {"$count": "total"}],
+                "records": records_query,
+            }},
         ]
-        
-        count_result = self.format_cr(self.cr.aggregate(count_query))
-        total_count = count_result[0]['total'] if count_result else 0
+
+        res = list(self.cr.aggregate(query))
+        res = res[0] if res else {}
+        status_counts = {c['_id']: c['n'] for c in res.get('counts', []) if c.get('_id')}
+        total_count = res['total'][0]['total'] if res.get('total') else 0
         current_page = (offset // limit) + 1 if limit else 1
         total_pages = ceil(total_count / limit) if limit else 1
 
-        query.append({'$skip': offset})
-        query.append({'$limit': limit})
-
-        data = self.format_cr(self.cr.aggregate(query))
+        data = self.format_cr(res.get('records', []))
         format_data = []
         if data:
             for item in data:
@@ -1073,7 +1099,8 @@ class Accesos(Accesos):
             "total_records": total_count,
             "total_pages": total_pages,
             "actual_page": current_page,
-            "records_on_page": len(format_data)
+            "records_on_page": len(format_data),
+            "status_counts": status_counts,
         }
 
 if __name__ == "__main__":
@@ -1102,7 +1129,7 @@ if __name__ == "__main__":
     if option == 'get_report':
         response = script_obj.get_employees_attendance(group_by=group_by, locations=locations, month=month, year=year, date_from=date_from, date_to=date_to)
     elif option == 'get_attendance_data':
-        response = script_obj.get_attendance_data(locations=locations, limit=limit, offset=offset, date_from=date_from, date_to=date_to, user_ids=data.get('user_ids'))
+        response = script_obj.get_attendance_data(locations=locations, limit=limit, offset=offset, date_from=date_from, date_to=date_to, user_ids=data.get('user_ids'), statuses=data.get('statuses'), today=data.get('today'))
     elif option == 'get_plantilla':
         response = script_obj.get_plantilla(date_from=date_from, date_to=date_to, locations=locations)
     elif option == 'get_locations':
