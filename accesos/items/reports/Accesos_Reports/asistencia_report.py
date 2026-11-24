@@ -53,6 +53,7 @@ class Accesos(Accesos):
             'retardo_maximo': '68b642e2bc17e2713cabe019',
             'grupo_ubicaciones_horario': '68b6427cc8f94827ebfed699',
             'dias_libres_empleado': '68bb20095035e61c5745de05',
+            'estatus_dentro_empresa': '663bcbe2274189281359eb77',
             'grupo_turnos': '68b6427cc8f94827ebfed699',
             'free_day_hora_inicio': '61af7e19b7b4b6d6731ffddc',
             'free_day_hora_fin': '61af7e19b7b4b6d6731ffddd',
@@ -88,6 +89,7 @@ class Accesos(Accesos):
                 "puesto": f"$answers.{puesto_cat}.{self.f['puesto_empleado']}",
                 "email": f"$answers.{self.USUARIOS_OBJ_ID}.{self.f['usuario_email']}",
                 "dias_libres": f"$answers.{self.f['dias_libres_empleado']}",
+                "estatus": f"$answers.{self.f['estatus_dentro_empresa']}",
             }}
         ]
         response = self.cr.aggregate(query)
@@ -103,6 +105,7 @@ class Accesos(Accesos):
                 'dias_libres': i.get('dias_libres') or [],
                 'email': (self.unlist(i.get('email')) or '').strip().lower(),
                 'ubicaciones': ubicaciones.get(employee_id, []),
+                'activo': self.unlist(i.get('estatus')) != 'inactivo',
             })
         return format_response
 
@@ -656,10 +659,12 @@ class Accesos(Accesos):
         horarios = self.get_schedules()
         empleados = {emp['employee_id']: emp for emp in employees_list if emp.get('employee_id')}
 
-        # Empleados sin check-in en el periodo también salen (solo cuando no se filtra por ubicación)
+        # Empleados activos sin check-in en el periodo también salen (solo cuando no se filtra por ubicación);
+        # un empleado dado de baja (inactivo) solo sale si tiene check-ins en el periodo
         if not locations:
-            for emp_id in empleados:
-                data.setdefault(emp_id, [])
+            for emp_id, emp in empleados.items():
+                if emp.get('activo'):
+                    data.setdefault(emp_id, [])
 
         result = []
         for emp_id, registros in data.items():
