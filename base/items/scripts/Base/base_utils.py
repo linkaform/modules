@@ -54,7 +54,9 @@ class Base(Base):
             'activos':{
                 'forms':[self.Accesos.CONCESSIONED_ARTICULOS, self.Accesos.BITACORA_OBJETOS_PERDIDOS, self.Accesos.PAQUETERIA],
                 'catalogs':[],
-                'scripts':[self.Accesos.SCRIPT_PAQUETERIA, self.GET_STATS, self.GAFETES_LOCKERS, self.FALLAS, self.ARTICULOS_PERDIDOS, self.ARTICULOS_CONSECIONADOS]
+                # reporte_concesionados_sdk no tiene gemelo en addons: va explícito.
+                'scripts':[self.Accesos.SCRIPT_PAQUETERIA, self.GET_STATS, self.GAFETES_LOCKERS, self.FALLAS, self.ARTICULOS_PERDIDOS, self.ARTICULOS_CONSECIONADOS,
+                           sdk('reporte_concesionados_sdk')]
             },
             'notas':{
                 'forms':[self.Accesos.ACCESOS_NOTAS],
