@@ -26,6 +26,9 @@ class Base(Base):
 
         sdk = lambda name: self.lkm.script_id(name, 'id')
         form = lambda name: self.lkm.form_id(name, 'id')
+        # Reportes (item_type report_script). .get(): una cuenta sin reportes no trae
+        # ese tipo en module_data y lkm.item_id() truena con KeyError.
+        report = lambda name: (self.lkm.module_data.get('report_script', {}).get(name) or {}).get('id')
         self.module_permits = {
             'always':{
                 'forms':[],
@@ -103,6 +106,8 @@ class Base(Base):
             'admin_menus': {'forms': [], 'catalogs': [], 'scripts': [sdk('menus_admin'), sdk('migrate_legacy_menus')]},
             'script_logs': {'forms': [], 'catalogs': [], 'scripts': [sdk('script_logs_sdk')]},
             'workflow_log': {'forms': [], 'catalogs': [], 'scripts': [sdk('workflow_logs_sdk')]},
+            # Reporte de asistencia (Caseta > Reportes). Se comparte como script.
+            'turno_reportes': {'forms': [], 'catalogs': [], 'scripts': [report('asistencia_report')]},
         }
 
         # Cada script se comparte junto con su gemelo *_sdk (Sanic). getattr: la imagen
