@@ -6,9 +6,10 @@ from account_settings import *
 
 class Stock(Stock):
     """docstring for Stock"""
-    # Crear una Transferencia solo lo autoriza a los WH Operator; al editarla
-    # (actualizar_transferencia_de_materiales.py) tambien a los WH Manager.
-    auth_wh_manager_groups = False
+    # Crear una Transferencia solo lo autoriza a los WH Manager; al editarla
+    # (actualizar_transferencia_de_materiales.py) tambien a los WH Operator y
+    # a national_admin.
+    is_update_transfer = False
 
     def __init__(self, settings, sys_argv=None, use_api=False):
         super().__init__(settings, sys_argv=sys_argv, use_api=use_api)
@@ -51,12 +52,14 @@ class Stock(Stock):
             'cancelled': 'cancellation',
         }
 
-        # super_admin y national_admin pueden pasar a cualquier estatus
-        self.transfer_full_access_roles = ('super_admin', 'national_admin')
+        # super_admin puede pasar a cualquier estatus
+        self.transfer_full_access_roles = ('super_admin',)
         roles_wh = ('warehouse_coordinator', 'wh_operator_puebla', 'wh_operator_camarones')
-        roles_mg = ('wh_manager_puebla', 'wh_manager_camarones')
+        # national_admin tiene los mismos permisos que los WH Manager
+        roles_mg = ('wh_manager_puebla', 'wh_manager_camarones', 'national_admin')
         self.map_action_roles = {
-            'request': roles_wh,
+            # Los WH Manager crean la Transferencia, por eso tambien pueden solicitar
+            'request': roles_wh + ('wh_manager_puebla', 'wh_manager_camarones'),
             'preparation': roles_wh,
             'approval': roles_mg,
             'reception': roles_mg,
@@ -72,9 +75,13 @@ class Stock(Stock):
         if is_admin or type_admin == 'no_user_found':
             return is_admin, type_admin
 
-        groups = self.siga_wh_operator_groups
-        if self.auth_wh_manager_groups:
-            groups = groups + self.siga_wh_manager_groups
+        # national_admin no crea; al editar tiene los permisos de un WH Manager
+        if self.is_update_transfer and self.is_user_national_admin():
+            return True, 'national_admin'
+
+        groups = self.siga_wh_manager_groups
+        if self.is_update_transfer:
+            groups = self.siga_wh_operator_groups + groups
 
         for role, id_group in groups:
             if self.current_user_id in self._get_users_group(id_group):

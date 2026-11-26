@@ -32,13 +32,11 @@ class Stock(Stock):
         if is_admin or type_admin == 'no_user_found':
             return is_admin, type_admin
 
-        # for role, id_group in self.siga_wh_manager_groups:
-        #     if self.current_user_id in self._get_users_group(id_group):
-        #         return True, role
-        # # print('--- _users_by_group =', self._users_by_group)
+        # Solo pueden crear recepciones los Administradores, WH Manager y WH Operator
+        for role, id_group in self.siga_wh_manager_groups + self.siga_wh_operator_groups:
+            if self.current_user_id in self._get_users_group(id_group):
+                return True, role
 
-        # validaciones especiales para Recepcion
-        # Solo puede crear recepciones los Administradores y WH Coordinador
         return False, ''
     
     def find_warehouse_catalog_users(self, nombre_usuario):

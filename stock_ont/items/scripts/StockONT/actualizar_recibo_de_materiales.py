@@ -14,9 +14,16 @@ class Stock(Stock):
         self.ADMIN_USER_ID = 1259
 
         # Cada WH Operator solo puede editar Recepciones de su almacen destino
+        # (y no puede modificar `delivery`, ver can_update_delivery)
         self.map_wh_operator_location = {
             'wh_operator_puebla': 'PCI Puebla',
             'wh_operator_camarones': 'Camarones',
+        }
+        # Cada WH Manager tambien queda restringido a su almacen destino
+        self.map_wh_role_location = {
+            **self.map_wh_operator_location,
+            'wh_manager_puebla': 'PCI Puebla',
+            'wh_manager_camarones': 'Camarones',
         }
 
         self.user_authorized, self.user_in_group = self.authorized_update_reception()
@@ -29,8 +36,8 @@ class Stock(Stock):
             return is_admin, type_admin
 
         # validaciones especiales para editar la Recepcion
-        # Solo pueden editar recepciones los Administradores y WH Operator
-        for role, id_group in self.siga_wh_operator_groups:
+        # Solo pueden editar recepciones los Administradores, WH Manager y WH Operator
+        for role, id_group in self.siga_wh_manager_groups + self.siga_wh_operator_groups:
             if self.current_user_id in self._get_users_group(id_group):
                 return True, role
         # print('--- _users_by_group =', self._users_by_group)
@@ -38,10 +45,10 @@ class Stock(Stock):
 
     def operator_can_edit_location(self, answers_record):
         """
-        Valida que un WH Operator solo edite Recepciones cuyo almacen destino
-        (field_location_almacen_destino) sea el de su grupo. Se compara contra
-        lo guardado en el registro, no contra el payload, porque el operador no
-        puede modificar `delivery`. Los administradores pasan sin restriccion.
+        Valida que un WH Operator o WH Manager solo edite Recepciones cuyo
+        almacen destino (field_location_almacen_destino) sea el de su grupo. Se
+        compara contra lo guardado en el registro, no contra el payload. Los
+        administradores pasan sin restriccion.
 
         Args:
             answers_record (dict): answers del registro guardado en la BD.
@@ -52,7 +59,7 @@ class Stock(Stock):
         almacen_destino = answers_record.get(self.f['obj_almacen_destino']) or {}
         location_destino = self.unlist(almacen_destino.get(self.f['field_location_almacen_destino']))
 
-        location_operator = self.map_wh_operator_location.get(self.user_in_group)
+        location_operator = self.map_wh_role_location.get(self.user_in_group)
         if not location_operator:
             return True, location_destino
 

@@ -24,11 +24,13 @@ class Stock(Stock):
             'delivered': 'confirm_final_delivery',
         }
 
-        # super_admin y national_admin pueden pasar a cualquier estatus
-        self.salida_full_access_roles = ('super_admin', 'national_admin')
+        # super_admin puede pasar a cualquier estatus
+        self.salida_full_access_roles = ('super_admin',)
         roles_op = ('wh_operator_puebla', 'wh_operator_camarones')
+        # national_admin tiene los mismos permisos que warehouse_coordinator
+        roles_aa = ('wh_admin_assistant_puebla', 'wh_admin_assistant_camarones')
         self.map_salida_action_roles = {
-            'authorize_voucher': ('warehouse_coordinator',),
+            'authorize_voucher': ('warehouse_coordinator', 'national_admin') + roles_aa,
             'prepare_material': roles_op,
             'confirm_local_delivery': roles_op,
             'capture_dispatch': roles_op,
@@ -40,6 +42,8 @@ class Stock(Stock):
         self.map_salida_role_location = {
             'wh_operator_puebla': 'PCI Puebla',
             'wh_operator_camarones': 'Camarones',
+            'wh_admin_assistant_puebla': 'PCI Puebla',
+            'wh_admin_assistant_camarones': 'Camarones',
         }
 
     def get_salida_role(self):
@@ -53,6 +57,8 @@ class Stock(Stock):
         is_admin, type_admin = self.is_user_admin()
         if is_admin or type_admin == 'no_user_found':
             return type_admin
+        if self.is_user_national_admin():
+            return 'national_admin'
 
         for role, id_group in self.siga_wh_operator_groups + self.siga_wh_manager_groups + self.siga_wh_admin_assistant_groups:
             if self.current_user_id in self._get_users_group(id_group):

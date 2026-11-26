@@ -355,7 +355,7 @@ class Stock(Stock):
         # El orden define la prioridad del rol que regresa is_user_admin()
         self.siga_admin_groups = [
             ('super_admin', self.id_group_super_admin),
-            ('national_admin', self.id_group_national_admin),
+            # ('national_admin', self.id_group_national_admin),
             ('warehouse_coordinator', self.id_group_wh_coordinator),
         ]
 
@@ -426,6 +426,16 @@ class Stock(Stock):
                 return True, role
 
         return False, ''
+
+    def is_user_national_admin(self):
+        """
+        national_admin ya no forma parte de siga_admin_groups: cada script
+        decide que permisos le da (ver generar_salidas_por_contratista.py,
+        actualizar_salida_de_materiales.py y transferencia_de_materiales.py).
+        """
+        if not self.current_user_id:
+            return False
+        return self.current_user_id in self._get_users_group(self.id_group_national_admin)
 
     def assign_record_to_group(self, record_id, id_group):
         """
