@@ -10,6 +10,9 @@ class Stock(Stock):
 
         self.inv_map_recibo_stages = {v: k for k, v in self.map_recibo_stages.items()}
 
+        # Usuario Admin de PCI: antes de editar se valida que el registro exista en su BD
+        self.ADMIN_USER_ID = 1259
+
         # Cada WH Operator solo puede editar Recepciones de su almacen destino
         self.map_wh_operator_location = {
             'wh_operator_puebla': 'PCI Puebla',
@@ -54,6 +57,45 @@ class Stock(Stock):
             return True, location_destino
 
         return location_destino == location_operator, location_destino
+
+    def ensure_record_in_admin_db(self, folio_query, record):
+        """
+        Si quien edita es el usuario Admin (ADMIN_USER_ID), busca el registro
+        en su propia BD (account_1259). Si no existe ahi, se le asigna el
+        registro para que lo pueda editar. Para otros usuarios no hace nada.
+
+        Args:
+            folio_query: folio del registro (int o str, como se guardo).
+            record (dict): registro encontrado en self.cr (se usa su _id).
+        """
+        if self.current_user_id != self.ADMIN_USER_ID:
+            return
+
+        from pci_get_connection_api import CollectionConnection
+        cr_admin = CollectionConnection(
+            self.ADMIN_USER_ID, self.settings, username=self.ADMIN_USER, api_key=self.ADMIN_APIKEY
+        ).get_collections_connection()
+
+        record_admin = cr_admin.find_one(
+            {
+                'form_id': self.FORM_BITACORA_TRANSPORTISTA_ID,
+                'folio': folio_query,
+                'deleted_at': {'$exists': False},
+            },
+            {'_id': 1},
+        )
+        if record_admin:
+            print(f'--- registro {folio_query} ya existe en BD {self.ADMIN_USER_ID}')
+            return
+
+        record_id_to_assign = f"/api/infosync/form_answer/{record['_id']}/"
+        resp_assign = self.lkf_api.assigne_connection_records(self.ADMIN_USER_ID, [record_id_to_assign], jwt_settings_key='APIKEY_JWT_KEY')
+        print(f'--- asignando registro {folio_query} al usuario {self.ADMIN_USER_ID}: {resp_assign}')
+
+        if isinstance(resp_assign, dict) and resp_assign.get('status_code', 200) not in (200, 201, 202):
+            self.LKFException(
+                f"No se pudo asignar el Recibo de Materiales '{folio_query}' al usuario {self.ADMIN_USER_ID}: {resp_assign}"
+            )
 
     def build_grp_stages_merge(self, existing_rows):
         """
@@ -147,6 +189,8 @@ class Stock(Stock):
         record = self.get_record_by_folio(folio_query, self.FORM_BITACORA_TRANSPORTISTA_ID)
         if not record:
             self.LKFException(f"No se encontro ningun Recibo de Materiales con folio '{folio}'")
+
+        self.ensure_record_in_admin_db(folio_query, record)
 
         answers_record = record.get('answers', {})
 
