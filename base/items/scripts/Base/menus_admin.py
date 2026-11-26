@@ -640,6 +640,9 @@ if __name__ == "__main__":
         "get_user_menu_items": lambda: script_obj.get_user_menu_items(user_id),
         "list_users_menu_items": lambda: script_obj.list_users_menu_items(),
         "save_user_menu_items": lambda: script_obj.save_user_menu_items(user_id, item_keys),
+        # Menús por rol (1649)
+        "list_menu_roles": lambda: script_obj.list_menu_roles(),
+        "save_rol_menu_items": lambda: script_obj.save_rol_menu_items(data.get("rol"), item_keys),
         # Deshabilitado (1509): comparte/descomparte permisos; se reactiva junto con set_permissions.
         # "resync_all_permissions": lambda: script_obj.resync_all_permissions(),
         "list_users_missing_menu_config": lambda: script_obj.list_users_missing_menu_config(),
